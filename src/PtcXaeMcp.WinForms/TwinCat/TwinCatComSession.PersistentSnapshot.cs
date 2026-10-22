@@ -162,7 +162,7 @@ internal sealed partial class TwinCatComSession
         var values = new Dictionary<string, SnapshotLeaf>(StringComparer.Ordinal);
         foreach (var chunk in leaves.Chunk(SumBatchSize))
         {
-            var byInstance = chunk.ToDictionary(l => l.Symbol.InstancePath, StringComparer.Ordinal);
+            var byInstance = chunk.ToDictionary(l => l.Symbol.InstancePath, StringComparer.OrdinalIgnoreCase);
             ResultSumValues2<ISymbol>? res;
             try { res = new SumSymbolRead(client, chunk.Select(l => l.Symbol).ToList()).ReadRaw(); }
             catch (Exception ex) when (ComCall.NotBusy(ex))
@@ -173,7 +173,7 @@ internal sealed partial class TwinCatComSession
             foreach (var vr in res.ValueResults)
             {
                 string path = vr.Source.InstancePath;
-                var leaf = byInstance[path];
+                if (!byInstance.TryGetValue(path, out var leaf)) { skipped.Add(new(path, "unreadable: unexpected symbol in the sum result")); continue; }
                 if (vr.Failed) { skipped.Add(new(path, $"unreadable: {vr.ErrorCode}")); continue; }
                 try
                 {

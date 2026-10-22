@@ -264,4 +264,30 @@ internal sealed class TwinCatMcpToolsDiagnostics(McpBridge bridge)
         => bridge.Activity.Trace("twincat_ibn_arm", new { ttlSeconds, actuatorAllowlist, gvlPath, amsNetId, adsPort }, () =>
             bridge.Dispatcher.Run(() =>
                 bridge.LiveCoordinator.Arm(ttlSeconds, actuatorAllowlist, gvlPath, amsNetId, adsPort)), cancellationToken);
+    // ---- twincat_persistent_snapshot_test_confirm (test support) ----------------------
+
+    // A restore executes only after a human confirms the host popup (SnapshotRestoreCoordinator.ConfirmProposal).
+    // The live suite has no human, so a --diagnostics host offers this hook - same name pattern and policy as
+    // twincat_ibn_arm: never registered for released clients (pinned by PersistentSnapshotSurfaceTests).
+    [McpServerTool(Name = "twincat_persistent_snapshot_test_confirm", ReadOnly = false, Destructive = true)]
+    [Description("TEST SUPPORT ONLY - never registered for released clients; in production a restore is " +
+                 "confirmed only by a human in the host popup (Approvals view). Confirms the pending restore " +
+                 "proposal restoreId as the popup's OK would: the host re-plans, writes and reads back. " +
+                 "Returns JSON { restoreId, status, reason }. Only registered when the host is started with " +
+                 "--diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.")]
+    public string PersistentSnapshotTestConfirm(
+        [Description("The restoreId returned by twincat_persistent_snapshot_restore.")] string restoreId,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_persistent_snapshot_test_confirm", new { restoreId }, () =>
+            bridge.Dispatcher.Run(() =>
+            {
+                if (bridge.SnapshotRestore.Get(restoreId) is null) return $"[Error] Unknown restoreId '{restoreId}'.";
+                var done = bridge.SnapshotRestore.ConfirmProposal(restoreId.Trim());
+                return System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    restoreId = done.RestoreId,
+                    status = TwinCat.SnapshotRestoreCoordinator.StateName(done.State),
+                    reason = done.Reason,
+                });
+            }), cancellationToken);
 }

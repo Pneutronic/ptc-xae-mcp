@@ -109,8 +109,9 @@ TwinCAT is operated through the MCP client. It has a header and three views:
   and *Run again in Console* for a selected call.
 - **Approvals** — every human approval in one place: IBN Live (arming happens only
   here; ABORT / RELEASE-ALL, remaining time, audit log; each proposed step opens a
-  confirm popup) and the history of HMI write approvals. The tab shows a badge while
-  something is pending.
+  confirm popup), the restore popup of the persistent snapshot (PLC state, target and
+  the differences; nothing is written until you confirm) and the history of HMI write
+  approvals. The tab shows a badge while something is pending.
 - **Console** — run any MCP tool by hand through the real MCP path (same token
   check, lock and activity log as an AI client): search, a form generated from the
   tool's parameters, raw JSON, favourites. Tools that are not read-only ask for

@@ -24,6 +24,12 @@
     <Compile Include="DUTs\ST_FixtureRecord.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="DUTs\ST_PersistentInner.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="DUTs\ST_PersistentRecipe.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="DUTs\T_FixtureName.TcDUT">
       <SubType>Code</SubType>
     </Compile>
@@ -36,10 +42,16 @@
     <Compile Include="GVLs\GVL_InstanceSettings.TcGVL">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="GVLs\GVL_Persistent.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="PlcTask.TcTTO">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\FB_FolderMembers.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\FB_PersistentCell.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\FB_StepChain.TcPOU">

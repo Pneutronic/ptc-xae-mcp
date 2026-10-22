@@ -122,6 +122,32 @@ public static class FixtureLayout
     public const string InitSymbolLreal = InstanceSettingsGvlName + ".fInitGain";
     public const string RetainSymbol = InstanceSettingsGvlName + ".nRetainCounter";
 
+    // ── persistent-snapshot ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// GVL <c>VAR_GLOBAL PERSISTENT</c> with <c>stRecipe : ST_PersistentRecipe</c> (nested struct, ENUM, STRING,
+    /// WSTRING, TIME, DT, <c>aPos : ARRAY[1..5] OF LREAL</c>) and <c>arCal : ARRAY[1..3] OF ST_PersistentInner</c>,
+    /// plus the non-persistent FB instances <c>fbCell</c> and <c>aCells[1..2]</c> of <c>FB_PersistentCell</c>
+    /// (one <c>VAR PERSISTENT</c> and one <c>VAR RETAIN</c> local). MAIN only reads them.
+    /// </summary>
+    public const string PersistentGvlName = "GVL_Persistent";
+
+    /// <summary>The three instances of <c>FB_PersistentCell</c>: one plain, two inside an array.</summary>
+    public static readonly string[] FbCellInstances =
+    [
+        $"{PersistentGvlName}.fbCell", $"{PersistentGvlName}.aCells[1]", $"{PersistentGvlName}.aCells[2]",
+    ];
+
+    /// <summary>Every leaf the compiler marks PERSISTENT in the fixture (declared array indices).</summary>
+    public static readonly string[] PersistentLeaves =
+    [
+        .. new[] { "stInner.nCount", "stInner.fOffset", "eMode", "sName", "wsName", "tDelay", "dtStamp" }
+            .Select(m => $"{PersistentGvlName}.stRecipe.{m}"),
+        .. Enumerable.Range(1, 5).Select(i => $"{PersistentGvlName}.stRecipe.aPos[{i}]"),
+        .. Enumerable.Range(1, 3).SelectMany(i => new[] { "nCount", "fOffset" }.Select(m => $"{PersistentGvlName}.arCal[{i}].{m}")),
+        .. FbCellInstances.Select(i => $"{i}.nPersistentCount"),
+    ];
+
     // ── I/O ───────────────────────────────────────────────────────────────────
 
     /// <summary>

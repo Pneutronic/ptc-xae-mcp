@@ -31,4 +31,12 @@
     <Using Include="FluentAssertions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- persistent-snapshot (#TMC pin): the pure, ADS-free selector of the host, run here against the freshly built fixture TMC. -->
+    <Compile Include="..\PtcXaeMcp.WinForms\TwinCat\TmcRemanentSelector.cs" Link="Linked\TmcRemanentSelector.cs" />
+    <Compile Include="..\PtcXaeMcp.WinForms\TwinCat\SnapshotValues.cs" Link="Linked\SnapshotValues.cs" />
+    <Compile Include="..\PtcXaeMcp.WinForms\TwinCat\AdsTypeNames.cs" Link="Linked\AdsTypeNames.cs" />
+    <Compile Include="..\PtcXaeMcp.WinForms\TwinCat\PersistentSnapshotTypes.cs" Link="Linked\PersistentSnapshotTypes.cs" />
+  </ItemGroup>
+
 </Project>

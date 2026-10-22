@@ -61,8 +61,17 @@ public sealed class IbnArmSurfaceTests
     public void NoToolSource_CallsConfirmProposal()
     {
         // ConfirmProposal writes the command bit; it is host-only (the Approvals view's popup).
+        // The one exception: the persistent-snapshot live-suite hook on the diagnostics surface (never registered
+        // for released clients, pinned by PersistentSnapshotSurfaceTests). The IBN ConfirmProposal has no exception.
+        const string snapshotHook = "SnapshotRestore.ConfirmProposal(";
         var offenders = Directory.EnumerateFiles(FindMcpSourceDirectory(), "TwinCatMcpTools*.cs")
-            .Where(f => File.ReadAllText(f).Contains("ConfirmProposal(", StringComparison.Ordinal))
+            .Where(f =>
+            {
+                string text = File.ReadAllText(f);
+                if (Path.GetFileName(f) == "TwinCatMcpTools.Diagnostics.cs")
+                    text = text.Replace(snapshotHook, string.Empty, StringComparison.Ordinal);
+                return text.Contains("ConfirmProposal(", StringComparison.Ordinal);
+            })
             .Select(Path.GetFileName)
             .ToList();
         offenders.Should().BeEmpty();

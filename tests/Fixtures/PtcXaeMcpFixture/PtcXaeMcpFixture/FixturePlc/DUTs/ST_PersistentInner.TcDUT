@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_PersistentInner" Id="{3f6a1c52-8d7e-4b0a-9a41-5c2e7d9b1a01}">
+    <Declaration><![CDATA[TYPE ST_PersistentInner :
+STRUCT
+	nCount : INT;
+	fOffset : LREAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

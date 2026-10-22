@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_PersistentCell" Id="{3f6a1c52-8d7e-4b0a-9a41-5c2e7d9b1a03}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_PersistentCell
+VAR PERSISTENT
+	nPersistentCount : DINT;
+END_VAR
+VAR RETAIN
+	nRetainCount : DINT;
+END_VAR
+VAR
+	nTransient : DINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nTransient := nPersistentCount + nRetainCount;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

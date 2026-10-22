@@ -75,6 +75,10 @@ public class PersistentSnapshotMcpTests : IAsyncLifetime
             (n.Contains("confirm", StringComparison.OrdinalIgnoreCase) || n.Contains("execute", StringComparison.OrdinalIgnoreCase) ||
              n.Contains("apply", StringComparison.OrdinalIgnoreCase) || n.Contains("approve", StringComparison.OrdinalIgnoreCase))).ToList();
 
+        // A --diagnostics host (ptc_test_marker) also offers the live suite's test hook; a released host must not.
+        if (names.Contains("ptc_test_marker"))
+            forbidden.Remove("twincat_persistent_snapshot_test_confirm");
+
         Assert.True(forbidden.Count == 0, $"Forbidden AI-reachable execute surface found: {string.Join(", ", forbidden)}");
     }
 

@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-198 tools, generated from the source attributes — one section per
+199 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -16,7 +16,7 @@
 - [ClientInfo](#clientinfo) (1)
 - [Coe](#coe) (2)
 - [CoreDump](#coredump) (3)
-- [Diagnostics](#diagnostics) (9)
+- [Diagnostics](#diagnostics) (10)
 - [EditorNavigation](#editornavigation) (2)
 - [EtherCat](#ethercat) (5)
 - [EventLogger](#eventlogger) (2)
@@ -340,6 +340,14 @@ TEST SUPPORT ONLY — never registered for released clients; in production IBN L
 | `gvlPath` | `string?` | `null` | Base symbol path of the test PRG control/status struct. Default 'GVL_IBN'. |
 | `amsNetId` | `string?` | `null` | Optional AMS Net ID of the target ADS server. Omit for the local TwinCAT runtime. |
 | `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+
+### `twincat_persistent_snapshot_test_confirm`
+
+TEST SUPPORT ONLY - never registered for released clients; in production a restore is confirmed only by a human in the host popup (Approvals view). Confirms the pending restore proposal restoreId as the popup's OK would: the host re-plans, writes and reads back. Returns JSON { restoreId, status, reason }. Only registered when the host is started with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `restoreId` | `string` |  | The restoreId returned by twincat_persistent_snapshot_restore. |
 
 ## EditorNavigation
 

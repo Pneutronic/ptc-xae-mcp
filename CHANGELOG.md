@@ -10,6 +10,17 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- Persistent snapshot: capture, compare and restore the remanent data (PERSISTENT and RETAIN) of a
+  running PLC over ADS. New tools `twincat_list_ads_symbols`, `twincat_persistent_snapshot_save`,
+  `_compare`, `_restore` and `_restore_status`. The remanent leaves come from the compiled `.tmc` (as the
+  compiler resolved them) or from the runtime's `IsPersistent` flags; the snapshot is a flat JSON file
+  with a per-leaf type (arrays by declared index). A restore is a dry run by default; with
+  `dryRun=false` it only raises a proposal. Nothing is written until a human confirms the new popup in the
+  Approvals view, which shows the PLC state (RUN/STOP) and the differences. After the confirm the host
+  re-plans against the PLC, writes with ADS sum commands and reads every leaf back. There is no MCP tool
+  that confirms.
+
 ## [2.1.0] - 2026-10-21
 
 ### Changed

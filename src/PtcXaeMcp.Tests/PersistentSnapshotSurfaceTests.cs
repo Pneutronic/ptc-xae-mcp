@@ -59,6 +59,19 @@ public sealed class PersistentSnapshotSurfaceTests
     }
 
     [Fact]
+    public void The_test_confirm_hook_lives_only_on_the_diagnostics_surface_marked_as_test_support()
+    {
+        const string name = "twincat_persistent_snapshot_test_confirm";
+        Tools().Keys.Should().NotContain(name);
+
+        var diagnostics = typeof(TwinCatMcpToolsDiagnostics)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Single(m => m.GetCustomAttribute<McpServerToolAttribute>()?.Name == name);
+        string description = diagnostics.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()!.Description;
+        description.Should().StartWith("TEST SUPPORT ONLY").And.Contain("never registered for released clients");
+    }
+
+    [Fact]
     public void The_confirm_path_is_not_reachable_from_any_tool_signature()
     {
         // ConfirmProposal / RejectProposal exist on the coordinator for the host only; no tool takes the coordinator.

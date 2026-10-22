@@ -102,6 +102,56 @@ END_TYPE
 
 DUT_ALIAS = "TYPE T_FixtureName : STRING(40); END_TYPE"
 
+# persistent-snapshot: remanent data of every kind the snapshot carries. PERSISTENT struct (nested struct,
+# ENUM, STRING, WSTRING, TIME, DT, array with lower bound 1), a PERSISTENT array of structs, and an FB with a
+# VAR PERSISTENT and a VAR RETAIN local, instanced twice (once inside an array). MAIN reads them so they
+# stay in the symbol table.
+DUT_PERSISTENT_INNER = """TYPE ST_PersistentInner :
+STRUCT
+	nCount : INT;
+	fOffset : LREAL;
+END_STRUCT
+END_TYPE
+"""
+
+DUT_PERSISTENT_RECIPE = """TYPE ST_PersistentRecipe :
+STRUCT
+	stInner : ST_PersistentInner;
+	eMode : E_FixtureMode;
+	sName : STRING(20);
+	wsName : WSTRING(20);
+	tDelay : TIME := T#1S500MS;
+	dtStamp : DT;
+	aPos : ARRAY[1..5] OF LREAL;
+END_STRUCT
+END_TYPE
+"""
+
+FB_PERSISTENT_CELL_DECL = """FUNCTION_BLOCK FB_PersistentCell
+VAR PERSISTENT
+	nPersistentCount : DINT;
+END_VAR
+VAR RETAIN
+	nRetainCount : DINT;
+END_VAR
+VAR
+	nTransient : DINT;
+END_VAR
+"""
+
+FB_PERSISTENT_CELL_IMPL = "nTransient := nPersistentCount + nRetainCount;\n"
+
+GVL_PERSISTENT = """{attribute 'qualified_only'}
+VAR_GLOBAL PERSISTENT
+	stRecipe : ST_PersistentRecipe;
+	arCal : ARRAY[1..3] OF ST_PersistentInner;
+END_VAR
+VAR_GLOBAL
+	fbCell : FB_PersistentCell;
+	aCells : ARRAY[1..2] OF FB_PersistentCell;
+END_VAR
+"""
+
 FB_DECL = """FUNCTION_BLOCK FB_StepChain
 VAR_INPUT
 	bStart : BOOL;
@@ -152,6 +202,8 @@ VAR
 	sFirstName : STRING(20);
 	bIbnProbeIdle : BOOL;
 	fInstanceProbe : LREAL;
+	stRecipeProbe : ST_PersistentRecipe;
+	arCalProbe : ARRAY[1..3] OF ST_PersistentInner;
 END_VAR
 """
 
@@ -174,6 +226,13 @@ bIbnProbeIdle := NOT (GVL_IBN_Probe.bEnable OR GVL_IBN_Probe.bStepReq OR GVL_IBN
 // plc-instance-settings: only read here, so the init symbols and the retain variable stay in the image.
 fInstanceProbe := GVL_InstanceSettings.fInitGain * DINT_TO_LREAL(GVL_InstanceSettings.nInitParam)
 	+ UDINT_TO_LREAL(GVL_InstanceSettings.nRetainCounter);
+
+// persistent-snapshot: the remanent symbols are read here so they stay in the image and the ADS symbol table.
+GVL_Persistent.fbCell();
+GVL_Persistent.aCells[1]();
+GVL_Persistent.aCells[2]();
+stRecipeProbe := GVL_Persistent.stRecipe;
+arCalProbe := GVL_Persistent.arCal;
 
 PRG_IntegrationScratch(); // [INTEGRATION-TEST-HOOK] do not remove manually
 """
@@ -290,7 +349,12 @@ def main():
         await call("twincat_create_dut", parentPath=dut, name="E_FixtureMode", dutType="ENUM", declaration=DUT_ENUM)
         await call("twincat_create_dut", parentPath=dut, name="ST_FixtureRecord", dutType="STRUCT", declaration=DUT_STRUCT)
         await call("twincat_create_dut", parentPath=dut, name="T_FixtureName", dutType="ALIAS", declaration=DUT_ALIAS)
+        await call("twincat_create_dut", parentPath=dut, name="ST_PersistentInner", dutType="STRUCT", declaration=DUT_PERSISTENT_INNER)
+        await call("twincat_create_dut", parentPath=dut, name="ST_PersistentRecipe", dutType="STRUCT", declaration=DUT_PERSISTENT_RECIPE)
+        await call("twincat_create_pou", parentPath=pou, name="FB_PersistentCell", pouType="FUNCTION_BLOCK")
+        await call("twincat_write_pou_body", treePath=f"{pou}^FB_PersistentCell", declaration=FB_PERSISTENT_CELL_DECL, implementation=FB_PERSISTENT_CELL_IMPL)
         await call("twincat_create_gvl", parentPath=gvl, name="GVL_Fixture", declaration=GVL)
+        await call("twincat_create_gvl", parentPath=gvl, name="GVL_Persistent", declaration=GVL_PERSISTENT)
         await call("twincat_create_gvl", parentPath=gvl, name="GVL_IBN_Probe", declaration=GVL_IBN_PROBE)
         await call("twincat_create_gvl", parentPath=gvl, name="GVL_InstanceSettings", declaration=GVL_INSTANCE_SETTINGS)
         await call("twincat_create_interface", parentPath=pou, name="I_FixtureDevice")

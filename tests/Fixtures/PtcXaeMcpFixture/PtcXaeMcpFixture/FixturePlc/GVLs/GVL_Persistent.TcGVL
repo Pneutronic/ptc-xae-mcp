@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_Persistent" Id="{3f6a1c52-8d7e-4b0a-9a41-5c2e7d9b1a04}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL PERSISTENT
+	stRecipe : ST_PersistentRecipe;
+	arCal : ARRAY[1..3] OF ST_PersistentInner;
+END_VAR
+VAR_GLOBAL
+	fbCell : FB_PersistentCell;
+	aCells : ARRAY[1..2] OF FB_PersistentCell;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

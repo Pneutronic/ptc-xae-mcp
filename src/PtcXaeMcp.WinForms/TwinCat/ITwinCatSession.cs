@@ -648,4 +648,17 @@ internal interface ITwinCatSession : IDisposable
 
     /// <summary><c>ConsumeXml(xml)</c> on <paramref name="treePath"/>. The XAE ignores unknown content silently — callers read back.</summary>
     void ConsumeTreeItemXml(string treePath, string xml);
+    // ---- persistent-snapshot ----
+    /// <summary>Flatten each requested path into leaves and read them with sum commands over ONE connection / symbol load.
+    /// Paths that do not exist come back in <c>Missing</c>, unreadable or unsupported leaves in <c>Skipped</c>.</summary>
+    SnapshotReadResult ReadSnapshotLeaves(SnapshotReadRequest request, string? amsNetId, int adsPort);
+
+    /// <summary>Write leaves with sum commands (halve-and-retry on a refused batch), then read EVERY leaf back.</summary>
+    SnapshotWriteResult WriteSnapshotLeaves(IReadOnlyList<SnapshotLeafWrite> writes, string? amsNetId, int adsPort);
+
+    /// <summary>Read-only browse of the online symbol table (no values).</summary>
+    AdsSymbolListResult ListAdsSymbols(string? root, int maxDepth, bool persistentOnly, int limit, string? amsNetId, int adsPort);
+
+    /// <summary>ADS state of the PLC runtime ("Run", "Stop", …), shown prominently in the restore popup.</summary>
+    AdsRunStateResult GetAdsRunState(string? amsNetId, int adsPort);
 }

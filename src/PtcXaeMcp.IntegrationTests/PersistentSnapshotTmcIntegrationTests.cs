@@ -94,7 +94,7 @@ public sealed class PersistentSnapshotTmcIntegrationTests : IAsyncLifetime
         // RETAIN: the VAR_GLOBAL RETAIN variable sits in a RetainSrc data area.
         Assert.Contains(all.Leaves, l => l.Kind == "retain" && l.Path == FixtureLayout.RetainSymbol);
 
-        // FB-local VAR RETAIN: the spec left open how the TMC shows it. Whatever it is, the retain leaf of every
+        // FB-local VAR RETAIN: Beckhoff does not document how the TMC shows it. Whatever it is, the retain leaf of every
         // FB_PersistentCell instance must be found - this is the pin.
         foreach (string instance in FixtureLayout.FbCellInstances)
             Assert.Contains(all.Leaves, l => l.Path == instance + ".nRetainCount");

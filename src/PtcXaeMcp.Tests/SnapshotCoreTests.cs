@@ -181,7 +181,7 @@ public class SnapshotCoreTests
     {
         var snap = Map(("Old.x", L("INT", "4")));
         var live = Map(("New.x", L("DINT", "4")));
-        SnapshotPathMap.TryParse("{\"Old\":\"New\"}", out var map, out _);
+        SnapshotPathMap.TryParse("{\"Old\":\"New\"}", out var map, out _).Should().BeTrue();
 
         SnapshotDiff.Compare(snap, live, map).Equal.Should().BeTrue();
     }
@@ -265,7 +265,7 @@ public class SnapshotCoreTests
     {
         var snap = Map(("A.x", L("INT", "1")), ("B.x", L("INT", "2")));
         var live = Map(("C.x", L("INT", "0")));
-        SnapshotPathMap.TryParse("{\"A\":\"C\",\"B\":\"C\"}", out var map, out _);
+        SnapshotPathMap.TryParse("{\"A\":\"C\",\"B\":\"C\"}", out var map, out _).Should().BeTrue();
 
         var plan = SnapshotDiff.BuildPlan("t", snap, live, NoSkips, map);
 

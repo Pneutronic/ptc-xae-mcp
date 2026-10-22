@@ -109,5 +109,7 @@ in particular no TwinCAT DLLs, Infosys texts or customer project content.
       (throw `TwinCatNotBuilt.Exception()` or return a not-built result); verify
       a `-p:TwinCat=false` build still compiles.
 - [ ] Every commit is signed off (`git commit -s`).
+- [ ] New files are covered by `.github/allowed-paths.txt` (CI runs `python tools/check_paths.py`).
+      The repository holds the product only: no working notes, drafts, plans or editor/assistant config.
 - [ ] No customer names, project numbers, machine paths or credentials in code,
       tests, fixtures or docs.

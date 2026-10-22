@@ -1,0 +1,99 @@
+# Paths that may exist in this repository. Checked in CI by tools/check_paths.py.
+#
+# This repository holds the MCP server: source, tests, fixtures, installer, CI and user
+# documentation. Working notes, design drafts, plans, reviews and editor or assistant
+# configuration do not belong here. A new file outside these patterns fails CI; if it
+# really belongs to the product, add a pattern here in the same pull request.
+#
+# Syntax: one glob per line, relative to the repository root. '*' matches within one path
+# segment, '**' across segments. A line starting with '!' excludes; the last matching line
+# wins. Matching is case-sensitive.
+
+# Repository root
+.editorconfig
+.gitattributes
+.gitignore
+.mailmap
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+Directory.Build.props
+LICENSE
+NOTICE
+README.md
+SECURITY.md
+SUPPORT.md
+THIRD-PARTY-NOTICES.md
+TRADEMARKS.md
+
+# GitHub configuration
+.github/allowed-paths.txt
+.github/CODEOWNERS
+.github/PULL_REQUEST_TEMPLATE.md
+.github/dependabot.yml
+.github/ISSUE_TEMPLATE/*.yml
+.github/workflows/*.yml
+
+# User documentation
+docs/integration.md
+docs/integration.html
+docs/mcp-capabilities.md
+docs/adr/*.md
+docs/images/*.png
+
+# Source
+src/README.md
+src/**/*.cs
+src/**/*.csproj
+src/**/*.sln
+src/**/*.resx
+src/**/*.config
+src/**/*.json
+src/**/*.xml
+src/**/*.ps1
+src/**/*.png
+src/**/*.ico
+src/**/*.svg
+src/**/*.sds
+src/**/*.sal
+src/**/*.splcproj
+src/**/*.diagram
+
+# Test fixtures (TwinCAT and TwinCAT HMI projects and their generators)
+tests/Fixtures/*.py
+tests/Fixtures/**/.gitignore
+tests/Fixtures/**/.tfignore
+tests/Fixtures/**/*.sln
+tests/Fixtures/**/*.tsproj
+tests/Fixtures/**/*.plcproj
+tests/Fixtures/**/*.hmiproj
+tests/Fixtures/**/*.TcPOU
+tests/Fixtures/**/*.TcDUT
+tests/Fixtures/**/*.TcGVL
+tests/Fixtures/**/*.TcIO
+tests/Fixtures/**/*.TcTTO
+tests/Fixtures/**/*.tmc
+tests/Fixtures/**/*.tpl
+tests/Fixtures/**/*.xsd
+tests/Fixtures/**/*.view
+tests/Fixtures/**/*.theme
+tests/Fixtures/**/*.localization
+tests/Fixtures/**/*.config
+tests/Fixtures/**/*.json
+tests/Fixtures/**/*.css
+tests/Fixtures/**/*.png
+tests/Fixtures/**/*.svg
+tests/Fixtures/**/*.ico
+tests/Fixtures/**/*.woff2
+
+# Installer
+setup/build-installer.ps1
+setup/setup.iss
+
+# Maintainer tools for the product
+tools/check_paths.py
+tools/gen_tool_reference.py
+tools/ads_read.py
+tools/convert_favicon.py
+tools/gen_app_icon.ps1
+tools/_stryker_summary.py

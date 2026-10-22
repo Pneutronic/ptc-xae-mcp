@@ -177,6 +177,18 @@ public class SnapshotCoreTests
     }
 
     [Fact]
+    public void Compare_is_equal_when_the_plc_only_has_additional_leaves()
+    {
+        var snap = Map(("G.a", L("INT", "1")));
+        var live = Map(("G.a", L("INT", "1")), ("G.other", L("INT", "9")));
+
+        var r = SnapshotDiff.Compare(snap, live, SnapshotPathMap.Empty);
+
+        r.OnlyOnPlc.Should().Equal("G.other");
+        r.Equal.Should().BeTrue("onlyOnPlc is information, not a difference");
+    }
+
+    [Fact]
     public void Compare_applies_pathMap_and_reports_equal()
     {
         var snap = Map(("Old.x", L("INT", "4")));

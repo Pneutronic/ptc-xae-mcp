@@ -159,6 +159,7 @@ public class PersistentSnapshotXarIntegrationTests : IAsyncLifetime
             using var after = Json(await CallAsync("twincat_persistent_snapshot_compare",
                 new() { ["snapshotPath"] = _snapshotFile }));
             Assert.Equal(0, after.RootElement.GetProperty("differenceCount").GetInt32());
+            Assert.True(after.RootElement.GetProperty("equal").GetBoolean(), "a restored subtree compares equal");
             Assert.Equal(originalName, await ReadValueAsync(name));
         }
         finally

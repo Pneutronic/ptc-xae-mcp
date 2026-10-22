@@ -15,7 +15,9 @@ internal sealed record SnapshotCompareResult(
     IReadOnlyList<string> Conflicts,
     int EqualCount)
 {
-    public bool Equal => Differences.Count == 0 && OnlyInSnapshot.Count == 0 && OnlyOnPlc.Count == 0 &&
+    /// <summary>The snapshot's own leaves all match the PLC. <see cref="OnlyOnPlc"/> is information, not a
+    /// difference: a snapshot limited to some roots never claimed the PLC's other remanent leaves.</summary>
+    public bool Equal => Differences.Count == 0 && OnlyInSnapshot.Count == 0 &&
                          TypeMismatches.Count == 0 && Conflicts.Count == 0;
 }
 

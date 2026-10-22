@@ -65,8 +65,9 @@ internal sealed partial class TwinCatMcpTools
                  "otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, " +
                  "equalCount, differenceCount, differences[{ path, snapshotPath, type, snapshot, live }], " +
                  "onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] } (lists capped by limit). " +
-                 "onlyInSnapshot = orphans with no counterpart on the PLC after pathMap; onlyOnPlc = remanent " +
-                 "leaves the snapshot does not have. Types are decided by the PLC as it is now (integer widths, " +
+                 "equal is true when every leaf of the snapshot matches. onlyInSnapshot = orphans with no counterpart " +
+                 "on the PLC after pathMap; onlyOnPlc = remanent leaves the snapshot does not have (information " +
+                 "only, it does not make equal false). Types are decided by the PLC as it is now (integer widths, " +
                  "REAL/LREAL, STRING/WSTRING are compatible; anything else is a type mismatch).")]
     public string PersistentSnapshotCompare(
         [Description("Snapshot file written by twincat_persistent_snapshot_save.")] string snapshotPath,

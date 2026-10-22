@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-193 tools, generated from the source attributes — one section per
+198 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -32,6 +32,7 @@
 - [Libraries](#libraries) (10)
 - [Lifecycle](#lifecycle) (4)
 - [NcAxes](#ncaxes) (5)
+- [PersistentSnapshot](#persistentsnapshot) (5)
 - [PlcCode](#plccode) (9)
 - [PlcControl](#plccontrol) (3)
 - [PlcEntries](#plcentries) (2)
@@ -1062,6 +1063,71 @@ Read the current parameters of an axis. Read-only. Requires XAE running with a s
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `axisPath` | `string` |  | Tree path of the axis, from twincat_list_nc_tasks_axes. |
+
+## PersistentSnapshot
+
+### `twincat_list_ads_symbols`
+
+Read-only browse of the ONLINE symbol table of a running PLC / UMR via ADS (no values -- use twincat_read_ads_variables_batch for those). Returns JSON { success, count, truncated, symbols: [{ path, type, size, isPersistent, readOnly, comment }], amsNetId, adsPort } or [Error]. isPersistent is the runtime's IsPersistent flag (VAR_GLOBAL PERSISTENT); RETAIN variables are NOT flagged over ADS. Default amsNetId = the local AMS router's NetId, port 851.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `root` | `string?` | `null` | Symbol to list the children of, e.g. 'GVL_Recipe'. Omit for the top level. |
+| `maxDepth` | `int?` | `null` | How many levels below root to list. Default 1. |
+| `persistentOnly` | `bool` | `false` | Only symbols the runtime flags as persistent. Default false. |
+| `limit` | `int?` | `null` | Maximum entries returned (default 500, max 5000). |
+| `amsNetId` | `string?` | `null` | Optional AMS Net ID. Omit for the local TwinCAT runtime. |
+| `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+
+### `twincat_persistent_snapshot_save`
+
+Capture the remanent data of a running PLC into a snapshot file (format ptc-persistent-snapshot/1: a flat map leaf path -> { type, value }, arrays by declared index). READ-ONLY on the PLC (ADS sum reads); it only writes the local file. The remanent leaves come from the compiled .tmc of the open solution (PERSISTENT and RETAIN, as the compiler resolved them -- selectionSource 'tmc'; every TMC leaf must exist on the PLC with the same type, else [Error] TMC does not match the running PLC), else from the runtime's IsPersistent flags (selectionSource 'ads' -- RETAIN is not detectable that way). roots[] adds explicit subtrees. Leaves that cannot be captured (input-mapped, read-only, POINTER/REFERENCE, PROPERTY, unsupported type, unreadable) are listed in skipped with the reason, never dropped silently. Returns JSON { success, path, leafCount, selectionSource, skipped[], skippedCount, warnings[], amsNetId, adsPort } -- never the value map itself. Default amsNetId = the local AMS router's NetId, port 851.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `kind` | `string?` | `null` | 'persistent', 'retain' or 'both' (default). Which remanent leaves to select. |
+| `roots` | `string[]?` | `null` | Extra symbol paths whose whole subtree is added, e.g. ['GVL_Settings.nRetainCounter']. |
+| `selection` | `string?` | `null` | 'auto' (default: TMC if found, else ADS), 'tmc', 'ads' or 'roots' (only roots[]). |
+| `tmcPath` | `string?` | `null` | Absolute path of the PLC .tmc. Omit to find it in the open solution. |
+| `path` | `string?` | `null` | Target .json file. Omit for %LOCALAPPDATA%\ptc-xae-mcp\snapshots\<utc>_<netId>.json. Must be inside the solution directory, TEMP, %LOCALAPPDATA%\ptc-xae-mcp or PTC_XAE_MCP_ALLOWED_PATHS. |
+| `amsNetId` | `string?` | `null` | Optional AMS Net ID. Omit for the local TwinCAT runtime. |
+| `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+
+### `twincat_persistent_snapshot_compare`
+
+Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, equalCount, differenceCount, differences[{ path, snapshotPath, type, snapshot, live }], onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] } (lists capped by limit). onlyInSnapshot = orphans with no counterpart on the PLC after pathMap; onlyOnPlc = remanent leaves the snapshot does not have. Types are decided by the PLC as it is now (integer widths, REAL/LREAL, STRING/WSTRING are compatible; anything else is a type mismatch).
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `snapshotPath` | `string` |  | Snapshot file written by twincat_persistent_snapshot_save. |
+| `otherPath` | `string?` | `null` | Compare against this second snapshot file instead of the PLC. |
+| `pathMap` | `string?` | `null` | JSON object of rename rules applied to the snapshot paths, e.g. {"GVL_Old.stRecipe":"GVL_New.stRecipe"} (exact path or prefix at a '.'/'[' boundary). |
+| `tmcPath` | `string?` | `null` | Absolute path of the PLC .tmc used to re-select the live remanent set. Omit to find it. |
+| `amsNetId` | `string?` | `null` | Optional AMS Net ID. Omit for the local TwinCAT runtime. |
+| `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+| `limit` | `int?` | `null` | Cap per result list (default 200). |
+
+### `twincat_persistent_snapshot_restore`
+
+Restore a snapshot into the running PLC -- DESTRUCTIVE and human-gated. dryRun defaults to TRUE: it only returns the restore plan { planHash, plcState, writes[{ path, type, current, snapshot }], skips[{ path, reason }], unchanged } and writes nothing. With dryRun=false it requires the planHash of a dry run, re-plans, refuses on a different hash, then raises a restore proposal (modal popup in the host window showing target, PLC state RUN/STOP, the differences) and returns { restoreId, status: "pending" }. NOTHING is written until a human confirms; there is no MCP tool that confirms. After the confirm the host re-plans against the PLC (rejecting if it changed), writes with ADS sum commands and reads EVERY written leaf back. Poll twincat_persistent_snapshot_restore_status for the outcome and the per-leaf report. Only leaves whose live value differs are written; type changes, out-of-bounds indices, read-only and input-mapped leaves are skipped with a reason. A running program may overwrite a restored value; the read-back reports it.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `snapshotPath` | `string` |  | Snapshot file written by twincat_persistent_snapshot_save. |
+| `dryRun` | `bool` | `true` | true (default): return the plan only. false: propose the restore for human confirmation. |
+| `planHash` | `string?` | `null` | The planHash returned by the dry run. Required when dryRun=false. |
+| `pathMap` | `string?` | `null` | JSON object of rename rules old -> new (see twincat_persistent_snapshot_compare). |
+| `include` | `string[]?` | `null` | Restrict the restore to these leaf paths (e.g. picked differences). Omit for all. |
+| `amsNetId` | `string?` | `null` | Optional AMS Net ID. Omit for the local TwinCAT runtime. |
+| `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+
+### `twincat_persistent_snapshot_restore_status`
+
+Read-only poll of a restore proposal: returns JSON { restoreId, status, reason, target, plcState, snapshot, createdUtc, expiresUtc, writeCount, report }. Status is one of pending | confirmed | executed | rejected | expired. Once executed, report carries { written, failed, skipped, items[{ path, outcome, readBack, message }] } -- the read-back value, not the intended one. Reads only; writes nothing.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `restoreId` | `string` |  | The restoreId returned by twincat_persistent_snapshot_restore. |
 
 ## PlcCode
 

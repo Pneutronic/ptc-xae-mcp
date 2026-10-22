@@ -54,6 +54,9 @@ internal sealed class McpBridge : IDisposable
     /// host-only (no MCP binding).</summary>
     public TwinCat.IbnLiveCoordinator LiveCoordinator => _host.LiveCoordinator;
 
+    /// <summary>persistent-snapshot: host-owned restore-proposal registry (confirm is host-only, no MCP binding).</summary>
+    public TwinCat.SnapshotRestoreCoordinator SnapshotRestore => _host.SnapshotRestore;
+
     /// <summary>The server started listening (true, port) or stopped (false, 0). Raised on a server thread.</summary>
     public event Action<bool, int>? StatusChanged;
 

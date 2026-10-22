@@ -30,6 +30,7 @@ internal sealed class ServerHost : IDisposable
         Session = session;
         Dispatcher = new McpDispatcher(session);
         LiveCoordinator = new IbnLiveCoordinator(session, enableTimers: enableTimers);
+        SnapshotRestore = new SnapshotRestoreCoordinator(session);
         // Only a TEMP fixture with PTC_XAE_MCP_HMI_AUTOCONFIRM_TEMP=1 skips the engineer's popup.
         // The outermost decorator records every answer for the Approvals view (#272) and returns
         // it unchanged, so the chain stays fail-closed exactly as before.
@@ -49,6 +50,10 @@ internal sealed class ServerHost : IDisposable
 
     /// <summary>ibn-live: one proposal registry, heartbeat and watchdog for MCP tools and GUI.</summary>
     public IbnLiveCoordinator LiveCoordinator { get; }
+
+    /// <summary>persistent-snapshot: the restore-proposal registry shared by the MCP tools and the Approvals view.
+    /// Its <c>ConfirmProposal</c> is host-only (popup OK), never bound to an MCP tool.</summary>
+    public SnapshotRestoreCoordinator SnapshotRestore { get; }
 
     /// <summary>Standalone user-mode runtime process (TcSystemServiceUm.exe).</summary>
     public UmrProcessManager UmrManager { get; } = new();

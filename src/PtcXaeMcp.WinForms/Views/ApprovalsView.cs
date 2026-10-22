@@ -23,7 +23,7 @@ namespace PtcXaeMcp.WinForms.Views;
 /// runs under the shared dispatcher lock (<see cref="GuiComDispatchRunner"/>, issue #154).
 /// </para>
 /// </summary>
-internal sealed class ApprovalsView : UserControl
+internal sealed partial class ApprovalsView : UserControl
 {
     private static readonly char[] AllowlistSeparators = [',', ';', '\r', '\n'];
 
@@ -292,6 +292,7 @@ internal sealed class ApprovalsView : UserControl
         _liveCoordinator.StateChanged += _onStateChanged;
         _liveCoordinator.Audited += _onAudited;
         host.HmiApprovals.Changed += _onHmiApprovalChanged;
+        AttachRestore(host);
 
         var auditSnapshot = _liveCoordinator.AuditSnapshot();
         _replayedAudit = new HashSet<IbnAuditEntry>(auditSnapshot);
@@ -319,6 +320,7 @@ internal sealed class ApprovalsView : UserControl
                 host.LiveCoordinator.StateChanged -= _onStateChanged;
                 host.LiveCoordinator.Audited -= _onAudited;
                 host.HmiApprovals.Changed -= _onHmiApprovalChanged;
+                DetachRestore(host);
             }
         }
         base.Dispose(disposing);
@@ -517,7 +519,7 @@ internal sealed class ApprovalsView : UserControl
             .Select(x => x.ProposalId)
             .ToHashSet(StringComparer.Ordinal);
         pendingIds.UnionWith(_openPopups);
-        return pendingIds.Count;
+        return pendingIds.Count + PendingRestoreCount();
     }
 
     private void UpdateAttention(ApprovalsAttention attention)

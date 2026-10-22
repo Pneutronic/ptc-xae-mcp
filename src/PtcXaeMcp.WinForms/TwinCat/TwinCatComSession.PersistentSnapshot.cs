@@ -195,7 +195,7 @@ internal sealed partial class TwinCatComSession
                             .FirstOrDefault(ev => Convert.ToInt64(ev.Value, System.Globalization.CultureInfo.InvariantCulture) == num)?.Name;
                     values[path] = new SnapshotLeaf(leaf.Type, json, name, SnapshotLeafCodec.Display(leaf.Type, json));
                 }
-                catch (Exception ex) when (ex is NotSupportedException or FormatException or ArgumentException)
+                catch (Exception ex) when (ComCall.NotBusy(ex) && ex is NotSupportedException or FormatException or ArgumentException)
                 {
                     skipped.Add(new(path, "unreadable: " + ex.Message));
                 }

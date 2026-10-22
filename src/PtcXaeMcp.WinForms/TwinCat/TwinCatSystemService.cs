@@ -32,6 +32,8 @@ internal static class TwinCatSystemService
         "twincat_umr_start", "twincat_umr_set_mode", "twincat_start_scope_record",
         "twincat_read_event_logger", "twincat_confirm_event_logger",
         "twincat_ibn_arm", "twincat_ibn_propose",
+        "twincat_list_ads_symbols", "twincat_persistent_snapshot_save", "twincat_persistent_snapshot_compare",
+        "twincat_persistent_snapshot_restore",
     };
 
     public static SystemServiceStatus Query()

@@ -53,7 +53,9 @@ public sealed class ApprovalsViewTests
     [Fact]
     public void Gui_CallsConfirmProposal_OnlyOnce_BehindThePopupsOk()
     {
+        // The persistent-snapshot restore has its own confirm path (ApprovalsView.Restore.cs), pinned below.
         var hits = GuiSources()
+            .Where(f => !f.EndsWith("ApprovalsView.Restore.cs", StringComparison.Ordinal))
             .SelectMany(f => Occurrences(File.ReadAllText(f), "ConfirmProposal(").Select(i => (File: f, Index: i)))
             .ToList();
 
@@ -64,6 +66,21 @@ public sealed class ApprovalsViewTests
         int okBranch = before.LastIndexOf("if (answer == DialogResult.OK)", StringComparison.Ordinal);
         okBranch.Should().BeGreaterThan(before.LastIndexOf("dialog.ShowDialog(", StringComparison.Ordinal),
             "the confirm must follow the popup's OK, after ShowDialog returned");
+    }
+
+    [Fact]
+    public void Gui_CallsRestoreConfirmProposal_OnlyOnce_BehindTheRestorePopupsOk()
+    {
+        var hits = GuiSources()
+            .SelectMany(f => Occurrences(File.ReadAllText(f), "SnapshotRestore.ConfirmProposal(").Select(i => (File: f, Index: i)))
+            .ToList();
+
+        hits.Should().ContainSingle();
+        hits[0].File.Should().EndWith(Path.Combine("Views", "ApprovalsView.Restore.cs"));
+        string before = File.ReadAllText(hits[0].File)[..hits[0].Index];
+        before.LastIndexOf("if (answer == DialogResult.OK)", StringComparison.Ordinal)
+            .Should().BeGreaterThan(before.LastIndexOf("dialog.ShowDialog(", StringComparison.Ordinal),
+                "the restore confirm must follow the popup's OK, after ShowDialog returned");
     }
 
     [Fact]

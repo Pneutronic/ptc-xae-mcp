@@ -388,7 +388,10 @@ internal sealed class PersistentSnapshotCoordinator(
 
     // ---- status -------------------------------------------------------------------------
 
-    public string RestoreStatus(string? restoreId)
+    public string RestoreStatus(string? restoreId) => RestoreStatus(restore, restoreId);
+
+    /// <summary>Registry read only (no session): the status poll must not wait for the dispatcher lock.</summary>
+    public static string RestoreStatus(SnapshotRestoreCoordinator restore, string? restoreId)
     {
         var p = restore.Get(restoreId);
         if (p is null) return $"[Error] Unknown restoreId '{restoreId}'.";

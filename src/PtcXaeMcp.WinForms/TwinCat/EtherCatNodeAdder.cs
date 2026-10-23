@@ -24,6 +24,7 @@ internal sealed class EtherCatNodeAdder
 {
     private readonly ISysManTree _tree;
     private readonly Action<ITreeNode, string, string, string> _applyPreviousPort;
+    private readonly Func<string, string?>? _esiHint;
     private readonly List<string> _created = [];
 
     // Issue #190: the path of a CreateChild that was issued but whose node is not verified yet.
@@ -34,10 +35,14 @@ internal sealed class EtherCatNodeAdder
     private bool MayHaveMutated => _created.Count > 0 || _unverified is not null;
 
     /// <param name="applyPreviousPort">(slave, port, itemName, upstreamPhysAddr): selects and verifies the PreviousPort.</param>
-    public EtherCatNodeAdder(ISysManTree tree, Action<ITreeNode, string, string, string> applyPreviousPort)
+    /// <param name="esiHint">vInfo → sentence on the ESI for that type (<see cref="EsiInstallHint.For"/>), added to the
+    /// message when no box can be created; null or a null answer adds nothing.</param>
+    public EtherCatNodeAdder(ISysManTree tree, Action<ITreeNode, string, string, string> applyPreviousPort,
+        Func<string, string?>? esiHint = null)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _applyPreviousPort = applyPreviousPort ?? throw new ArgumentNullException(nameof(applyPreviousPort));
+        _esiHint = esiHint;
     }
 
     /// <summary>Paths created by this instance, in creation order.</summary>
@@ -139,9 +144,11 @@ internal sealed class EtherCatNodeAdder
             return Verified(created, path, name);
         }
 
+        string? esi = _esiHint?.Invoke(vInfo);
         throw new InvalidOperationException(
             $"CreateChild failed for EtherCAT box '{name}' (vInfo='{vInfo}') under '{parent.Path}': " +
-            $"{firstError?.Message ?? "no child produced"}. HINT: the ESI/device description for this vInfo may be " +
+            $"{firstError?.Message ?? "no child produced"}. " + (esi is null ? "" : esi + " ") +
+            "HINT: the ESI/device description for this vInfo may be " +
             "missing, or TwinCAT accepts only the base vInfo without a revision suffix.", firstError);
     }
 

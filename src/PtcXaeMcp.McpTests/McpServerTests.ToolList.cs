@@ -37,6 +37,7 @@ public partial class McpServerTests
         Assert.Contains("twincat_add_ethercat_device", names);
         Assert.Contains("twincat_add_ethercat_box", names);
         Assert.Contains("twincat_list_ethercat_box_catalog", names);
+        Assert.Contains("twincat_reload_device_descriptions", names);
         Assert.Contains("twincat_hmi_list_internal_symbols", names);
         Assert.Contains("twincat_hmi_add_internal_symbol", names);
         Assert.Contains("twincat_hmi_remove_internal_symbol", names);

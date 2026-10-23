@@ -323,6 +323,10 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     IReadOnlyList<BuildError> GetErrorList();
 
+    // ---- ethercat-device-descriptions ----
+    /// <summary>Raises the XAE command "Reload Device Descriptions" (by GUID/ID) so newly placed ESI files become known.</summary>
+    DeviceDescriptionReloadResult ReloadDeviceDescriptions();
+
     // ---- xae-event-logger ----
     EventLoggerReadResult ReadEventLogger(uint maxEvents, string? minSeverity, string? amsNetId);
     EventLoggerActionResult ConfirmEventLogger(string mode, string? amsNetId);

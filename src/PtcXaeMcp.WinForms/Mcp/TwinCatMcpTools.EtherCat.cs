@@ -97,6 +97,18 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() =>
                 new EtherCatEditCoordinator(bridge.Dispatcher.Session).RemoveBox(treePath)), cancellationToken);
 
+    [McpServerTool(Name = "twincat_reload_device_descriptions", ReadOnly = false, Destructive = false)]
+    [Description("Make the XAE re-read the EtherCAT device descriptions (ESI files under <TwinCAT>\\3.1\\Config\\Io\\EtherCAT): " +
+                 "the XAE command 'TwinCAT > EtherCAT Devices > Reload Device Descriptions', raised by its command identity, " +
+                 "so it works on any XAE language. Run it after placing a vendor ESI there; until then " +
+                 "twincat_add_ethercat_box fails for that type with 'Invalid item sub type'. " +
+                 "Requires XAE running with a solution open; changes nothing in the project. " +
+                 "A dialog the XAE shows is reported, never answered.")]
+    public string ReloadDeviceDescriptions(CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_reload_device_descriptions", null, () =>
+            bridge.Dispatcher.Run(() =>
+                new DeviceDescriptionsCoordinator(bridge.Dispatcher.Session).Reload()), cancellationToken);
+
     [McpServerTool(Name = "twincat_set_previous_port", ReadOnly = false, Destructive = true)]
     [Description("Set/override an EtherCAT box's upstream PreviousPort (A/B/C/D) and save. " +
                  "Requires XAE running with a solution open. Use this to attach a box to a " +

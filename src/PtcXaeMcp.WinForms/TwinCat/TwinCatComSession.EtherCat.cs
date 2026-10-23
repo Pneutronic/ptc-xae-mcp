@@ -60,7 +60,7 @@ internal sealed partial class TwinCatComSession
         // D-15 (issue #152): snapshot-before-create — an existing node is an error, not "Added",
         // and its children are not created again underneath it.
         var tree = new ComSysManTree(sysMan, CancellationToken.None);
-        int created = new EtherCatNodeAdder(tree, ApplyPreviousPortOnNode)
+        int created = new EtherCatNodeAdder(tree, ApplyPreviousPortOnNode, vInfo => EsiInstallHint.For(vInfo))
             .AddBox(new ComTreeNode(tree, (object)parent), box, beforeSibling);
         SaveAllAfterMutation(dte);
         string word = created == 1 ? "node" : "nodes";

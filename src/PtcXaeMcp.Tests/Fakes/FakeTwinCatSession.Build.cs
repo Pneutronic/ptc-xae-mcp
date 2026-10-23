@@ -62,6 +62,18 @@ internal sealed partial class FakeTwinCatSession
         return FakeClearErrorListResult;
     }
 
+    // ---- ethercat-device-descriptions ----
+    public DeviceDescriptionReloadResult FakeReloadDeviceDescriptionsResult { get; set; } =
+        new DeviceDescriptionReloadResult(true, "Device descriptions reloaded.", TimeSpan.FromSeconds(1.5));
+    public Exception? ReloadDeviceDescriptionsThrows { get; set; }
+
+    public DeviceDescriptionReloadResult ReloadDeviceDescriptions()
+    {
+        CallLog.Add("ReloadDeviceDescriptions()");
+        if (ReloadDeviceDescriptionsThrows is not null) throw ReloadDeviceDescriptionsThrows;
+        return FakeReloadDeviceDescriptionsResult;
+    }
+
     public List<BuildError> FakeErrorList { get; } = new();
     public Exception? GetErrorListThrows { get; set; }
 

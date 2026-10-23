@@ -210,4 +210,29 @@ public partial class McpServerTests
         Assert.StartsWith("[Error]", text);
         Assert.Contains("specify", text, StringComparison.OrdinalIgnoreCase);
     }
+
+    [SkippableFact]
+    public async Task ReloadDeviceDescriptions_IsListedAndMentionsTheTrigger()
+    {
+        SkipIfNotReachable();
+
+        var tools = await _client!.ListToolsAsync();
+        var tool = tools.SingleOrDefault(t => t.Name == "twincat_reload_device_descriptions");
+
+        Assert.NotNull(tool);
+        Assert.Contains("Reload Device Descriptions", tool!.Description, StringComparison.Ordinal);
+        Assert.Contains("twincat_add_ethercat_box", tool.Description, StringComparison.Ordinal);
+    }
+
+    [SkippableFact]
+    public async Task ReloadDeviceDescriptions_WithoutSolution_ReturnsStructuredError()
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_reload_device_descriptions");
+
+        var text = GetText(result);
+        Assert.StartsWith("[Error]", text, StringComparison.Ordinal);
+        Assert.True(text.Length > 10, $"Error was swallowed — response is empty or trivial: '{text}'");
+    }
 }

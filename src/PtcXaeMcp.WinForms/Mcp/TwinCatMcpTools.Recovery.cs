@@ -91,7 +91,7 @@ internal sealed partial class TwinCatMcpTools
                  "Compile-only: does NOT activate the boot project or restart the runtime " +
                  "(use twincat_activate_config for that). " +
                  "Returns { success, failedProjects, errors[] } identical to twincat_build_solution. " +
-                 "Requires XAE running with a solution open.")]
+                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). Requires XAE running with a solution open.")]
     public string RebuildSolution(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_rebuild_solution", null, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).RebuildSolution()), cancellationToken);
@@ -101,7 +101,7 @@ internal sealed partial class TwinCatMcpTools
                  "Forces a complete recompilation of the named (or auto-detected) PLC project. " +
                  "Compile-only: does NOT activate the boot project or restart the runtime. " +
                  "Returns { success, failedProjects, errors[] } identical to twincat_build_plc. " +
-                 "Requires XAE running with a solution open.")]
+                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). Requires XAE running with a solution open.")]
     public string RebuildPlc(
         [Description("Name of the PLC project to rebuild (e.g. 'PLC'). Leave empty to auto-detect.")] string? plcProjectName = null,
         CancellationToken cancellationToken = default)

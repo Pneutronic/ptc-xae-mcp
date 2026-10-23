@@ -129,48 +129,89 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
     {
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return new BuildOutcome(error, "");
+        string? libraries = LibraryPreflight(plcProjectName: null, allProjects: true);
 
         BuildResult result;
         try { result = session.BuildSolution(); }
         catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
 
-        return new BuildOutcome(FormatBuildResult(result), result.Log);
+        return new BuildOutcome(Prefix(libraries, FormatBuildResult(result)), result.Log);
     }
 
     public BuildOutcome BuildPlcDetailed(string? plcProjectName)
     {
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return new BuildOutcome(error, "");
+        string? libraries = LibraryPreflight(plcProjectName, allProjects: false);
 
         BuildResult result;
         try { result = session.BuildPlc(plcProjectName); }
         catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
 
-        return new BuildOutcome(FormatBuildResult(result), result.Log);
+        return new BuildOutcome(Prefix(libraries, FormatBuildResult(result)), result.Log);
     }
 
     public BuildOutcome RebuildSolutionDetailed()
     {
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return new BuildOutcome(error, "");
+        string? libraries = LibraryPreflight(plcProjectName: null, allProjects: true);
 
         RebuildResult result;
         try { result = session.RebuildSolution(); }
         catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
 
-        return new BuildOutcome(FormatRebuildResult(result), result.Log);
+        return new BuildOutcome(Prefix(libraries, FormatRebuildResult(result)), result.Log);
     }
 
     public BuildOutcome RebuildPlcDetailed(string? plcProjectName)
     {
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return new BuildOutcome(error, "");
+        string? libraries = LibraryPreflight(plcProjectName, allProjects: false);
 
         RebuildResult result;
         try { result = session.RebuildPlc(plcProjectName); }
         catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
 
-        return new BuildOutcome(FormatRebuildResult(result), result.Log);
+        return new BuildOutcome(Prefix(libraries, FormatRebuildResult(result)), result.Log);
+    }
+
+    private static string Prefix(string? line, string text) => line is null ? text : $"{line}\n{text}";
+
+    /// <summary>
+    /// A referenced library that is not installed (or only in another version) turns the build's error list into
+    /// noise — seen live: 513 errors before, 57 after installing the referenced version. Returns a [Warn] line
+    /// naming every unsatisfied reference, a [Note] when the check itself could not run, or null. Never blocks
+    /// the build. A PLC build without a project name checks the first PLC project, the one it builds.
+    /// </summary>
+    private string? LibraryPreflight(string? plcProjectName, bool allProjects)
+    {
+        IReadOnlyList<PlcLibraryContext> contexts;
+        try
+        {
+            contexts = session.ReadPlcLibraryContexts(allProjects ? null : plcProjectName);
+            if (!allProjects && plcProjectName is null) contexts = contexts.Take(1).ToList();
+        }
+        catch (Exception ex) { return $"[Note] Library check skipped: {ex.Message}"; }
+
+        var problems = new List<string>();
+        foreach (var context in contexts)
+        {
+            foreach (var item in LibraryCoordinator.Classify(context.References, context.Installed))
+            {
+                if (item.Status == AvailabilityStatus.Installed) continue;
+                string what = item.Status == AvailabilityStatus.Missing
+                    ? "missing"
+                    : $"version mismatch (installed {item.Match?.Version ?? "-"})";
+                problems.Add($"{context.PlcProject}: {item.Reference.Name} {item.Reference.Version} {what}");
+            }
+        }
+        if (problems.Count == 0) return null;
+
+        return $"[Warn] Build result not conclusive: {problems.Count} library reference{(problems.Count == 1 ? "" : "s")} " +
+               $"not satisfied — {string.Join("; ", problems)}. The error list then reflects the missing libraries, " +
+               "not the code. Install the referenced versions (twincat_install_library) and rebuild.";
     }
 
     private static string FormatRebuildResult(RebuildResult result)

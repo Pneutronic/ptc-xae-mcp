@@ -34,7 +34,7 @@ internal sealed partial class TwinCatMcpTools
     [Description("Compile only the PLC project via DTE.Solution.SolutionBuild.BuildProject. " +
                  "Faster than a full solution build for PLC-code-only changes. " +
                  "Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. " +
-                 "Requires XAE running with a solution open.")]
+                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). Requires XAE running with a solution open.")]
     public string BuildPlc(
         [Description("Name of the PLC project to build (e.g. 'PLC'). " +
                      "Leave empty to auto-detect the first .plcproj in the solution.")] string? plcProjectName = null,
@@ -46,7 +46,7 @@ internal sealed partial class TwinCatMcpTools
     [Description("Trigger a full solution build via DTE.Solution.SolutionBuild.Build. " +
                  "Compiles PLC code and IO mapping. " +
                  "Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. " +
-                 "Requires XAE running with a solution open.")]
+                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). Requires XAE running with a solution open.")]
     public string BuildSolution(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_build_solution", null, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).BuildSolution()), cancellationToken);

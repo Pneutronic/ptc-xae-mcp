@@ -157,6 +157,15 @@ public static class FixtureLayout
     /// </summary>
     public const string EtherCatMasterPath = "TIID^Device 1 (EtherCAT)";
 
+    /// <summary>The EL1008 (digital input) below the EK1100; channel 1 is linked to <see cref="InputMappedBoolSymbol"/>.</summary>
+    public const string El1008Path = EtherCatMasterPath + "^Term 1 (EK1100)^Term 2 (EL1008)";
+
+    /// <summary>EL1008 channel 1 input variable (BIT, 1 bit, an input of the terminal).</summary>
+    public const string El1008Channel1Input = El1008Path + "^Channel 1^Input";
+
+    /// <summary>EL1008 channel 2 input variable; not linked in the fixture.</summary>
+    public const string El1008Channel2Input = El1008Path + "^Channel 2^Input";
+
     // ── locating + copying the fixture ────────────────────────────────────────
 
     private static readonly object CopyLock = new();

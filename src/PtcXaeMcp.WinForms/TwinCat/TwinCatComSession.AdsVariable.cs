@@ -55,6 +55,9 @@ internal sealed partial class TwinCatComSession
     public InspectFbInstanceResult InspectFbInstance(string instancePath, string? amsNetId, int adsPort)
         => new(false, instancePath, null, Array.Empty<FbMemberEntry>(), Array.Empty<FbRpcMethodEntry>(),
             amsNetId ?? "local", adsPort, TwinCatNotBuilt.Message);
+
+    // Without the ADS library nothing reads a target, so there is no project target to resolve.
+    private static string? ProjectTargetNetIdOrNull() => null;
 #else
 
     private static readonly TimeSpan AdsTimeout = TimeSpan.FromSeconds(10);

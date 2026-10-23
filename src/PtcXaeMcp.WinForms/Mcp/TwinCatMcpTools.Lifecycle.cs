@@ -7,19 +7,23 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_open_project", ReadOnly = false, Destructive = true)]
-    [Description("Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Takes a .sln or directly a project file (.tsproj / .tspproj / .hmiproj; a temporary .sln is generated for it). Optionally closes the currently-open solution first.")]
+    [Description("Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Takes a .sln or directly a project file (.tsproj / .tspproj / .hmiproj; a temporary .sln is generated for it). Optionally closes the currently-open solution first. " +
+                 "Before the XAE loads anything, every independent project file a .tsproj references (File=\"….xti\": devices, boxes, axes, PLC projects) must exist: " +
+                 "a missing one (e.g. after IO nodes were renamed outside the XAE) refuses the open with [Error] listing them, because the XAE would load a broken configuration and saving it damages the .tsproj. " +
+                 "allowMissingReferences=true opens anyway with [Warn]; save_project and close_project(saveFirst=true) then repeat the warning.")]
     public async Task<string> OpenProject(
         [Description("Absolute path to the .sln, .tsproj, .tspproj or .hmiproj file to open")] string slnPath,
         [Description("Close the currently-open solution first (no save). Default false.")] bool closeCurrentFirst = false,
+        [Description("Open even when referenced .xti files are missing (the result starts with [Warn]). Default false refuses.")] bool allowMissingReferences = false,
         CancellationToken cancellationToken = default)
         => await bridge.Activity.TraceAsync("twincat_open_project",
-            new { slnPath, closeCurrentFirst }, async () =>
+            new { slnPath, closeCurrentFirst, allowMissingReferences }, async () =>
         {
             try
             {
                 return await bridge.Dispatcher.RunAsync(
                     () => new LifecycleCoordinator(bridge.Dispatcher.Session)
-                        .OpenProjectAsync(slnPath, closeCurrentFirst, cancellationToken),
+                        .OpenProjectAsync(slnPath, closeCurrentFirst, cancellationToken, allowMissingReferences),
                     afterSuccess: () => host.RequestEnvironmentRefresh("After OpenProject"));
             }
             catch (OperationCanceledException)

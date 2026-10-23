@@ -5,8 +5,10 @@ namespace PtcXaeMcp.IntegrationTests;
 
 /// <summary>
 /// The checks a build runs before it compiles, against the live XAE and the per-run %TEMP% fixture copy:
-/// a PLC file changed on disk outside the XAE refuses the build (and its save never touches the file).
-/// Only the scratch POU's file is edited on disk; it is restored and the fixture reopened afterwards.
+/// a PLC file changed on disk outside the XAE refuses the build (and its save never touches the file), and a
+/// project referencing a missing .xti is refused by open_project before the XAE loads it.
+/// Only the scratch POU's file is edited on disk (restored and reopened afterwards); the .xti case works on a
+/// second copy of the fixture.
 /// </summary>
 [Collection("Stage XAE")]
 [Trait("Stage", "XAE")]
@@ -114,6 +116,47 @@ public class BuildIntegrityIntegrationTests : IAsyncLifetime
         {
             await File.WriteAllTextAsync(ScratchFile, original);
             await OpenFixtureAsync();
+        }
+    }
+
+    [Trait("Description", "Projekt mit fehlender .xti (umbenannter IO-Knoten): open_project verweigert, bevor die XAE etwas lädt; das offene Projekt bleibt unverändert.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task OpenProject_MissingXti_IsRefusedWithoutTouchingTheXae()
+    {
+        LiveXae.GuardReady(_ready);
+        await OpenFixtureAsync();
+        string before = await Call("twincat_get_active_project");
+
+        // A second copy of the fixture whose .tsproj references an independent project file that is not there.
+        string fixtureDir = Path.GetDirectoryName(_fixtureSln)!;
+        string broken = Path.Combine(Path.GetTempPath(), "ptc-xae-mcp-fixture-runs", "missing-xti-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            foreach (string file in Directory.EnumerateFiles(fixtureDir, "*", SearchOption.AllDirectories))
+            {
+                string target = Path.Combine(broken, Path.GetRelativePath(fixtureDir, file));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Copy(file, target);
+            }
+            string tsproj = Path.Combine(broken, FixtureLayout.SolutionName, FixtureLayout.SolutionName + ".tsproj");
+            string text = await File.ReadAllTextAsync(tsproj);
+            int io = text.LastIndexOf("</Io>", StringComparison.Ordinal);
+            Assert.True(io >= 0, "fixture .tsproj has no <Io> section");
+            await File.WriteAllTextAsync(tsproj, text.Insert(io, "<Device File=\"Device 9 (EtherCAT).xti\" Id=\"9\"/>"));
+
+            string result = await Call("twincat_open_project", new Dictionary<string, object?>
+            {
+                ["slnPath"] = Path.Combine(broken, FixtureLayout.SolutionFile),
+                ["closeCurrentFirst"] = true,
+            });
+
+            Assert.StartsWith("[Error] 1 referenced project file (.xti) missing", result);
+            Assert.Contains("Device 9 (EtherCAT).xti", result);
+            Assert.Equal(before, await Call("twincat_get_active_project"));
+        }
+        finally
+        {
+            try { Directory.Delete(broken, recursive: true); } catch (IOException) { }
         }
     }
 

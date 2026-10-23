@@ -5,14 +5,53 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
 {
     private static readonly TimeSpan LaunchTimeout = TimeSpan.FromSeconds(60);
 
+    /// <summary>
+    /// The missing .xti references of the solution last opened with allowMissingReferences=true; save and
+    /// close-with-save repeat them. Process-wide like the XAE's open solution.
+    /// </summary>
+    internal static FileReferenceMemo? OpenedWithMissingReferences { get; private set; }
+
+    internal sealed record FileReferenceMemo(string SolutionPath, string Description);
+
     public async Task<string> OpenProjectAsync(
-        string slnPath, bool closeCurrentFirst, CancellationToken ct)
+        string slnPath, bool closeCurrentFirst, CancellationToken ct, bool allowMissingReferences = false)
     {
         var argError = OpenProjectArgs.Validate(slnPath);
         if (argError is not null)
             return $"[Error] {argError}";
 
         slnPath = SolutionFile.ResolveSolution(slnPath);
+
+        // Before the XAE sees the project: a broken configuration must not be loaded (a later save
+        // damages the .tsproj). Unreadable files only warn — the XAE decides about those itself.
+        FileReferenceReport references;
+        try { references = FileReferencePreflight.Check(slnPath); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            references = new FileReferenceReport([], [$"file reference check skipped: {ex.Message}"]);
+        }
+        string? referenceWarn = null;
+        if (references.Missing.Count > 0)
+        {
+            string description = FileReferencePreflight.Describe(references.Missing);
+            if (!allowMissingReferences)
+                return $"[Error] {description} Opening would load a broken configuration, and saving it damages the .tsproj. " +
+                       "Restore the files (e.g. from version control) or pass allowMissingReferences=true.";
+            referenceWarn = $"[Warn] Opened with missing references: {description} Do not save before they are restored.";
+        }
+        if (references.Warnings.Count > 0)
+            referenceWarn = (referenceWarn is null ? "" : referenceWarn + "\n") + $"[Warn] {string.Join("; ", references.Warnings)}.";
+
+        string result = await OpenCheckedAsync(slnPath, closeCurrentFirst, ct);
+        if (McpErrors.IsError(result)) return result;
+        OpenedWithMissingReferences = references.Missing.Count > 0
+            ? new FileReferenceMemo(slnPath, FileReferencePreflight.Describe(references.Missing))
+            : null;
+        return referenceWarn is null ? result : $"{referenceWarn}\n{result}";
+    }
+
+    private async Task<string> OpenCheckedAsync(string slnPath, bool closeCurrentFirst, CancellationToken ct)
+    {
 
         await session.ConnectOrLaunchAsync(
             launchWithSlnPath: session.IsConnected ? null : slnPath,
@@ -100,10 +139,12 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return error;
 
+        string? referenceWarn = MissingReferencesWarn();
         var r = session.SaveProjectVerified();
-        if (r.Documents.Count == 0) return r.Message;
+        if (r.Documents.Count == 0) return referenceWarn is null ? r.Message : $"{referenceWarn}\n{r.Message}";
 
         var sb = new System.Text.StringBuilder();
+        if (referenceWarn is not null) sb.AppendLine(referenceWarn);
         sb.AppendLine(r.Message);
         foreach (var d in r.Documents)
             sb.AppendLine(CultureInfo.InvariantCulture, $"  {(d.Flushed ? "ok " : "NOT FLUSHED")} {d.Path}");
@@ -137,6 +178,22 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
             return $"[Error] Closed{target}, but the save prompt was not answered as asked.{note}";
 
         string verb = saveFirst ? "Saved and closed" : "Closed (without save)";
-        return $"{verb}{(path is null ? "." : target)}{note}";
+        string closed = $"{verb}{(path is null ? "." : target)}{note}";
+        string? referenceWarn = saveFirst ? MissingReferencesWarn(path) : null;
+        if (string.Equals(OpenedWithMissingReferences?.SolutionPath, path, StringComparison.OrdinalIgnoreCase))
+            OpenedWithMissingReferences = null;
+        return referenceWarn is null ? closed : $"{referenceWarn}\n{closed}";
+    }
+
+    // The solution was opened over missing .xti references (allowMissingReferences=true): a save writes
+    // that broken configuration. Warned, not refused — the override was deliberate.
+    private string? MissingReferencesWarn(string? solutionPath = null)
+    {
+        var memo = OpenedWithMissingReferences;
+        if (memo is null) return null;
+        solutionPath ??= session.ActiveSolutionPath();
+        if (!string.Equals(memo.SolutionPath, solutionPath, StringComparison.OrdinalIgnoreCase)) return null;
+        return $"[Warn] The project was opened with missing file references ({memo.Description}) — the saved .tsproj " +
+               "may no longer reference those nodes.";
     }
 }

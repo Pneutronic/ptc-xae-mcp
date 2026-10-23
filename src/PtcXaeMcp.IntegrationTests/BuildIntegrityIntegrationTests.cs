@@ -61,15 +61,40 @@ public class BuildIntegrityIntegrationTests : IAsyncLifetime
         Assert.False(open.StartsWith("[Error]", StringComparison.Ordinal), open);
     }
 
+    private static readonly string[] ObjectFileKinds = [".TcPOU", ".TcGVL", ".TcDUT", ".TcIO"];
+
+    private IReadOnlyList<string> ObjectFiles() =>
+        Directory.EnumerateFiles(PlcDir, "*.Tc*", SearchOption.AllDirectories)
+            .Where(f => ObjectFileKinds.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+    // The XAE watches the files of OPEN editors and answers a change on disk with a modal reload prompt
+    // ("Die Datei wurde außerhalb der Entwicklungsumgebung geändert") that blocks every later call. Earlier
+    // tests leave editors open (MAIN, FB_StepChain), so their tabs are closed before a file is touched.
+    private async Task CloseEditorsAsync(IEnumerable<string> files)
+    {
+        await FixtureLayout.DiscoverPlcRootAsync(_client!);
+        foreach (string file in files)
+        {
+            string relative = Path.ChangeExtension(Path.GetRelativePath(PlcDir, file), null)!;
+            await Call("twincat_close_object", new Dictionary<string, object?>
+            {
+                ["treePath"] = FixtureLayout.PlcRoot + "^" + relative.Replace('\\', '^'),
+            });
+        }
+    }
+
     [Trait("Description", "Alle PLC-Dateien mit neuerer mtime, aber gleichem Inhalt: der Build meldet keine veraltete Datei (Abgleich Datei ↔ XAE für jede Fixture-Objektart).")]
     [SkippableFact(Timeout = 300_000)]
     public async Task StaleCheck_TouchedButUnchangedFiles_AreNotReported()
     {
         LiveXae.GuardReady(_ready);
         await OpenFixtureAsync();
+        var files = ObjectFiles();
+        await CloseEditorsAsync(files);
 
         DateTime later = DateTime.UtcNow.AddMinutes(1);
-        foreach (string file in Directory.EnumerateFiles(PlcDir, "*.Tc*", SearchOption.AllDirectories))
+        foreach (string file in files)
             File.SetLastWriteTimeUtc(file, later);
 
         string result = await Call("twincat_build_plc");
@@ -94,6 +119,7 @@ public class BuildIntegrityIntegrationTests : IAsyncLifetime
         string changed = original.Insert(body + "<ST><![CDATA[".Length, StaleMarker + "\r\n");
         try
         {
+            await CloseEditorsAsync([ScratchFile]);
             await File.WriteAllTextAsync(ScratchFile, changed);
 
             string refused = await Call("twincat_build_plc");
@@ -106,6 +132,7 @@ public class BuildIntegrityIntegrationTests : IAsyncLifetime
             Assert.StartsWith("[Warn]", ignored);
             Assert.Contains("changed on disk outside the XAE", ignored);
 
+            await CloseEditorsAsync([ScratchFile]);
             await File.WriteAllTextAsync(ScratchFile, changed); // whatever the ignored build's save wrote
             await OpenFixtureAsync();
             string reloaded = await Call("twincat_build_plc");
@@ -114,6 +141,7 @@ public class BuildIntegrityIntegrationTests : IAsyncLifetime
         }
         finally
         {
+            await CloseEditorsAsync([ScratchFile]);
             await File.WriteAllTextAsync(ScratchFile, original);
             await OpenFixtureAsync();
         }
@@ -134,7 +162,10 @@ public class BuildIntegrityIntegrationTests : IAsyncLifetime
         {
             foreach (string file in Directory.EnumerateFiles(fixtureDir, "*", SearchOption.AllDirectories))
             {
-                string target = Path.Combine(broken, Path.GetRelativePath(fixtureDir, file));
+                string relative = Path.GetRelativePath(fixtureDir, file);
+                if (relative.StartsWith(".vs" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    continue; // the XAE's solution cache of the open fixture, locked while it is open
+                string target = Path.Combine(broken, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 File.Copy(file, target);
             }

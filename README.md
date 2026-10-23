@@ -17,6 +17,22 @@ and download, read ADS variables, inspect EtherCAT/fieldbus topology, and
 more — see [docs/mcp-capabilities.md](docs/mcp-capabilities.md) for the full,
 generated list of tools with their parameters.
 
+## Download
+
+**[⬇ Latest installer (GitHub Releases)](https://github.com/Pneutronic/ptc-xae-mcp/releases/latest)** —
+under **Assets** at the bottom of the release: `ptc-xae-mcp-setup-<version>.exe` and its `.sha256`.
+
+The installer needs administrator rights and installs to
+`C:\Program Files\Pneutronic\ptc-xae-mcp`. It is **not code-signed**, so Windows SmartScreen may warn
+("More info" → "Run anyway"). Check the download against the `.sha256` first:
+
+```powershell
+(Get-FileHash .\ptc-xae-mcp-setup-<version>.exe -Algorithm SHA256).Hash.ToLower()
+Get-Content .\ptc-xae-mcp-setup-<version>.exe.sha256
+```
+
+Both lines must show the same hash. To build from source instead, see [Build](#build).
+
 > **Independent project.** Pneutronic XAE MCP is developed and maintained by
 > Pneutronic AG, an official Beckhoff Solution Provider. The software itself is
 > **not a Beckhoff product**: it is not endorsed, certified or supported by

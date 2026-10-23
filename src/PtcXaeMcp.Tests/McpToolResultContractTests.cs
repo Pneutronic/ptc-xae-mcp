@@ -116,6 +116,8 @@ public sealed class McpToolResultContractTests
         ["twincat_import_iodd"] = "file-only IODD registration; does not touch the XAE COM session.",
         ["twincat_check_iodd_present"] = "file-only IODD lookup; does not touch the XAE COM session.",
         ["twincat_list_ethercat_box_catalog"] = "file-only ESI directory scan (issue #85); does not touch the XAE COM session.",
+        ["twincat_read_scope_file"] = "file-only: runs TC3ScopeExportTool.exe on a .svdx; does not touch the XAE COM session.",
+        ["twincat_convert_scope_file"] = "file-only: runs TC3ScopeExportTool.exe on a .svdx; does not touch the XAE COM session.",
     };
 
     private static readonly Regex ToolAttributeRegex =

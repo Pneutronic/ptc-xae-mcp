@@ -47,9 +47,9 @@ internal sealed record LinkEndpoint(string Path, bool Found, int ItemType, Varia
 }
 
 /// <summary>
-/// Turns a failed <c>ITcSysManager::LinkVariables</c> into a message that names the cause
-/// (issue: diagnostic hints). Only states what the probed items and the HRESULT show; whatever
-/// cannot be read stays out of the message instead of being guessed.
+/// Turns a failed <c>ITcSysManager::LinkVariables</c> into a message that names the cause.
+/// Only states what the probed items and the HRESULT show; whatever cannot be read stays out of the
+/// message instead of being guessed.
 /// </summary>
 internal static class LinkFailureDiagnosis
 {

@@ -125,4 +125,19 @@ public partial class McpServerTests
         Assert.False(string.IsNullOrWhiteSpace(text), "Response was empty");
         Assert.DoesNotContain("[Error]", text, StringComparison.OrdinalIgnoreCase);
     }
+
+    // ── get_error_list: description points at the authoritative alarm source ────
+
+    [SkippableFact]
+    public async Task GetErrorList_DescriptionPointsAlarmDiagnosisAtTheEventLogger()
+    {
+        SkipIfNotReachable();
+
+        var tools = await _client!.ListToolsAsync();
+        var tool = tools.SingleOrDefault(t => t.Name == "twincat_get_error_list");
+
+        Assert.NotNull(tool);
+        Assert.Contains("twincat_read_event_logger", tool!.Description, StringComparison.Ordinal);
+        Assert.Contains("sometimes twice", tool.Description, StringComparison.Ordinal);
+    }
 }

@@ -102,17 +102,29 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
 
         if (errors.Count == 0) return "Error list is empty.";
 
-        var sb = new StringBuilder();
-        int errorCount = errors.Count(e => e.Level == "error");
-        int warningCount = errors.Count(e => e.Level == "warning");
-        int messageCount = errors.Count - errorCount - warningCount;
-        sb.AppendLine(CultureInfo.InvariantCulture, $"{errors.Count} entries ({errorCount} error, {warningCount} warning, {messageCount} message).");
+        // The XAE shows some entries twice (runtime EventLogger events in particular). Only entries that
+        // are identical in level, text, file and line are merged; the first occurrence fixes the order.
+        var distinct = new List<(BuildError Entry, int Count)>();
+        var position = new Dictionary<BuildError, int>();
         foreach (var e in errors)
+        {
+            if (position.TryGetValue(e, out int at)) distinct[at] = (distinct[at].Entry, distinct[at].Count + 1);
+            else { position[e] = distinct.Count; distinct.Add((e, 1)); }
+        }
+
+        var sb = new StringBuilder();
+        int errorCount = distinct.Count(d => d.Entry.Level == "error");
+        int warningCount = distinct.Count(d => d.Entry.Level == "warning");
+        int messageCount = distinct.Count - errorCount - warningCount;
+        string distinctNote = distinct.Count == errors.Count ? "" : $"{distinct.Count} distinct; ";
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{errors.Count} entries ({distinctNote}{errorCount} error, {warningCount} warning, {messageCount} message).");
+        foreach (var (e, count) in distinct)
         {
             string location = e.File is not null
                 ? $" ({e.File}{(e.Line.HasValue ? $":{e.Line}" : "")})"
                 : "";
-            sb.AppendLine(CultureInfo.InvariantCulture, $"[{e.Level.ToUpperInvariant()}]{location} {e.Description}");
+            string times = count > 1 ? $" ({count}× in the Error List)" : "";
+            sb.AppendLine(CultureInfo.InvariantCulture, $"[{e.Level.ToUpperInvariant()}]{location} {e.Description}{times}");
         }
         return sb.ToString().TrimEnd();
     }

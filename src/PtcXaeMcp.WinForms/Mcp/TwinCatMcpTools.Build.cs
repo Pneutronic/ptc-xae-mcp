@@ -12,6 +12,10 @@ internal sealed partial class TwinCatMcpTools
                  "severity, description, file, line per entry. " +
                  "Does NOT trigger a build and does NOT clear anything — unlike twincat_clear_error_list, whose " +
                  "cleared-count was previously the only way to learn how many entries existed. " +
+                 "Identical entries (same level, text, file and line) are listed once with a '(2× in the Error List)' note; " +
+                 "the first line gives both the total and the distinct count. " +
+                 "The Error List also shows runtime EventLogger events, sometimes twice; " +
+                 "for alarm diagnosis use twincat_read_event_logger, which is authoritative. " +
                  "Requires XAE running with a solution open.")]
     public string GetErrorList(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_error_list", null, () =>

@@ -293,6 +293,16 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     string ForceCloseXae(int? pid = null);
 
+    // ---- sbom ----
+    /// <summary>Reads the Device Manager (MDP) inventory of an IPC over ADS; null NetId = the open solution's target.</summary>
+    IpcInventoryResult ReadIpcInventory(string? amsNetId, IReadOnlyList<int>? moduleTypes, bool includeRaw, int timeoutMs);
+    /// <summary>Online identity (VendorId, ProductCode, RevisionNo, SerialNo) of the slaves of one or all EtherCAT masters, joined with the projected boxes.</summary>
+    EtherCatIdentitiesResult ReadEtherCatIdentities(string? masterTreePath, string? amsNetId, int? adsPort, bool includeCrc, bool includeCoe, bool includeDeviceDetails, int timeoutMs);
+    /// <summary>The library repositories of the XAE (ITcPlcLibraryManager.Repositories).</summary>
+    LibraryRepositoryListing ListLibraryRepositoryEntries();
+    /// <summary>References, placeholder resolutions and installed libraries of the PLC projects (all, or the one named).</summary>
+    IReadOnlyList<PlcLibraryContext> ReadPlcLibraryContexts(string? plcProjectPath);
+
     // ---- runtime-activation ----
     LicenseInfoResult GetLicenseInfo();
     RequiredLicensesResult ListRequiredLicenses();

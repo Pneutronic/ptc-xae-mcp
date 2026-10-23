@@ -117,6 +117,9 @@ public partial class McpServerTests
 
         // runtime-activation
         Assert.Contains("twincat_get_license_info", names);
+        Assert.Contains("twincat_ipc_read_inventory", names);
+        Assert.Contains("twincat_ethercat_read_identities", names);
+        Assert.Contains("twincat_list_library_repositories", names);
         Assert.Contains("twincat_list_required_licenses", names);
         Assert.Contains("twincat_add_required_license", names);
         Assert.Contains("twincat_remove_required_license", names);

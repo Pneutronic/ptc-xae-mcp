@@ -28,6 +28,9 @@ public class ComAccessArchitectureTests
         // a filter would let busy escape as an unhandled thread exception and kill the process.
         ["TwinCatComSession.Build.cs"] = 1,
         ["TwinCatComSession.EditorNavigation.cs"] = 1,
+        // Repository listing: a failed COM read (busy timeout included) becomes a warning and the
+        // filesystem fallback, never a silent result.
+        ["TwinCatComSession.SbomLibraries.cs"] = 1,
     };
 
     private static readonly HashSet<string> GenericTypes = new(StringComparer.Ordinal)

@@ -10,29 +10,26 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_list_library_references", ReadOnly = true)]
-    [Description("List PLC library references for the open project. Reads the live XAE library manager when available and compares against the .plcproj on disk; falls back to the .plcproj alone when XAE is not ready.")]
-    public string ListLibraryReferences(CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_list_library_references", null, () =>
+    [Description("List PLC library references for the open project. Reads the live XAE library manager when available and compares against the .plcproj on disk; falls back to the .plcproj alone when XAE is not ready. " +
+                 "Each reference also shows the concrete library it resolves to (resolvedName, resolvedVersion, resolvedDistributor) and how that was determined (resolution): " +
+                 "'effective' = the library manager's effective resolution of the placeholder (what the project compiles against), 'fixed' = the reference names a concrete version, " +
+                 "'newest-installed' = '*'/newest resolved to the highest installed version (a computed approximation, see warnings), 'unresolved' = no matching library. " +
+                 "format='text' (default): one line per reference with the suffix [resolved: <name> <version> (<distributor>), <resolution>]. " +
+                 "format='json': { success, summary, count, references [{ placeholder, name, version, publisher, source, filePinnedVersion, versionMatchesFile, resolvedName, resolvedVersion, resolvedDistributor, resolution }], warnings }.")]
+    public string ListLibraryReferences(
+        [Description("Output format: 'text' (default) or 'json' (full records).")] string? format = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_list_library_references", new { format }, () =>
             bridge.Dispatcher.Run(() =>
             {
-                var (summary, refs) = new LibraryCoordinator(bridge.Dispatcher.Session).ListReferences();
-                if (McpErrors.IsError(summary) || refs.Count == 0)
-                    return summary;
+                string? formatError = LibraryReferenceFormat.Validate(format, out bool json);
+                if (formatError is not null) return formatError;
 
-                var sb = new StringBuilder();
-                sb.AppendLine(summary);
-                foreach (var r in refs)
-                {
-                    string fileNote = r.FilePinnedVersion is null
-                        ? string.Empty
-                        : (r.VersionMatchesFile == true
-                            ? "  [file: match]"
-                            : $"  [file: {r.FilePinnedVersion} — mismatch]");
-                    sb.AppendLine(
-                        CultureInfo.InvariantCulture,
-                        $"  {r.Placeholder}: {r.Name} {r.Version} ({r.Publisher}) [src={r.Source.ToString().ToLowerInvariant()}]{fileNote}");
-                }
-                return sb.ToString().TrimEnd();
+                var (summary, items, warnings) = new LibraryCoordinator(bridge.Dispatcher.Session).ListReferencesResolved();
+                if (McpErrors.IsError(summary)) return summary;
+                if (items.Count == 0)
+                    return json ? LibraryReferenceFormat.Json(summary, items, warnings) : summary;
+                return json ? LibraryReferenceFormat.Json(summary, items, warnings) : LibraryReferenceFormat.Text(summary, items);
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_list_installed_libraries", ReadOnly = true)]

@@ -26,6 +26,44 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
         return ($"Found {refs.Count} library reference{(refs.Count == 1 ? "" : "s")}{note}.", refs);
     }
 
+    /// <summary>
+    /// <see cref="ListReferences"/> plus, per reference, the concrete library it resolves to (sbom). The manager's own
+    /// resolution of each placeholder is used when readable; otherwise the result is the reference's fixed version or
+    /// the newest installed one, which the warnings say.
+    /// </summary>
+    public (string Summary, IReadOnlyList<ResolvedLibraryReference> Items, IReadOnlyList<string> Warnings) ListReferencesResolved()
+    {
+        var (summary, refs) = ListReferences();
+        if (McpErrors.IsError(summary) || refs.Count == 0)
+            return (summary, Array.Empty<ResolvedLibraryReference>(), Array.Empty<string>());
+
+        var warnings = new List<string>();
+        IReadOnlyList<PlaceholderResolution> placeholders = Array.Empty<PlaceholderResolution>();
+        IReadOnlyList<InstalledLibrary> installed = Array.Empty<InstalledLibrary>();
+        try
+        {
+            var context = session.ReadPlcLibraryContexts(null).FirstOrDefault();
+            if (context is not null)
+            {
+                placeholders = context.Placeholders;
+                installed = context.Installed;
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            warnings.Add($"The library manager could not be read ({ex.Message}); resolutions are computed from the references and the installed libraries.");
+            try { installed = session.ListInstalledLibraries(); }
+            catch (InvalidOperationException installedEx) { warnings.Add($"Installed libraries not readable: {installedEx.Message}"); }
+        }
+        if (placeholders.Count == 0 && refs.Any(r => r.IsAnyVersion))
+            warnings.Add("No effective placeholder resolution available from the library manager: 'newest-installed' is a computed approximation of what the project compiles against.");
+
+        var items = refs
+            .Select(r => new ResolvedLibraryReference(r, LibraryResolver.Resolve(r, LibraryResolver.FindResolution(placeholders, r), installed)))
+            .ToList();
+        return (summary, items, warnings);
+    }
+
     public (string Summary, IReadOnlyList<InstalledLibrary> Libraries) ListInstalled()
     {
         var error = SessionGuards.RequireOpenSolution(session);

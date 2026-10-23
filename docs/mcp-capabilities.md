@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-199 tools, generated from the source attributes — one section per
+202 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -44,6 +44,7 @@
 - [Recovery](#recovery) (6)
 - [RuntimeControl](#runtimecontrol) (9)
 - [Safety](#safety) (5)
+- [Sbom](#sbom) (3)
 - [Schema](#schema) (5)
 - [Scope](#scope) (18)
 - [VariantManagement](#variantmanagement) (2)
@@ -901,9 +902,11 @@ Enable or disable a TwinCAT I/O device by its tree path. disabled=true sets SMDS
 
 ### `twincat_list_library_references`
 
-List PLC library references for the open project. Reads the live XAE library manager when available and compares against the .plcproj on disk; falls back to the .plcproj alone when XAE is not ready.
+List PLC library references for the open project. Reads the live XAE library manager when available and compares against the .plcproj on disk; falls back to the .plcproj alone when XAE is not ready. Each reference also shows the concrete library it resolves to (resolvedName, resolvedVersion, resolvedDistributor) and how that was determined (resolution): 'effective' = the library manager's effective resolution of the placeholder (what the project compiles against), 'fixed' = the reference names a concrete version, 'newest-installed' = '*'/newest resolved to the highest installed version (a computed approximation, see warnings), 'unresolved' = no matching library. format='text' (default): one line per reference with the suffix [resolved: <name> <version> (<distributor>), <resolution>]. format='json': { success, summary, count, references [{ placeholder, name, version, publisher, source, filePinnedVersion, versionMatchesFile, resolvedName, resolvedVersion, resolvedDistributor, resolution }], warnings }.
 
-_No parameters._
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `format` | `string?` | `null` | Output format: 'text' (default) or 'json' (full records). |
 
 ### `twincat_list_installed_libraries`
 
@@ -1103,7 +1106,7 @@ Capture the remanent data of a running PLC into a snapshot file (format ptc-pers
 
 ### `twincat_persistent_snapshot_compare`
 
-Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, equalCount, differenceCount, differences[{ path, snapshotPath, type, snapshot, live }], onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] } (lists capped by limit). onlyInSnapshot = orphans with no counterpart on the PLC after pathMap; onlyOnPlc = remanent leaves the snapshot does not have. Types are decided by the PLC as it is now (integer widths, REAL/LREAL, STRING/WSTRING are compatible; anything else is a type mismatch).
+Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, equalCount, differenceCount, differences[{ path, snapshotPath, type, snapshot, live }], onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] } (lists capped by limit). equal is true when every leaf of the snapshot matches. onlyInSnapshot = orphans with no counterpart on the PLC after pathMap; onlyOnPlc = remanent leaves the snapshot does not have (information only, it does not make equal false). Types are decided by the PLC as it is now (integer widths, REAL/LREAL, STRING/WSTRING are compatible; anything else is a type mismatch).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1724,6 +1727,42 @@ Link an alias device's EL1918 connection-image symbol to a standard-PLC symbol (
 |---|---|---|---|
 | `aliasDevicePath` | `string` |  | Caret-path of the alias device connection-image symbol in the safety sysmanager (e.g. 'TISC^TwinSAFE_PLC^Alias Devices^bSI_DriveReleased'). |
 | `plcSymbolPath` | `string` |  | Dot-path of the standard-PLC symbol to link to (e.g. 'GVL_Safety.bSI_DriveReleased'). |
+
+## Sbom
+
+### `twincat_ipc_read_inventory`
+
+READ-ONLY raw inventory of a Beckhoff IPC from its Device Manager (MDP) over ADS (AMS port 10000, index group 0xF302): device BTN/BIC, every module (TwinCAT version/build/System ID, installed Beckhoff software, OS, mainboard serial/BIOS, disks, NICs, CPU, memory) with all tables read dynamically (as many disks/NICs/software entries as the device reports). Each value carries its index offset; unknown modules and tables are returned as raw hex, never dropped. Returns JSON { success, status (ok | mdpUnavailable | targetUnreachable | mdpNotReady), message, netId, port, indexGroup, readAt, adsError, device { btn, bic }, modules [{ moduleId, moduleType, typeName, name, tables [{ tableIndex, name, entries [{ subIndex, name, dataType, value, raw, adsError, indexOffset }] }], decoded }], warnings }. A target without a Device Manager (e.g. a development VM or the user-mode runtime) yields status mdpUnavailable, not an [Error]. [Error] is returned only for bad arguments. The output contains IP/MAC addresses, route names and the TwinCAT System ID.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `amsNetId` | `string?` | `null` | AMS NetId of the target IPC (e.g. '192.168.1.10.1.1'). Omit for the open solution's own target system (activation target); with an explicit NetId no open solution is needed. |
+| `moduleTypes` | `string[]?` | `null` | Optional filter on MDP module types, e.g. ['0x0008','0x000A'] (TwinCAT, Software). Known types: 0x0002 NIC, 0x0008 TwinCAT, 0x000A Software, 0x000B CPU, 0x000C Memory, 0x0018 OperatingSystem, 0x001C Mainboard, 0x001D DiskManagement. Default: all modules. |
+| `includeRaw` | `bool` | `true` | Include the raw hex of every decoded value too (default true). Undecodable values always carry it. |
+| `timeoutMs` | `int?` | `null` | ADS timeout per read in milliseconds (default 5000, 100-30000). A read that times out is repeated once before the error is recorded. |
+
+### `twincat_ethercat_read_identities`
+
+READ-ONLY online identity of every EtherCAT slave: VendorId, ProductCode, RevisionNo and SerialNo as the EtherCAT master reads them from the devices (ADS index groups 0x7/0x9/0x11), joined by fixed address with the projected identity of the configured boxes (device XML). Enumerates all EtherCAT master devices under TIID (or the one in masterTreePath); the master's AMS NetId and ADS port come from its device XML, and the result states which were read. Per slave: address, treePath, name, projected {vendorId, productCode, revisionNo}, online {vendorId, productCode, revisionNo, serialNo}, state/stateName, link/linkFlags, flags identityInvalid, revisionDiffers, productDiffers, vendorDiffers, serialAvailable (serialNo != 0), missing, extraLink, and source {netId, port, indexGroup, indexOffset}. Projected boxes without an online address and online addresses without a projected box are both listed. With includeCoe the CoE device info is added per slave (coe {status ok|noMailbox|notCoe|error, deviceName, hardwareVersion, firmwareVersion, serialNo, adsError}); serialNo (a string, so that leading zeros survive) and serialSource give the serial from the master (serialSource master), else from CoE 0x1018:04 (coe), else from the SoE S-0-0432 of an AX5000 drive (soe:S-0-0432, digits as read), else for a safety device its effective safety identifier (coe:0xF980:02, bic:BTN, hostDrive:S-0-0432); serialAvailable is false when none exists. The master service port is 0xFFFF. With includeDeviceDetails each slave may also carry bic {raw, orderNumber, btn, article, batch}, safety {isSafetyDevice, fsoeAddress, serialNo (0xF980:02, undocumented), effectiveSerial, effectiveSerialSource, viaHostDrive}, motor/feedback (OCT terminals) and soe.channels[] (AX5000; softwareVersions from P-0-0320, whose optionCard fields describe a plug-in option card of the drive, e.g. an encoder card, null when none is fitted); an AX5805/AX5806 also shows safety.hostDrive {address, serialNo, configuredSafetyOption}; every safety device gets an effective identifier or safetySerialMissing=true plus a warning and safetyIdentityComplete=false. The result has a summary {slaves, slavesRead, slavesPartial, slavesFailed, safetyDevices, safetyWithSerial, safetyUnknown, motors, motorsWithSerial}. Reads that time out are repeated once; every slave has readStatus ok|partial|failed with readErrors, the master (and the result) is status partial when any slave could not be read completely or the fixed addresses/state/link reads failed (the fixed addresses then fall back to the projected ones), and a safety device whose identity could not be read is safetyIdentityUnknown (not safetySerialMissing); safetyIdentityComplete is false in both cases. A master that does not answer (configuration not active on the target / no route) is a per-master status masterUnreachable and the other masters continue; a master whose address cannot be read from the XML is addressNotFound with the raw XML snippet. Never changes state, never switches the project to config mode. Requires XAE running with a solution open and the configuration active on the target.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `masterTreePath` | `string?` | `null` | Tree path of ONE EtherCAT master device, e.g. 'TIID^Device 1 (EtherCAT)'. Omit to read all masters. |
+| `amsNetId` | `string?` | `null` | Override of the master's AMS NetId. Only valid together with masterTreePath. |
+| `adsPort` | `int?` | `null` | Override of the master's ADS port. Only valid together with masterTreePath. |
+| `includeCrc` | `bool` | `false` | Also read the CRC error counters of every slave (per port A-D). Default false. |
+| `includeCoe` | `bool` | `true` | Also read the CoE device info of every slave with a mailbox (read-only SDO upload: 0x1008 device name, 0x1009 hardware version, 0x100A firmware version, 0x1018:04 serial). The master reports SerialNo 0 for most slaves; the CoE serial fills the gap. Default true. |
+| `includeDeviceDetails` | `bool` | `true` | Also read the device details per slave (requires includeCoe): the BIC/BTN (CoE 0x10E2:01), the safety identity (0xF980) with an effective unique safety identifier, the OCT motor and feedback name plate (0x9009/0x9008), and for AX5000 drives the SoE parameters per channel (firmware, hardware, serial, configured type, safety option, digital motor name plate). Default true. |
+| `timeoutMs` | `int?` | `null` | ADS timeout per read in milliseconds (default 5000, 100-30000). A read that times out is repeated once before the error is recorded. |
+
+### `twincat_list_library_repositories`
+
+READ-ONLY list of the PLC library repositories of the XAE (ITcPlcLibraryManager.Repositories): name and folder of each. With includeFiles=true, for every library reference of the PLC project(s) the resolved library (resolvedName, resolvedVersion, resolvedDistributor, resolution = effective | fixed | newest-installed | unresolved), its version folder in the repository and the library file(s) in it (.library / .compiled-library*) with SHA-256 (hashScope 'file': the hash of the file itself, not a Twinpack content hash). If no file is found: fileFound=false plus the searchedPaths. Returns JSON { success, repositories [{ name, folder, folderExists }], references [{ plcProject, placeholder, name, requestedVersion, resolved*, resolution, fileFound, files [{ path, sha256, hashScope, sizeBytes }], searchedPaths }], warnings } or an [Error] string. Requires XAE running with a solution open.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `includeFiles` | `bool` | `false` | Also resolve every library reference to its file(s) in the repositories and hash them. Default false. |
+| `plcProjectPath` | `string?` | `null` | Only this PLC project (its name or tree path, e.g. 'PLC' or 'TIPC^PLC'). Default: all PLC projects of the solution. |
 
 ## Schema
 

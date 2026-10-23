@@ -35,6 +35,17 @@ internal sealed partial class FakeTwinCatSession
         return Pous;
     }
 
+    /// <summary>Texts the "XAE" holds, keyed "&lt;plcName&gt;|&lt;relative source path&gt;"; a missing key throws like an absent tree node.</summary>
+    public Dictionary<string, List<PlcTextSection>> PlcObjectSections { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyList<PlcTextSection> ReadPlcObjectSections(string plcName, string relativeSourcePath)
+    {
+        CallLog.Add($"ReadPlcObjectSections({plcName},{relativeSourcePath})");
+        return PlcObjectSections.TryGetValue($"{plcName}|{relativeSourcePath}", out var sections)
+            ? sections
+            : throw new InvalidOperationException($"PLC tree path not found: {plcName}|{relativeSourcePath}");
+    }
+
     public PouBody ReadPou(string treePath)
     {
         CallLog.Add($"ReadPou({treePath})");

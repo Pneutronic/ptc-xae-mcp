@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-202 tools, generated from the source attributes — one section per
+203 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -18,7 +18,7 @@
 - [CoreDump](#coredump) (3)
 - [Diagnostics](#diagnostics) (10)
 - [EditorNavigation](#editornavigation) (2)
-- [EtherCat](#ethercat) (5)
+- [EtherCat](#ethercat) (6)
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
 - [Hmi](#hmi) (8)
@@ -105,7 +105,7 @@ Write a value to a live PLC symbol via ADS on a running TwinCAT PLC or UMR. Refu
 
 ### `twincat_get_error_list`
 
-Error List: read-only snapshot of the XAE Error List window (the 'Fehlerliste' tool window) — severity, description, file, line per entry. Does NOT trigger a build and does NOT clear anything — unlike twincat_clear_error_list, whose cleared-count was previously the only way to learn how many entries existed. Requires XAE running with a solution open.
+Error List: read-only snapshot of the XAE Error List window (the 'Fehlerliste' tool window) — severity, description, file, line per entry. Does NOT trigger a build and does NOT clear anything — unlike twincat_clear_error_list, whose cleared-count was previously the only way to learn how many entries existed. Identical entries (same level, text, file and line) are listed once with a '(2× in the Error List)' note; the first line gives both the total and the distinct count. The Error List also shows runtime EventLogger events, sometimes twice; for alarm diagnosis use twincat_read_event_logger, which is authoritative. Requires XAE running with a solution open.
 
 _No parameters._
 
@@ -413,6 +413,12 @@ Delete an EtherCAT box/terminal node by tree path and save the project. Requires
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the box to delete, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^Term 4 (EL2004)'. Get a valid path via twincat_get_fieldbus_topology. |
+
+### `twincat_reload_device_descriptions`
+
+Make the XAE re-read the EtherCAT device descriptions (ESI files under <TwinCAT>\3.1\Config\Io\EtherCAT): the XAE command 'TwinCAT > EtherCAT Devices > Reload Device Descriptions', raised by its command identity, so it works on any XAE language. Run it after placing a vendor ESI there; until then twincat_add_ethercat_box fails for that type with 'Invalid item sub type'. Requires XAE running with a solution open; changes nothing in the project. A dialog the XAE shows is reported, never answered.
+
+_No parameters._
 
 ### `twincat_set_previous_port`
 
@@ -856,7 +862,7 @@ Check whether the IODD (IO-Link device description) for a device is installed in
 
 ### `twincat_link_variables`
 
-Create a link between two TwinCAT variables identified by their caret-separated tree paths. Requires XAE running with a solution open. Saves the project after linking. Use twincat_get_fieldbus_topology to find I/O paths (TIID^...) and twincat_list_pous to find PLC paths (TIPC^...).
+Create a link between two TwinCAT variables identified by their caret-separated tree paths. Requires XAE running with a solution open. Saves the project after linking. Use twincat_get_fieldbus_topology to find I/O paths (TIID^...) and twincat_list_pous to find PLC paths (TIPC^...). When TwinCAT refuses the link, the error names the cause: the type, bit size and direction of both variables, which path does not resolve, or which path is not a variable.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

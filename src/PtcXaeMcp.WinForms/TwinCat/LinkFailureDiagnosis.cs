@@ -110,7 +110,7 @@ internal static class LinkFailureDiagnosis
             {
                 if (first.Variable is not { } a || second.Variable is not { } b) break;
                 string text =
-                    $"LinkVariables refused the link:{Describe(first.Path, a)}, {Describe(second.Path, b)}.";
+                    $"LinkVariables refused the link: {Describe(first.Path, a)},{Describe(second.Path, b)}.";
                 if (a.TypeName != b.TypeName || a.BitSize != b.BitSize)
                     text += $" The terminal maps this channel as {TerminalTypeOf(first, second)}: change its process data / PDO " +
                             $"assignment, or link a {TerminalTypeOf(first, second)} variable (or pass bitOffset/size for a partial link).";

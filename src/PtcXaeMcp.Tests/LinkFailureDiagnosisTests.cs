@@ -44,7 +44,7 @@ public class LinkFailureDiagnosisTests
         string text = LinkFailureDiagnosis.Describe(LinkFailureDiagnosis.MismatchingItems, "do not match",
             Var(IoAnalog, "REAL32", 32, 0), Var(PlcVar, "INT", 16, 0));
 
-        Assert.StartsWith("LinkVariables refused the link:", text);
+        Assert.StartsWith($"LinkVariables refused the link: '{IoAnalog}' is REAL32", text);
         Assert.Contains($"'{IoAnalog}' is REAL32 (32 bit, input)", text);
         Assert.Contains($"'{PlcVar}' is INT (16 bit, input)", text);
         Assert.Contains("The terminal maps this channel as REAL32", text);

@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-203 tools, generated from the source attributes — one section per
+205 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -47,6 +47,7 @@
 - [Sbom](#sbom) (3)
 - [Schema](#schema) (5)
 - [Scope](#scope) (18)
+- [ScopeFile](#scopefile) (2)
 - [VariantManagement](#variantmanagement) (2)
 - [VisibleEditor](#visibleeditor) (2)
 
@@ -117,17 +118,20 @@ _No parameters._
 
 ### `twincat_build_plc`
 
-Compile only the PLC project via DTE.Solution.SolutionBuild.BuildProject. Faster than a full solution build for PLC-code-only changes. Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. Requires XAE running with a solution open.
+Compile only the PLC project via DTE.Solution.SolutionBuild.BuildProject. Faster than a full solution build for PLC-code-only changes. Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `plcProjectName` | `string?` | `null` | Name of the PLC project to build (e.g. 'PLC'). Leave empty to auto-detect the first .plcproj in the solution. |
+| `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
 
 ### `twincat_build_solution`
 
-Trigger a full solution build via DTE.Solution.SolutionBuild.Build. Compiles PLC code and IO mapping. Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. Requires XAE running with a solution open.
+Trigger a full solution build via DTE.Solution.SolutionBuild.Build. Compiles PLC code and IO mapping. Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.
 
-_No parameters._
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
 
 ### `twincat_activate_config`
 
@@ -997,12 +1001,13 @@ Change the pinned version of an existing PLC library reference. name: library na
 
 ### `twincat_open_project`
 
-Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Takes a .sln or directly a project file (.tsproj / .tspproj / .hmiproj; a temporary .sln is generated for it). Optionally closes the currently-open solution first.
+Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Takes a .sln or directly a project file (.tsproj / .tspproj / .hmiproj; a temporary .sln is generated for it). Optionally closes the currently-open solution first. Before the XAE loads anything, every independent project file a .tsproj references (File="….xti": devices, boxes, axes, PLC projects) must exist: a missing one (e.g. after IO nodes were renamed outside the XAE) refuses the open with [Error] listing them, because the XAE would load a broken configuration and saving it damages the .tsproj. allowMissingReferences=true opens anyway with [Warn]; save_project and close_project(saveFirst=true) then repeat the warning.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `slnPath` | `string` |  | Absolute path to the .sln, .tsproj, .tspproj or .hmiproj file to open |
 | `closeCurrentFirst` | `bool` | `false` | Close the currently-open solution first (no save). Default false. |
+| `allowMissingReferences` | `bool` | `false` | Open even when referenced .xti files are missing (the result starts with [Warn]). Default false refuses. |
 
 ### `twincat_save_project`
 
@@ -1595,17 +1600,20 @@ _No parameters._
 
 ### `twincat_rebuild_solution`
 
-Rebuild the entire TwinCAT solution (Clean then Build). Forces a complete recompilation — equivalent to 'Rebuild All' in the IDE. Compile-only: does NOT activate the boot project or restart the runtime (use twincat_activate_config for that). Returns { success, failedProjects, errors[] } identical to twincat_build_solution. Requires XAE running with a solution open.
+Rebuild the entire TwinCAT solution (Clean then Build). Forces a complete recompilation — equivalent to 'Rebuild All' in the IDE. Compile-only: does NOT activate the boot project or restart the runtime (use twincat_activate_config for that). Returns { success, failedProjects, errors[] } identical to twincat_build_solution. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.
 
-_No parameters._
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
 
 ### `twincat_rebuild_plc`
 
-Rebuild a single PLC project (Clean then BuildProject). Forces a complete recompilation of the named (or auto-detected) PLC project. Compile-only: does NOT activate the boot project or restart the runtime. Returns { success, failedProjects, errors[] } identical to twincat_build_plc. Requires XAE running with a solution open.
+Rebuild a single PLC project (Clean then BuildProject). Forces a complete recompilation of the named (or auto-detected) PLC project. Compile-only: does NOT activate the boot project or restart the runtime. Returns { success, failedProjects, errors[] } identical to twincat_build_plc. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `plcProjectName` | `string?` | `null` | Name of the PLC project to rebuild (e.g. 'PLC'). Leave empty to auto-detect. |
+| `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
 
 ### `twincat_force_close_xae`
 
@@ -2003,6 +2011,31 @@ EXPERIMENTAL — reads the trigger properties by token match (keys not yet verif
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `projectName` | `string?` | `null` | Name of the measurement project to list. Required when the solution has more than one; omit when there is exactly one. |
+
+## ScopeFile
+
+### `twincat_read_scope_file`
+
+EXPERIMENTAL — read a saved TwinCAT Scope recording (.svdx, e.g. from twincat_save_scope_data) without the XAE. Runs TC3ScopeExportTool.exe (installed with TE130x Scope View or TF3300 Scope Server) headless into a temporary CSV and returns, per channel: name, symbol, comment, data type, sample time, NetId/port, scale/offset/unit, sample count, first/last time, min/max/mean. includeValues=true adds the values of the selected channels in a time window, decimated min/max per bucket (spikes survive) to at most maxPoints per channel. Times are ms since the recording start; start/end are UTC. Values are as the export tool writes them. The path must lie in an allowed directory (%TEMP%, %LOCALAPPDATA%\ptc-xae-mcp, the TwinCAT installation or a root in PTC_XAE_MCP_ALLOWED_PATHS). Result: an [Experimental] line, a summary line, then JSON.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `path` | `string` |  | Path of the .svdx file. |
+| `channels` | `string?` | `null` | Channels whose values to return (includeValues): channel names or symbol names, comma-separated. Empty = all channels. |
+| `fromMs` | `double?` | `null` | Start of the value window in ms since the recording start. Empty = from the start. |
+| `toMs` | `double?` | `null` | End of the value window in ms since the recording start. Empty = to the end. |
+| `maxPoints` | `int` | `ScopeExportCsv.DefaultMaxPoints` | Maximum points per channel (default 500, at most 5000); more samples are decimated to min/max per bucket. |
+| `includeValues` | `bool` | `false` | Return the (decimated) values, not only the per-channel statistics. Default false. |
+
+### `twincat_convert_scope_file`
+
+EXPERIMENTAL — convert a saved TwinCAT Scope recording (.svdx) into an export file without the XAE, using TC3ScopeExportTool.exe (TE130x Scope View / TF3300 Scope Server) headless. The target extension selects the format (.csv, .tdms, … as the export tool supports them; .tdms/.dat may need a full Scope View/Server licence). An existing target is refused unless overwrite=true. Both paths must lie in an allowed directory (%TEMP%, %LOCALAPPDATA%\ptc-xae-mcp, the TwinCAT installation or a root in PTC_XAE_MCP_ALLOWED_PATHS).
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `path` | `string` |  | Path of the .svdx file. |
+| `targetPath` | `string` |  | Output file; its extension selects the format, e.g. C:\temp\run1.csv. |
+| `overwrite` | `bool` | `false` | Replace an existing target file. Default false. |
 
 ## VariantManagement
 

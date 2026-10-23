@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-23
+
 ### Added
 - Persistent snapshot: capture, compare and restore the remanent data (PERSISTENT and RETAIN) of a
   running PLC over ADS. New tools `twincat_list_ads_symbols`, `twincat_persistent_snapshot_save`,
@@ -26,8 +28,13 @@ pull-request numbers refer to those.
 - `twincat_list_library_references` shows, per reference, the concrete library it resolves to (`resolvedName`, `resolvedVersion`, `resolvedDistributor`) and how that was determined (`resolution`: effective, fixed, newest-installed, unresolved). The text output gets a `[resolved: ...]` suffix on each line; the new optional `format: "json"` returns the full records.
 - Both inventory tools take `timeoutMs` (default 5000) and repeat a read once on an ADS timeout. Slaves or masters that could not be read completely are reported (`readStatus`, status `partial`) instead of being left out; a safety device whose identity could not be read is `safetyIdentityUnknown`, kept apart from `safetySerialMissing`. EtherCAT bridges such as the EL6695 are reported as `blackChannel`, not as safety devices. A relative master NetId (`0.0.0.0.x.y`) takes the target's first four octets; passive boxes (end caps, the CPU's own E-bus coupler) are marked `passive`.
 - `twincat_reload_device_descriptions` makes the XAE re-read the EtherCAT device descriptions (ESI files under `Config\Io\EtherCAT`) by raising its "Reload Device Descriptions" command by GUID/ID, so it works on any XAE language. A vendor ESI placed there is otherwise unknown to the XAE until it is restarted, and `twincat_add_ethercat_box` fails for its type with "Invalid item sub type". A dialog the XAE shows is reported, never answered.
+- `twincat_read_scope_file` (experimental) reads a saved scope recording (.svdx) without the XAE through the official `TC3ScopeExportTool.exe` (TE130x Scope View / TF3300 Scope Server), run headless: per channel name, symbol, comment, data type, sample time, NetId/port, scaling, sample count, first/last time and min/max/mean; with `includeValues` the values of selected channels in a time window, decimated to min/max per bucket so spikes survive (`maxPoints`, default 500). Times are ms since the recording start, start/end UTC.
+- `twincat_convert_scope_file` (experimental) converts a .svdx into an export file (format from the target extension) with the same tool; an existing target is refused unless `overwrite=true`.
 
 ### Changed
+- Every build (`twincat_build_plc`, `_rebuild_plc`, `_build_solution`, `_rebuild_solution`) checks the PLC library references first: a missing or wrongly versioned library prefixes the result with `[Warn] Build result not conclusive` (the build still runs).
+- A build refuses with `[Error]` when a PLC source file (.TcPOU/.TcGVL/.TcDUT/.TcIO) changed on disk outside the XAE since the project was loaded: the XAE would build its in-memory state, and the build's save could write it over the change. The files are compared with the declaration/implementation texts the XAE holds, so a save from the XAE never counts. `ignoreStaleFiles=true` builds anyway with `[Warn]`; reload with `twincat_open_project(closeCurrentFirst=true)`.
+- `twincat_open_project` checks every `File="….xti"` reference (devices, boxes, axes, PLC projects) before the XAE loads anything and refuses a project with missing files, which would open broken and damage the .tsproj when saved. `allowMissingReferences=true` opens with `[Warn]`; save and close-with-save repeat it.
 - `twincat_link_variables` names the cause when TwinCAT refuses a link. For a mismatch it reports type, bit size and direction of both variables, with a PDO hint for differing types and a direction hint for two inputs (or two outputs) on the same side; for a missing path it names the path that does not resolve, for `TSM_E_INVALIDITEMTYPE` the path that is no variable. Without readable variable definitions the message stays the plain one, plus the HRESULT name.
 - `twincat_add_ethercat_box` says, when it cannot create a box, whether the ESI for that type is on disk (reload the device descriptions, then retry) or absent (place the vendor's ESI first).
 - `twincat_get_error_list` lists identical entries (level, text, file, line) once with a `(2× in the Error List)` note and gives the total and the distinct count; its description points alarm diagnosis at `twincat_read_event_logger`.

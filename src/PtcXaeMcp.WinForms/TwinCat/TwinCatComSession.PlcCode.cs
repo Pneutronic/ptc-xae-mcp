@@ -95,6 +95,54 @@ internal sealed partial class TwinCatComSession
         return ReadDeclarationText(node, treePath);
     }, OpenTimeout);
 
+    public IReadOnlyList<PlcTextSection> ReadPlcObjectSections(string plcName, string relativeSourcePath) =>
+        ComBusyRetry.Run<IReadOnlyList<PlcTextSection>>(() =>
+    {
+        dynamic dte = GetActiveTcDte();
+        List<PlcSourceProject> projects = EnumeratePlcSourceProjects(dte);
+        var project = projects.FirstOrDefault(p =>
+                string.Equals(p.Name, plcName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"PLC project '{plcName}' not found under TIPC.");
+        string nestedPath = ComCall.ReadProp(() => (string?)((dynamic)project.Nested).PathName ?? string.Empty, string.Empty);
+        if (nestedPath.Length == 0)
+            throw new InvalidOperationException($"The tree path of PLC project '{plcName}' is not readable.");
+
+        // The folders below the IEC-project node mirror the folders below the .plcproj 1:1
+        // (see TryGetNodeDiskPath); the file stem is the object name.
+        string withoutExtension = Path.ChangeExtension(relativeSourcePath, null) ?? relativeSourcePath;
+        string treePath = nestedPath + "^" + string.Join("^", withoutExtension.Split('\\', '/'));
+        object sysMan = RequireSystemManager(dte);
+        dynamic node = LookupTreeItemWithFallback(sysMan, treePath)
+            ?? throw new InvalidOperationException($"PLC tree path not found: {treePath}");
+
+        var sections = new List<PlcTextSection>();
+        AddTexts(node, string.Empty, sections);
+        CollectMemberTexts(node, string.Empty, sections, depth: 0);
+        return sections;
+    }, OpenTimeout);
+
+    // Members are keyed by their name chain; a node without any text is a folder and adds no key segment.
+    private static void CollectMemberTexts(dynamic parent, string prefix, List<PlcTextSection> sections, int depth)
+    {
+        if (depth > 8) return;
+        foreach (object child in Children(parent))
+        {
+            string memberPrefix = prefix + NameOf(child) + "/";
+            int before = sections.Count;
+            AddTexts(child, memberPrefix, sections);
+            CollectMemberTexts(child, sections.Count > before ? memberPrefix : prefix, sections, depth + 1);
+        }
+    }
+
+    private static void AddTexts(dynamic node, string prefix, List<PlcTextSection> sections)
+    {
+        // A node without ITcPlcDeclaration / ITcPlcImplementation (a folder, a GVL's missing body) simply has no section.
+        try { sections.Add(new PlcTextSection(prefix + "decl", (string?)node.DeclarationText ?? string.Empty)); }
+        catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
+        try { sections.Add(new PlcTextSection(prefix + "impl", (string?)node.ImplementationText ?? string.Empty)); }
+        catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
+    }
+
     public void WritePouBody(string treePath, string? declaration, string? implementation) => ComBusyRetry.Run(() =>
     {
         if (string.IsNullOrWhiteSpace(treePath))

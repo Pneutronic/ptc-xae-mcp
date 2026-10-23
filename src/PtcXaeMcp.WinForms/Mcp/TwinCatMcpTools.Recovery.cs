@@ -91,22 +91,25 @@ internal sealed partial class TwinCatMcpTools
                  "Compile-only: does NOT activate the boot project or restart the runtime " +
                  "(use twincat_activate_config for that). " +
                  "Returns { success, failedProjects, errors[] } identical to twincat_build_solution. " +
-                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). Requires XAE running with a solution open.")]
-    public string RebuildSolution(CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_rebuild_solution", null, () =>
-            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).RebuildSolution()), cancellationToken);
+                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.")]
+    public string RebuildSolution(
+        [Description("Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_rebuild_solution", new { ignoreStaleFiles }, () =>
+            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).RebuildSolution(ignoreStaleFiles)), cancellationToken);
 
     [McpServerTool(Name = "twincat_rebuild_plc", ReadOnly = false, Destructive = false)]
     [Description("Rebuild a single PLC project (Clean then BuildProject). " +
                  "Forces a complete recompilation of the named (or auto-detected) PLC project. " +
                  "Compile-only: does NOT activate the boot project or restart the runtime. " +
                  "Returns { success, failedProjects, errors[] } identical to twincat_build_plc. " +
-                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). Requires XAE running with a solution open.")]
+                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.")]
     public string RebuildPlc(
         [Description("Name of the PLC project to rebuild (e.g. 'PLC'). Leave empty to auto-detect.")] string? plcProjectName = null,
+        [Description("Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_rebuild_plc", new { plcProjectName }, () =>
-            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).RebuildPlc(plcProjectName)), cancellationToken);
+        => bridge.Activity.Trace("twincat_rebuild_plc", new { plcProjectName, ignoreStaleFiles }, () =>
+            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).RebuildPlc(plcProjectName, ignoreStaleFiles)), cancellationToken);
 
     [McpServerTool(Name = "twincat_force_close_xae", ReadOnly = false, Destructive = true)]
     [Description("EXPLICIT, opt-in recovery for a stale or crashed TcXaeShell (XAE) instance. " +

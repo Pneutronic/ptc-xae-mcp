@@ -151,6 +151,13 @@ internal interface ITwinCatSession : IDisposable
     IReadOnlyList<PouEntry> ListPlcElements();
     PouBody ReadPou(string treePath);
     string ReadGvl(string treePath);
+    /// <summary>
+    /// Every declaration/implementation text the XAE holds for the PLC object stored in
+    /// <paramref name="relativeSourcePath"/> (relative to its .plcproj) of the PLC project
+    /// <paramref name="plcName"/>, keyed like <see cref="PlcSourceFiles.ParseSections"/>.
+    /// Throws InvalidOperationException when the object is not in the tree.
+    /// </summary>
+    IReadOnlyList<PlcTextSection> ReadPlcObjectSections(string plcName, string relativeSourcePath);
     void WritePouBody(string treePath, string? declaration, string? implementation);
     string CreatePou(string parentPath, string name, string pouType, string returnType, string implLanguage);
     string CreateDut(string parentPath, string name, string dutType, string? baseType);

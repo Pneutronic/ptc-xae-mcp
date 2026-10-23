@@ -117,67 +117,102 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
         return sb.ToString().TrimEnd();
     }
 
-    public string BuildSolution() => Combine(BuildSolutionDetailed());
+    /// <summary>The disk-vs-XAE baseline; tests pass their own instance.</summary>
+    internal StaleBufferGuard StaleGuard { get; init; } = StaleBufferGuard.Shared;
 
-    public string BuildPlc(string? plcProjectName) => Combine(BuildPlcDetailed(plcProjectName));
+    public string BuildSolution(bool ignoreStaleFiles = false) => Combine(BuildSolutionDetailed(ignoreStaleFiles));
 
-    public string RebuildSolution() => Combine(RebuildSolutionDetailed());
+    public string BuildPlc(string? plcProjectName, bool ignoreStaleFiles = false) => Combine(BuildPlcDetailed(plcProjectName, ignoreStaleFiles));
 
-    public string RebuildPlc(string? plcProjectName) => Combine(RebuildPlcDetailed(plcProjectName));
+    public string RebuildSolution(bool ignoreStaleFiles = false) => Combine(RebuildSolutionDetailed(ignoreStaleFiles));
 
-    public BuildOutcome BuildSolutionDetailed()
+    public string RebuildPlc(string? plcProjectName, bool ignoreStaleFiles = false) => Combine(RebuildPlcDetailed(plcProjectName, ignoreStaleFiles));
+
+    public BuildOutcome BuildSolutionDetailed(bool ignoreStaleFiles = false) =>
+        CheckedBuild(null, allProjects: true, ignoreStaleFiles, () =>
+        {
+            var r = session.BuildSolution();
+            return (FormatBuildResult(r), r.Log);
+        });
+
+    public BuildOutcome BuildPlcDetailed(string? plcProjectName, bool ignoreStaleFiles = false) =>
+        CheckedBuild(plcProjectName, allProjects: false, ignoreStaleFiles, () =>
+        {
+            var r = session.BuildPlc(plcProjectName);
+            return (FormatBuildResult(r), r.Log);
+        });
+
+    public BuildOutcome RebuildSolutionDetailed(bool ignoreStaleFiles = false) =>
+        CheckedBuild(null, allProjects: true, ignoreStaleFiles, () =>
+        {
+            var r = session.RebuildSolution();
+            return (FormatRebuildResult(r), r.Log);
+        });
+
+    public BuildOutcome RebuildPlcDetailed(string? plcProjectName, bool ignoreStaleFiles = false) =>
+        CheckedBuild(plcProjectName, allProjects: false, ignoreStaleFiles, () =>
+        {
+            var r = session.RebuildPlc(plcProjectName);
+            return (FormatRebuildResult(r), r.Log);
+        });
+
+    /// <summary>
+    /// The preflights every build runs before it compiles: stale PLC files (refuses unless ignored — the
+    /// build's own File.SaveAll would otherwise write the XAE's old state over the change) and library
+    /// references (warns only). <paramref name="allProjects"/> = a solution build, which compiles every PLC project.
+    /// </summary>
+    private BuildOutcome CheckedBuild(
+        string? plcProjectName, bool allProjects, bool ignoreStaleFiles, Func<(string Summary, string Log)> build)
     {
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return new BuildOutcome(error, "");
-        string? libraries = LibraryPreflight(plcProjectName: null, allProjects: true);
 
-        BuildResult result;
-        try { result = session.BuildSolution(); }
+        var (staleLines, refuse, hadStale) = StalePreflight(plcProjectName, allProjects, ignoreStaleFiles);
+        if (refuse is not null) return new BuildOutcome(refuse, "");
+        string? libraries = LibraryPreflight(plcProjectName, allProjects);
+
+        (string Summary, string Log) result;
+        try { result = build(); }
         catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
 
-        return new BuildOutcome(Prefix(libraries, FormatBuildResult(result)), result.Log);
+        // The build saved the XAE state (File.SaveAll): disk and XAE agree again. Not after an ignored stale
+        // file — the save writes only dirty objects, so the file can still differ and must be reported again.
+        if (!hadStale)
+        {
+            try { StaleGuard.Refresh(session, plcProjectName, allProjects); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+
+        var lines = staleLines.ToList();
+        if (libraries is not null) lines.Add(libraries);
+        lines.Add(result.Summary);
+        return new BuildOutcome(string.Join("\n", lines), result.Log);
     }
 
-    public BuildOutcome BuildPlcDetailed(string? plcProjectName)
+    private (IReadOnlyList<string> Lines, string? Refuse, bool HadStale) StalePreflight(
+        string? plcProjectName, bool allProjects, bool ignoreStaleFiles)
     {
-        string? error = SessionGuards.RequireOpenSolution(session);
-        if (error is not null) return new BuildOutcome(error, "");
-        string? libraries = LibraryPreflight(plcProjectName, allProjects: false);
+        StaleCheckResult check;
+        try { check = StaleGuard.Check(session, plcProjectName, allProjects); }
+        catch (Exception ex) { return ([$"[Note] Stale-file check skipped: {ex.Message}"], null, false); }
 
-        BuildResult result;
-        try { result = session.BuildPlc(plcProjectName); }
-        catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
-
-        return new BuildOutcome(Prefix(libraries, FormatBuildResult(result)), result.Log);
+        var lines = new List<string>();
+        if (check.Stale.Count > 0)
+        {
+            string files = $"{check.Stale.Count} PLC file{(check.Stale.Count == 1 ? "" : "s")} changed on disk outside the XAE " +
+                           $"since the project was loaded: {string.Join("; ", check.Stale)}.";
+            if (!ignoreStaleFiles)
+                return ([], $"[Error] {files} The XAE would build its in-memory state, and the build's save could write " +
+                            "that state over the change. Reload with twincat_open_project(closeCurrentFirst=true), or pass " +
+                            "ignoreStaleFiles=true to build the in-memory state anyway.", true);
+            lines.Add($"[Warn] {files} Built the XAE's in-memory state (ignoreStaleFiles=true); the build's save may have " +
+                      "written that state over the files.");
+        }
+        if (check.Inconclusive.Count > 0)
+            lines.Add($"[Warn] Stale-file check inconclusive for {check.Inconclusive.Count} file" +
+                      $"{(check.Inconclusive.Count == 1 ? "" : "s")}: {string.Join("; ", check.Inconclusive)}.");
+        return (lines, null, check.Stale.Count > 0);
     }
-
-    public BuildOutcome RebuildSolutionDetailed()
-    {
-        string? error = SessionGuards.RequireOpenSolution(session);
-        if (error is not null) return new BuildOutcome(error, "");
-        string? libraries = LibraryPreflight(plcProjectName: null, allProjects: true);
-
-        RebuildResult result;
-        try { result = session.RebuildSolution(); }
-        catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
-
-        return new BuildOutcome(Prefix(libraries, FormatRebuildResult(result)), result.Log);
-    }
-
-    public BuildOutcome RebuildPlcDetailed(string? plcProjectName)
-    {
-        string? error = SessionGuards.RequireOpenSolution(session);
-        if (error is not null) return new BuildOutcome(error, "");
-        string? libraries = LibraryPreflight(plcProjectName, allProjects: false);
-
-        RebuildResult result;
-        try { result = session.RebuildPlc(plcProjectName); }
-        catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
-
-        return new BuildOutcome(Prefix(libraries, FormatRebuildResult(result)), result.Log);
-    }
-
-    private static string Prefix(string? line, string text) => line is null ? text : $"{line}\n{text}";
 
     /// <summary>
     /// A referenced library that is not installed (or only in another version) turns the build's error list into

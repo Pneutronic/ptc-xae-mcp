@@ -51,6 +51,7 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
             try
             {
                 var status = session.Probe();
+                EstablishStaleBaseline();
                 return $"Opened {slnPath}. Active project: {status.ProjectName}";
             }
             catch (InvalidOperationException) when (DateTime.UtcNow < deadline)
@@ -63,6 +64,18 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
                 await Task.Delay(TimeSpan.FromSeconds(5), ct);
             }
         }
+    }
+
+    /// <summary>The disk-vs-XAE baseline the builds compare against; tests pass their own instance.</summary>
+    internal StaleBufferGuard StaleGuard { get; init; } = StaleBufferGuard.Shared;
+
+    // The XAE just loaded every PLC file from disk: this is the point where disk and XAE agree.
+    // Best effort — a baseline that cannot be recorded is recorded by the first build instead.
+    private void EstablishStaleBaseline()
+    {
+        StaleGuard.Reset();
+        try { StaleGuard.Establish(session); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Xml.XmlException) { }
     }
 
     private string HmiNote()

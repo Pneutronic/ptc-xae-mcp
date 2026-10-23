@@ -11,7 +11,9 @@ internal sealed partial class TwinCatMcpTools
     [Description("Create a link between two TwinCAT variables identified by their caret-separated tree paths. " +
                  "Requires XAE running with a solution open. Saves the project after linking. " +
                  "Use twincat_get_fieldbus_topology to find I/O paths (TIID^...) and " +
-                 "twincat_list_pous to find PLC paths (TIPC^...).")]
+                 "twincat_list_pous to find PLC paths (TIPC^...). " +
+                 "When TwinCAT refuses the link, the error names the cause: the type, bit size and direction of both " +
+                 "variables, which path does not resolve, or which path is not a variable.")]
     public string LinkVariables(
         [Description("Full tree path of the first variable, e.g. 'TIPC^PLC^PLC Projekt^MAIN.bVar'.")] string? variable1TreePath = null,
         [Description("Full tree path of the second variable, e.g. 'TIID^Device 1 (EtherCAT)^Box 1^Channel 1'.")] string? variable2TreePath = null,

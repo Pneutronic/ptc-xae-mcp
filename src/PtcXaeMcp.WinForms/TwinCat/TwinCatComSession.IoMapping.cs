@@ -12,12 +12,37 @@ internal sealed partial class TwinCatComSession
             try { ((dynamic)sysMan).LinkVariables(v1, v2, offs1, offs2, size); }
             catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    $"LinkVariables failed: {ex.Message}", ex);
+                throw new InvalidOperationException(DiagnoseLinkFailure(sysMan, v1, v2, ex), ex);
             }
             // #171 audit (issue #152): a replayed LinkVariables is not idempotent — keep busy local.
             SaveAllAfterMutation(dte);
         }, OpenTimeout);
+
+    // Failure path only: reads both items to name the cause. A busy XAE or any read problem here must
+    // not hide the original error, so every probe failure falls back to the plain code-named message.
+    private static string DiagnoseLinkFailure(object sysMan, string v1, string v2, Exception ex)
+    {
+        int hr = LinkFailureDiagnosis.HResultOf(ex);
+        try
+        {
+            return LinkFailureDiagnosis.Describe(hr, ex.Message,
+                ProbeLinkEndpoint(sysMan, v1), ProbeLinkEndpoint(sysMan, v2));
+        }
+        catch (Exception)
+        {
+            // Includes a busy XAE: the link itself already failed and a replay is not idempotent.
+            return LinkFailureDiagnosis.Fallback(hr, ex.Message);
+        }
+    }
+
+    private static LinkEndpoint ProbeLinkEndpoint(object sysMan, string path)
+    {
+        dynamic? node = LookupTreeItemOrNull(sysMan, path);
+        if (node is null) return LinkEndpoint.Missing(path);
+        int itemType = ComCall.ReadProp(() => (int)node.ItemType, -1);
+        string? xml = ComCall.ReadProp<string?>(() => (string)node.ProduceXml(false), null);
+        return new LinkEndpoint(path, true, itemType, VariableInfo.TryParse(xml));
+    }
 
     public void UnlinkVariables(string v1, string v2 = "") =>
         ComBusyRetry.Run(() =>

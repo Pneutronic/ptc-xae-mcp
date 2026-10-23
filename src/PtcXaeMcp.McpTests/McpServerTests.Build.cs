@@ -92,6 +92,51 @@ public partial class McpServerTests
         }
     }
 
+    // ── build-integrity: override parameters and the .xti refusal ─────────────
+
+    [SkippableTheory]
+    [InlineData("twincat_build_plc", "ignoreStaleFiles")]
+    [InlineData("twincat_build_solution", "ignoreStaleFiles")]
+    [InlineData("twincat_rebuild_plc", "ignoreStaleFiles")]
+    [InlineData("twincat_rebuild_solution", "ignoreStaleFiles")]
+    [InlineData("twincat_open_project", "allowMissingReferences")]
+    public async Task BuildIntegrity_OverrideParameter_IsInTheSchema(string tool, string parameter)
+    {
+        SkipIfNotReachable();
+
+        var tools = await _client!.ListToolsAsync();
+        var schema = tools.Single(t => t.Name == tool).JsonSchema;
+
+        Assert.True(schema.GetProperty("properties").TryGetProperty(parameter, out _), $"{tool} has no '{parameter}'");
+    }
+
+    [SkippableFact]
+    public async Task BuildIntegrity_OpenProject_MissingXti_IsRefusedBeforeTheXae()
+    {
+        SkipIfNotReachable();
+
+        string root = Path.Combine(Path.GetTempPath(), "ptc-mcp-missing-xti-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "Proj"));
+            File.WriteAllText(Path.Combine(root, "Proj", "Proj.tsproj"),
+                "<TcSmProject><Project><Io><Device File=\"Device 1 (EtherCAT).xti\" Id=\"1\"/></Io></Project></TcSmProject>");
+            string sln = Path.Combine(root, "Proj.sln");
+            File.WriteAllText(sln,
+                "Project(\"{B1E792BE-AA5F-4E3C-8C82-674BF9C0715B}\") = \"Proj\", \"Proj\\Proj.tsproj\", \"{0}\"\r\nEndProject\r\n");
+
+            var text = GetText(await CallToolAsync("twincat_open_project",
+                new Dictionary<string, object?> { ["slnPath"] = sln }));
+
+            Assert.StartsWith("[Error] 1 referenced project file (.xti) missing", text);
+            Assert.Contains("Device 1 (EtherCAT).xti", text);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { }
+        }
+    }
+
     // ── Test 63 — xae-error-list: tool is listed ─────────────────────────────
 
     [SkippableFact]

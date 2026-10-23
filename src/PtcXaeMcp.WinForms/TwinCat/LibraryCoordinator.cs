@@ -99,6 +99,32 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
         IReadOnlyList<InstalledLibrary> installed;
         try { installed = session.ListInstalledLibraries(); }
         catch (InvalidOperationException ex) { return ($"[Error] {ex.Message}", Array.Empty<LibraryAvailability>()); }
+
+        var items = Classify(refs, installed);
+        int missing = items.Count(i => i.Status == AvailabilityStatus.Missing);
+        int mismatch = items.Count(i => i.Status == AvailabilityStatus.VersionMismatch);
+        string summary;
+        if (missing == 0 && mismatch == 0)
+        {
+            summary = $"All {items.Count} library reference{(items.Count == 1 ? "" : "s")} installed.";
+        }
+        else
+        {
+            var parts = new List<string>();
+            if (missing > 0) parts.Add($"{missing} missing");
+            if (mismatch > 0) parts.Add($"{mismatch} version mismatch{(mismatch == 1 ? "" : "es")}");
+            summary = $"{items.Count} library reference{(items.Count == 1 ? "" : "s")} checked: {string.Join(", ", parts)}.";
+        }
+        return (summary, items);
+    }
+
+    /// <summary>
+    /// Installed / Missing / VersionMismatch per reference; shared by twincat_check_libraries_installed and the
+    /// library check before a build (<see cref="BuildCoordinator"/>).
+    /// </summary>
+    internal static IReadOnlyList<LibraryAvailability> Classify(
+        IReadOnlyList<LibraryReference> refs, IReadOnlyList<InstalledLibrary> installed)
+    {
         var byName = installed
             .GroupBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
@@ -124,22 +150,7 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
                 ? new LibraryAvailability(r, AvailabilityStatus.Installed, exact)
                 : new LibraryAvailability(r, AvailabilityStatus.VersionMismatch, candidates[0]));
         }
-
-        int missing = items.Count(i => i.Status == AvailabilityStatus.Missing);
-        int mismatch = items.Count(i => i.Status == AvailabilityStatus.VersionMismatch);
-        string summary;
-        if (missing == 0 && mismatch == 0)
-        {
-            summary = $"All {items.Count} library reference{(items.Count == 1 ? "" : "s")} installed.";
-        }
-        else
-        {
-            var parts = new List<string>();
-            if (missing > 0) parts.Add($"{missing} missing");
-            if (mismatch > 0) parts.Add($"{mismatch} version mismatch{(mismatch == 1 ? "" : "es")}");
-            summary = $"{items.Count} library reference{(items.Count == 1 ? "" : "s")} checked: {string.Join(", ", parts)}.";
-        }
-        return (summary, items);
+        return items;
     }
 
     public (string Summary, IReadOnlyList<LibraryReference> References) AddReference(

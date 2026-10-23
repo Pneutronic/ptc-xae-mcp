@@ -28,9 +28,9 @@ internal sealed partial class TwinCatComSession
             return LinkFailureDiagnosis.Describe(hr, ex.Message,
                 ProbeLinkEndpoint(sysMan, v1), ProbeLinkEndpoint(sysMan, v2));
         }
-        catch (Exception)
+        catch (Exception probe) when (ComCall.NotBusy(probe))
         {
-            // Includes a busy XAE: the link itself already failed and a replay is not idempotent.
+            // A busy XAE is not caught here: the link itself failed, so the busy retry may repeat it.
             return LinkFailureDiagnosis.Fallback(hr, ex.Message);
         }
     }

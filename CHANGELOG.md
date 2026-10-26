@@ -17,6 +17,16 @@ pull-request numbers refer to those.
 ### Changed
 - README, "No telemetry": the update check is the one documented, opt-in exception to "no network connections of its own".
 
+### Fixed
+- The PLC element tools (`twincat_plc_read`, `_write`, `_create`, `_delete`, `_rename`), the POU member tools
+  and the editor tools that open an element no longer crash the XAE when the PLC is a referenced stand-alone
+  project (`.tspproj`). A path below the PLC instance (`TIPC^<plc>^<project>^...`) is now walked child by child
+  from `TIPC`, the way `twincat_plc_list` enumerates (the project root comes from the instance's `NestedProject`,
+  found in the stand-alone project's own System Manager when the main one has none), instead of being passed to
+  `LookupTreeItem`, which hung
+  for tens of seconds, answered "PLC tree path not found" and then took TcXaeShell.exe down with 0xc0000005 in
+  `TwinCAT System Manager.x64.dll`.
+
 ## [2.3.0] - 2026-10-27
 
 ### Added

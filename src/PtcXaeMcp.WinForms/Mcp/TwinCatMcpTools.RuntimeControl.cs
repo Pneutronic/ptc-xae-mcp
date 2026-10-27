@@ -70,6 +70,7 @@ internal sealed partial class TwinCatMcpTools
                  "'Restart TwinCAT System': WriteControl Reconfig (config) or Reset (run) on AMS port 10000, then ReadState " +
                  "until the mode is confirmed. Use it when a running target ignores activate_config's restart (switch to " +
                  "config, activate, switch to run). Needs no XAE and no open solution. A switch stops the PLC on that target. " +
+                 "After a switch to run the PLC runtime on port 851 is read as well (up to 15 s): the system can be in Run while the PLC stays stopped, which the result flags with [Warn]. " +
                  "amsNetId is required — there is no implicit local target.")]
     public string SetSystemMode(
         [Description("AMS NetId of the target system, e.g. '192.168.250.20.1.1'. Required; pass the local router's NetId " +
@@ -136,6 +137,7 @@ internal sealed partial class TwinCatMcpTools
                  "Config mode allows downloading a new configuration; Run mode executes the loaded PLC program. " +
                  "Switches over ADS on the instance's NetId (WriteControl on port 10000, as twincat_set_system_mode) " +
                  "and succeeds only once ReadState confirms the mode — a Run switch takes about 20 s on a UMR. " +
+                 "After a Run switch the PLC runtime on port 851 is read as well: the system can be in Run while the PLC stays stopped, which the result flags with [Warn]. " +
                  "Refused with an [Error] when the instance's NetId is unknown.")]
     public string UmrSetMode(
         [Description("Target mode: 'config' to switch to Config mode, 'run' to switch to Run mode.")] string mode,

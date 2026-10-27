@@ -152,6 +152,129 @@ public class XaeHostReportTests
         finally { Directory.Delete(dir, true); }
     }
 
+    // ── host override ───────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData(null, true, null)]
+    [InlineData("auto", true, null)]
+    [InlineData(" AUTO ", true, null)]
+    [InlineData("64", true, XaeHostClass.Shell64)]
+    [InlineData("32", true, XaeHostClass.Shell32)]
+    [InlineData("128", false, null)]
+    public void TryParseOverride_AcceptsAuto64And32Only(string? text, bool ok, XaeHostClass? expected)
+    {
+        Assert.Equal(ok, XaeHostReport.TryParseOverride(text, out var hostClass));
+        Assert.Equal(expected, hostClass);
+    }
+
+    [Fact]
+    public void ForSolution_OverrideDiffersFromTcVersion_NamesBothAndWarns()
+    {
+        string sln = NewSolution("3.1.4024.55", out var dir);
+        try
+        {
+            var report = XaeHostReport.ForSolution(sln, Resolver, p => p == Exe64, NothingRunning, XaeHostClass.Shell64);
+
+            Assert.Equal("Host: 64-bit TcXaeShell (TcXaeShell.DTE.17.0), chosen by host=64 " +
+                         "(TcVersion 3.1.4024.55 selects the 32-bit TcXaeShell (TcXaeShell.DTE.15.0)).", report!.Info);
+            var warn = Assert.Single(report.Warnings);
+            Assert.Contains("TcVersion in the .tsproj was not changed", warn);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void ForSolution_OverrideMatchesTcVersion_DoesNotWarn()
+    {
+        string sln = NewSolution("3.1.4026.22", out var dir);
+        try
+        {
+            var report = XaeHostReport.ForSolution(sln, Resolver, _ => true, NothingRunning, XaeHostClass.Shell64);
+
+            Assert.Equal("Host: 64-bit TcXaeShell (TcXaeShell.DTE.17.0), chosen by host=64.", report!.Info);
+            Assert.Empty(report.Warnings);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task OpenProject_Host64_PassesTheOverrideToTheSession()
+    {
+        string sln = NewSolution("3.1.4024.55", out var dir);
+        try
+        {
+            var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = false };
+            var coord = new LifecycleCoordinator(fake)
+            {
+                HostResolver = Resolver,
+                ExeExists = p => p == Exe64,
+                RunningHosts = NothingRunning,
+            };
+
+            string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None, host: "64");
+
+            Assert.Contains(fake.CallLog, c => c.Contains("host=Shell64"));
+            Assert.Contains("Host: 64-bit TcXaeShell (TcXaeShell.DTE.17.0), chosen by host=64", result);
+            Assert.Contains("[Warn] Opened in the 64-bit TcXaeShell", result);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task OpenProject_Host64_WhileThe32BitXaeRuns_IsRefusedBeforeAnythingHappens()
+    {
+        string sln = NewSolution("3.1.4024.55", out var dir);
+        try
+        {
+            var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = false };
+            var coord = new LifecycleCoordinator(fake)
+            {
+                HostResolver = Resolver,
+                ExeExists = p => p == Exe64,
+                RunningHosts = () => [XaeHostResolver.ProgId32],
+            };
+
+            string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None, host: "64");
+
+            Assert.StartsWith("[Error]", result);
+            Assert.Contains("the running XAE is 32-bit TcXaeShell", result);
+            Assert.Empty(fake.CallLog);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task OpenProject_Host64_WithoutThe64BitXaeInstalled_IsRefused()
+    {
+        string sln = NewSolution("3.1.4024.55", out var dir);
+        try
+        {
+            var fake = new FakeTwinCatSession { IsConnected = true };
+            var coord = new LifecycleCoordinator(fake) { HostResolver = Resolver, ExeExists = _ => false, RunningHosts = NothingRunning };
+
+            string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None, host: "64");
+
+            Assert.StartsWith("[Error]", result);
+            Assert.Contains("is not installed", result);
+            Assert.Empty(fake.CallLog);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task OpenProject_UnknownHost_IsRefused()
+    {
+        string sln = NewSolution("3.1.4026.22", out var dir);
+        try
+        {
+            string result = await new LifecycleCoordinator(new FakeTwinCatSession())
+                .OpenProjectAsync(sln, false, CancellationToken.None, host: "128");
+
+            Assert.Equal("[Error] host must be auto, 64 or 32 (got '128').", result);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
     // ── binding failures at the tool boundary ───────────────────────────────
 
     private const string BinderMessage =

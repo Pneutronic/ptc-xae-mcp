@@ -15,11 +15,16 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
     internal sealed record FileReferenceMemo(string SolutionPath, string Description);
 
     public async Task<string> OpenProjectAsync(
-        string slnPath, bool closeCurrentFirst, CancellationToken ct, bool allowMissingReferences = false)
+        string slnPath, bool closeCurrentFirst, CancellationToken ct, bool allowMissingReferences = false,
+        string host = "auto")
     {
         var argError = OpenProjectArgs.Validate(slnPath);
         if (argError is not null)
             return $"[Error] {argError}";
+        if (!XaeHostReport.TryParseOverride(host, out XaeHostClass? hostOverride))
+            return $"[Error] host must be auto, 64 or 32 (got '{host}').";
+        if (hostOverride is { } forcedClass && HostOverrideError(forcedClass) is { } overrideError)
+            return $"[Error] {overrideError}";
 
         slnPath = SolutionFile.ResolveSolution(slnPath);
 
@@ -43,13 +48,13 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
         if (references.Warnings.Count > 0)
             referenceWarn = (referenceWarn is null ? "" : referenceWarn + "\n") + $"[Warn] {string.Join("; ", references.Warnings)}.";
 
-        string result = await OpenCheckedAsync(slnPath, closeCurrentFirst, ct);
+        string result = await OpenCheckedAsync(slnPath, closeCurrentFirst, ct, hostOverride);
         if (McpErrors.IsError(result)) return result;
         OpenedWithMissingReferences = references.Missing.Count > 0
             ? new FileReferenceMemo(slnPath, FileReferencePreflight.Describe(references.Missing))
             : null;
 
-        HostReport? hostReport = HostReportFor(slnPath);
+        HostReport? hostReport = HostReportFor(slnPath, hostOverride);
         if (hostReport is not null)
         {
             result = $"{result}{(result.EndsWith('.') ? "" : ".")} {hostReport.Info}";
@@ -65,19 +70,38 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
     internal Func<IReadOnlyList<string>> RunningHosts { get; init; } = XaeHostReport.RunningHosts;
 
     // Best effort: the host note must never turn a successful open into a failure.
-    private HostReport? HostReportFor(string slnPath)
+    private HostReport? HostReportFor(string slnPath, XaeHostClass? hostOverride)
     {
-        try { return XaeHostReport.ForSolution(slnPath, HostResolver, ExeExists, RunningHosts); }
+        try { return XaeHostReport.ForSolution(slnPath, HostResolver, ExeExists, RunningHosts, hostOverride); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
-    private async Task<string> OpenCheckedAsync(string slnPath, bool closeCurrentFirst, CancellationToken ct)
+    // An override never starts a second XAE and never attaches to the other bitness: the requested
+    // host must be installed, and a running XAE of the other bitness has to be closed first.
+    private string? HostOverrideError(XaeHostClass hostClass)
+    {
+        XaeHostSelection wanted = HostResolver.Resolve(hostClass);
+        string name = XaeHostReport.Name(wanted.ProgId);
+        if (!ExeExists(wanted.ExePath))
+            return $"host={XaeHostReport.ShortName(hostClass)} was requested, but the {name} is not installed (expected {wanted.ExePath}).";
+
+        IReadOnlyList<string> running = RunningHosts();
+        if (running.Count > 0 && !running.Contains(wanted.ProgId, StringComparer.OrdinalIgnoreCase))
+            return $"host={XaeHostReport.ShortName(hostClass)} was requested, but the running XAE is " +
+                   $"{string.Join(" and ", running.Select(XaeHostReport.Name))}. Close it first " +
+                   "(twincat_close_project, then end the XAE); the MCP never runs two XAEs.";
+        return null;
+    }
+
+    private async Task<string> OpenCheckedAsync(string slnPath, bool closeCurrentFirst, CancellationToken ct,
+        XaeHostClass? hostOverride)
     {
 
         await session.ConnectOrLaunchAsync(
             launchWithSlnPath: session.IsConnected ? null : slnPath,
             timeout: LaunchTimeout,
-            ct: ct);
+            ct: ct,
+            hostOverride: hostOverride);
 
         if (!session.IsConnected)
             return "[Error] Unable to connect to TwinCAT XAE after launch attempt.";

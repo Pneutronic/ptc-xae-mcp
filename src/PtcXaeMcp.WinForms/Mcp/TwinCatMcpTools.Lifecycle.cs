@@ -16,15 +16,16 @@ internal sealed partial class TwinCatMcpTools
         [Description("Absolute path to the .sln, .tsproj, .tspproj or .hmiproj file to open")] string slnPath,
         [Description("Close the currently-open solution first (no save). Default false.")] bool closeCurrentFirst = false,
         [Description("Open even when referenced .xti files are missing (the result starts with [Warn]). Default false refuses.")] bool allowMissingReferences = false,
+        [Description("XAE host: auto (default, the one the project's TcVersion selects), 64 (TcXaeShell 64-bit) or 32 (32-bit). 64 opens an older project on purpose in the 64-bit XAE; the TcVersion in the .tsproj is never rewritten. Refused when the requested XAE is not installed or an XAE of the other bitness is already running.")] string xaeHost = "auto",
         CancellationToken cancellationToken = default)
         => await bridge.Activity.TraceAsync("twincat_open_project",
-            new { slnPath, closeCurrentFirst, allowMissingReferences }, async () =>
+            new { slnPath, closeCurrentFirst, allowMissingReferences, xaeHost }, async () =>
         {
             try
             {
                 return await bridge.Dispatcher.RunAsync(
                     () => new LifecycleCoordinator(bridge.Dispatcher.Session)
-                        .OpenProjectAsync(slnPath, closeCurrentFirst, cancellationToken, allowMissingReferences),
+                        .OpenProjectAsync(slnPath, closeCurrentFirst, cancellationToken, allowMissingReferences, xaeHost),
                     afterSuccess: () => host.RequestEnvironmentRefresh("After OpenProject"));
             }
             catch (OperationCanceledException)

@@ -1008,6 +1008,7 @@ Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Ta
 | `slnPath` | `string` |  | Absolute path to the .sln, .tsproj, .tspproj or .hmiproj file to open |
 | `closeCurrentFirst` | `bool` | `false` | Close the currently-open solution first (no save). Default false. |
 | `allowMissingReferences` | `bool` | `false` | Open even when referenced .xti files are missing (the result starts with [Warn]). Default false refuses. |
+| `xaeHost` | `string` | `"auto"` | XAE host: auto (default, the one the project's TcVersion selects), 64 (TcXaeShell 64-bit) or 32 (32-bit). 64 opens an older project on purpose in the 64-bit XAE; the TcVersion in the .tsproj is never rewritten. Refused when the requested XAE is not installed or an XAE of the other bitness is already running. |
 
 ### `twincat_save_project`
 
@@ -1659,7 +1660,7 @@ Set the project's target NetId and optionally target platform. Call this BEFORE 
 
 ### `twincat_set_system_mode`
 
-Switch a target's TwinCAT system to Config or Run over ADS — the XAE's 'Restart TwinCAT (Config Mode)' / 'Restart TwinCAT System': WriteControl Reconfig (config) or Reset (run) on AMS port 10000, then ReadState until the mode is confirmed. Use it when a running target ignores activate_config's restart (switch to config, activate, switch to run). Needs no XAE and no open solution. A switch stops the PLC on that target. amsNetId is required — there is no implicit local target.
+Switch a target's TwinCAT system to Config or Run over ADS — the XAE's 'Restart TwinCAT (Config Mode)' / 'Restart TwinCAT System': WriteControl Reconfig (config) or Reset (run) on AMS port 10000, then ReadState until the mode is confirmed. Use it when a running target ignores activate_config's restart (switch to config, activate, switch to run). Needs no XAE and no open solution. A switch stops the PLC on that target. After a switch to run the PLC runtime on port 851 is read as well (up to 15 s): the system can be in Run while the PLC stays stopped, which the result flags with [Warn]. amsNetId is required — there is no implicit local target.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1690,7 +1691,7 @@ Start a registered TwinCAT 3 Usermode Runtime instance on the local machine. The
 
 ### `twincat_umr_set_mode`
 
-Switch the User Mode Runtime started by twincat_umr_start between Config and Run mode. Config mode allows downloading a new configuration; Run mode executes the loaded PLC program. Switches over ADS on the instance's NetId (WriteControl on port 10000, as twincat_set_system_mode) and succeeds only once ReadState confirms the mode — a Run switch takes about 20 s on a UMR. Refused with an [Error] when the instance's NetId is unknown.
+Switch the User Mode Runtime started by twincat_umr_start between Config and Run mode. Config mode allows downloading a new configuration; Run mode executes the loaded PLC program. Switches over ADS on the instance's NetId (WriteControl on port 10000, as twincat_set_system_mode) and succeeds only once ReadState confirms the mode — a Run switch takes about 20 s on a UMR. After a Run switch the PLC runtime on port 851 is read as well: the system can be in Run while the PLC stays stopped, which the result flags with [Warn]. Refused with an [Error] when the instance's NetId is unknown.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

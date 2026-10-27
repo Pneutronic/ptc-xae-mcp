@@ -40,16 +40,28 @@ internal sealed partial class TwinCatComSession
     public TwinCatEnvironmentStatus Probe() =>
         ComBusyRetry.Run(TwinCatEnvironmentProbe.Probe, ProbeTimeout);
 
-    public async Task ConnectOrLaunchAsync(string? launchWithSlnPath, TimeSpan timeout, CancellationToken ct)
+    public async Task ConnectOrLaunchAsync(string? launchWithSlnPath, TimeSpan timeout, CancellationToken ct,
+        XaeHostClass? hostOverride = null)
     {
         // Resolve the right host from the project's declared TcVersion when a
         // .tsproj can be located beside the .sln; otherwise stay on the
         // unbiased legacy probe order (worst case == today's behaviour).
+        // An explicit host override wins and is strict: only its ProgID is probed.
         IReadOnlyList<string>? probeOrder = null;
         string exePath = XaeExePath;
 
         var tsproj = TsprojLocator.FindForSolution(launchWithSlnPath);
-        if (tsproj is not null &&
+        if (hostOverride is { } forcedClass)
+        {
+            var forced = HostResolver.Resolve(forcedClass);
+            probeOrder = [forced.ProgId];
+            if (File.Exists(forced.ExePath))
+                exePath = forced.ExePath;
+            else
+                throw new InvalidOperationException(
+                    $"The {XaeHostReport.Name(forced.ProgId)} was requested but is not installed (expected {forced.ExePath}).");
+        }
+        else if (tsproj is not null &&
             HostResolver.TryResolveFromTsprojFile(tsproj, out var host, out _))
         {
             probeOrder = HostResolver.AttachProbeOrder(host!.HostClass);

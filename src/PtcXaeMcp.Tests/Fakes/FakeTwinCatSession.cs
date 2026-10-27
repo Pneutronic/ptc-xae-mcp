@@ -32,9 +32,10 @@ internal sealed partial class FakeTwinCatSession : ITwinCatSession
         ProjectName, "FakePlc",
         ["FakePlc"], ["FakeMaster"]);
 
-    public Task ConnectOrLaunchAsync(string? launchWithSlnPath, TimeSpan timeout, CancellationToken ct)
+    public Task ConnectOrLaunchAsync(string? launchWithSlnPath, TimeSpan timeout, CancellationToken ct,
+        PtcXaeMcp.WinForms.TwinCat.HostSelection.XaeHostClass? hostOverride = null)
     {
-        CallLog.Add($"ConnectOrLaunch(launchWith={launchWithSlnPath ?? "<null>"})");
+        CallLog.Add($"ConnectOrLaunch(launchWith={launchWithSlnPath ?? "<null>"}{(hostOverride is null ? "" : $", host={hostOverride}")})");
         if (ConnectThrows is not null) throw ConnectThrows;
         if (ConnectCallback is not null) IsConnected = ConnectCallback();
         return Task.CompletedTask;

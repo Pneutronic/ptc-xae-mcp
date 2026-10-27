@@ -16,7 +16,7 @@ internal sealed class NcAxesCoordinator(ITwinCatSession session)
 
         IReadOnlyList<NcTaskEntry> tasks;
         try { tasks = session.ListNcTasksAxes(); }
-        catch (Exception ex) { return ($"[Error] {ex.Message}", Array.Empty<NcTaskEntry>()); }
+        catch (Exception ex) { return (McpErrors.EnsureError(ComCall.Describe(ex)), Array.Empty<NcTaskEntry>()); }
 
         if (tasks.Count == 0)
             return ("No NC-Tasks found in the open project.", tasks);
@@ -56,7 +56,7 @@ internal sealed class NcAxesCoordinator(ITwinCatSession session)
                        "twincat_list_nc_tasks_axes) and add axes with twincat_create_axis, " +
                        "or add the extra NC-Task in TwinCAT XAE. Creating a second NC-Task " +
                        "through the AI is not supported on this build.";
-            return $"[Error] {ex.Message}";
+            return McpErrors.EnsureError(ComCall.Describe(ex));
         }
     }
 
@@ -77,7 +77,7 @@ internal sealed class NcAxesCoordinator(ITwinCatSession session)
         }
         catch (Exception ex)
         {
-            return $"[Error] {ex.Message}";
+            return McpErrors.EnsureError(ComCall.Describe(ex));
         }
     }
 
@@ -104,7 +104,7 @@ internal sealed class NcAxesCoordinator(ITwinCatSession session)
 
         string applied;
         try { applied = session.ConfigureAxis(axisPath.Trim(), fields); }
-        catch (Exception ex) { return $"[Error] {ex.Message}"; }
+        catch (Exception ex) { return McpErrors.EnsureError(ComCall.Describe(ex)); }
 
         // D-9 (issue #152): ConsumeXml returning is not proof. Re-read the axis (a fresh lookup and
         // ProduceXml in a separate call) and compare every requested field.
@@ -137,7 +137,7 @@ internal sealed class NcAxesCoordinator(ITwinCatSession session)
         }
         catch (Exception ex)
         {
-            return ($"[Error] {ex.Message}", null);
+            return (McpErrors.EnsureError(ComCall.Describe(ex)), null);
         }
     }
 }

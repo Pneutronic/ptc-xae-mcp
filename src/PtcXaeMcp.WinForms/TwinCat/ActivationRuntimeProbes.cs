@@ -65,13 +65,19 @@ internal sealed class TargetStateReader : IDisposable
 
     private readonly object _gate = new();
     private readonly string _netId;
+    private readonly int _port;
     private bool _disposed;
 
-    private TargetStateReader(string netId) => _netId = netId;
+    private TargetStateReader(string netId, int port)
+    {
+        _netId = netId;
+        _port = port;
+    }
 
     public string NetId => _netId;
 
-    public static TargetStateReader Open(string netId) => new(netId);
+    /// <summary>Reader for the system service (port 10000) or, with <paramref name="port"/>, another AMS port such as a PLC runtime.</summary>
+    public static TargetStateReader Open(string netId, int port = ActivationTarget.SystemServicePort) => new(netId, port);
 
 #if TWINCAT
     private AdsClient? _client;
@@ -86,7 +92,7 @@ internal sealed class TargetStateReader : IDisposable
                 if (_client is null)
                 {
                     var client = new AdsClient { Timeout = (int)ReadTimeout.TotalMilliseconds };
-                    client.Connect(_netId, ActivationTarget.SystemServicePort);
+                    client.Connect(_netId, _port);
                     _client = client;
                 }
                 AdsErrorCode error = _client.TryReadState(out StateInfo state);

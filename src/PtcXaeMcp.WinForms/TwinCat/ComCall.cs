@@ -191,11 +191,18 @@ internal static class ComCall
     /// Error text for an exception that reached a tool boundary. Busy exceptions that never
     /// went through <see cref="Run{T}"/> still get the blocking dialog named.
     /// </summary>
-    public static string Describe(Exception ex, Func<string?>? findBlockingDialog = null)
+    public static string Describe(
+        Exception ex, Func<string?>? findBlockingDialog = null, Func<string?>? bindingContext = null)
     {
         for (Exception? e = ex; e is not null; e = e.InnerException)
             if (e is XaeBlockedException blocked) return blocked.Message;
-        if (!IsBusy(ex)) return ex.Message;
+        if (!IsBusy(ex))
+        {
+            // A binding failure on the DTE ("… does not contain a definition for …") reads like a broken build;
+            // name the XAE host the session is attached to, the usual cause being a 32-/64-bit mismatch.
+            string? context = IsBindingFailure(ex) ? SafeProbe(bindingContext ?? HostSelection.XaeHostReport.CurrentBindingContext) : null;
+            return context is null ? ex.Message : $"{ex.Message} {context}";
+        }
         string? dialog = SafeProbe(findBlockingDialog ?? XaeModalProbe.FindBlockingDialog);
         return dialog is not null
             ? BlockedByDialogMessage(dialog, null, null) + $" ({ex.Message})"
@@ -229,6 +236,13 @@ internal static class ComCall
         return ex.Message.Contains("0x80010001", StringComparison.OrdinalIgnoreCase)
             ? "RPC_E_CALL_REJECTED"
             : "RPC_E_SERVERCALL_RETRYLATER";
+    }
+
+    private static bool IsBindingFailure(Exception ex)
+    {
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+            if (e is Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) return true;
+        return false;
     }
 
     private static string? SafeProbe(Func<string?> probe)

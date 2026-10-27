@@ -14,7 +14,10 @@ internal interface ITwinCatSession : IDisposable
     string? ActiveSolutionPath();
     TwinCatEnvironmentStatus Probe();
 
-    Task ConnectOrLaunchAsync(string? launchWithSlnPath, TimeSpan timeout, CancellationToken ct);
+    /// <param name="hostOverride">Attach to / launch exactly this XAE host instead of the one the project's
+    /// TcVersion selects; null keeps the TcVersion-based choice.</param>
+    Task ConnectOrLaunchAsync(string? launchWithSlnPath, TimeSpan timeout, CancellationToken ct,
+        HostSelection.XaeHostClass? hostOverride = null);
     /// <summary>
     /// Close the solution. With <paramref name="saveFirst"/> everything is saved explicitly first and the
     /// close does not prompt; a "save changes?" prompt the XAE still raises is answered "Speichern"

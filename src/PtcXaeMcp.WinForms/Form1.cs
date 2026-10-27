@@ -313,27 +313,26 @@ public partial class Form1 : Form
     }
 
     /// <summary>
-    /// Read-only host-selection readout for the project status,
-    /// e.g. "Host: TcXaeShell.DTE.17.0 (64-bit, TcVersion 3.1.4026.22)".
-    /// Returns null when no project context is resolvable (the status then
-    /// shows only the project).
+    /// Read-only host readout for the project status, e.g. "Host: TcXaeShell.DTE.17.0 (64-bit, TcVersion 3.1.4026.22)".
+    /// The host is the XAE that is attached (Running Object Table), not the one the TcVersion would select — a
+    /// project opened on purpose in the other bitness must not be reported as the TcVersion's host. The TcVersion
+    /// is added when the .tsproj is readable. Null when no XAE is registered (the status then shows only the project).
     /// </summary>
     private string? TryDescribeResolvedHost()
     {
         try
         {
-            var sln = _session.ActiveSolutionPath();
-            var tsproj = TwinCat.HostSelection.TsprojLocator.FindForSolution(sln);
-            if (tsproj is null)
+            var running = TwinCat.HostSelection.XaeHostReport.RunningHosts();
+            if (running.Count == 0)
                 return null;
 
-            var resolver = new TwinCat.HostSelection.XaeHostResolver();
-            if (!resolver.TryResolveFromTsprojFile(tsproj, out var host, out _))
-                return null;
+            TwinCat.HostSelection.TcVersion? tcVersion = null;
+            var tsproj = TwinCat.HostSelection.TsprojLocator.FindForSolution(_session.ActiveSolutionPath());
+            if (tsproj is not null &&
+                new TwinCat.HostSelection.XaeHostResolver().TryResolveFromTsprojFile(tsproj, out var selection, out _))
+                tcVersion = selection!.TcVersion;
 
-            var bits = host!.HostClass == TwinCat.HostSelection.XaeHostClass.Shell64
-                ? "64-bit" : "32-bit";
-            return $"Host: {host.ProgId} ({bits}, TcVersion {host.TcVersion})";
+            return TwinCat.HostSelection.XaeHostReport.StatusLine(running, tcVersion);
         }
         catch
         {

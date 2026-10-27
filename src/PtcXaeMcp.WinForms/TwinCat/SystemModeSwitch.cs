@@ -14,6 +14,9 @@ internal interface ISystemControl : IDisposable
 
     /// <summary>Sends WriteControl with the given ADS state name ("Reconfig" or "Reset"); null on success, else the error.</summary>
     string? WriteControl(string adsState);
+
+    /// <summary>ReadState of the PLC runtime on <paramref name="amsPort"/>; null when this control cannot ask.</summary>
+    TargetStateReading? ReadPlcState(int amsPort) => null;
 }
 
 /// <summary>
@@ -24,6 +27,12 @@ internal interface ISystemControl : IDisposable
 internal static class SystemModeSwitch
 {
     internal static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>First TwinCAT 3 PLC runtime (AMS port 851).</summary>
+    internal const int FirstPlcPort = 851;
+
+    /// <summary>How long the PLC runtime gets after the system reads Run to report Run too.</summary>
+    internal static readonly TimeSpan PlcStartGrace = TimeSpan.FromSeconds(15);
 
     public static string ControlFor(SystemMode mode) => mode == SystemMode.Config ? "Reconfig" : "Reset";
 
@@ -64,11 +73,36 @@ internal static class SystemModeSwitch
             last = control.ReadState();
             if (last.Error is null && string.Equals(last.State, want, StringComparison.OrdinalIgnoreCase))
                 return $"The TwinCAT system of {netId} switched from {before.State} to {want} " +
-                       $"(WriteControl {control_}, confirmed by ReadState after {elapsed().TotalSeconds:F1} s).";
+                       $"(WriteControl {control_}, confirmed by ReadState after {elapsed().TotalSeconds:F1} s)." +
+                       (mode == SystemMode.Run ? PlcNote(control, netId, elapsed, sleep) : "");
         }
         string lastText = last.Error is null ? $"state {last.State}" : $"unreachable ({last.Error})";
         return $"[Error] WriteControl({control_}) was accepted by {netId}, but the system did not read {want} " +
                $"within {timeout.TotalSeconds:F0} s (last: {lastText}).";
+    }
+
+    /// <summary>
+    /// A system in Run does not mean the PLC runs: with "Autostart Boot Project" off, or a boot project the runtime
+    /// cannot start, the system service reads Run while the PLC on port 851 stays stopped (seen on a UMR). Gives the
+    /// PLC <see cref="PlcStartGrace"/> to read Run and says so when it does not. Empty when the control cannot ask;
+    /// a PLC that never answers is noted too, since a target without a PLC project looks the same.
+    /// </summary>
+    private static string PlcNote(ISystemControl control, string netId, Func<TimeSpan> elapsed, Action<TimeSpan> sleep)
+    {
+        TargetStateReading? plc = control.ReadPlcState(FirstPlcPort);
+        if (plc is null) return "";
+
+        TimeSpan until = elapsed() + PlcStartGrace;
+        while (!plc.IsRun && elapsed() < until)
+        {
+            sleep(PollInterval);
+            plc = control.ReadPlcState(FirstPlcPort) ?? plc;
+        }
+        if (plc.IsRun) return $" The PLC runtime on port {FirstPlcPort} reads Run.";
+        return $" [Warn] The system reads Run, but the PLC runtime on port {FirstPlcPort} of {netId} reads {plc} " +
+               $"after {PlcStartGrace.TotalSeconds:F0} s. With a PLC project on the target, 'Autostart Boot Project' is " +
+               "probably off or the boot project failed to start: set it and activate again, or start the PLC " +
+               "(twincat_plc_start; ADS WriteControl Run on port 851). Without a PLC project this note can be ignored.";
     }
 }
 
@@ -77,6 +111,8 @@ internal sealed class AdsSystemControl : ISystemControl
 {
     private readonly TargetStateReader _reader;
     private readonly string _netId;
+    private TargetStateReader? _plcReader;
+    private int _plcPort;
 
     public AdsSystemControl(string netId)
     {
@@ -85,6 +121,17 @@ internal sealed class AdsSystemControl : ISystemControl
     }
 
     public TargetStateReading ReadState() => _reader.Read();
+
+    public TargetStateReading? ReadPlcState(int amsPort)
+    {
+        if (_plcReader is null || _plcPort != amsPort)
+        {
+            _plcReader?.Dispose();
+            _plcReader = TargetStateReader.Open(_netId, amsPort);
+            _plcPort = amsPort;
+        }
+        return _plcReader.Read();
+    }
 
 #if TWINCAT
     public string? WriteControl(string adsState)
@@ -103,5 +150,9 @@ internal sealed class AdsSystemControl : ISystemControl
     public string? WriteControl(string adsState) => TwinCatNotBuilt.Message;
 #endif
 
-    public void Dispose() => _reader.Dispose();
+    public void Dispose()
+    {
+        _reader.Dispose();
+        _plcReader?.Dispose();
+    }
 }

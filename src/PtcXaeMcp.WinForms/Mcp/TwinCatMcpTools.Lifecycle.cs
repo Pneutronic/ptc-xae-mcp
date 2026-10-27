@@ -6,25 +6,30 @@ namespace PtcXaeMcp.WinForms;
 
 internal sealed partial class TwinCatMcpTools
 {
+    // twincat_open_project has a parameter named host (the XAE bitness), which hides the constructor's host here.
+    private ServerHost ServerHost => host;
+
     [McpServerTool(Name = "twincat_open_project", ReadOnly = false, Destructive = true)]
     [Description("Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Takes a .sln or directly a project file (.tsproj / .tspproj / .hmiproj; a temporary .sln is generated for it). Optionally closes the currently-open solution first. " +
                  "Before the XAE loads anything, every independent project file a .tsproj references (File=\"….xti\": devices, boxes, axes, PLC projects) must exist: " +
                  "a missing one (e.g. after IO nodes were renamed outside the XAE) refuses the open with [Error] listing them, because the XAE would load a broken configuration and saving it damages the .tsproj. " +
-                 "allowMissingReferences=true opens anyway with [Warn]; save_project and close_project(saveFirst=true) then repeat the warning.")]
+                 "allowMissingReferences=true opens anyway with [Warn]; save_project and close_project(saveFirst=true) then repeat the warning. " +
+                 "The result names the XAE host the project's TcVersion selects (32-bit for builds below 4026, otherwise 64-bit) and warns when the project resolves to the 32-bit XAE although the 64-bit XAE is installed, or when the running XAE is not the selected one.")]
     public async Task<string> OpenProject(
         [Description("Absolute path to the .sln, .tsproj, .tspproj or .hmiproj file to open")] string slnPath,
         [Description("Close the currently-open solution first (no save). Default false.")] bool closeCurrentFirst = false,
         [Description("Open even when referenced .xti files are missing (the result starts with [Warn]). Default false refuses.")] bool allowMissingReferences = false,
+        [Description("XAE host: auto (default, the one the project's TcVersion selects), 64 (TcXaeShell 64-bit) or 32 (32-bit). 64 opens an older project on purpose in the 64-bit XAE; the TcVersion in the .tsproj is never rewritten. Refused when the requested XAE is not installed or an XAE of the other bitness is already running.")] string host = "auto",
         CancellationToken cancellationToken = default)
         => await bridge.Activity.TraceAsync("twincat_open_project",
-            new { slnPath, closeCurrentFirst, allowMissingReferences }, async () =>
+            new { slnPath, closeCurrentFirst, allowMissingReferences, host }, async () =>
         {
             try
             {
                 return await bridge.Dispatcher.RunAsync(
                     () => new LifecycleCoordinator(bridge.Dispatcher.Session)
-                        .OpenProjectAsync(slnPath, closeCurrentFirst, cancellationToken, allowMissingReferences),
-                    afterSuccess: () => host.RequestEnvironmentRefresh("After OpenProject"));
+                        .OpenProjectAsync(slnPath, closeCurrentFirst, cancellationToken, allowMissingReferences, host),
+                    afterSuccess: () => ServerHost.RequestEnvironmentRefresh("After OpenProject"));
             }
             catch (OperationCanceledException)
             {

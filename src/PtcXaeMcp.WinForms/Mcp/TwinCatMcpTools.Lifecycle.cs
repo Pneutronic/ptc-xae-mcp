@@ -10,7 +10,8 @@ internal sealed partial class TwinCatMcpTools
     [Description("Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Takes a .sln or directly a project file (.tsproj / .tspproj / .hmiproj; a temporary .sln is generated for it). Optionally closes the currently-open solution first. " +
                  "Before the XAE loads anything, every independent project file a .tsproj references (File=\"….xti\": devices, boxes, axes, PLC projects) must exist: " +
                  "a missing one (e.g. after IO nodes were renamed outside the XAE) refuses the open with [Error] listing them, because the XAE would load a broken configuration and saving it damages the .tsproj. " +
-                 "allowMissingReferences=true opens anyway with [Warn]; save_project and close_project(saveFirst=true) then repeat the warning.")]
+                 "allowMissingReferences=true opens anyway with [Warn]; save_project and close_project(saveFirst=true) then repeat the warning. " +
+                 "The result names the XAE host the project's TcVersion selects (32-bit for builds below 4026, otherwise 64-bit) and warns when the project resolves to the 32-bit XAE although the 64-bit XAE is installed, or when the running XAE is not the selected one.")]
     public async Task<string> OpenProject(
         [Description("Absolute path to the .sln, .tsproj, .tspproj or .hmiproj file to open")] string slnPath,
         [Description("Close the currently-open solution first (no save). Default false.")] bool closeCurrentFirst = false,

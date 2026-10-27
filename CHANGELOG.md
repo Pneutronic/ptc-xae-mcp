@@ -10,6 +10,10 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Changed
+- `twincat_open_project` names the XAE host (32-bit or 64-bit TcXaeShell) that the project's `TcVersion` selects, and warns when the project resolves to the 32-bit XAE although the 64-bit XAE is installed, or when the running XAE is not the selected one.
+- A tool that fails with a binding error on the XAE ("… does not contain a definition for …") now appends the attached XAE host and the usual cause, a solution open in an XAE of the wrong bitness. The NC tools (`twincat_list_nc_tasks_axes`, `twincat_create_nc_task`, `twincat_create_axis`, `twincat_configure_axis`, `twincat_read_axis_params`) use the same error path as the other tools.
+
 ## [2.2.0] - 2026-10-23
 
 ### Added

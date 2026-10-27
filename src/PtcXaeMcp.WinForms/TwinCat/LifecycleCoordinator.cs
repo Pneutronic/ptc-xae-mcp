@@ -1,4 +1,5 @@
 using System.Globalization;
+using PtcXaeMcp.WinForms.TwinCat.HostSelection;
 namespace PtcXaeMcp.WinForms.TwinCat;
 
 internal sealed class LifecycleCoordinator(ITwinCatSession session)
@@ -47,7 +48,27 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
         OpenedWithMissingReferences = references.Missing.Count > 0
             ? new FileReferenceMemo(slnPath, FileReferencePreflight.Describe(references.Missing))
             : null;
+
+        HostReport? hostReport = HostReportFor(slnPath);
+        if (hostReport is not null)
+        {
+            result = $"{result} {hostReport.Info}";
+            if (hostReport.Warnings.Count > 0)
+                referenceWarn = (referenceWarn is null ? "" : referenceWarn + "\n") + string.Join("\n", hostReport.Warnings);
+        }
         return referenceWarn is null ? result : $"{referenceWarn}\n{result}";
+    }
+
+    /// <summary>Resolves the TcVersion → XAE host mapping; tests pass their own resolver and probes.</summary>
+    internal XaeHostResolver HostResolver { get; init; } = new();
+    internal Func<string, bool> ExeExists { get; init; } = File.Exists;
+    internal Func<IReadOnlyList<string>> RunningHosts { get; init; } = XaeHostReport.RunningHosts;
+
+    // Best effort: the host note must never turn a successful open into a failure.
+    private HostReport? HostReportFor(string slnPath)
+    {
+        try { return XaeHostReport.ForSolution(slnPath, HostResolver, ExeExists, RunningHosts); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
     private async Task<string> OpenCheckedAsync(string slnPath, bool closeCurrentFirst, CancellationToken ct)

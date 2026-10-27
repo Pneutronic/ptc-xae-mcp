@@ -52,7 +52,7 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
         HostReport? hostReport = HostReportFor(slnPath);
         if (hostReport is not null)
         {
-            result = $"{result} {hostReport.Info}";
+            result = $"{result}{(result.EndsWith('.') ? "" : ".")} {hostReport.Info}";
             if (hostReport.Warnings.Count > 0)
                 referenceWarn = (referenceWarn is null ? "" : referenceWarn + "\n") + string.Join("\n", hostReport.Warnings);
         }

@@ -146,6 +146,7 @@ public class XaeHostReportTests
             string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None);
 
             Assert.StartsWith("Opened", result);
+            Assert.Matches(@"Active project: \S+\. Host: 64-bit", result);
             Assert.EndsWith("Host: 64-bit TcXaeShell (TcXaeShell.DTE.17.0), selected by TcVersion 3.1.4026.22.", result);
         }
         finally { Directory.Delete(dir, true); }

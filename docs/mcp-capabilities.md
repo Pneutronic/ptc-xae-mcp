@@ -1008,7 +1008,7 @@ Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Ta
 | `slnPath` | `string` |  | Absolute path to the .sln, .tsproj, .tspproj or .hmiproj file to open |
 | `closeCurrentFirst` | `bool` | `false` | Close the currently-open solution first (no save). Default false. |
 | `allowMissingReferences` | `bool` | `false` | Open even when referenced .xti files are missing (the result starts with [Warn]). Default false refuses. |
-| `xaeHost` | `string` | `"auto"` | XAE host: auto (default, the one the project's TcVersion selects), 64 (TcXaeShell 64-bit) or 32 (32-bit). 64 opens an older project on purpose in the 64-bit XAE; the TcVersion in the .tsproj is never rewritten. Refused when the requested XAE is not installed or an XAE of the other bitness is already running. |
+| `host` | `string` | `"auto"` | XAE host: auto (default, the one the project's TcVersion selects), 64 (TcXaeShell 64-bit) or 32 (32-bit). 64 opens an older project on purpose in the 64-bit XAE; the TcVersion in the .tsproj is never rewritten. Refused when the requested XAE is not installed or an XAE of the other bitness is already running. |
 
 ### `twincat_save_project`
 

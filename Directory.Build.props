@@ -18,7 +18,7 @@
          explicitly via `/DAppVersion=1.3.0` — see setup/setup.iss for the publish command)
          all report the same number. Bump this single value on release; nothing else needs
          to change. -->
-    <Version>2.2.1</Version>
+    <Version>2.3.0</Version>
 
     <!-- Display name in the exe's file properties; technical names (exe, folders) stay ptc-xae-mcp. -->
     <Product>Pneutronic XAE MCP</Product>

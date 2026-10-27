@@ -10,19 +10,19 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-27
+
 ### Added
 - `twincat_open_project` takes `host` (`auto` | `64` | `32`, default `auto`). `64` opens a project whose TcVersion selects the 32-bit XAE in the 64-bit XAE on purpose; the result says which host was chosen and why, and the TcVersion in the `.tsproj` is not rewritten. The call is refused, before anything is opened, when the requested XAE is not installed or an XAE of the other bitness is already running (the MCP never runs two XAEs).
 - After a switch to Run, `twincat_set_system_mode` and `twincat_umr_set_mode` also read the state of the PLC runtime on AMS port 851 and give it 15 s to report Run. If it does not, the result still succeeds (the system is in Run) but carries a `[Warn]` naming what the PLC reads and the usual cause (`Autostart Boot Project` off, boot project not started).
 
-### Fixed
-- `twincat_get_status` names the XAE that is actually attached instead of the one the project's TcVersion would select. A 4024 project opened on purpose in the 64-bit XAE was reported as "32-bit"; the line now says which shell runs and adds "but TcVersion selects the 32-bit XAE" when they differ.
-- `twincat_get_status` reports `XAE: Not active` once the shell has exited. It used to keep the last snapshot ("Active", the old project and host) until the next open or close.
-
-## [2.2.1] - 2026-10-27
-
 ### Changed
 - `twincat_open_project` names the XAE host (32-bit or 64-bit TcXaeShell) that the project's `TcVersion` selects, and warns when the project resolves to the 32-bit XAE although the 64-bit XAE is installed, or when the running XAE is not the selected one.
 - A tool that fails with a binding error on the XAE ("… does not contain a definition for …") now appends the attached XAE host and the usual cause, a solution open in an XAE of the wrong bitness. The NC tools (`twincat_list_nc_tasks_axes`, `twincat_create_nc_task`, `twincat_create_axis`, `twincat_configure_axis`, `twincat_read_axis_params`) use the same error path as the other tools.
+
+### Fixed
+- `twincat_get_status` names the XAE that is actually attached instead of the one the project's TcVersion would select. A 4024 project opened on purpose in the 64-bit XAE was reported as "32-bit"; the line now says which shell runs and adds "but TcVersion selects the 32-bit XAE" when they differ.
+- `twincat_get_status` reports `XAE: Not active` once the shell has exited. It used to keep the last snapshot ("Active", the old project and host) until the next open or close.
 
 ## [2.2.0] - 2026-10-23
 
@@ -249,7 +249,9 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.3.0
+[2.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.2.0
 [2.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.1.0
 [2.0.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.0.1
 [2.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.0.0

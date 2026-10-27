@@ -275,6 +275,41 @@ public class XaeHostReportTests
         finally { Directory.Delete(dir, true); }
     }
 
+    // ── twincat_get_status host line ────────────────────────────────────────
+
+    private static TcVersion Version(string text)
+    {
+        Assert.True(TcVersion.TryParse(text, out var v));
+        return v!;
+    }
+
+    [Fact]
+    public void StatusLine_NamesTheAttachedHost_NotTheOneTheTcVersionSelects()
+    {
+        // A 4024 project opened on purpose in the 64-bit XAE: the 64-bit shell is what is attached.
+        string? line = XaeHostReport.StatusLine([XaeHostResolver.ProgId64], Version("3.1.4024.55"));
+
+        Assert.Equal("Host: TcXaeShell.DTE.17.0 (64-bit, TcVersion 3.1.4024.55), but TcVersion selects the 32-bit XAE", line);
+    }
+
+    [Fact]
+    public void StatusLine_HostMatchesTcVersion_HasNoMismatchNote() =>
+        Assert.Equal("Host: TcXaeShell.DTE.17.0 (64-bit, TcVersion 3.1.4026.22)",
+            XaeHostReport.StatusLine([XaeHostResolver.ProgId64], Version("3.1.4026.22")));
+
+    [Fact]
+    public void StatusLine_WithoutReadableTcVersion_StillNamesTheHost() =>
+        Assert.Equal("Host: TcXaeShell.DTE.15.0 (32-bit)", XaeHostReport.StatusLine([XaeHostResolver.ProgId32], null));
+
+    [Fact]
+    public void StatusLine_NoXaeRegistered_IsNull_SoAnExitedShellIsNeverReportedAsHost() =>
+        Assert.Null(XaeHostReport.StatusLine([], Version("3.1.4026.22")));
+
+    [Fact]
+    public void StatusLine_BothShellsRunning_NamesBoth() =>
+        Assert.Equal("Host: TcXaeShell.DTE.17.0 (64-bit) and TcXaeShell.DTE.15.0 (32-bit)",
+            XaeHostReport.StatusLine([XaeHostResolver.ProgId64, XaeHostResolver.ProgId32], null));
+
     // ── binding failures at the tool boundary ───────────────────────────────
 
     private const string BinderMessage =

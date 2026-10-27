@@ -74,6 +74,7 @@ public sealed class ServerHostTests : IDisposable
     [Fact]
     public void GetStatus_WaitsForARequestedRefresh_SoOpenProjectThenStatusShowsTheNewProject()
     {
+        _host.XaeProcessCount = () => 1;
         _host.EnvironmentRefreshRequested += _ => Task.Run(async () =>
         {
             await Task.Delay(200);
@@ -88,11 +89,30 @@ public sealed class ServerHostTests : IDisposable
     [Fact]
     public void GetStatus_ReportsTheLastEnvironmentSnapshot()
     {
+        _host.XaeProcessCount = () => 1;
         Assert.StartsWith("XAE: Not checked yet | Project: Not checked yet | ", _host.GetStatus());
 
         _host.ReportEnvironment(new HostEnvironmentSnapshot("Active", "Demo | PLC: MainPlc"));
 
         Assert.StartsWith("XAE: Active | Project: Demo | PLC: MainPlc | ", _host.GetStatus());
+    }
+
+    [Fact]
+    public void GetStatus_AfterTheShellExited_ReportsNotActive_NotTheStaleSnapshot()
+    {
+        _host.ReportEnvironment(new HostEnvironmentSnapshot("Active", "Demo  ·  Host: TcXaeShell.DTE.15.0 (32-bit)"));
+        _host.XaeProcessCount = () => 0;
+
+        Assert.StartsWith("XAE: Not active | Project: Not available | ", _host.GetStatus());
+    }
+
+    [Fact]
+    public void GetStatus_WithAnUnknownProcessCount_KeepsTheSnapshot()
+    {
+        _host.ReportEnvironment(new HostEnvironmentSnapshot("Active", "Demo"));
+        _host.XaeProcessCount = () => null;
+
+        Assert.StartsWith("XAE: Active | Project: Demo | ", _host.GetStatus());
     }
 
     [Fact]

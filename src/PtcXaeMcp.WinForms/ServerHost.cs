@@ -113,6 +113,9 @@ internal sealed class ServerHost : IDisposable
         return hadRun;
     }
 
+    /// <summary>The number of running TcXaeShell processes; null when unknown. Tests replace it.</summary>
+    internal Func<int?> XaeProcessCount { get; set; } = XaeProcessProbe.Count;
+
     /// <summary>
     /// <c>twincat_get_status</c>. Deliberately lock-free and bounded: its one COM call
     /// (<see cref="ITwinCatSession.MultiXaeBlockReason"/>, only with more than one
@@ -125,7 +128,7 @@ internal sealed class ServerHost : IDisposable
 
         // multi-xae-robustness (issue #57): with >1 TcXaeShell, report the
         // deterministic-bind verdict or the precise ambiguity block.
-        int? xaeProcs = XaeProcessProbe.Count();
+        int? xaeProcs = XaeProcessCount();
         string xaeProcNote = xaeProcs is null ? " | ⚠ TcXaeShell process count unknown (probe failed)" : string.Empty;
         if (xaeProcs > 1)
         {
@@ -142,9 +145,22 @@ internal sealed class ServerHost : IDisposable
                 : " | ⚠ " + block.Replace("[Error] ", string.Empty);
         }
         string system = TwinCatSystemService.StatusText(TwinCatSystemService.Query());
-        var env = EnvironmentSnapshot;
+        var env = ReconcileWithProcessCount(EnvironmentSnapshot, xaeProcs);
         return $"XAE: {env.Xae} | Project: {env.Project} | {system}{xaeProcNote}";
     }
+
+    /// <summary>
+    /// The snapshot is only refreshed by the GUI probe and by open/close project, so a shell that exits or is
+    /// killed afterwards would stay "Active" with its project and host. The live process count is cheap and
+    /// authoritative for "no XAE at all": zero processes means not connected, whatever the snapshot says.
+    /// An unknown count (probe failed) keeps the snapshot.
+    /// </summary>
+    internal static HostEnvironmentSnapshot ReconcileWithProcessCount(HostEnvironmentSnapshot snapshot, int? xaeProcessCount) =>
+        xaeProcessCount == 0 && snapshot.Xae != NotActive
+            ? new HostEnvironmentSnapshot(NotActive, "Not available")
+            : snapshot;
+
+    private const string NotActive = "Not active";
 
     /// <summary>
     /// <c>twincat_apply_schema</c>: the full IO-schema pipeline. Takes the

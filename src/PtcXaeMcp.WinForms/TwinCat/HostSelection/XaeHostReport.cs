@@ -92,6 +92,35 @@ internal static class XaeHostReport
         "TcVersion (e.g. the 32-bit XAE for a 4026 project): check twincat_resolve_host, then close that XAE and " +
         "reopen the solution.";
 
+    /// <summary>
+    /// The host line of twincat_get_status: the XAE that is actually attached (its ProgID in the Running Object
+    /// Table), not the one the TcVersion would select. Null when no XAE is registered, so a shell that has exited
+    /// is never reported as the host. The TcVersion is added for context; when it selects the other bitness
+    /// the line says so.
+    /// </summary>
+    internal static string? StatusLine(IReadOnlyList<string> runningProgIds, TcVersion? tcVersion)
+    {
+        if (runningProgIds.Count == 0) return null;
+
+        string hosts = string.Join(" and ", runningProgIds.Select(p => $"{p} ({Bits(p)}{VersionNote(tcVersion)})"));
+        XaeHostClass? selected = tcVersion?.Classify();
+        if (selected is { } cls && runningProgIds.Count == 1 && !runningProgIds.Contains(ProgIdOf(cls), StringComparer.OrdinalIgnoreCase))
+            hosts += $", but TcVersion selects the {Bits(ProgIdOf(cls))} XAE";
+        return $"Host: {hosts}";
+    }
+
+    private static string VersionNote(TcVersion? tcVersion) => tcVersion is null ? "" : $", TcVersion {tcVersion}";
+
+    private static string ProgIdOf(XaeHostClass hostClass) =>
+        hostClass == XaeHostClass.Shell64 ? XaeHostResolver.ProgId64 : XaeHostResolver.ProgId32;
+
+    private static string Bits(string progId) => progId switch
+    {
+        XaeHostResolver.ProgId64 => "64-bit",
+        XaeHostResolver.ProgId32 => "32-bit",
+        _ => "unknown bitness",
+    };
+
     /// <summary>The XAE hosts currently registered in the Running Object Table.</summary>
     internal static IReadOnlyList<string> RunningHosts() =>
         new[] { XaeHostResolver.ProgId64, XaeHostResolver.ProgId32 }

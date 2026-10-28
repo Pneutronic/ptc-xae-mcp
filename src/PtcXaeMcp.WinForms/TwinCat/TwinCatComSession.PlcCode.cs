@@ -10,7 +10,9 @@ internal sealed partial class TwinCatComSession
     //     its descendants are folders (601), POUs (602/603/604), DUTs (605), and
     //     GVLs (615). We walk it for ListPous.
     //   * `LookupTreeItem` on the SystemManager resolves a "^Plc^POUs^MAIN"-style
-    //     path back to the same item. ReadPou / ReadGvl / write-path use that.
+    //     path back to the same item. ReadPou / ReadGvl / write-path use that through
+    //     LookupTreeItemWithFallback, which walks the tree instead when the PLC is a
+    //     referenced stand-alone project (the direct lookup crashes the XAE there).
     //
     // The 0x98510008 recursive-XML retry on the write path lands in a later
     // sub-tool.

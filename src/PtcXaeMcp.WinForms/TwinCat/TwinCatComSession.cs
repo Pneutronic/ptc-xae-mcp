@@ -160,8 +160,20 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
     // the parent's Child(i) collection looking for a case-insensitive Name match.
     // As a final fallback, resolves TIPC/TIID paths by node type so paths remain
     // valid regardless of PLC project name or EtherCAT master name.
+    //
+    // One exception (PR #9): a path below a PLC instance whose PLC is a REFERENCED stand-alone
+    // project (.tspproj) is never looked up directly. There LookupTreeItem("TIPC^<plc>^<project>^...")
+    // hangs for tens of seconds, answers "not found" and then crashes the XAE (0xc0000005 in
+    // TwinCAT System Manager.x64.dll; live on TC 3.1.4026.27). Such a PLC is recognised by its
+    // instance node having no NestedProject (the project tree lives in the stand-alone project's
+    // own System Manager); the Child(i) walk from TIPC then resolves the node. An inline PLC
+    // (NestedProject present: every fixture and most projects) keeps the single direct lookup,
+    // so the per-level enumeration is not paid where it is not needed.
     private static dynamic? LookupTreeItemWithFallback(object sysMan, string path)
     {
+        if (ShouldWalkPlcPath(path, plcInstance => HasNestedProject(sysMan, plcInstance)))
+            return ResolveByNodeType(sysMan, path);
+
         var direct = LookupTreeItemOrNull(sysMan, path);
         if (direct is not null) return direct;
 
@@ -188,6 +200,45 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
         }
 
         return ResolveByNodeType(sysMan, path);
+    }
+
+    /// <summary>
+    /// True for a path with three or more segments under TIPC ("TIPC^&lt;plc&gt;^&lt;project&gt;…").
+    /// "TIPC" and "TIPC^&lt;plc&gt;" are safe to look up directly; everything below may live in a
+    /// referenced stand-alone PLC project, which a direct lookup crashes. Pure; unit-tested.
+    /// </summary>
+    internal static bool IsBelowPlcInstance(string path)
+    {
+        string[] segs = path.Split('^');
+        return segs.Length >= 3 && string.Equals(segs[0], "TIPC", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="path"/> must be walked instead of looked up: it lies below a PLC
+    /// instance (<see cref="IsBelowPlcInstance"/>) AND that instance is a referenced stand-alone
+    /// project. <paramref name="hasNestedProject"/> answers for the instance name (segment 2):
+    /// <c>true</c> = inline PLC (direct lookup is safe and cheapest), <c>false</c> = referenced
+    /// (walk), <c>null</c> = no such instance under TIPC (nothing to protect; the normal lookup
+    /// and its fallbacks decide). Pure apart from that one callback; unit-tested.
+    /// </summary>
+    internal static bool ShouldWalkPlcPath(string path, Func<string, bool?> hasNestedProject)
+    {
+        if (!IsBelowPlcInstance(path)) return false;
+        string plcInstance = path.Split('^')[1];
+        if (plcInstance.Length == 0) return false;
+        return hasNestedProject(plcInstance) == false;
+    }
+
+    /// <summary>
+    /// <c>TIPC^&lt;plcInstance&gt;</c> (two segments: safe to look up even for a referenced PLC)
+    /// and its <c>NestedProject</c>: <c>true</c>/<c>false</c> for present/absent, <c>null</c> when
+    /// the instance is not found. Two COM reads, no enumeration.
+    /// </summary>
+    private static bool? HasNestedProject(object sysMan, string plcInstance)
+    {
+        dynamic? instance = LookupTreeItemOrNull(sysMan, "TIPC^" + plcInstance);
+        if (instance is null) return null;
+        return ComCall.ReadProp<object?>(() => instance.NestedProject, null) is not null;
     }
 
     // Type-based resolution for TIPC^... and TIID^... paths.
@@ -257,6 +308,7 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
             if (segs.Length == 2) return plcInstance;
 
             List<object> roots = Children(plcInstance);
+            AddNestedProject(plcInstance, roots);
             foreach (int c in FallbackCandidates(NamesOf(roots), segs[2]))
             {
                 dynamic projRoot = roots[c];
@@ -267,6 +319,19 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
             }
         }
         return null;
+    }
+
+    // The PLC project root is the instance's NestedProject (the node twincat_plc_list walks), not
+    // always a Child(i) of the instance. With a referenced stand-alone PLC project (.tspproj) the
+    // instance under the main System Manager has only the "<plc> Instance" child and no NestedProject;
+    // the project tree hangs under the stand-alone project's own System Manager, which
+    // FindPlcSourceProjectNode finds by scanning every solution project (live, TC 3.1.4026.27).
+    private static void AddNestedProject(dynamic plcInstance, List<object> roots)
+    {
+        object? nested = ComCall.ReadProp<object?>(() => plcInstance.NestedProject, null)
+            ?? FindPlcSourceProjectNode(GetActiveTcDte(), NameOf(plcInstance));
+        if (nested is null) return;
+        if (!NamesOf(roots).Contains(NameOf(nested), StringComparer.OrdinalIgnoreCase)) roots.Add(nested);
     }
 
     // TIID^{MasterName}^segs[2..]
@@ -307,7 +372,7 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
         return current;
     }
 
-    private static dynamic? FindPlcSourceProjectNode(dynamic dte)
+    private static dynamic? FindPlcSourceProjectNode(dynamic dte, string? plcInstanceName = null)
     {
         // On TC3 4026.22 the PLC source-project node (ItemType 600, implements
         // ITcPlcLibraryManager) is NOT reachable through dte.Solution.Projects →
@@ -338,6 +403,8 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
 
             foreach (object plcNode in Children(tipc))
             {
+                if (plcInstanceName is not null
+                    && !string.Equals(NameOf(plcNode), plcInstanceName, StringComparison.OrdinalIgnoreCase)) continue;
                 object? nested = ComCall.ReadProp<object?>(() => ((dynamic)plcNode).NestedProject, null);
                 if (nested is null) continue;
 

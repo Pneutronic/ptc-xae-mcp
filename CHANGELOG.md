@@ -10,12 +10,25 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-10-28
+
 ### Added
 - Opt-in update check in the host window: *Menu → Check for updates…* and, in *Settings…*, *Check for a new release at start* (off by default, `checkForUpdates` in `ui.json`). It sends one `HEAD` request to the GitHub latest-release URL, compares the version in the redirect and reports the result in the run log, the header and the menu (which then opens the release page). Nothing is downloaded or installed, and there is no MCP tool for it. Administrators switch it off for the machine with the policy `HKLM\SOFTWARE\Policies\Pneutronic\ptc-xae-mcp\DisableUpdateCheck=1`; `PTC_XAE_MCP_UPDATE_CHECK=0` does the same for one process. See SECURITY.md, "Update check (opt-in)".
 - `setup\build-winget-manifest.ps1` writes the three winget manifests (`Pneutronic.XaeMcp`) for the installer and `.sha256` built by `build-installer.ps1`, ready for a pull request to microsoft/winget-pkgs. Once published, `winget install Pneutronic.XaeMcp` and `winget upgrade Pneutronic.XaeMcp` install and update the app with the hash check done by winget.
 
 ### Changed
 - README, "No telemetry": the update check is the one documented, opt-in exception to "no network connections of its own".
+
+### Fixed
+- The PLC element tools (`twincat_plc_read`, `_write`, `_create`, `_delete`, `_rename`), the POU member tools
+  and the editor tools that open an element no longer crash the XAE when the PLC is a referenced stand-alone
+  project (`.tspproj`). For such a PLC (its instance node has no `NestedProject`) a path below the instance
+  (`TIPC^<plc>^<project>^...`) is walked child by child from `TIPC`, the way `twincat_plc_list` enumerates,
+  with the project root taken from the stand-alone project's own System Manager, instead of being passed to
+  `LookupTreeItem`, which hung for tens of seconds, answered "PLC tree path not found" and then took
+  TcXaeShell.exe down with 0xc0000005 in `TwinCAT System Manager.x64.dll`. An inline PLC keeps the single
+  direct lookup, so nothing changes there. Reported and analysed in #9 (GLTR94). The library tools still look
+  the `References` node up directly and keep the crash on a referenced project.
 
 ## [2.3.0] - 2026-10-27
 
@@ -256,7 +269,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.4.0
 [2.3.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.3.0
 [2.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.2.0
 [2.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.1.0

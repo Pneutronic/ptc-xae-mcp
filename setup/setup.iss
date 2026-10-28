@@ -21,7 +21,7 @@
 ;   dotnet msbuild Directory.Build.props -getProperty:Version
 ; so it never drifts from the assembly.) Compiling without /DAppVersion falls
 ; back to the DefaultAppVersion below and still works from the IDE.
-#define DefaultAppVersion "2.3.0"
+#define DefaultAppVersion "2.4.0"
 #ifndef AppVersion
   #define AppVersion DefaultAppVersion
 #endif

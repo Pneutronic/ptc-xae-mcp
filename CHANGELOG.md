@@ -20,12 +20,13 @@ pull-request numbers refer to those.
 ### Fixed
 - The PLC element tools (`twincat_plc_read`, `_write`, `_create`, `_delete`, `_rename`), the POU member tools
   and the editor tools that open an element no longer crash the XAE when the PLC is a referenced stand-alone
-  project (`.tspproj`). A path below the PLC instance (`TIPC^<plc>^<project>^...`) is now walked child by child
-  from `TIPC`, the way `twincat_plc_list` enumerates (the project root comes from the instance's `NestedProject`,
-  found in the stand-alone project's own System Manager when the main one has none), instead of being passed to
-  `LookupTreeItem`, which hung
-  for tens of seconds, answered "PLC tree path not found" and then took TcXaeShell.exe down with 0xc0000005 in
-  `TwinCAT System Manager.x64.dll`.
+  project (`.tspproj`). For such a PLC (its instance node has no `NestedProject`) a path below the instance
+  (`TIPC^<plc>^<project>^...`) is walked child by child from `TIPC`, the way `twincat_plc_list` enumerates,
+  with the project root taken from the stand-alone project's own System Manager, instead of being passed to
+  `LookupTreeItem`, which hung for tens of seconds, answered "PLC tree path not found" and then took
+  TcXaeShell.exe down with 0xc0000005 in `TwinCAT System Manager.x64.dll`. An inline PLC keeps the single
+  direct lookup, so nothing changes there. Reported and analysed in #9 (GLTR94). The library tools still look
+  the `References` node up directly and keep the crash on a referenced project.
 
 ## [2.3.0] - 2026-10-27
 

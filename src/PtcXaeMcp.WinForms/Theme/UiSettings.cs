@@ -9,7 +9,7 @@ internal sealed record WindowPlacement(int X, int Y, int Width, int Height, bool
 
 /// <summary>
 /// The GUI settings file <c>%APPDATA%\ptc-xae-mcp\ui.json</c> (issue #273):
-/// <c>{ "theme": "dark", "rememberWindowPosition": true,
+/// <c>{ "theme": "dark", "rememberWindowPosition": true, "checkForUpdates": false,
 /// "window": { "x":…, "y":…, "width":…, "height":…, "maximized":false } }</c>.
 /// Backward compatible: an old file with only <c>theme</c> loads with the defaults for the rest;
 /// a missing, empty or corrupt file yields the defaults. Unknown keys are ignored.
@@ -21,6 +21,9 @@ internal sealed class UiSettings
     public bool RememberWindowPosition { get; set; } = true;
 
     public WindowPlacement? Window { get; set; }
+
+    /// <summary>Opt-in: ask github.com for the latest release at start (<c>checkForUpdates</c>, default off).</summary>
+    public bool CheckForUpdates { get; set; }
 
     public static UiSettings Parse(string? json)
     {
@@ -38,6 +41,10 @@ internal sealed class UiSettings
             if (root.TryGetProperty("rememberWindowPosition", out var r)
                 && r.ValueKind is JsonValueKind.True or JsonValueKind.False)
                 s.RememberWindowPosition = r.GetBoolean();
+
+            if (root.TryGetProperty("checkForUpdates", out var u)
+                && u.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                s.CheckForUpdates = u.GetBoolean();
 
             if (root.TryGetProperty("window", out var w) && w.ValueKind == JsonValueKind.Object
                 && TryInt(w, "x", out int x) && TryInt(w, "y", out int y)
@@ -67,6 +74,7 @@ internal sealed class UiSettings
         {
             ["theme"] = DarkTheme ? "dark" : "light",
             ["rememberWindowPosition"] = RememberWindowPosition,
+            ["checkForUpdates"] = CheckForUpdates,
         };
         if (Window is { } w)
             root["window"] = new JsonObject

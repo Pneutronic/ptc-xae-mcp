@@ -119,6 +119,41 @@ handler and a `NativeLibrary` DllImport resolver). See
 `THIRD-PARTY-NOTICES.md` for why, and the "Needs live verification"
 section below for what a live run must confirm.
 
+## Update check (opt-in)
+
+The app has **no self-update**: it never downloads, verifies or runs an
+installer. What it can do, and only when a person asks for it, is find out
+whether a newer release exists (`Updates/UpdateCheck.cs`):
+
+- **Trigger.** *Menu → Check for updates…*, or at start when the box
+  *Check for a new release at start* in *Settings…* is on. That box is
+  **off by default** (`checkForUpdates` in `%APPDATA%\ptc-xae-mcp\ui.json`).
+  There is deliberately **no MCP tool** for it, so an AI client (or a prompt
+  injected through project content) can never trigger a request or steer a
+  person towards a download.
+- **The request.** One `HEAD https://github.com/Pneutronic/ptc-xae-mcp/releases/latest`
+  without following the redirect; the version is read from the `Location`
+  header (`…/releases/tag/v2.3.0`). No GitHub API, no token, no cookies.
+  The only data sent is the `User-Agent` (`ptc-xae-mcp/<version>`) and,
+  inevitably, the machine's IP address to github.com. 5 s timeout, off the
+  UI thread, failure is a log line and never a dialog at start.
+- **The result.** A line in the run log, a note in the header and the menu
+  item renamed to *Update available: x.y.z…*, which opens the release page in
+  the browser. Installing remains the manual, administrator-driven step
+  described in the README (download, check the `.sha256`, run the installer)
+  or `winget upgrade`.
+- **Switching it off for everyone.** Administrators set the machine policy
+  `HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Pneutronic\ptc-xae-mcp\DisableUpdateCheck`
+  (DWORD) to `1`: the box is then disabled and unchecked, the menu item is
+  disabled and no request is ever sent, whatever `ui.json` says. The value is
+  read once at start. For a single process (scripts, CI, kiosk accounts) the
+  environment variable `PTC_XAE_MCP_UPDATE_CHECK=0` does the same. The Settings
+  dialog shows which of the three is in effect.
+- **What it does not protect against.** The check only tells you a version
+  number. It does not authenticate the release (the installer is not
+  code-signed; see the README), and a newer version is not a reason to
+  interrupt a commissioning session: the app never restarts itself.
+
 ## Needs live verification (not exercised in this sandbox)
 
 This hardening was implemented and unit-tested (`LocalhostGuardTests`,

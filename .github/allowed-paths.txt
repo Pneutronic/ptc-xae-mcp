@@ -88,6 +88,7 @@ tests/Fixtures/**/*.woff2
 
 # Installer
 setup/build-installer.ps1
+setup/build-winget-manifest.ps1
 setup/setup.iss
 
 # Maintainer tools for the product

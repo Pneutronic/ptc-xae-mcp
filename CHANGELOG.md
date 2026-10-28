@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-10-28
+
 ### Added
 - Opt-in update check in the host window: *Menu → Check for updates…* and, in *Settings…*, *Check for a new release at start* (off by default, `checkForUpdates` in `ui.json`). It sends one `HEAD` request to the GitHub latest-release URL, compares the version in the redirect and reports the result in the run log, the header and the menu (which then opens the release page). Nothing is downloaded or installed, and there is no MCP tool for it. Administrators switch it off for the machine with the policy `HKLM\SOFTWARE\Policies\Pneutronic\ptc-xae-mcp\DisableUpdateCheck=1`; `PTC_XAE_MCP_UPDATE_CHECK=0` does the same for one process. See SECURITY.md, "Update check (opt-in)".
 - `setup\build-winget-manifest.ps1` writes the three winget manifests (`Pneutronic.XaeMcp`) for the installer and `.sha256` built by `build-installer.ps1`, ready for a pull request to microsoft/winget-pkgs. Once published, `winget install Pneutronic.XaeMcp` and `winget upgrade Pneutronic.XaeMcp` install and update the app with the hash check done by winget.
@@ -267,7 +269,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.4.0
 [2.3.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.3.0
 [2.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.2.0
 [2.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.1.0

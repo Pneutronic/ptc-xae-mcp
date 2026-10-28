@@ -33,6 +33,25 @@ Get-Content .\ptc-xae-mcp-setup-<version>.exe.sha256
 
 Both lines must show the same hash. To build from source instead, see [Build](#build).
 
+**Staying current.** The app never updates itself and never downloads anything. Two ways to
+learn about a new release:
+
+- *Menu → Check for updates…* in the host window, or the opt-in *Check for a new release at
+  start* box in *Settings…* (off by default). Both send one `HEAD` request to
+  `github.com/Pneutronic/ptc-xae-mcp/releases/latest` and compare the version in the redirect;
+  the result is a line in the run log and a link to the release page. Details and the
+  administrator switch-off in [SECURITY.md](SECURITY.md#update-check-opt-in).
+- `winget` (Windows Package Manager), once the manifest is published to
+  [winget-pkgs](https://github.com/microsoft/winget-pkgs):
+
+  ```powershell
+  winget install Pneutronic.XaeMcp
+  winget upgrade Pneutronic.XaeMcp
+  ```
+
+  winget verifies the installer against the SHA-256 in the manifest, so the manual hash check
+  above is done for you. This is also the path for a managed rollout (Intune, `winget upgrade --all`).
+
 > **Independent project.** Pneutronic XAE MCP is developed and maintained by
 > Pneutronic AG, an official Beckhoff Solution Provider. The software itself is
 > **not a Beckhoff product**: it is not endorsed, certified or supported by
@@ -119,8 +138,8 @@ TwinCAT is operated through the MCP client. It has a header and three views:
 - **Header** — XAE, project and MCP status (port and connected clients), **Stop**
   (cancels the running schema apply, like `twincat_stop`) and a **Menu**: refresh
   status, *Open sample project*, *Connect a client…*, *Settings…*, the recovery
-  actions *Close XAE instance* and *Dismiss security dialog*, the log folder and the
-  light/dark theme.
+  actions *Close XAE instance* and *Dismiss security dialog*, the log folder, the
+  light/dark theme and *Check for updates…* (see [Download](#download)).
 - **Activity** — every tool call with arguments, result and duration, an HTML report,
   and *Run again in Console* for a selected call.
 - **Approvals** — every human approval in one place: IBN Live (arming happens only
@@ -196,10 +215,14 @@ authentication model beyond that token. Full threat model and details:
 [SECURITY.md](SECURITY.md).
 
 **No telemetry.** The server makes no network connections of its own: no
-usage statistics, no update check, no license check, nothing is sent to
-Pneutronic or anyone else. The only outbound traffic is ADS to the TwinCAT
-targets you address through the tools (and, when you configure it, the
-ADS-over-MQTT broker of your TwinCAT router). Logs stay in
+usage statistics, no license check, nothing is sent to Pneutronic or anyone
+else. The only outbound traffic is ADS to the TwinCAT targets you address
+through the tools (and, when you configure it, the ADS-over-MQTT broker of
+your TwinCAT router). The one exception is the **update check**, which is off
+by default and only ever runs when you switch it on in *Settings…* or click
+*Menu → Check for updates…*; it sends a single request to github.com with the
+product name and version and downloads nothing (see
+[SECURITY.md](SECURITY.md#update-check-opt-in)). Logs stay in
 `%LOCALAPPDATA%\ptc-xae-mcp\` on your machine.
 
 ## Logs

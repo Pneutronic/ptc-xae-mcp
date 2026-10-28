@@ -1,19 +1,25 @@
 using PtcXaeMcp.WinForms.Theme;
+using PtcXaeMcp.WinForms.Updates;
 
 namespace PtcXaeMcp.WinForms.Dialogs;
 
 /// <summary>
-/// "Settings…" (issue #273). Editable: theme and "remember window position" (saved in ui.json by
-/// the caller on OK). Read-only: the environment-driven server settings with the variable that
+/// "Settings…" (issue #273). Editable: theme, "remember window position" and the update-check
+/// opt-in (saved in ui.json by the caller on OK). Read-only: the environment-driven server settings with the variable that
 /// sets each one (<see cref="SettingsInfo"/>).
 /// </summary>
 internal sealed class SettingsDialog : Form
 {
     private readonly ComboBox _cmbTheme = new();
     private readonly CheckBox _chkRemember = new();
+    private readonly CheckBox _chkUpdates = new();
 
     /// <param name="diagnosticsEnabled">The running server's state (McpBridge.DiagnosticsEnabled).</param>
-    public SettingsDialog(int port, bool darkTheme, bool rememberWindowPosition, bool diagnosticsEnabled)
+    /// <param name="checkForUpdates">The ui.json opt-in for the update check at start.</param>
+    /// <param name="updateCheckLocked">True when the machine policy or <see cref="UpdateCheck.EnvVar"/>
+    /// forbids the check: the box is shown unchecked and disabled, so nobody can opt in here.</param>
+    public SettingsDialog(int port, bool darkTheme, bool rememberWindowPosition, bool diagnosticsEnabled,
+        bool checkForUpdates = false, bool updateCheckLocked = false)
     {
         Text = "Settings";
         FormBorderStyle = FormBorderStyle.Sizable;
@@ -46,6 +52,14 @@ internal sealed class SettingsDialog : Form
         layout.Controls.Add(new Label { Text = string.Empty, AutoSize = true }, 0, 1);
         layout.Controls.Add(_chkRemember, 1, 1);
 
+        _chkUpdates.Text = "Check for a new release at start (one request to github.com, nothing is downloaded)";
+        _chkUpdates.Checked = checkForUpdates && !updateCheckLocked;
+        _chkUpdates.Enabled = !updateCheckLocked;
+        _chkUpdates.AutoSize = true;
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.Controls.Add(new Label { Text = string.Empty, AutoSize = true }, 0, 2);
+        layout.Controls.Add(_chkUpdates, 1, 2);
+
         var caption = new Label
         {
             Text = "Server settings (read-only). They are read once at start: set the environment variable, then restart the app.",
@@ -54,12 +68,13 @@ internal sealed class SettingsDialog : Form
             Margin = new Padding(0, 16, 0, 6),
         };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(caption, 0, 2);
+        layout.Controls.Add(caption, 0, 3);
         layout.SetColumnSpan(caption, 2);
 
-        var grid = BuildGrid(SettingsInfo.Rows(port, diagnosticsEnabled, Environment.GetEnvironmentVariable));
+        var grid = BuildGrid(SettingsInfo.Rows(port, diagnosticsEnabled, Environment.GetEnvironmentVariable,
+            UpdateCheck.DescribeState(checkForUpdates, UpdateCheck.IsDisabledByPolicy(), Environment.GetEnvironmentVariable)));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(grid, 0, 3);
+        layout.Controls.Add(grid, 0, 4);
         layout.SetColumnSpan(grid, 2);
 
         var buttons = new FlowLayoutPanel
@@ -74,7 +89,7 @@ internal sealed class SettingsDialog : Form
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(ok);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(buttons, 0, 4);
+        layout.Controls.Add(buttons, 0, 5);
         layout.SetColumnSpan(buttons, 2);
         AcceptButton = ok;
         CancelButton = cancel;
@@ -86,6 +101,8 @@ internal sealed class SettingsDialog : Form
     public bool DarkTheme => _cmbTheme.SelectedIndex == 1;
 
     public bool RememberWindowPosition => _chkRemember.Checked;
+
+    public bool CheckForUpdates => _chkUpdates.Checked;
 
     private static void AddRow(TableLayoutPanel layout, int row, string label, Control editor)
     {

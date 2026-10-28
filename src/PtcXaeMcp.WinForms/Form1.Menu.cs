@@ -2,6 +2,7 @@ using PtcXaeMcp.WinForms.Dialogs;
 using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.TwinCat;
+using PtcXaeMcp.WinForms.Updates;
 
 namespace PtcXaeMcp.WinForms;
 
@@ -14,6 +15,13 @@ public partial class Form1
     private readonly ToolStripMenuItem _mnuConnectClient = new() { Name = "_mnuConnectClient", Text = "Connect a client…" };
     private readonly ToolStripMenuItem _mnuSettings = new() { Name = "_mnuSettings", Text = "Settings…" };
     private readonly ToolStripMenuItem _mnuWebsite = new() { Name = "_mnuWebsite", Text = "pneutronic.ch" };
+    private readonly ToolStripMenuItem _mnuCheckUpdates = new() { Name = "_mnuCheckUpdates", Text = "Check for updates…" };
+
+    /// <summary>Read once at start: HKLM, so only an administrator changes it (then restart the app).</summary>
+    private readonly bool _updateCheckDisabledByPolicy = UpdateCheck.IsDisabledByPolicy();
+
+    /// <summary>The result of the last check, so a found release stays one click away in the menu.</summary>
+    private UpdateCheckOutcome? _lastUpdateCheck;
 
     /// <summary>The one GUI-side runner on the shared dispatcher lock (also handed to ApprovalsView).</summary>
     private GuiComDispatchRunner _guiDispatch = null!;
@@ -41,6 +49,7 @@ public partial class Form1
             _mnuOpenLogFolder,
             _mnuToggleTheme,
             new ToolStripSeparator(),
+            _mnuCheckUpdates,
             _mnuWebsite,
         });
 
@@ -52,6 +61,17 @@ public partial class Form1
         };
         _mnuSettings.Click += (_, _) => ShowSettingsDialog();
         _mnuWebsite.Click += (_, _) => OpenWebsite();
+        _mnuCheckUpdates.Click += async (_, _) => await CheckForUpdatesFromGuiAsync(interactive: true);
+        // A machine policy or the environment variable forbids the check for every path, the menu too.
+        _mnuCheckUpdates.Enabled = !UpdateCheckLocked;
+        // The opt-in check at start: after Load (the server is up by then), off the UI thread,
+        // and never a dialog: the result goes to the run log, the run-state note and the menu text.
+        Load += async (_, _) =>
+        {
+            if (UpdateCheck.IsEnabled(ThemeManager.Settings.CheckForUpdates, _updateCheckDisabledByPolicy,
+                    Environment.GetEnvironmentVariable))
+                await CheckForUpdatesFromGuiAsync(interactive: false);
+        };
 
         // After WinForms' auto-scaling (which runs on load): bounds set in the constructor would
         // be scaled again, and the designer size shrank to ~750 px at 96 DPI.
@@ -64,15 +84,88 @@ public partial class Form1
     {
         var settings = ThemeManager.Settings;
         using var dialog = new SettingsDialog(McpBridge.Port, ThemeManager.Current == ThemeMode.Dark,
-            settings.RememberWindowPosition, _diagnosticsEnabled);
+            settings.RememberWindowPosition, _diagnosticsEnabled, settings.CheckForUpdates, UpdateCheckLocked);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
         settings.RememberWindowPosition = dialog.RememberWindowPosition;
+        if (!UpdateCheckLocked)
+            settings.CheckForUpdates = dialog.CheckForUpdates;
         var mode = dialog.DarkTheme ? ThemeMode.Dark : ThemeMode.Light;
         if (mode != ThemeManager.Current)
             ThemeManager.Set(mode); // saves ui.json, including RememberWindowPosition
         else
             ThemeManager.Save();
+    }
+
+    private bool UpdateCheckLocked =>
+        _updateCheckDisabledByPolicy || UpdateCheck.IsDisabledByEnvironment(Environment.GetEnvironmentVariable);
+
+    /// <summary>
+    /// Runs the update check (see <see cref="UpdateCheck"/>): one HEAD request to github.com, no
+    /// download. The outcome is logged and shown in the run-state note; the menu item then names
+    /// the newer release and opens its page. Interactive (menu) also shows a message box and
+    /// offers to open the release page. Never throws, never blocks the UI thread.
+    /// </summary>
+    private async Task CheckForUpdatesFromGuiAsync(bool interactive)
+    {
+        if (UpdateCheckLocked) return;
+        if (_lastUpdateCheck is { Kind: UpdateCheckKind.UpdateAvailable } found && interactive)
+        {
+            // Already known: the menu item is the link to the release page.
+            OpenUrl(found.Url);
+            return;
+        }
+
+        _mnuCheckUpdates.Enabled = false;
+        if (interactive) ShowTransientRunState("Checking github.com for a newer release...");
+        UpdateCheckOutcome outcome;
+        try
+        {
+            outcome = await Task.Run(() => UpdateCheck.RunAsync(McpBridge.ThisAssemblyVersion()));
+        }
+        finally
+        {
+            _mnuCheckUpdates.Enabled = true;
+        }
+        if (IsDisposed) return;
+
+        _lastUpdateCheck = outcome;
+        AppendLog(outcome.Message);
+        if (outcome.Kind == UpdateCheckKind.UpdateAvailable && outcome.Latest is { } latest)
+        {
+            _mnuCheckUpdates.Text = $"Update available: {latest.ToString(3)}…";
+            ShowTransientRunState($"Update available: {latest.ToString(3)} (Menu > Update available).");
+        }
+        else if (interactive)
+        {
+            ShowTransientRunState(outcome.Kind == UpdateCheckKind.UpToDate ? "Up to date." : "Update check failed; see the run log.");
+        }
+
+        if (!interactive) return;
+        if (outcome.Kind == UpdateCheckKind.UpdateAvailable)
+        {
+            if (MessageBox.Show(this, outcome.Message + "\n\nOpen the release page? Nothing is downloaded by this app.",
+                    "Check for updates", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                OpenUrl(outcome.Url);
+        }
+        else
+        {
+            MessageBox.Show(this, outcome.Message, "Check for updates", MessageBoxButtons.OK,
+                outcome.Kind == UpdateCheckKind.UpToDate ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+        }
+    }
+
+    /// <summary>Opens an https URL in the default browser; a failure is a message, never an exception.</summary>
+    private void OpenUrl(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            MessageBox.Show(this, $"Could not open {url}:\n{ex.Message}", "Open link", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     /// <summary>

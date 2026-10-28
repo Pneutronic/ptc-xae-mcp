@@ -20,6 +20,16 @@ internal sealed partial class FakeTwinCatSession
             : throw new InvalidOperationException($"Tree path not found: {treePath}");
     }
 
+    public EtherCatStartupResult FakeEtherCatStartupResult { get; set; } = new([], 0);
+    public Exception? ReadEtherCatStartupThrows { get; set; }
+
+    public EtherCatStartupResult ReadEtherCatStartup(string? treePath, bool includeFixed, string? protocol)
+    {
+        CallLog.Add($"ReadEtherCatStartup({treePath},{includeFixed},{protocol})");
+        if (ReadEtherCatStartupThrows is not null) throw ReadEtherCatStartupThrows;
+        return FakeEtherCatStartupResult;
+    }
+
     public CoeStartupList ReadCoeStartup(string treePath)
     {
         CallLog.Add($"ReadCoeStartup({treePath})");

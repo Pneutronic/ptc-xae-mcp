@@ -128,6 +128,12 @@ internal interface ITwinCatSession : IDisposable
     /// Read-only.
     /// </summary>
     CoeStartupList ReadCoeStartup(string treePath);
+    /// <summary>
+    /// The complete Startup list (CoE, SoE, EoE, FoE, including the fixed entries) of the EtherCAT box at
+    /// <paramref name="treePath"/>, or of every box below every EtherCAT master when it is null (then only boxes with at
+    /// least one entry after the filters). <paramref name="protocol"/> is a normalized protocol name or null. Read-only.
+    /// </summary>
+    EtherCatStartupResult ReadEtherCatStartup(string? treePath, bool includeFixed, string? protocol);
 
     // ---- ethercat-topology-edit ----
     /// <summary>

@@ -10,6 +10,15 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_read_ethercat_startup` (read-only, offline): the complete Startup list of EtherCAT boxes as the
+  Startup tab shows it — CoE, SoE, EoE and FoE mailbox commands, both the entries TwinCAT generates (fixed, in
+  angle brackets in the tab) and the projected ones. `twincat_read_coe_startup` sees only CoE and reports 0
+  entries for a SoE drive (Rexroth IndraDrive, Beckhoff AX5000). SoE entries come decoded: IDN in `S-0-0015` /
+  `P-0-3231` notation, DriveNo, element, value (2/4/8 data bytes), SoE list header and the IDNs of the AT/MDT
+  lists; EoE adds the virtual port (MAC, IP, subnet, gateway, DNS). Without `treePath` every box below every
+  EtherCAT master is read and only boxes with entries are listed; `includeFixed` and `protocol` filter.
+
 ### Fixed
 - No XAE crash from the remaining tree lookups on a referenced stand-alone PLC project (`.tspproj`), the
   follow-up to 2.4.0 (#14). Every lookup of a path below such a PLC (`TIPC^<plc>^<project>^...`) on the main

@@ -149,6 +149,7 @@ public partial class McpServerTests
         // coe-registers
         Assert.Contains("twincat_read_coe_dictionary", names);
         Assert.Contains("twincat_read_coe_startup", names);
+        Assert.Contains("twincat_read_ethercat_startup", names);
 
         // safety
         Assert.Contains("twincat_safety_recon", names);

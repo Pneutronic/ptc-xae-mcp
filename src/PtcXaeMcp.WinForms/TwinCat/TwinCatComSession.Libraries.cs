@@ -136,8 +136,7 @@ internal sealed partial class TwinCatComSession
         {
             SetLibraryVersionViaCom(name, version, company);
         }
-        // A referenced PLC is refused as it is, not sent into the close/edit/reopen fallback below.
-        catch (InvalidOperationException comEx) when (ComCall.NotBusy(comEx) && comEx is not ReferencedPlcProjectException) {
+        catch (InvalidOperationException comEx) when (ComCall.NotBusy(comEx)) {
             // Placeholder pin via COM failed — safe file-based path: save-close the
             // solution, upsert the <PlaceholderResolution> in the .plcproj, reopen.
             var (sln, proj) = ComBusyRetry.Run<(string, string)>(() =>
@@ -400,46 +399,13 @@ internal sealed partial class TwinCatComSession
         // obtained via sysMan.LookupTreeItem("TIPC^<plcName>^<projName>^References").
         // Navigating via plcNode.NestedProject.Child() yields a different COM pointer that
         // exposes ScanLibraries (read) but does NOT dispatch AddLibrary/RemoveReference.
-        dynamic? node = FindLibraryManagerNode((object)dte, out string? referencedPlc);
-        if (node is not null) return node;
-        if (referencedPlc is not null) throw new ReferencedPlcProjectException(referencedPlc);
-        throw new InvalidOperationException(
-            "References node not found via TIPC path — open a solution with a PLC project first.");
+        return FindLibraryManagerNode(dte)
+            ?? throw new InvalidOperationException(
+                "References node not found via TIPC path — open a solution with a PLC project first.");
     }
 
-    private static dynamic? FindLibraryManagerNode(dynamic dte) => FindLibraryManagerNode((object)dte, out string? _);
-
-    /// <summary>
-    /// The PLC instances whose References node may be looked up directly: they have a NestedProject
-    /// and their name is not also listed without one. A referenced stand-alone PLC project (.tspproj)
-    /// shows up under the main System Manager WITHOUT a NestedProject and under its own System
-    /// Manager with one; LookupTreeItem on a path below such a PLC crashes the XAE (#9, #14), so it
-    /// is never looked up, whichever System Manager lists it. Pure; unit-tested.
-    /// </summary>
-    internal static IReadOnlyList<int> LibraryManagerLookupCandidates(
-        IReadOnlyList<(string PlcName, bool HasNestedProject)> instances, out string? referencedPlc)
+    private static dynamic? FindLibraryManagerNode(dynamic dte)
     {
-        var referenced = new HashSet<string>(
-            instances.Where(i => !i.HasNestedProject).Select(i => i.PlcName), StringComparer.OrdinalIgnoreCase);
-        var allowed = new List<int>();
-        referencedPlc = null;
-        for (int i = 0; i < instances.Count; i++)
-        {
-            if (!instances[i].HasNestedProject) continue;
-            if (referenced.Contains(instances[i].PlcName)) { referencedPlc ??= instances[i].PlcName; continue; }
-            allowed.Add(i);
-        }
-        if (allowed.Count == 0) referencedPlc ??= referenced.FirstOrDefault();
-        return allowed;
-    }
-
-    private static dynamic? FindLibraryManagerNode(dynamic dte, out string? referencedPlc)
-    {
-        referencedPlc = null;
-        // Every PLC instance under TIPC of every solution project first, the lookups after:
-        // whether a PLC is referenced is only known once all System Managers were seen.
-        var instances = new List<(string PlcName, bool HasNestedProject)>();
-        var lookups = new List<(object SysMan, string PlcName, string ProjName)?>();
         try
         {
             dynamic projects = dte.Solution.Projects;
@@ -473,37 +439,33 @@ internal sealed partial class TwinCatComSession
                     try { plcName = (string)plcNode.Name ?? string.Empty; } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { continue; }
                     if (string.IsNullOrEmpty(plcName)) continue;
 
-                    // Verify it's a PLC project and get the source-project name. An unreadable
-                    // NestedProject counts as absent, like HasNestedProject.
+                    // Verify it's a PLC project and get the source-project name.
+                    // No NestedProject = a referenced stand-alone PLC project (.tspproj) seen from the
+                    // main System Manager, where the lookup below crashes the XAE (#14). It is skipped;
+                    // the stand-alone project's own System Manager (a later entry of Solution.Projects)
+                    // lists the same PLC with a NestedProject, and there the lookup is safe and its
+                    // References item dispatches AddLibrary/RemoveReference (live, TC 3.1.4026.22).
                     dynamic? nested;
-                    try { nested = plcNode.NestedProject; } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { nested = null; }
-                    instances.Add((plcName, nested is not null));
-                    lookups.Add(null);
+                    try { nested = plcNode.NestedProject; } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { continue; }
                     if (nested is null) continue;
                     if (!LooksLikePlcSourceProject(nested)) continue;
 
                     string projName = string.Empty;
                     try { projName = (string)nested.Name ?? string.Empty; } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { continue; }
                     if (string.IsNullOrEmpty(projName)) continue;
-                    lookups[^1] = ((object)sysMan, plcName, projName);
+
+                    // Try "References" then "Verweise" (German XAE).
+                    foreach (var suffix in new[] { "References", "Verweise" })
+                    {
+                        dynamic? refsNode;
+                        try { refsNode = sysMan.LookupTreeItem($"TIPC^{plcName}^{projName}^{suffix}"); }
+                        catch (Exception comEx) when (ComCall.NotBusy(comEx)) { continue; }
+                        if (refsNode is not null) return refsNode;
+                    }
                 }
             }
         }
         catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
-
-        foreach (int c in LibraryManagerLookupCandidates(instances, out referencedPlc))
-        {
-            if (lookups[c] is not { } lookup) continue;
-            dynamic sysMan = lookup.SysMan;
-            // Try "References" then "Verweise" (German XAE).
-            foreach (var suffix in new[] { "References", "Verweise" })
-            {
-                dynamic? refsNode;
-                try { refsNode = sysMan.LookupTreeItem($"TIPC^{lookup.PlcName}^{lookup.ProjName}^{suffix}"); }
-                catch (Exception comEx) when (ComCall.NotBusy(comEx)) { continue; }
-                if (refsNode is not null) return refsNode;
-            }
-        }
         return null;
     }
 
@@ -576,18 +538,4 @@ internal sealed partial class TwinCatComSession
         }
         catch (Exception comEx) when (ComCall.NotBusy(comEx)) { return null; }
     }
-}
-
-/// <summary>
-/// The library tools that need the References node's ITcPlcLibraryManager refuse a PLC that is a
-/// referenced stand-alone project (.tspproj): the only pointer known to dispatch AddLibrary /
-/// RemoveReference comes from LookupTreeItem, which crashes the XAE on such a PLC (#14).
-/// </summary>
-internal sealed class ReferencedPlcProjectException(string plcName) : InvalidOperationException(
-    $"PLC '{plcName}' is a referenced stand-alone PLC project (.tspproj). Its library references cannot be changed " +
-    "through this solution: the References node of such a PLC can only be reached with a tree lookup that crashes " +
-    "the XAE. Open the .tspproj on its own with twincat_open_project and repeat the call there, or change the " +
-    "reference in the Library Manager of the XAE. Reading the references (twincat_list_library_references) works.")
-{
-    public string PlcName { get; } = plcName;
 }

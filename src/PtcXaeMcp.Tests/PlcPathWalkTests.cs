@@ -57,48 +57,4 @@ public class PlcPathWalkTests
         Assert.False(TwinCatComSession.ShouldWalkPlcPath(path, _ => { asked = true; return false; }));
         Assert.False(asked);
     }
-
-    // The library manager (issue #14): the References node of a referenced PLC is never looked up.
-
-    [Fact]
-    public void LibraryManager_InlinePlc_IsLookedUp()
-    {
-        var allowed = TwinCatComSession.LibraryManagerLookupCandidates([("PLC", true)], out string? referenced);
-        Assert.Equal([0], allowed);
-        Assert.Null(referenced);
-    }
-
-    [Fact]
-    public void LibraryManager_ReferencedPlc_IsNotLookedUpUnderEitherSystemManager()
-    {
-        // Main System Manager: instance without NestedProject; the stand-alone project's own
-        // System Manager lists the same instance with one.
-        var allowed = TwinCatComSession.LibraryManagerLookupCandidates(
-            [("PLC", false), ("plc", true)], out string? referenced);
-        Assert.Empty(allowed);
-        Assert.Equal("plc", referenced);
-    }
-
-    [Fact]
-    public void LibraryManager_ReferencedPlcOnlyInTheMainSystemManager_IsNamed()
-    {
-        var allowed = TwinCatComSession.LibraryManagerLookupCandidates([("PLC", false)], out string? referenced);
-        Assert.Empty(allowed);
-        Assert.Equal("PLC", referenced);
-    }
-
-    [Fact]
-    public void LibraryManager_InlinePlcNextToAReferencedOne_KeepsItsLookup()
-    {
-        var allowed = TwinCatComSession.LibraryManagerLookupCandidates(
-            [("Ref", false), ("Inline", true), ("Ref", true)], out _);
-        Assert.Equal([1], allowed);
-    }
-
-    [Fact]
-    public void LibraryManager_NoPlc_NothingToLookUpAndNothingReferenced()
-    {
-        Assert.Empty(TwinCatComSession.LibraryManagerLookupCandidates([], out string? referenced));
-        Assert.Null(referenced);
-    }
 }

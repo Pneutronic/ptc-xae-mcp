@@ -409,7 +409,7 @@ internal sealed class NativeTwinCatRunner
                 Step($"GVL '{cfg.TwinCat.GvlName}'");
                 EnsureGvl(_gvlTarget!, GvlDeclarationRenderer.Render(cfg.IoPoints), overwriteExistingGvl);
                 if (cfg.TwinCat.Linking.Enabled)
-                    RefreshPlcProcessImage(options.AutoConfirmBuild);
+                    RefreshPlcProcessImage(options.AutoConfirmBuild, cfg.TwinCat.PlcProjectName);
             }
             else
             {
@@ -419,7 +419,7 @@ internal sealed class NativeTwinCatRunner
             if (!options.NoLink && cfg.TwinCat.Linking.Enabled)
             {
                 if (options.NoGvl)
-                    RefreshPlcProcessImage(options.AutoConfirmBuild);
+                    RefreshPlcProcessImage(options.AutoConfirmBuild, cfg.TwinCat.PlcProjectName);
 
                 Step($"Linking (failIfUnresolved={cfg.TwinCat.Linking.FailIfUnresolved})");
                 // Step 6: exact symbols only (E-3), one LinkVariables per point (E-17), per-run caches (E-16).
@@ -592,7 +592,7 @@ internal sealed class NativeTwinCatRunner
     // error list via DTE2) — the runner no longer has its own error-list reader. The XAE modals
     // that block Build(true) during apply are answered by _dialogs (ApplyBuildDialogPolicy) and
     // reported; an unknown one fails the run naming it instead of hanging.
-    private void RefreshPlcProcessImage(bool autoConfirmBuild)
+    private void RefreshPlcProcessImage(bool autoConfirmBuild, string plcName)
     {
         _cancellationToken.ThrowIfCancellationRequested();
         Step("PLC Build");
@@ -616,6 +616,7 @@ internal sealed class NativeTwinCatRunner
             if (!result.Success)
                 throw new InvalidOperationException($"Compile errors: {verdict} {dialogs}");
             Info($"{verdict} {dialogs}");
+            ReloadReferencedPlcTmc(plcName);
         });
 
         if (!built)
@@ -623,6 +624,17 @@ internal sealed class NativeTwinCatRunner
             Info("Full productive rebuild skipped on purpose (autoBuild=false): the existing PLC project is not " +
                  "re-bound. New IO reaches the process image only after a separate 'build_plc'.");
         }
+    }
+
+    // A referenced stand-alone PLC's instance keeps the process image of the TMC it was loaded from; after the
+    // build regenerated that TMC it is reloaded here, before the linker looks for the new GVL (#14).
+    private void ReloadReferencedPlcTmc(string plcName)
+    {
+        if (_tree is not ComSysManTree com || string.IsNullOrWhiteSpace(plcName)) return;
+        IReadOnlyList<string> reloaded = com.Call(() => TwinCatComSession.ReloadReferencedPlcTmc(com.SysMan, plcName),
+            "ReloadTmc of the referenced PLC instance");
+        foreach (string instance in reloaded)
+            Info($"Referenced stand-alone PLC project: reloaded the TMC into '{instance}' so the new GVL is in its process image.");
     }
 
     private void ExportResults(string deviceName, ApplyExportPaths exports, IReadOnlyList<LinkResult> results)

@@ -440,6 +440,11 @@ internal sealed partial class TwinCatComSession
                     if (string.IsNullOrEmpty(plcName)) continue;
 
                     // Verify it's a PLC project and get the source-project name.
+                    // No NestedProject = a referenced stand-alone PLC project (.tspproj) seen from the
+                    // main System Manager, where the lookup below crashes the XAE (#14). It is skipped;
+                    // the stand-alone project's own System Manager (a later entry of Solution.Projects)
+                    // lists the same PLC with a NestedProject, and there the lookup is safe and its
+                    // References item dispatches AddLibrary/RemoveReference (live, TC 3.1.4026.22).
                     dynamic? nested;
                     try { nested = plcNode.NestedProject; } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { continue; }
                     if (nested is null) continue;

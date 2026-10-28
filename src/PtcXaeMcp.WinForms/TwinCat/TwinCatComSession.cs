@@ -145,7 +145,24 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
     // LookupTreeItem throws (E_FAIL / "not found") for an unknown path — that is the one
     // genuine null. Busy used to be swallowed here too, turning POUs created seconds
     // earlier into "PLC tree path not found" (LIVE-3); it now propagates.
+    // A path below a referenced stand-alone PLC project is walked instead (MustWalkPlcPath, #14):
+    // every caller that hands a user path to this method gets the same protection. The walk ignores
+    // a segment that has a single candidate; these callers had an exact lookup, so the node it finds
+    // must carry the requested path (like ComSysManTree.Lookup), or a typo would land on another node.
     private static dynamic? LookupTreeItemOrNull(object sysMan, string path) =>
+        MustWalkPlcPath(sysMan, path) ? WithExactPath(ResolveByNodeType(sysMan, path), path) : LookupTreeItemDirect(sysMan, path);
+
+    // The node when its PathName is the requested path (or unreadable), else null.
+    private static object? WithExactPath(object? node, string path)
+    {
+        if (node is null) return null;
+        string actual = ComCall.ReadProp(() => (string?)((dynamic)node).PathName, null) ?? string.Empty;
+        return actual.Length == 0 || string.Equals(actual, path, StringComparison.OrdinalIgnoreCase) ? node : null;
+    }
+
+    // The unguarded LookupTreeItem. Only for paths already checked with MustWalkPlcPath, or for
+    // "TIPC" / "TIPC^<plc>", which are safe to look up even for a referenced PLC.
+    private static dynamic? LookupTreeItemDirect(object sysMan, string path) =>
         ComCall.ReadProp<object?>(() => ((dynamic)sysMan).LookupTreeItem(path), null);
 
     private static int ChildCountOf(dynamic node) => ComCall.ReadProp(() => (int)node.ChildCount, 0);
@@ -168,13 +185,17 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
     // instance node having no NestedProject (the project tree lives in the stand-alone project's
     // own System Manager); the Child(i) walk from TIPC then resolves the node. An inline PLC
     // (NestedProject present: every fixture and most projects) keeps the single direct lookup,
-    // so the per-level enumeration is not paid where it is not needed.
+    // so the per-level enumeration is not paid where it is not needed. So does a path below the
+    // instance's own child ("<plc> Instance"^PlcTask Inputs^...): that node does live in this
+    // System Manager, the lookup there is safe, and its process-image folders are reachable by
+    // path only, not as Child(i) — the walk would not find them (#14, live on TC 3.1.4026.22).
     private static dynamic? LookupTreeItemWithFallback(object sysMan, string path)
     {
-        if (ShouldWalkPlcPath(path, plcInstance => HasNestedProject(sysMan, plcInstance)))
+        if (MustWalkPlcPath(sysMan, path))
             return ResolveByNodeType(sysMan, path);
 
-        var direct = LookupTreeItemOrNull(sysMan, path);
+        // Checked once above; the parent below belongs to the same PLC instance.
+        var direct = LookupTreeItemDirect(sysMan, path);
         if (direct is not null) return direct;
 
         int caret = path.LastIndexOf('^');
@@ -184,7 +205,7 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
             string leaf = path.Substring(caret + 1);
             if (!string.IsNullOrEmpty(leaf))
             {
-                dynamic? parent = LookupTreeItemOrNull(sysMan, parentPath);
+                dynamic? parent = LookupTreeItemDirect(sysMan, parentPath);
                 if (parent is not null)
                 {
                     int count = ChildCountOf(parent);
@@ -215,18 +236,79 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
 
     /// <summary>
     /// Whether <paramref name="path"/> must be walked instead of looked up: it lies below a PLC
-    /// instance (<see cref="IsBelowPlcInstance"/>) AND that instance is a referenced stand-alone
-    /// project. <paramref name="hasNestedProject"/> answers for the instance name (segment 2):
-    /// <c>true</c> = inline PLC (direct lookup is safe and cheapest), <c>false</c> = referenced
-    /// (walk), <c>null</c> = no such instance under TIPC (nothing to protect; the normal lookup
-    /// and its fallbacks decide). Pure apart from that one callback; unit-tested.
+    /// instance (<see cref="IsBelowPlcInstance"/>), that instance is a referenced stand-alone
+    /// project, AND segment 3 is not one of the instance node's own children. <paramref name="hasNestedProject"/>
+    /// answers for the instance name (segment 2): <c>true</c> = inline PLC (direct lookup is safe and
+    /// cheapest), <c>false</c> = referenced, <c>null</c> = no such instance under TIPC (nothing to
+    /// protect; the normal lookup and its fallbacks decide). <paramref name="isOwnChild"/> answers
+    /// (instance, segment 3) for a referenced PLC: its own "&lt;plc&gt; Instance" child is safe to look
+    /// up below, the project root (which only the stand-alone System Manager holds) is not.
+    /// Pure apart from the two callbacks; unit-tested.
     /// </summary>
-    internal static bool ShouldWalkPlcPath(string path, Func<string, bool?> hasNestedProject)
+    internal static bool ShouldWalkPlcPath(
+        string path, Func<string, bool?> hasNestedProject, Func<string, string, bool> isOwnChild)
     {
         if (!IsBelowPlcInstance(path)) return false;
-        string plcInstance = path.Split('^')[1];
+        string[] segs = path.Split('^');
+        string plcInstance = segs[1];
         if (plcInstance.Length == 0) return false;
-        return hasNestedProject(plcInstance) == false;
+        if (hasNestedProject(plcInstance) != false) return false;
+        return !isOwnChild(plcInstance, segs[2]);
+    }
+
+    /// <summary>
+    /// <see cref="ShouldWalkPlcPath"/> against the live tree of <paramref name="sysMan"/>. Also used by
+    /// <see cref="Tree.ComSysManTree"/> (schema apply, GVL writer, linker), which looks paths up itself.
+    /// </summary>
+    internal static bool MustWalkPlcPath(object sysMan, string path) =>
+        ShouldWalkPlcPath(path,
+            plcInstance => HasNestedProject(sysMan, plcInstance),
+            (plcInstance, segment) => IsOwnChildOfPlcInstance(sysMan, plcInstance, segment));
+
+    // Whether TIPC^<plcInstance> itself lists a child named <segment> (one or two Child(i) reads).
+    private static bool IsOwnChildOfPlcInstance(object sysMan, string plcInstance, string segment)
+    {
+        object? instance = LookupTreeItemDirect(sysMan, "TIPC^" + plcInstance);
+        if (instance is null) return false;
+        int count = ChildCountOf(instance);
+        for (int i = 1; i <= count; i++)
+        {
+            object? child = ChildAt(instance, i);
+            if (child is not null && string.Equals(NameOf(child), segment, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>The Child(i) walk from TIPC for a path that <see cref="MustWalkPlcPath"/> refuses to look up.</summary>
+    internal static object? WalkPlcPath(object sysMan, string path) => ResolveByNodeType(sysMan, path);
+
+    /// <summary>
+    /// For a referenced stand-alone PLC project: reloads the TMC into its instance (the ItemType-57 child of
+    /// TIPC^&lt;plcInstance&gt; in the main System Manager), so a GVL the build just compiled into the stand-alone
+    /// project reaches the process image there. Without it the image keeps the TMC it was last loaded from and the
+    /// linker finds no variable of the new GVL (#14, live). ConsumeXml with &lt;ReloadTmc&gt; on the TcCOM object is
+    /// Beckhoff's documented reload (Infosys "Reloading TMC files"). Returns the reloaded instance paths; empty for an
+    /// inline PLC, whose build updates its image itself.
+    /// </summary>
+    internal static IReadOnlyList<string> ReloadReferencedPlcTmc(object sysMan, string plcInstance)
+    {
+        if (HasNestedProject(sysMan, plcInstance) != false) return [];
+        object? plc = LookupTreeItemDirect(sysMan, "TIPC^" + plcInstance);
+        if (plc is null) return [];
+
+        var reloaded = new List<string>();
+        int count = ChildCountOf(plc);
+        for (int i = 1; i <= count; i++)
+        {
+            object? child = ChildAt(plc, i);
+            if (child is null) continue;
+            dynamic instance = child;
+            if (ComCall.ReadProp(() => (int)instance.ItemType, -1) != PlcInstanceSettingsXml.PlcInstanceItemType) continue;
+            instance.ConsumeXml("<TreeItem><ReloadTmc>true</ReloadTmc></TreeItem>");
+            reloaded.Add(ComCall.ReadProp(() => (string?)instance.PathName, null) ?? NameOf(child));
+        }
+        return reloaded;
     }
 
     /// <summary>
@@ -236,7 +318,7 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
     /// </summary>
     private static bool? HasNestedProject(object sysMan, string plcInstance)
     {
-        dynamic? instance = LookupTreeItemOrNull(sysMan, "TIPC^" + plcInstance);
+        dynamic? instance = LookupTreeItemDirect(sysMan, "TIPC^" + plcInstance);
         if (instance is null) return null;
         return ComCall.ReadProp<object?>(() => instance.NestedProject, null) is not null;
     }

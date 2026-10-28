@@ -30,6 +30,17 @@ internal sealed partial class FakeTwinCatSession
         return FakeEtherCatStartupResult;
     }
 
+    public SoeParameterReadResult FakeSoeParameterResult { get; set; } =
+        new("", "10.0.0.1.2.1", 1002, SoeParameterMode.Read, []);
+    public Exception? ReadSoeParametersThrows { get; set; }
+
+    public SoeParameterReadResult ReadSoeParameters(string treePath, IReadOnlyList<int>? idns, int? driveNo, IReadOnlyList<int> elements, int timeoutMs)
+    {
+        CallLog.Add($"ReadSoeParameters({treePath},{SoeParameterText.Idns(idns)},{(driveNo is null ? "-" : driveNo.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))},{SoeParameterText.Elements(elements)},{timeoutMs})");
+        if (ReadSoeParametersThrows is not null) throw ReadSoeParametersThrows;
+        return FakeSoeParameterResult;
+    }
+
     public CoeStartupList ReadCoeStartup(string treePath)
     {
         CallLog.Add($"ReadCoeStartup({treePath})");

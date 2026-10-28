@@ -18,6 +18,13 @@ pull-request numbers refer to those.
   `P-0-3231` notation, DriveNo, element, value (2/4/8 data bytes), SoE list header and the IDNs of the AT/MDT
   lists; EoE adds the virtual port (MAC, IP, subnet, gateway, DNS). Without `treePath` every box below every
   EtherCAT master is read and only boxes with entries are listed; `includeFixed` and `protocol` filter.
+- `twincat_read_soe_parameter` (read-only, online over ADS): reads SoE parameters (IDNs) live from a SoE drive.
+  With `idns` it returns those IDNs at a `driveNo` with the requested elements (value, name, attribute, unit, min,
+  max, default, data status); with the attribute the value is interpreted (display format, decimal places, write
+  protection). Without `idns` it reads every SoE entry of the box's Startup list from the drive and compares it
+  with the project (projected, actual, match; AT/MDT lists without their maximum length). An ADS error of one
+  IDN is recorded on that IDN; a drive that does not answer is an error with NetId and port. The SoE element
+  parameter of the existing SoE reader is generalised (default unchanged).
 
 ### Fixed
 - No XAE crash from the remaining tree lookups on a referenced stand-alone PLC project (`.tspproj`), the

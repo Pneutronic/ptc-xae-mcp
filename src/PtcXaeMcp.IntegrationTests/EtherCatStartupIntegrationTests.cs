@@ -5,7 +5,7 @@ using ModelContextProtocol.Protocol;
 namespace PtcXaeMcp.IntegrationTests;
 
 /// <summary>
-/// Live integration test for twincat_read_ethercat_startup. The fixture has no SoE hardware, so the test inserts a
+/// Live integration tests for twincat_read_ethercat_startup and the error path of twincat_read_soe_parameter. The fixture has no SoE hardware, so the test inserts a
 /// Beckhoff AX5203 (ESI "Beckhoff AX5xxx.xml") below the disabled EtherCAT master at run time and removes it again;
 /// no fixture file changes. Skipped when the live suite is not enabled or the fixture has no EtherCAT master.
 /// </summary>
@@ -53,7 +53,7 @@ public class EtherCatStartupIntegrationTests : IAsyncLifetime
         return (text[..nl].TrimEnd('\r'), JsonDocument.Parse(text[(nl + 1)..]).RootElement.Clone());
     }
 
-    [Trait("Description", "AX5203 offline einfügen → Startup-Liste (SoE) lesen, mit und ohne Pfad, Filter; Box wieder entfernen.")]
+    [Trait("Description", "AX5203 offline einfügen → Startup-Liste (SoE) lesen, mit und ohne Pfad, Filter; Online-Lesen scheitert klar; Box wieder entfernen.")]
     [SkippableFact(Timeout = 300_000)]
     public async Task ReadEtherCatStartup_OfflineAx5203_ListsSoeEntries()
     {
@@ -117,6 +117,16 @@ public class EtherCatStartupIntegrationTests : IAsyncLifetime
                 Assert.Equal("SoE", e.GetProperty("protocol").GetString());
                 Assert.False(e.GetProperty("fixed").GetBoolean());
             });
+
+            // Online read: the fixture has no SoE hardware and its master is disabled, so the drive cannot answer.
+            // The tool must say so with a clear [Error] (NetId and port), for the IDN read and for the comparison.
+            string online = GetText(await _client.CallToolAsync("twincat_read_soe_parameter",
+                new Dictionary<string, object?> { ["treePath"] = boxPath, ["idns"] = new[] { "S-0-0001" }, ["timeoutMs"] = 1000 }));
+            Assert.StartsWith("[Error]", online, StringComparison.Ordinal);
+
+            string compare = GetText(await _client.CallToolAsync("twincat_read_soe_parameter",
+                new Dictionary<string, object?> { ["treePath"] = boxPath, ["timeoutMs"] = 1000 }));
+            Assert.StartsWith("[Error]", compare, StringComparison.Ordinal);
         }
         finally
         {

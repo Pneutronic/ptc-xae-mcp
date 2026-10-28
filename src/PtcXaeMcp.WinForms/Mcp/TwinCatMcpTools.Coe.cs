@@ -90,4 +90,44 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() =>
                 new EtherCatStartupCoordinator(bridge.Dispatcher.Session)
                     .Read(treePath, includeFixed, protocol)), cancellationToken);
+
+    [McpServerTool(Name = "twincat_read_soe_parameter", ReadOnly = true)]
+    [Description("READ-ONLY, online: reads SoE parameters (IDNs) live from a SoE drive (Rexroth IndraDrive, Beckhoff AX5000) " +
+                 "over ADS (index group 0xF420 on the box's EtherCAT address, as in twincat_ethercat_read_identities): " +
+                 "needs the configuration active on the target and the slave at least in PREOP. The box's AMS address comes " +
+                 "from its device XML. Two modes. With idns: those IDNs at driveNo (default 0), each with the requested " +
+                 "elements. Without idns: every SoE entry of the box's Startup list (see twincat_read_ethercat_startup) is " +
+                 "read from the drive and compared with the project (projected = Startup data, actual = what the drive " +
+                 "holds; match true/false; AT/MDT lists compare their data without the maximum length; the entry's own " +
+                 "DriveNo is used, driveNo filters; entries that do not write the value element are listed with a note). " +
+                 "Result: one-line summary + indented JSON { treePath, netId, port, mode (read | compare), parameters [{ idn, " +
+                 "idnRaw, driveNo, name, unit, attribute {rawHex, conversionFactor, dataLength, isList, isCommand, display, " +
+                 "decimalPlaces, writeProtectedIn[]}, value / min / max / default {hex, length, unsigned (2/4/8 bytes), " +
+                 "signed + scaled (only with the attribute: display format, decimal places), list {currentLength, maxLength}, " +
+                 "idnList, text}, dataStatus, errors [{element, code, name}], compare: fixed, comment, projected, actual, " +
+                 "match, note }] }. Without the attribute element the values stay raw (hex + unsigned); with it they are " +
+                 "interpreted by the SERCOS attribute layout, which is not yet verified against a drive: rawHex is " +
+                 "authoritative. An ADS error of one IDN (e.g. DeviceInvalidOffset = IDN not supported) is recorded in " +
+                 "that IDN's errors and does not stop the others; a drive that does not answer at all is an [Error] with " +
+                 "NetId and port. Never writes.")]
+    public string ReadSoeParameter(
+        [Description("Tree path of the EtherCAT box of the SoE drive, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^Drive 1'. " +
+                     "Get paths via twincat_get_fieldbus_topology.")]
+        string treePath,
+        [Description("IDNs to read: 'S-0-0001', 'P-0-3231' or decimal numbers. Omit to read every SoE IDN of the box's " +
+                     "Startup list and compare it with the project. At most 256.")]
+        string[]? idns = null,
+        [Description("Drive number within the box (0 = first drive; an AX5206 has 0 and 1). Default 0 with idns; without idns " +
+                     "it restricts the comparison to Startup entries of that DriveNo (default: every entry at its own DriveNo).")]
+        int? driveNo = null,
+        [Description("Elements to read per IDN (only with idns): value (default), name, attribute, unit, min, max, default, " +
+                     "dataStatus. Add 'attribute' for decoded, scaled values.")]
+        string[]? elements = null,
+        [Description("ADS timeout per read in milliseconds (default 5000, 100-30000). A read that times out is repeated once before the error is recorded.")]
+        int? timeoutMs = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_read_soe_parameter", new { treePath, idns, driveNo, elements, timeoutMs }, () =>
+            bridge.Dispatcher.Run(() =>
+                new SoeParameterCoordinator(bridge.Dispatcher.Session)
+                    .Read(treePath, idns, driveNo, elements, timeoutMs)), cancellationToken);
 }

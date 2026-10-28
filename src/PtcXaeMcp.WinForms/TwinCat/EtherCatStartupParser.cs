@@ -67,7 +67,7 @@ internal static class EtherCatStartupParser
     private static string DataHex(XmlNode cmd) =>
         string.Concat((cmd["Data"]?.InnerText ?? string.Empty).Where(ch => !char.IsWhiteSpace(ch))).ToUpperInvariant();
 
-    private static byte[]? Bytes(string hex)
+    internal static byte[]? Bytes(string hex)
     {
         if (hex.Length % 2 != 0) return null;
         try { return Convert.FromHexString(hex); }
@@ -152,7 +152,7 @@ internal static class EtherCatStartupParser
 
     // A SoE list starts with UINT16 actual length and UINT16 maximum length; it is reported only when the actual length
     // matches the data that follow (a plain 4 byte value that happens to fit is reported too, see the tool description).
-    private static SoeListHeader? ListHeader(byte[] data)
+    internal static SoeListHeader? ListHeader(byte[] data)
     {
         if (data.Length < 4) return null;
         int current = BinaryPrimitives.ReadUInt16LittleEndian(data);
@@ -160,7 +160,7 @@ internal static class EtherCatStartupParser
         return current == data.Length - 4 && max >= current ? new SoeListHeader(current, max) : null;
     }
 
-    private static IReadOnlyList<string>? IdnList(byte[] data, SoeListHeader list)
+    internal static IReadOnlyList<string>? IdnList(byte[] data, SoeListHeader list)
     {
         if (list.CurrentLength % 2 != 0) return null;
         var idns = new List<string>(list.CurrentLength / 2);

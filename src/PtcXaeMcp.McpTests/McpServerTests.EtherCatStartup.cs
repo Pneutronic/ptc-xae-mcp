@@ -33,4 +33,42 @@ public partial class McpServerTests
             new Dictionary<string, object?> { ["treePath"] = "TIID" });
         Assert.StartsWith("[Error]", GetText(result), StringComparison.Ordinal);
     }
+
+    [SkippableFact]
+    public async Task ReadSoeParameter_ToolIsRegisteredReadOnly()
+    {
+        SkipIfNotReachable();
+        var tools = (await _client!.ListToolsAsync()).ToDictionary(t => t.Name);
+        Assert.Contains("twincat_read_soe_parameter", tools.Keys);
+        Assert.True(tools["twincat_read_soe_parameter"].ProtocolTool.Annotations?.ReadOnlyHint);
+    }
+
+    [SkippableFact]
+    public async Task ReadSoeParameter_InvalidIdn_ReturnsError()
+    {
+        SkipIfNotReachable();
+        var result = await CallToolAsync("twincat_read_soe_parameter",
+            new Dictionary<string, object?> { ["treePath"] = "TIID^D^B", ["idns"] = new[] { "S-0-99999" } });
+        string text = GetText(result);
+        Assert.StartsWith("[Error]", text, StringComparison.Ordinal);
+        Assert.Contains("S-0-99999", text, StringComparison.Ordinal);
+    }
+
+    [SkippableFact]
+    public async Task ReadSoeParameter_InvalidElement_ReturnsError()
+    {
+        SkipIfNotReachable();
+        var result = await CallToolAsync("twincat_read_soe_parameter",
+            new Dictionary<string, object?> { ["treePath"] = "TIID^D^B", ["idns"] = new[] { "S-0-0001" }, ["elements"] = new[] { "bogus" } });
+        Assert.StartsWith("[Error]", GetText(result), StringComparison.Ordinal);
+    }
+
+    [SkippableFact]
+    public async Task ReadSoeParameter_DriveNoOutOfRange_ReturnsError()
+    {
+        SkipIfNotReachable();
+        var result = await CallToolAsync("twincat_read_soe_parameter",
+            new Dictionary<string, object?> { ["treePath"] = "TIID^D^B", ["driveNo"] = 9 });
+        Assert.StartsWith("[Error]", GetText(result), StringComparison.Ordinal);
+    }
 }

@@ -145,7 +145,24 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
     // LookupTreeItem throws (E_FAIL / "not found") for an unknown path — that is the one
     // genuine null. Busy used to be swallowed here too, turning POUs created seconds
     // earlier into "PLC tree path not found" (LIVE-3); it now propagates.
+    // A path below a referenced stand-alone PLC project is walked instead (MustWalkPlcPath, #14):
+    // every caller that hands a user path to this method gets the same protection. The walk ignores
+    // a segment that has a single candidate; these callers had an exact lookup, so the node it finds
+    // must carry the requested path (like ComSysManTree.Lookup), or a typo would land on another node.
     private static dynamic? LookupTreeItemOrNull(object sysMan, string path) =>
+        MustWalkPlcPath(sysMan, path) ? WithExactPath(ResolveByNodeType(sysMan, path), path) : LookupTreeItemDirect(sysMan, path);
+
+    // The node when its PathName is the requested path (or unreadable), else null.
+    private static object? WithExactPath(object? node, string path)
+    {
+        if (node is null) return null;
+        string actual = ComCall.ReadProp(() => (string?)((dynamic)node).PathName, null) ?? string.Empty;
+        return actual.Length == 0 || string.Equals(actual, path, StringComparison.OrdinalIgnoreCase) ? node : null;
+    }
+
+    // The unguarded LookupTreeItem. Only for paths already checked with MustWalkPlcPath, or for
+    // "TIPC" / "TIPC^<plc>", which are safe to look up even for a referenced PLC.
+    private static dynamic? LookupTreeItemDirect(object sysMan, string path) =>
         ComCall.ReadProp<object?>(() => ((dynamic)sysMan).LookupTreeItem(path), null);
 
     private static int ChildCountOf(dynamic node) => ComCall.ReadProp(() => (int)node.ChildCount, 0);
@@ -171,10 +188,11 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
     // so the per-level enumeration is not paid where it is not needed.
     private static dynamic? LookupTreeItemWithFallback(object sysMan, string path)
     {
-        if (ShouldWalkPlcPath(path, plcInstance => HasNestedProject(sysMan, plcInstance)))
+        if (MustWalkPlcPath(sysMan, path))
             return ResolveByNodeType(sysMan, path);
 
-        var direct = LookupTreeItemOrNull(sysMan, path);
+        // Checked once above; the parent below belongs to the same PLC instance.
+        var direct = LookupTreeItemDirect(sysMan, path);
         if (direct is not null) return direct;
 
         int caret = path.LastIndexOf('^');
@@ -184,7 +202,7 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
             string leaf = path.Substring(caret + 1);
             if (!string.IsNullOrEmpty(leaf))
             {
-                dynamic? parent = LookupTreeItemOrNull(sysMan, parentPath);
+                dynamic? parent = LookupTreeItemDirect(sysMan, parentPath);
                 if (parent is not null)
                 {
                     int count = ChildCountOf(parent);
@@ -230,13 +248,23 @@ internal sealed partial class TwinCatComSession : ITwinCatSession
     }
 
     /// <summary>
+    /// <see cref="ShouldWalkPlcPath"/> against the live tree of <paramref name="sysMan"/>. Also used by
+    /// <see cref="Tree.ComSysManTree"/> (schema apply, GVL writer, linker), which looks paths up itself.
+    /// </summary>
+    internal static bool MustWalkPlcPath(object sysMan, string path) =>
+        ShouldWalkPlcPath(path, plcInstance => HasNestedProject(sysMan, plcInstance));
+
+    /// <summary>The Child(i) walk from TIPC for a path that <see cref="MustWalkPlcPath"/> refuses to look up.</summary>
+    internal static object? WalkPlcPath(object sysMan, string path) => ResolveByNodeType(sysMan, path);
+
+    /// <summary>
     /// <c>TIPC^&lt;plcInstance&gt;</c> (two segments: safe to look up even for a referenced PLC)
     /// and its <c>NestedProject</c>: <c>true</c>/<c>false</c> for present/absent, <c>null</c> when
     /// the instance is not found. Two COM reads, no enumeration.
     /// </summary>
     private static bool? HasNestedProject(object sysMan, string plcInstance)
     {
-        dynamic? instance = LookupTreeItemOrNull(sysMan, "TIPC^" + plcInstance);
+        dynamic? instance = LookupTreeItemDirect(sysMan, "TIPC^" + plcInstance);
         if (instance is null) return null;
         return ComCall.ReadProp<object?>(() => instance.NestedProject, null) is not null;
     }

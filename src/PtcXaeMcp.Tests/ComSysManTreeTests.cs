@@ -37,13 +37,23 @@ public class ComSysManTreeTests
         }
     }
 
+    /// <summary>A PLC instance under TIPC; NestedProject is null for a referenced stand-alone project.</summary>
+    public sealed class StubPlcInstance
+    {
+        public StubPlcInstance(string path, object? nestedProject) { PathName = path; NestedProject = nestedProject; }
+        public string PathName { get; }
+        public object? NestedProject { get; }
+    }
+
     public sealed class StubSysMan
     {
         public Dictionary<string, object?> Items { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Exception? Throws { get; set; }
         public List<string> Links { get; } = [];
+        public List<string> Lookups { get; } = [];
         public object? LookupTreeItem(string path)
         {
+            Lookups.Add(path);
             if (Throws is not null) throw Throws;
             return Items.TryGetValue(path, out var item) ? item : throw new COMException("not found", unchecked((int)0x80004005));
         }
@@ -112,6 +122,35 @@ public class ComSysManTreeTests
     }
 
     [Fact]
+    public void Lookup_BelowAReferencedPlc_NeverPassesThePathToLookupTreeItem()
+    {
+        // Issue #14: LookupTreeItem on a path below a referenced stand-alone PLC project crashes
+        // the XAE. The instance has no NestedProject, so the path is walked from TIPC instead (the
+        // stub has no TIPC node, so the walk ends there: not found).
+        const string path = "TIPC^Plc^Plc Project^GVLs^GVL_IO";
+        var sysMan = new StubSysMan();
+        sysMan.Items["TIPC^Plc"] = new StubPlcInstance("TIPC^Plc", nestedProject: null);
+        sysMan.Items[path] = new StubItem(path, 615);
+
+        Tree(sysMan).Lookup(path).Should().BeNull();
+
+        sysMan.Lookups.Should().NotContain(path).And.Contain("TIPC^Plc").And.Contain("TIPC");
+    }
+
+    [Fact]
+    public void Lookup_BelowAnInlinePlc_KeepsTheDirectLookup()
+    {
+        const string path = "TIPC^Plc^Plc Project^GVLs^GVL_IO";
+        var sysMan = new StubSysMan();
+        sysMan.Items["TIPC^Plc"] = new StubPlcInstance("TIPC^Plc", nestedProject: new object());
+        sysMan.Items[path] = new StubItem(path, 615);
+
+        Tree(sysMan).Lookup(path)!.Path.Should().Be(path);
+
+        sysMan.Lookups.Should().Equal("TIPC^Plc", path);
+    }
+
+    [Fact]
     public void Lookup_Cancelled_PropagatesInsteadOfNotFound()
     {
         // E-12: cancellation is never turned into "not found".
@@ -162,8 +201,9 @@ public class ComSysManTreeTests
     public void Delete_FallsBackToTheNodesOwnDelete()
     {
         var sysMan = new StubSysMan();
-        var folder = new StubItem("TIPC^GVLs", 601) { DeleteChildFails = true };
-        var gvl = new StubItem("TIPC^GVLs^GVL_IO", 615);
+        // Not under TIPC: "TIPC^GVLs" would read as a PLC instance without a NestedProject (#14).
+        var folder = new StubItem("TIID^GVLs", 601) { DeleteChildFails = true };
+        var gvl = new StubItem("TIID^GVLs^GVL_IO", 615);
         sysMan.Items[folder.PathName] = folder;
         sysMan.Items[gvl.PathName] = gvl;
         var tree = Tree(sysMan);

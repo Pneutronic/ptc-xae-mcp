@@ -49,11 +49,23 @@ internal sealed class ComSysManTree : ISysManTree
 
     /// <summary>
     /// The runner's historical lookup (LookupTreeItem + <see cref="SelectSingleTreeItemFromLookup"/>):
-    /// null for a genuine "not there", busy/blocked propagates.
+    /// null for a genuine "not there", busy/blocked propagates. A path below a referenced stand-alone
+    /// PLC project is walked child by child instead (<see cref="TwinCatComSession.MustWalkPlcPath"/>):
+    /// LookupTreeItem on it crashes the XAE (#14).
     /// </summary>
     internal object? LookupRaw(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
+        try
+        {
+            if (Call(() => TwinCatComSession.MustWalkPlcPath(SysMan, path), $"NestedProject check for '{path}'"))
+                return Call(() => TwinCatComSession.WalkPlcPath(SysMan, path), $"tree walk to '{path}'");
+        }
+        catch (Exception ex) when (ComCall.Recoverable(ex))
+        {
+            return null;
+        }
+
         try
         {
             return Call(() => (object?)SelectSingleTreeItemFromLookup(_sysMan.LookupTreeItem(path), expectedPath: path),

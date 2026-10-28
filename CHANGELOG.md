@@ -10,6 +10,19 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Fixed
+- No XAE crash from the remaining tree lookups on a referenced stand-alone PLC project (`.tspproj`), the
+  follow-up to 2.4.0 (#14). Every lookup of a path below such a PLC (`TIPC^<plc>^<project>^...`) now walks the
+  tree child by child instead of calling `LookupTreeItem`: the schema apply (`twincat_apply_schema`), the GVL
+  writer and the linker, which look paths up themselves, as well as the instance settings, the link
+  diagnosis and `twincat_set_device_disabled`. An inline PLC keeps the single direct lookup.
+- The library tools that change references (`twincat_add_library_reference`, `_remove_library_reference`,
+  `twincat_set_library_version`, `twincat_set_library_parameter`) no longer look up the `References` node of a
+  referenced PLC, under neither System Manager. They answer with an `[Error]` that names the PLC and the way
+  out (open the `.tspproj` on its own, or the Library Manager of the XAE) instead of taking TcXaeShell.exe down;
+  `twincat_set_library_version` no longer falls back to editing the `.plcproj` in that case. Reading the
+  references, the installed libraries and the repositories works as before.
+
 ## [2.4.0] - 2026-10-28
 
 ### Added

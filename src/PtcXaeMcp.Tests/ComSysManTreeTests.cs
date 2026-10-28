@@ -20,6 +20,8 @@ public class ComSysManTreeTests
         public List<string> DeletedChildren { get; } = [];
         public bool DeleteChildFails { get; set; }
         public bool SelfDeleted { get; private set; }
+        public List<string> Consumed { get; } = [];
+        public void ConsumeXml(string xml) => Consumed.Add(xml);
         public int ChildCount => Kids.Count;
         public StubItem Child(int index) => Kids[index - 1];
         public void DeleteChild(string name)
@@ -42,7 +44,11 @@ public class ComSysManTreeTests
     {
         public StubPlcInstance(string path, object? nestedProject) { PathName = path; NestedProject = nestedProject; }
         public string PathName { get; }
+        public string Name => PathName.Split('^')[^1];
         public object? NestedProject { get; }
+        public List<StubItem> Kids { get; } = [];
+        public int ChildCount => Kids.Count;
+        public StubItem Child(int index) => Kids[index - 1];
     }
 
     public sealed class StubSysMan
@@ -135,6 +141,23 @@ public class ComSysManTreeTests
         Tree(sysMan).Lookup(path).Should().BeNull();
 
         sysMan.Lookups.Should().NotContain(path).And.Contain("TIPC^Plc").And.Contain("TIPC");
+    }
+
+    [Fact]
+    public void Lookup_ProcessImageOfAReferencedPlc_KeepsTheDirectLookup()
+    {
+        // Issue #14, live: below the referenced PLC's own "<plc> Instance" child the lookup is safe,
+        // and the image folders there are reachable by path only — the linker needs this lookup.
+        const string path = "TIPC^Plc^Plc Instance^PlcTask Inputs^IO.I_In_1";
+        var sysMan = new StubSysMan();
+        var instance = new StubPlcInstance("TIPC^Plc", nestedProject: null);
+        instance.Kids.Add(new StubItem("TIPC^Plc^Plc Instance", 57));
+        sysMan.Items["TIPC^Plc"] = instance;
+        sysMan.Items[path] = new StubItem(path);
+
+        Tree(sysMan).Lookup(path)!.Path.Should().Be(path);
+
+        sysMan.Lookups.Should().Equal("TIPC^Plc", "TIPC^Plc", path);
     }
 
     [Fact]

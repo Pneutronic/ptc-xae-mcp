@@ -18,6 +18,12 @@ pull-request numbers refer to those.
   instance settings, the link diagnosis and `twincat_set_device_disabled`. An inline PLC keeps the single
   direct lookup. The library tools were not affected: they look the `References` node up on the stand-alone
   project's own System Manager, where that lookup is safe (verified live on a referenced project).
+- `twincat_apply_schema` links the IO of a referenced stand-alone PLC project. Paths below the instance's own
+  `<plc> Instance` node (the process image, `PlcTask Inputs`/`Outputs`) are looked up directly again: that node
+  lives in the main System Manager, the lookup there is safe, and the image folders are reachable by path only,
+  so the walk added in 2.4.0 answered "no image folder found". After the build the apply also reloads the
+  stand-alone project's TMC into that instance (`ReloadTmc`), so the new GVL is in its process image before the
+  linker looks for it.
 
 ## [2.4.0] - 2026-10-28
 

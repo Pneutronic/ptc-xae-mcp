@@ -128,6 +128,20 @@ internal interface ITwinCatSession : IDisposable
     /// Read-only.
     /// </summary>
     CoeStartupList ReadCoeStartup(string treePath);
+    /// <summary>
+    /// The complete Startup list (CoE, SoE, EoE, FoE, including the fixed entries) of the EtherCAT box at
+    /// <paramref name="treePath"/>, or of every box below every EtherCAT master when it is null (then only boxes with at
+    /// least one entry after the filters). <paramref name="protocol"/> is a normalized protocol name or null. Read-only.
+    /// </summary>
+    EtherCatStartupResult ReadEtherCatStartup(string? treePath, bool includeFixed, string? protocol);
+    /// <summary>
+    /// Reads SoE parameters live from the drive at <paramref name="treePath"/> over ADS (the box's AMS address from its device
+    /// XML): the given <paramref name="idns"/> with the given element bits at <paramref name="driveNo"/> (default 0), or,
+    /// with <paramref name="idns"/> null, every SoE entry of the box's Startup list compared with the drive
+    /// (<paramref name="driveNo"/> then filters). Throws when the drive does not answer at all; an ADS error of one IDN is part of
+    /// the result. Read-only.
+    /// </summary>
+    SoeParameterReadResult ReadSoeParameters(string treePath, IReadOnlyList<int>? idns, int? driveNo, IReadOnlyList<int> elements, int timeoutMs);
 
     // ---- ethercat-topology-edit ----
     /// <summary>

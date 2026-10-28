@@ -189,6 +189,21 @@ internal static class EtherCatProjection
         return netId is null ? (null, null, null) : (netId, MasterServicePort, source);
     }
 
+    /// <summary>
+    /// The ADS address of a box as its device XML carries it (<c>EtherCAT/AmsAddress</c>): the master's AMS NetId and the
+    /// box's EtherCAT address as port. NetId may be relative to the target (see <see cref="ApplyTargetPrefix"/>); both
+    /// null when the XML has no usable address.
+    /// </summary>
+    public static (string? NetId, int? Port) ParseSlaveAddress(string? xml)
+    {
+        var doc = Load(xml);
+        var address = doc?.SelectSingleNode("//TreeItem/EtherCAT/AmsAddress");
+        if (address is null) return (null, null);
+        string? netId = address["AmsNetId"]?.InnerText?.Trim();
+        long? port = ParseNumber(address["AmsPort"]?.InnerText);
+        return AmsNetIdText.IsUsable(netId) && port is > 0 and <= 0xFFFF ? (netId, (int)port) : (null, null);
+    }
+
     /// <summary>A node of the project tree as the box walk needs it.</summary>
     internal interface IProjectionNode
     {

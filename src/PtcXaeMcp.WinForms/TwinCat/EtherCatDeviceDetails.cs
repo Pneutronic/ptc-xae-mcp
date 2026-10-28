@@ -244,7 +244,12 @@ internal static class EtherCatDeviceDetailReader
 
     private static uint CoeOffset(int index, int subIndex) => ((uint)index << 16) | (uint)subIndex;
 
-    private static uint SoeOffset(int driveNo, int idn) => ((uint)driveNo << 24) | (0x40u << 16) | (uint)idn;
+    // IndexOffset of a SoE upload: IDN = LOWORD, element (SoeElement bits, default 0x40 = value) = LOBYTE of HIWORD,
+    // DriveNo above it. Infosys (EtherCAT ADS interface) puts DriveNo into "bits 1-3 of HIBYTE of HIWORD" (that would be
+    // driveNo << 25); the encoding below (driveNo << 24) is the one used live against AX5000 drives and is kept until a
+    // drive with DriveNo > 0 confirms the documented layout.
+    internal static uint SoeOffset(int driveNo, int idn, int element = SoeElement.Value) =>
+        ((uint)driveNo << 24) | ((uint)(element & 0xFF) << 16) | (uint)idn;
 
     private const int ParameterFlag = 0x8000;
 

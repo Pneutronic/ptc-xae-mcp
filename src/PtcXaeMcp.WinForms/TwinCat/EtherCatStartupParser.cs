@@ -126,6 +126,7 @@ internal static class EtherCatStartupParser
             int? elements = Int(cmd["Elements"]);
 
             SoeListHeader? list = data is null ? null : ListHeader(data);
+            IReadOnlyList<string>? idnList = data is null || list is null || !IsIdnListParameter(idnRaw) ? null : IdnList(data, list);
             yield return new EtherCatStartupEntry(
                 EtherCatStartupProtocol.SoE, cmd.GetAttribute("Fixed") == "true", Transitions(cmd), Text(cmd["Comment"]),
                 Int(cmd["Timeout"]), hex,
@@ -133,8 +134,8 @@ internal static class EtherCatStartupParser
                 ParameterSet: idnRaw is null ? null : SoeIdn.ParameterSet(idnRaw.Value),
                 DriveNo: Int(cmd["DriveNo"]), OpCode: Int(cmd["OpCode"]),
                 Elements: elements is null ? null : SoeElement.Name(elements.Value), Attribute: Int(cmd["Attribute"]),
-                Value: data is null ? null : Scalar(data), List: list,
-                IdnList: data is null || list is null || !IsIdnListParameter(idnRaw) ? null : IdnList(data, list));
+                // The data of an IDN list are no scalar even when their length is 2, 4 or 8 bytes.
+                Value: data is null || idnList is not null ? null : Scalar(data), List: list, IdnList: idnList);
         }
     }
 

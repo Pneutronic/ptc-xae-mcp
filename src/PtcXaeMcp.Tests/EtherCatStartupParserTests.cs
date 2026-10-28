@@ -193,6 +193,15 @@ public class EtherCatStartupParserTests
     }
 
     [Fact]
+    public void Soe_IdnListOfEightBytes_HasNoScalarValue()
+    {
+        // header 4/4 + two IDNs = 8 bytes: the length of a scalar, but the data are an IDN list
+        var e = Parse(SoeOnly("04000400 2F00 9100", 24)).Entries.Single();
+        Assert.Equal(["S-0-0047", "S-0-0145"], e.IdnList);
+        Assert.Null(e.Value);
+    }
+
+    [Fact]
     public void Soe_TwoByteScalar_HasNoListAndNoIdnList()
     {
         var e = Of(Parse(Drive), "SoE").First(x => x.Idn == "S-0-0015");

@@ -80,7 +80,7 @@ internal static class CoeStartupParser
         return new CoeStartupList(treePath, slaveType, entries.Count, entries);
     }
 
-    private static string? NormalizeIndexToHex(string s)
+    internal static string? NormalizeIndexToHex(string s)
     {
         if (string.IsNullOrWhiteSpace(s)) return null;
         s = s.Trim();

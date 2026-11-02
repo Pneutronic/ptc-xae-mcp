@@ -31,7 +31,7 @@
     <PackageReference Include="Beckhoff.TwinCAT.Ads" Version="7.0.389" />
     <!-- coredump-analysis: SQLite reader for offline LoggedEvents.db.
          Use .Core + bundle_winsqlite3 to avoid GHSA-2m69-gcr7-jv3q in lib.e_sqlite3. -->
-    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.21" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.22" />
     <PackageReference Include="SQLitePCLRaw.bundle_winsqlite3" Version="2.1.11" />
   </ItemGroup>
 

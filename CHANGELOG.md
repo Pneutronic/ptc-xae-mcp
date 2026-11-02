@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-02
+
 ### Added
 - `twincat_read_ethercat_startup` (read-only, offline): the complete Startup list of EtherCAT boxes as the
   Startup tab shows it — CoE, SoE, EoE and FoE mailbox commands, both the entries TwinCAT generates (fixed, in
@@ -40,6 +42,11 @@ pull-request numbers refer to those.
   so the walk added in 2.4.0 answered "no image folder found". After the build the apply also reloads the
   stand-alone project's TMC into that instance (`ReloadTmc`), so the new GVL is in its process image before the
   linker looks for it.
+
+### Changed
+- `setup\build-winget-manifest.ps1` takes the `ReleaseDate` from the GitHub release (publication date) instead of the day
+  it is run, and `-Verify` compares the SHA-256 with the digest GitHub reports for the release asset before writing.
+- `Microsoft.Data.Sqlite.Core` 9.0.21 → 9.0.22.
 
 ## [2.4.0] - 2026-10-28
 

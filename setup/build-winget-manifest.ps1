@@ -19,12 +19,17 @@
 #      (or: wingetcreate submit <that folder>). A person does this; nothing here pushes.
 #
 # -Sha256 <hex> overrides the hash (e.g. before the installer is built, for a dry run);
-# -Version <x.y.z> overrides the version; -OutDir <folder> the output root.
+# -Version <x.y.z> overrides the version; -OutDir <folder> the output root;
+# -ReleaseDate <yyyy-MM-dd> overrides the date (default: publication date of the GitHub release,
+# else today); -Verify compares the hash with the digest GitHub reports for the release asset
+# (needs the gh CLI and a published release) and stops on a mismatch.
 [CmdletBinding()]
 param(
     [string]$Version = '',
     [string]$Sha256 = '',
-    [string]$OutDir = ''
+    [string]$OutDir = '',
+    [string]$ReleaseDate = '',
+    [switch]$Verify
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -52,6 +57,28 @@ if (-not $Sha256) {
 }
 $Sha256 = $Sha256.Trim().ToUpperInvariant()
 if ($Sha256 -notmatch '^[0-9A-F]{64}$') { throw "Sha256 must be 64 hex characters (got '$Sha256')." }
+
+# The release as GitHub reports it: publication date and the digest of the installer asset.
+# Null when gh is missing, not logged in, or the release does not exist (yet).
+$releaseInfo = $null
+if ($Verify -or -not $ReleaseDate) {
+    if (Get-Command gh -ErrorAction SilentlyContinue) {
+        $json = & gh release view "v$Version" --repo ($releaseBase -replace '^https://github.com/', '') --json publishedAt,assets 2>$null
+        if ($LASTEXITCODE -eq 0 -and $json) { $releaseInfo = $json | ConvertFrom-Json }
+    }
+}
+if ($Verify) {
+    if (-not $releaseInfo) { throw "-Verify: no GitHub release v$Version found (gh missing, not logged in, or not published)." }
+    $asset = $releaseInfo.assets | Where-Object { $_.name -eq $exeName } | Select-Object -First 1
+    if (-not $asset -or -not $asset.digest) { throw "-Verify: release v$Version has no asset $exeName with a digest." }
+    $published = ($asset.digest -replace '^sha256:', '').ToUpperInvariant()
+    if ($published -ne $Sha256) { throw "-Verify: SHA-256 mismatch. Release asset $published, manifest $Sha256." }
+    Write-Host "Verified: SHA-256 equals the digest of the release asset."
+}
+if (-not $ReleaseDate) {
+    $ReleaseDate = if ($releaseInfo) { ([datetime]$releaseInfo.publishedAt).ToUniversalTime().ToString('yyyy-MM-dd') } else { Get-Date -Format 'yyyy-MM-dd' }
+}
+if ($ReleaseDate -notmatch '^\d{4}-\d{2}-\d{2}$') { throw "ReleaseDate must be yyyy-MM-dd (got '$ReleaseDate')." }
 
 if (-not $OutDir) { $OutDir = Join-Path $PSScriptRoot 'dist\winget' }
 $folder = Join-Path $OutDir "manifests\p\Pneutronic\XaeMcp\$Version"
@@ -86,7 +113,7 @@ AppsAndFeaturesEntries:
 - DisplayName: Pneutronic XAE MCP
   Publisher: Pneutronic AG
   ProductCode: '$productCode'
-ReleaseDate: $(Get-Date -Format 'yyyy-MM-dd')
+ReleaseDate: $ReleaseDate
 Installers:
 - Architecture: x64
   InstallerUrl: $installerUrl

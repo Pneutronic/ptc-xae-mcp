@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-207 tools, generated from the source attributes — one section per
+208 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -48,6 +48,7 @@
 - [Schema](#schema) (5)
 - [Scope](#scope) (18)
 - [ScopeFile](#scopefile) (2)
+- [TcUnit](#tcunit) (1)
 - [VariantManagement](#variantmanagement) (2)
 - [VisibleEditor](#visibleeditor) (2)
 
@@ -118,20 +119,22 @@ _No parameters._
 
 ### `twincat_build_plc`
 
-Compile only the PLC project via DTE.Solution.SolutionBuild.BuildProject. Faster than a full solution build for PLC-code-only changes. Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.
+Compile only the PLC project via DTE.Solution.SolutionBuild.BuildProject. Faster than a full solution build for PLC-code-only changes. Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `plcProjectName` | `string?` | `null` | Name of the PLC project to build (e.g. 'PLC'). Leave empty to auto-detect the first .plcproj in the solution. |
 | `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
+| `expectSymbols` | `string[]?` | `null` | Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check. |
 
 ### `twincat_build_solution`
 
-Trigger a full solution build via DTE.Solution.SolutionBuild.Build. Compiles PLC code and IO mapping. Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.
+Trigger a full solution build via DTE.Solution.SolutionBuild.Build. Compiles PLC code and IO mapping. Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
+| `expectSymbols` | `string[]?` | `null` | Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check. |
 
 ### `twincat_activate_config`
 
@@ -1386,7 +1389,7 @@ List PLC elements. Without arguments: every POU, INTERFACE, DUT, GVL and FOLDER 
 
 ### `twincat_plc_create`
 
-Create a PLC element under parentPath. kind + subtype pick the element: POU/PROGRAM|FUNCTION|FUNCTION_BLOCK, DUT/STRUCT|ENUM|UNION|ALIAS (default STRUCT; ALIAS needs a 'TYPE <name> : <baseType>; END_TYPE' declaration), GVL/NORMAL|PARAMLIST (default NORMAL; persistent variables are a 'VAR_GLOBAL PERSISTENT' section of a NORMAL GVL — put it in the declaration), INTERFACE, MEMBER/METHOD|ACTION|PROPERTY|GET|SET (parentPath is the POU or INTERFACE; GET/SET are named Get/Set; PROPERTY gets its accessors per 'accessors'; TRANSITION under a POU is ST, implementation only), FOLDER (under a folder, the PLC project node, a POU or an INTERFACE), TEXTLIST/LOCAL, IMAGEPOOL/LOCAL, UML/CLASSDIAGRAM, VISU/MANAGER|VISUALIZATION and RECIPE/MANAGER (all under a folder or the PLC project node), VISU/TARGET|WEB (under a visualization manager), RECIPE/DEFINITION (under a recipe manager), TASKREF/PROGRAM (under a PLC task node; name = the PROGRAM to run). The GLOBAL text list / image pool, the text-list enumeration and the trend elements are refused by XAE and not offered. declaration optionally fills the new element (not for FOLDER, ACTION). returnType applies to FUNCTION, METHOD, PROPERTY (default BOOL); implLanguage (ST, IL, SFC, FBD, CFC, LD; default ST) to POUs and members; accessors (GET | SET | BOTH, default BOTH) to PROPERTY only. A parameter that does not apply to the element is an [Error]. Logs the XAE out first. Returns the new element's tree path.
+Create a PLC element under parentPath. kind + subtype pick the element: POU/PROGRAM|FUNCTION|FUNCTION_BLOCK, DUT/STRUCT|ENUM|UNION|ALIAS (default STRUCT; ALIAS needs a 'TYPE <name> : <baseType>; END_TYPE' declaration), GVL/NORMAL|PARAMLIST (default NORMAL; persistent variables are a 'VAR_GLOBAL PERSISTENT' section of a NORMAL GVL — put it in the declaration), INTERFACE, MEMBER/METHOD|ACTION|PROPERTY|GET|SET (parentPath is the POU or INTERFACE; GET/SET are named Get/Set; PROPERTY gets its accessors per 'accessors'; TRANSITION under a POU is ST, implementation only), FOLDER (under a folder, the PLC project node, a POU or an INTERFACE), TEXTLIST/LOCAL, IMAGEPOOL/LOCAL, UML/CLASSDIAGRAM, VISU/MANAGER|VISUALIZATION and RECIPE/MANAGER (all under a folder or the PLC project node), VISU/TARGET|WEB (under a visualization manager), RECIPE/DEFINITION (under a recipe manager), TASKREF/PROGRAM (under a PLC task node; name = the PROGRAM to run). The GLOBAL text list / image pool, the text-list enumeration and the trend elements are refused by XAE and not offered. declaration optionally fills the new element (not for FOLDER, ACTION). returnType applies to FUNCTION, METHOD, PROPERTY (default BOOL); implLanguage (ST, IL, SFC, FBD, CFC, LD; default ST) to POUs and members; accessors (GET | SET | BOTH, default BOTH) to PROPERTY only. A parameter that does not apply to the element is an [Error]. Logs the XAE out first. Returns the new element's tree path. A new GVL, an FB nobody instantiates or a function is not compiled until a task's program uses it (or it carries {attribute 'linkalways'}); twincat_build_plc(expectSymbols=[...]) proves what landed in the compiled PLC.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1401,7 +1404,7 @@ Create a PLC element under parentPath. kind + subtype pick the element: POU/PROG
 
 ### `twincat_plc_read`
 
-Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation (with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] such as "'<path>' is a GVL, not a DUT". When openInEditor=true, also opens the element in the visible XAE editor (video mode), best-effort.
+Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation (with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] such as "'<path>' is a GVL, not a DUT". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the visible XAE editor (video mode), best-effort.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1411,7 +1414,7 @@ Read a PLC element's text by its caret-separated tree path: the declaration and,
 
 ### `twincat_plc_write`
 
-Replace the declaration and/or the implementation of an existing PLC element. A section that is null stays unchanged. Each section can be given inline (declaration/implementation) or read from a file (declarationFile/implementationFile); giving both forms for one section is an error. kind is checked against the node's real type before the automatic logout. A section the element does not have (an implementation for a DUT, GVL or INTERFACE; a declaration for an ACTION) is an [Error] before the logout. The implementation is text for ST and IL; for SFC, FBD, CFC and LD it is XAE's native XML exactly as twincat_plc_read returns it (root <NWL> for LD and FBD, <SFC>, <CFC>) — anything else is refused before the logout. A declaration can be written in every language. A POU/INTERFACE/GVL/DUT declaration that contains a METHOD/PROPERTY/ACTION header line is refused (members are separate elements — create them with twincat_plc_create). The write is verified by an independent read-back.
+Replace the declaration and/or the implementation of an existing PLC element. A section that is null stays unchanged. Each section can be given inline (declaration/implementation) or read from a file (declarationFile/implementationFile); giving both forms for one section is an error. kind is checked against the node's real type before the automatic logout. A section the element does not have (an implementation for a DUT, GVL or INTERFACE; a declaration for an ACTION) is an [Error] before the logout. The implementation is text for ST and IL; for SFC, FBD, CFC and LD it is XAE's native XML exactly as twincat_plc_read returns it (root <NWL> for LD and FBD, <SFC>, <CFC>) — anything else is refused before the logout. A declaration can be written in every language. A POU/INTERFACE/GVL/DUT declaration that contains a METHOD/PROPERTY/ACTION header line is refused (members are separate elements — create them with twincat_plc_create). The write is verified by an independent read-back. With expectedRevision (from twincat_plc_read) the element is read first and the write is refused with [Error] — before the logout, nothing changed — when its text moved on since that read. The result ends with the new 'Revision: …' for the next edit.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1421,6 +1424,7 @@ Replace the declaration and/or the implementation of an existing PLC element. A 
 | `implementation` | `string?` | `null` | New implementation (ST source). Null leaves it unchanged. Alternative to 'implementationFile'. |
 | `declarationFile` | `string?` | `null` | Path to a file whose contents become the declaration. Alternative to 'declaration'. |
 | `implementationFile` | `string?` | `null` | Path to a file whose contents become the implementation. Alternative to 'implementation'. |
+| `expectedRevision` | `string?` | `null` | Revision twincat_plc_read reported for this element. When given, a different current revision refuses the write (someone else changed it). Omit to write unconditionally. |
 
 ### `twincat_plc_delete`
 
@@ -1602,12 +1606,13 @@ Import objects from a PLCopen XML file. conflictMode is None, Rename, Replace, o
 
 ### `twincat_login`
 
-Log the PLC online (Offline → Online). Parameter mode selects the apply strategy when the running application differs from the project: 'online_change' — apply changes to the running PLC without a stop (fast, retains variable values); 'download' — stop the PLC, transfer the full compiled program (leaves PLC in STOP — no auto-run); 'login_without_change' — attach to the running PLC without transferring code (monitoring only). Primary path: discovers the TwinCAT PLC Login DTE command ('Loginto' substring) and executes it. A Win32 dialog watcher handles the 3-way login modal and follow-up confirmations. Idempotent: if the PLC Logout command is available (already online), returns no-op success. If Login AND Logout are both disabled (no reachable target runtime / project not activated), returns success=false, isOnlineNow=false — never a false 'already online'. Online state is verified after login via the PLC Logout command's IsAvailable flag (same probe used by twincat_get_plc_online_state — correct after activate_config). Requires XAE running with a compiled solution open. Returns { success, mode, dialogHandled, isOnlineNow, runState, message }.
+Log the PLC online (Offline → Online). Parameter mode selects the apply strategy when the running application differs from the project: 'online_change' — apply changes to the running PLC without a stop (fast, retains variable values); 'download' — stop the PLC, transfer the full compiled program (leaves PLC in STOP — no auto-run); 'login_without_change' — attach to the running PLC without transferring code (monitoring only). Primary path: discovers the TwinCAT PLC Login DTE command ('Loginto' substring) and executes it. A Win32 dialog watcher handles the 3-way login modal and follow-up confirmations. Idempotent: if the PLC Logout command is available (already online), returns no-op success. If Login AND Logout are both disabled (no reachable target runtime / project not activated), returns success=false, isOnlineNow=false — never a false 'already online'. Online state is verified after login via the PLC Logout command's IsAvailable flag (same probe used by twincat_get_plc_online_state — correct after activate_config). mode='online_change' is verified on the PLC itself: TwinCAT_SystemInfoVarList._AppInfo.OnlineChangeCnt is read over ADS on the project's target before and after the login, and the first task's cycle counter twice afterwards. onlineChange.verdict: 'applied' (counter +1), 'not_needed' (application already matched), 'not_applied' (the modal got the online-change answer but the counter did not move — success is then false), 'download' (a fallback download replaced the application) or 'unknown' (the counter could not be read). onlineChange.plcCycling false means the application is not running. Requires XAE running with a compiled solution open. Returns { success, mode, dialogHandled, isOnlineNow, runState, message, onlineChange? }.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `mode` | `string` | `"online_change"` | Apply mode: 'online_change' \| 'download' \| 'login_without_change'. |
 | `allowDownloadFallback` | `bool` | `false` | mode='online_change' only: when online change is not possible, accept a full download instead (stops the running PLC). Default false — the login is refused with an [Error]. Download confirmations are never answered 'Ja' for 'login_without_change'. |
+| `adsPort` | `int` | `851` | mode='online_change' only: ADS port of the PLC application whose online-change counter is read (851 = first PLC). Default 851. |
 
 ### `twincat_logout`
 
@@ -1623,20 +1628,22 @@ _No parameters._
 
 ### `twincat_rebuild_solution`
 
-Rebuild the entire TwinCAT solution (Clean then Build). Forces a complete recompilation — equivalent to 'Rebuild All' in the IDE. Compile-only: does NOT activate the boot project or restart the runtime (use twincat_activate_config for that). Returns { success, failedProjects, errors[] } identical to twincat_build_solution. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.
+Rebuild the entire TwinCAT solution (Clean then Build). Forces a complete recompilation — equivalent to 'Rebuild All' in the IDE. Compile-only: does NOT activate the boot project or restart the runtime (use twincat_activate_config for that). Returns { success, failedProjects, errors[] } identical to twincat_build_solution. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
+| `expectSymbols` | `string[]?` | `null` | Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check. |
 
 ### `twincat_rebuild_plc`
 
-Rebuild a single PLC project (Clean then BuildProject). Forces a complete recompilation of the named (or auto-detected) PLC project. Compile-only: does NOT activate the boot project or restart the runtime. Returns { success, failedProjects, errors[] } identical to twincat_build_plc. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.
+Rebuild a single PLC project (Clean then BuildProject). Forces a complete recompilation of the named (or auto-detected) PLC project. Compile-only: does NOT activate the boot project or restart the runtime. Returns { success, failedProjects, errors[] } identical to twincat_build_plc. Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `plcProjectName` | `string?` | `null` | Name of the PLC project to rebuild (e.g. 'PLC'). Leave empty to auto-detect. |
 | `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
+| `expectSymbols` | `string[]?` | `null` | Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check. |
 
 ### `twincat_force_close_xae`
 
@@ -2059,6 +2066,19 @@ EXPERIMENTAL — convert a saved TwinCAT Scope recording (.svdx) into an export 
 | `path` | `string` |  | Path of the .svdx file. |
 | `targetPath` | `string` |  | Output file; its extension selects the format, e.g. C:\temp\run1.csv. |
 | `overwrite` | `bool` | `false` | Replace an existing target file. Default false. |
+
+## TcUnit
+
+### `twincat_tcunit_results`
+
+Read the results of the TcUnit tests in a RUNNING PLC over ADS (read-only). TcUnit, a PLC library the project references, runs its test suites once after the application starts and keeps the outcome in GVL_TcUnit.TcUnitRunner. This waits until the runner has finished and stored the results (AllTestSuitesFinished, then StoredGeneralTestResults and StoredTestSuiteResults), then reads the totals, every suite and the cases of the failed suites. It does not deploy: build first (twincat_build_plc with expectSymbols=['GVL_TcUnit.TcUnitRunner'] proves the runner is compiled in), then start the tests with twincat_activate_config(autoConfirmRestart=true) or twincat_login(mode='download') and call this. After an online change the tests do not run again — the result then warns with the PLC's OnlineChangeCnt. Returns JSON { success, verdict: passed | failed | no_tests | unknown, message, totals { suites, tests, passed, failed, duration }, onlineChangeCnt, suites [{ name, tests, failed, duration, cases [{ name, failed, skipped, message }] }], unreadableSymbols, amsNetId, adsPort }, or an [Error] when TcUnit is not there or does not finish within timeoutSeconds.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `amsNetId` | `string?` | `null` | AMS NetId of the PLC. Default: the open project's target (what twincat_set_target set). |
+| `adsPort` | `int?` | `null` | ADS port of the PLC application. Default 851. |
+| `timeoutSeconds` | `int?` | `null` | Seconds to wait for TcUnit to finish. Default 60, at most 600. |
+| `includePassed` | `bool` | `false` | Also list the passed cases, and the cases of passed suites. Default false: only failed and skipped cases. |
 
 ## VariantManagement
 

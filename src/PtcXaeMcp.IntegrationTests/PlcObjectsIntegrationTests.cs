@@ -208,6 +208,38 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
         Assert.Contains("no implementation section", impl);
     }
 
+    [Trait("Description", "plc_read meldet eine Revision; plc_write mit veralteter Revision wird abgelehnt und ändert nichts, mit der gelesenen Revision schreibt es und meldet die neue.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task Write_WithAStaleRevision_IsRefused_WithTheReadRevision_Writes()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+        string dut = FixtureLayout.StructDutPath;
+
+        string read = await OkAsync("twincat_plc_read", ("path", dut), ("kind", "DUT"));
+        string revision = RevisionOf(read);
+        string declaration = DeclarationOf(read);
+
+        string stale = await CallAsync("twincat_plc_write", ("path", dut), ("kind", "DUT"),
+            ("declaration", declaration + "\n// never written"), ("expectedRevision", "0000000000000000"));
+        Assert.StartsWith($"[Error] '{dut}' changed since it was read", stale);
+        Assert.Contains($"now {revision}", stale);
+        string unchanged = await OkAsync("twincat_plc_read", ("path", dut), ("kind", "DUT"));
+        Assert.Equal(revision, RevisionOf(unchanged));
+        Assert.DoesNotContain("never written", unchanged);
+
+        string write = await OkAsync("twincat_plc_write", ("path", dut), ("kind", "DUT"),
+            ("declaration", declaration), ("expectedRevision", revision));
+        Assert.Matches("Revision: [0-9a-f]{16}", write);
+    }
+
+    private static string RevisionOf(string read)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(read, "Revision: ([0-9a-f]{16})");
+        Assert.True(m.Success, $"no revision in: {read}");
+        return m.Groups[1].Value;
+    }
+
     [Trait("Description", "plc_read INTERFACE und POU: INTERFACE ohne Implementierungsabschnitt, POU mit beiden Abschnitten und Sprache (nur lesend).")]
     [SkippableFact(Timeout = 300_000)]
     public async Task Read_InterfaceAndPou_ReturnOnlyTheirSections()

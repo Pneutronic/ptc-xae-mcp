@@ -115,6 +115,11 @@ public class PlcLoginIntegrationTests : IAsyncLifetime
         Assert.True(isOnlineNow == true,
             $"Expected isOnlineNow=true after online_change login, got: {text}");
 
+        // The PLC's own online-change counter judges the login; "not_applied" would mean the change never landed.
+        Assert.True(root.TryGetProperty("onlineChange", out var evidence) && evidence.ValueKind == JsonValueKind.Object,
+            $"Missing onlineChange evidence: {text}");
+        Assert.NotEqual("not_applied", evidence.GetProperty("verdict").GetString());
+
         // Verify via get_plc_online_state cross-check
         var probe = await CallAsync("twincat_get_plc_online_state");
         using var probeDoc = JsonDocument.Parse(probe);

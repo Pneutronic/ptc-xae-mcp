@@ -59,7 +59,9 @@ internal sealed partial class TwinCatMcpTools
                  "The GLOBAL text list / image pool, the text-list enumeration and the trend elements are refused by XAE and not offered. " +
                  "declaration optionally fills the new element (not for FOLDER, ACTION). returnType applies to FUNCTION, METHOD, PROPERTY (default BOOL); implLanguage " +
                  "(ST, IL, SFC, FBD, CFC, LD; default ST) to POUs and members; accessors (GET | SET | BOTH, default BOTH) to PROPERTY only. A parameter that does " +
-                 "not apply to the element is an [Error]. Logs the XAE out first. Returns the new element's tree path. " + PlcKindHelp)]
+                 "not apply to the element is an [Error]. Logs the XAE out first. Returns the new element's tree path. " +
+                 "A new GVL, an FB nobody instantiates or a function is not compiled until a task's program uses it (or it carries " +
+                 "{attribute 'linkalways'}); twincat_build_plc(expectSymbols=[...]) proves what landed in the compiled PLC. " + PlcKindHelp)]
     public string PlcCreate(
         [Description("Element kind: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind,
         [Description("Caret-separated tree path of the parent: a folder or the PLC project node; for kind=MEMBER the POU or INTERFACE.")] string parentPath,
@@ -80,7 +82,8 @@ internal sealed partial class TwinCatMcpTools
     [Description("Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation " +
                  "(with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or " +
                  "TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] " +
-                 "such as \"'<path>' is a GVL, not a DUT\". When openInEditor=true, also opens the element in the visible XAE editor (video mode), " +
+                 "such as \"'<path>' is a GVL, not a DUT\". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to " +
+                 "twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the visible XAE editor (video mode), " +
                  "best-effort. " + PlcKindHelp)]
     public string PlcRead(
         [Description("Caret-separated tree path of the element to read.")] string path,
@@ -123,7 +126,9 @@ internal sealed partial class TwinCatMcpTools
                  "<NWL> for LD and FBD, <SFC>, <CFC>) — anything else is refused before the logout. A declaration can be written in every language. " +
                  "A POU/INTERFACE/GVL/DUT declaration that " +
                  "contains a METHOD/PROPERTY/ACTION header line is refused (members are separate elements — create them with twincat_plc_create). " +
-                 "The write is verified by an independent read-back. " + PlcKindHelp)]
+                 "The write is verified by an independent read-back. With expectedRevision (from twincat_plc_read) the element is read first and " +
+                 "the write is refused with [Error] — before the logout, nothing changed — when its text moved on since that read. The result " +
+                 "ends with the new 'Revision: …' for the next edit. " + PlcKindHelp)]
     public string PlcWrite(
         [Description("Caret-separated tree path of the element to write.")] string path,
         [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind,
@@ -131,14 +136,15 @@ internal sealed partial class TwinCatMcpTools
         [Description("New implementation (ST source). Null leaves it unchanged. Alternative to 'implementationFile'.")] string? implementation = null,
         [Description("Path to a file whose contents become the declaration. Alternative to 'declaration'.")] string? declarationFile = null,
         [Description("Path to a file whose contents become the implementation. Alternative to 'implementation'.")] string? implementationFile = null,
+        [Description("Revision twincat_plc_read reported for this element. When given, a different current revision refuses the write (someone else changed it). Omit to write unconditionally.")] string? expectedRevision = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_write",
-            new { path, kind, declaration, implementation, declarationFile, implementationFile }, () =>
+            new { path, kind, declaration, implementation, declarationFile, implementationFile, expectedRevision }, () =>
             bridge.Dispatcher.Run(() =>
                 McpPathGuard.CheckOptionalFile(declarationFile, bridge.Dispatcher.Session, "declarationFile")
                 ?? McpPathGuard.CheckOptionalFile(implementationFile, bridge.Dispatcher.Session, "implementationFile")
                 ?? new PlcObjectCoordinator(bridge.Dispatcher.Session)
-                    .Write(path, kind, declaration, implementation, declarationFile, implementationFile)), cancellationToken);
+                    .Write(path, kind, declaration, implementation, declarationFile, implementationFile, expectedRevision)), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_delete", ReadOnly = false, Destructive = true)]
     [Description("Delete a PLC element by its caret-separated tree path. kind is checked against the node's real type before the automatic logout. " +

@@ -99,6 +99,18 @@ public class AdsVariableIntegrationTests : IAsyncLifetime
         Assert.Equal(FixtureLayout.UintSymbolValue, root.GetProperty("value").GetUInt32());
     }
 
+    [Trait("Description", "twincat_tcunit_results auf der laufenden Fixture-PLC ohne TcUnit → [Error], das den fehlenden Runner und TcUnit.RUN() nennt (Lesepfad über Variablen-Handles gegen die echte Runtime).")]
+    [SkippableFact]
+    public async Task TcUnitResults_WithoutTcUnitInThePlc_SaysWhatIsMissing()
+    {
+        SkipIfNotReady();
+        var text = await CallAsync("twincat_tcunit_results", new Dictionary<string, object?> { ["timeoutSeconds"] = 5 });
+
+        Assert.StartsWith("[Error] TcUnit results not readable: GVL_TcUnit.TcUnitRunner.AllTestSuitesFinished", text);
+        Assert.Contains(_xar.AmsNetId, text);
+        Assert.Contains("TcUnit.RUN()", text);
+    }
+
     [Trait("Description", "Unbekanntes Symbol über ADS lesen → muss mit [Error] abgewiesen werden.")]
     [SkippableFact]
     public async Task Read_UnknownSymbol_ReturnsError()

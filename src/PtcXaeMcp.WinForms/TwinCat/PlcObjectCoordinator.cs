@@ -6,7 +6,30 @@ internal sealed record PlcElementEntry(string Path, string Name, string Kind, st
 /// <summary>The text content of one element as read by twincat_plc_read (only the sections the element has).</summary>
 internal sealed record PlcElementContent(
     string Kind, string? Subtype, bool HasDeclaration, bool HasImplementation,
-    string Declaration, string Implementation, string Language);
+    string Declaration, string Implementation, string Language)
+{
+    /// <summary>Fingerprint of the text as read; twincat_plc_write(expectedRevision) refuses when it moved on.</summary>
+    public string Revision => PlcRevision.Of(Declaration, Implementation);
+}
+
+/// <summary>
+/// A short content hash of a PLC element's two sections. Two clients editing the same element (parallel
+/// sessions, a human in the XAE) otherwise overwrite each other silently: the second write wins with text
+/// built on a state that no longer exists. Read → edit → write with the revision from the read turns that
+/// into a refusal before anything is changed.
+/// </summary>
+internal static class PlcRevision
+{
+    /// <summary>16 hex digits of SHA-256 over declaration, a NUL separator and implementation (UTF-8, as read).</summary>
+    internal static string Of(string declaration, string implementation)
+    {
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(declaration + "\0" + implementation);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes), 0, 8).ToLowerInvariant();
+    }
+
+    internal static bool Matches(string expected, string actual) =>
+        string.Equals(expected.Trim(), actual, StringComparison.OrdinalIgnoreCase);
+}
 
 // Orchestrates the generic twincat_plc_* verbs: one schema for every
 // manipulation of every PLC element, selected by `kind`. Every verb that targets an existing node first
@@ -184,27 +207,34 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
 
         try
         {
-            PouBody body = k switch
-            {
-                PlcKind.Member => session.ReadPouMember(path),
-                PlcKind.Dut or PlcKind.Gvl => new PouBody(session.ReadGvl(path), string.Empty, string.Empty),
-                _ => session.ReadPou(path),
-            };
-            var content = new PlcElementContent(k, entry.Subtype, entry.HasDeclaration, entry.HasImplementation,
-                entry.HasDeclaration ? body.Declaration : string.Empty,
-                entry.HasImplementation ? body.Implementation : string.Empty,
-                entry.HasImplementation ? body.Language : string.Empty);
+            var content = ReadContent(path, k, entry);
             string what = entry.Subtype is null ? k : $"{k}/{entry.Subtype}";
             string lang = content.Language.Length > 0 ? $" ({content.Language})" : "";
-            return ($"Read {what} '{path}'{lang}.", content);
+            return ($"Read {what} '{path}'{lang}. Revision: {content.Revision}", content);
         }
         catch (Exception ex) { return (McpErrors.EnsureError(ComCall.IsBusy(ex) ? ComCall.Describe(ex) : ex.Message), null); }
     }
 
+    private PlcElementContent ReadContent(string path, string k, PlcCatalogEntry entry)
+    {
+        PouBody body = k switch
+        {
+            PlcKind.Member => session.ReadPouMember(path),
+            PlcKind.Dut or PlcKind.Gvl => new PouBody(session.ReadGvl(path), string.Empty, string.Empty),
+            _ => session.ReadPou(path),
+        };
+        return new PlcElementContent(k, entry.Subtype, entry.HasDeclaration, entry.HasImplementation,
+            entry.HasDeclaration ? body.Declaration : string.Empty,
+            entry.HasImplementation ? body.Implementation : string.Empty,
+            entry.HasImplementation ? body.Language : string.Empty);
+    }
+
     // ---- write ---------------------------------------------------------------
 
+    /// <param name="expectedRevision">The revision twincat_plc_read reported; a different current revision refuses the write
+    /// before the logout. Null skips the check.</param>
     public string Write(string path, string kind, string? declaration, string? implementation,
-        string? declarationFile = null, string? implementationFile = null)
+        string? declarationFile = null, string? implementationFile = null, string? expectedRevision = null)
     {
         if (string.IsNullOrWhiteSpace(path)) return "[Error] path is required.";
         string? err = ParseKindAndSubtype(kind, null, "write", out string k, out _);
@@ -263,6 +293,17 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
             catch (Exception ex) { return McpErrors.EnsureError(ComCall.IsBusy(ex) ? ComCall.Describe(ex) : ex.Message); }
         }
 
+        if (!string.IsNullOrWhiteSpace(expectedRevision))
+        {
+            string current;
+            try { current = ReadContent(path, k, entry).Revision; }
+            catch (Exception ex) { return McpErrors.EnsureError(ComCall.IsBusy(ex) ? ComCall.Describe(ex) : ex.Message); }
+            if (!PlcRevision.Matches(expectedRevision, current))
+                return $"[Error] '{path}' changed since it was read (expected revision {expectedRevision.Trim()}, now {current}) — " +
+                       "someone else wrote it in between. Nothing was changed. Read it again with twincat_plc_read, apply your edit " +
+                       "to that text and write with the new revision.";
+        }
+
         error = SessionGuards.EnsureOfflineForWrite(session);
         if (error is not null) return error;
 
@@ -270,9 +311,14 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
         {
             if (k == PlcKind.Member) session.WritePouMember(path, declaration, implementation);
             else session.WritePouBody(path, declaration, implementation);
-            return $"Wrote {k} '{path}'." + SourceTextInput.FormatNotes(declIn, implIn);
         }
         catch (Exception ex) { return $"[Error] {ex.Message}"; }
+
+        // The new revision lets the caller chain the next edit without another read; best-effort.
+        string revision = "";
+        try { revision = $" Revision: {ReadContent(path, k, entry).Revision}"; }
+        catch (Exception ex) when (!ComCall.IsFinal(ex)) { }
+        return $"Wrote {k} '{path}'.{revision}" + SourceTextInput.FormatNotes(declIn, implIn);
     }
 
     // ---- create --------------------------------------------------------------

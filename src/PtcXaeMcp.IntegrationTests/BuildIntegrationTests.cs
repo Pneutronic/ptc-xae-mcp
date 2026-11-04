@@ -157,6 +157,28 @@ public class BuildIntegrationTests : IAsyncLifetime
         Assert.DoesNotContain("failedProjects=1", result);
     }
 
+    [Trait("Description", "twincat_build_plc(expectSymbols): GVL-Symbol, Member einer FB-Instanz und Programm werden in der .tmc gefunden; ein nie deklarierter Name macht das Ergebnis zum [Error] mit linkalways-Hinweis.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task BuildPlc_ExpectSymbols_FindsCompiledNamesAndFlagsTheMissingOne()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+        await ScratchPou.EnsureAsync(_client!);
+        string missing = FixtureLayout.GvlName + ".nNeverDeclared";
+
+        string result = GetText(await _client!.CallToolAsync("twincat_build_plc", new Dictionary<string, object?>
+        {
+            ["expectSymbols"] = new[] { FixtureLayout.UintSymbol, FixtureLayout.StepChainStepMember, FixtureLayout.GvlName, missing },
+        }));
+
+        Assert.Contains("Build succeeded", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"[Error] Expected symbols: 1 of 4 missing from the compiled PLC: {missing}.", result);
+        Assert.Contains("{attribute 'linkalways'}", result);
+        Assert.Contains($"{FixtureLayout.UintSymbol} (symbol)", result);
+        Assert.Contains($"{FixtureLayout.StepChainStepMember} (member of {FixtureLayout.StepChainInstanceSymbol})", result);
+        Assert.Contains($"{FixtureLayout.GvlName} (", result);
+    }
+
     // ── Category 1: Type system errors (declaration) ──────────────────────────
 
     [Trait("Description", "Unbekannter Datentyp in der Deklaration → Build muss fehlschlagen.")]

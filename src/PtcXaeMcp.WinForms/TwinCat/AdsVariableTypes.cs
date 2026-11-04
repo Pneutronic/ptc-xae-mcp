@@ -34,6 +34,21 @@ internal sealed record AdsBatchReadResult(
     int AdsPort,         // ADS port used
     string Message);     // "OK" or "[Error] ..."
 
+// ---- typed read by handle ----------------------------------------------------
+// A symbol whose PLC type the caller already knows (BOOL, UINT, LREAL, STRING(255), ...). Read by variable handle
+// only, so a deep member path into a large FB instance needs no symbol-table search.
+
+internal sealed record AdsTypedRead(string Symbol, string PlcType)
+{
+    /// <summary>The declared length of a "STRING(n)" type, or null for any other type.</summary>
+    public int? StringLength =>
+        PlcType.StartsWith("STRING(", StringComparison.OrdinalIgnoreCase) && PlcType.EndsWith(')')
+        && int.TryParse(PlcType.AsSpan(7, PlcType.Length - 8), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out int n) && n > 0
+            ? n
+            : null;
+}
+
 // ---- diagnostics: fb-instance-inspect --------------------------------------
 // twincat_inspect_fb_instance is a READ-ONLY diagnostic: dumps an FB/struct
 // instance's MemberInstances (including PROPERTY-flagged entries) plus any

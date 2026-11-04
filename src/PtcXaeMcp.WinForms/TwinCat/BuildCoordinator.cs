@@ -132,37 +132,42 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
     /// <summary>The disk-vs-XAE baseline; tests pass their own instance.</summary>
     internal StaleBufferGuard StaleGuard { get; init; } = StaleBufferGuard.Shared;
 
-    public string BuildSolution(bool ignoreStaleFiles = false) => Combine(BuildSolutionDetailed(ignoreStaleFiles));
+    /// <param name="expectSymbols">Names that must be in the compiled PLC afterwards (see <see cref="CompiledSymbolCheck"/>); null skips the check.</param>
+    public string BuildSolution(bool ignoreStaleFiles = false, IEnumerable<string>? expectSymbols = null) =>
+        Combine(BuildSolutionDetailed(ignoreStaleFiles, expectSymbols));
 
-    public string BuildPlc(string? plcProjectName, bool ignoreStaleFiles = false) => Combine(BuildPlcDetailed(plcProjectName, ignoreStaleFiles));
+    public string BuildPlc(string? plcProjectName, bool ignoreStaleFiles = false, IEnumerable<string>? expectSymbols = null) =>
+        Combine(BuildPlcDetailed(plcProjectName, ignoreStaleFiles, expectSymbols));
 
-    public string RebuildSolution(bool ignoreStaleFiles = false) => Combine(RebuildSolutionDetailed(ignoreStaleFiles));
+    public string RebuildSolution(bool ignoreStaleFiles = false, IEnumerable<string>? expectSymbols = null) =>
+        Combine(RebuildSolutionDetailed(ignoreStaleFiles, expectSymbols));
 
-    public string RebuildPlc(string? plcProjectName, bool ignoreStaleFiles = false) => Combine(RebuildPlcDetailed(plcProjectName, ignoreStaleFiles));
+    public string RebuildPlc(string? plcProjectName, bool ignoreStaleFiles = false, IEnumerable<string>? expectSymbols = null) =>
+        Combine(RebuildPlcDetailed(plcProjectName, ignoreStaleFiles, expectSymbols));
 
-    public BuildOutcome BuildSolutionDetailed(bool ignoreStaleFiles = false) =>
-        CheckedBuild(null, allProjects: true, ignoreStaleFiles, () =>
+    public BuildOutcome BuildSolutionDetailed(bool ignoreStaleFiles = false, IEnumerable<string>? expectSymbols = null) =>
+        CheckedBuild(null, allProjects: true, ignoreStaleFiles, expectSymbols, () =>
         {
             var r = session.BuildSolution();
             return (FormatBuildResult(r), r.Log);
         });
 
-    public BuildOutcome BuildPlcDetailed(string? plcProjectName, bool ignoreStaleFiles = false) =>
-        CheckedBuild(plcProjectName, allProjects: false, ignoreStaleFiles, () =>
+    public BuildOutcome BuildPlcDetailed(string? plcProjectName, bool ignoreStaleFiles = false, IEnumerable<string>? expectSymbols = null) =>
+        CheckedBuild(plcProjectName, allProjects: false, ignoreStaleFiles, expectSymbols, () =>
         {
             var r = session.BuildPlc(plcProjectName);
             return (FormatBuildResult(r), r.Log);
         });
 
-    public BuildOutcome RebuildSolutionDetailed(bool ignoreStaleFiles = false) =>
-        CheckedBuild(null, allProjects: true, ignoreStaleFiles, () =>
+    public BuildOutcome RebuildSolutionDetailed(bool ignoreStaleFiles = false, IEnumerable<string>? expectSymbols = null) =>
+        CheckedBuild(null, allProjects: true, ignoreStaleFiles, expectSymbols, () =>
         {
             var r = session.RebuildSolution();
             return (FormatRebuildResult(r), r.Log);
         });
 
-    public BuildOutcome RebuildPlcDetailed(string? plcProjectName, bool ignoreStaleFiles = false) =>
-        CheckedBuild(plcProjectName, allProjects: false, ignoreStaleFiles, () =>
+    public BuildOutcome RebuildPlcDetailed(string? plcProjectName, bool ignoreStaleFiles = false, IEnumerable<string>? expectSymbols = null) =>
+        CheckedBuild(plcProjectName, allProjects: false, ignoreStaleFiles, expectSymbols, () =>
         {
             var r = session.RebuildPlc(plcProjectName);
             return (FormatRebuildResult(r), r.Log);
@@ -174,8 +179,10 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
     /// references (warns only). <paramref name="allProjects"/> = a solution build, which compiles every PLC project.
     /// </summary>
     private BuildOutcome CheckedBuild(
-        string? plcProjectName, bool allProjects, bool ignoreStaleFiles, Func<(string Summary, string Log)> build)
+        string? plcProjectName, bool allProjects, bool ignoreStaleFiles, IEnumerable<string>? expectSymbols,
+        Func<(string Summary, string Log)> build)
     {
+        IReadOnlyList<string> expected = CompiledSymbolCheck.Normalize(expectSymbols);
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return new BuildOutcome(error, "");
 
@@ -183,6 +190,7 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
         if (refuse is not null) return new BuildOutcome(refuse, "");
         string? libraries = LibraryPreflight(plcProjectName, allProjects);
 
+        DateTime buildStartedUtc = DateTime.UtcNow;
         (string Summary, string Log) result;
         try { result = build(); }
         catch (Exception ex) { return new BuildOutcome($"[Error] {ex.Message}", ""); }
@@ -198,7 +206,54 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
         var lines = staleLines.ToList();
         if (libraries is not null) lines.Add(libraries);
         lines.Add(result.Summary);
+        if (expected.Count > 0)
+            lines.Add(ExpectedSymbolsReport(allProjects ? null : plcProjectName, expected, buildStartedUtc));
         return new BuildOutcome(string.Join("\n", lines), result.Log);
+    }
+
+    /// <summary>
+    /// Looks the expected names up in the .tmc of the built PLC project(s): the one named, or every PLC
+    /// project of the solution when none is (a solution build, or a PLC build that auto-detects its
+    /// project — a name found in any of them counts). Never throws; a failure becomes the report's [Error].
+    /// </summary>
+    private string ExpectedSymbolsReport(string? plcProjectName, IReadOnlyList<string> expected, DateTime buildStartedUtc)
+    {
+        var tmcs = new List<TmcSymbolIndex>();
+        var problems = new List<string>();
+        IReadOnlyList<PlcProjectXml> projects;
+        try { projects = session.ListPlcProjectXml(); }
+        catch (Exception ex) { return $"[Error] Expected symbols not verified: the PLC projects could not be listed ({ex.Message})."; }
+
+        foreach (var project in projects)
+        {
+            var (relative, parseError) = HmiTmcCandidates.ParseRelativeTmcPath(project.Xml);
+            if (plcProjectName is not null
+                && !project.PlcProject.Equals(plcProjectName, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(Path.GetFileNameWithoutExtension(relative), plcProjectName, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (relative is null)
+            {
+                // A PLC instance made from a .tmc has no PlcProjectDef: nothing is compiled there.
+                if (plcProjectName is not null) problems.Add($"{project.PlcProject}: {project.Error ?? parseError}");
+                continue;
+            }
+            var (path, resolveError) = HmiTmcCandidates.Resolve(project.TcProjectFile, relative);
+            if (path is null) { problems.Add($"{project.PlcProject}: {resolveError}"); continue; }
+            try
+            {
+                var info = new FileInfo(path);
+                if (!info.Exists) { problems.Add($"{project.PlcProject}: {path} does not exist — was the project ever built?"); continue; }
+                if (info.Length > TmcFile.MaxSizeBytes) { problems.Add($"{project.PlcProject}: {path} is larger than {TmcFile.MaxSizeBytes / (1024 * 1024)} MB"); continue; }
+                tmcs.Add(CompiledSymbolCheck.ReadIndex(path, info.LastWriteTimeUtc, File.ReadAllText(path)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Xml.XmlException)
+            {
+                problems.Add($"{project.PlcProject}: {path} could not be read ({ex.Message})");
+            }
+        }
+        if (plcProjectName is not null && tmcs.Count == 0 && problems.Count == 0)
+            problems.Add($"no PLC project named '{plcProjectName}' under TIPC");
+        return CompiledSymbolCheck.Report(expected, tmcs, problems, buildStartedUtc);
     }
 
     private (IReadOnlyList<string> Lines, string? Refuse, bool HadStale) StalePreflight(
@@ -272,15 +327,7 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
             sb.AppendLine(CultureInfo.InvariantCulture, $"Reason: {result.FailureReason}");
 
         AppendBuildTruth(sb, result.CompilerSummary, result.Artifact);
-
-        foreach (var e in result.Errors)
-        {
-            string location = e.File is not null
-                ? $" ({e.File}{(e.Line.HasValue ? $":{e.Line}" : "")})"
-                : "";
-            sb.AppendLine(CultureInfo.InvariantCulture, $"[{e.Level.ToUpperInvariant()}]{location} {e.Description}");
-        }
-
+        AppendErrorListEntries(sb, result.Errors);
         return sb.ToString().TrimEnd();
     }
 
@@ -466,15 +513,32 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
             sb.AppendLine(CultureInfo.InvariantCulture, $"Reason: {result.FailureReason}");
 
         AppendBuildTruth(sb, result.CompilerSummary, result.Artifact);
-
-        foreach (var e in result.Errors)
-        {
-            string location = e.File is not null
-                ? $" ({e.File}{(e.Line.HasValue ? $":{e.Line}" : "")})"
-                : "";
-            sb.AppendLine(CultureInfo.InvariantCulture, $"[{e.Level.ToUpperInvariant()}]{location} {e.Description}");
-        }
-
+        AppendErrorListEntries(sb, result.Errors);
         return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>Messages listed in a build result at most; errors and warnings are always listed in full.</summary>
+    internal const int MaxListedMessages = 10;
+
+    /// <summary>
+    /// The Error List rows of a build. Its messages are not this build's: the XAE keeps every message since it
+    /// started there (seen live: 125 "device ... already exists in file" lines from loading the EtherCAT device
+    /// descriptions, 58 000 characters that buried the verdict and overflowed the tool result). Errors and
+    /// warnings are listed in full, then the first few distinct messages and a count of the rest.
+    /// </summary>
+    internal static void AppendErrorListEntries(StringBuilder sb, IReadOnlyList<BuildError> entries)
+    {
+        foreach (var e in entries.Where(e => e.Level != "message"))
+            sb.AppendLine(CultureInfo.InvariantCulture, $"[{e.Level.ToUpperInvariant()}]{Location(e)} {e.Description}");
+
+        var messages = entries.Where(e => e.Level == "message").Distinct().ToList();
+        foreach (var e in messages.Take(MaxListedMessages))
+            sb.AppendLine(CultureInfo.InvariantCulture, $"[MESSAGE]{Location(e)} {e.Description}");
+        if (messages.Count > MaxListedMessages)
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"[Note] {messages.Count - MaxListedMessages} more messages in the Error List not shown (errors and warnings are all above); twincat_get_error_list lists them.");
+
+        static string Location(BuildError e) =>
+            e.File is not null ? $" ({e.File}{(e.Line.HasValue ? $":{e.Line}" : "")})" : "";
     }
 }

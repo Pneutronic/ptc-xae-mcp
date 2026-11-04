@@ -19,9 +19,9 @@ public sealed record XaeHostSelection(
 /// <para>
 /// ProgIDs are the Infosys-242746251-confirmed constants. The exe path is
 /// resolved from the registry (<c>HKCR\&lt;ProgID&gt;\CLSID</c> →
-/// <c>HKCR\CLSID\{clsid}\LocalServer32</c>); when that entry is absent — as
-/// for <c>TcXaeShell.DTE.15.0</c> on the current box — it falls back to the
-/// documented well-known install path for that class.
+/// <c>HKCR\CLSID\{clsid}\LocalServer32</c>, 64-bit view first, then the 32-bit
+/// view where <c>TcXaeShell.DTE.15.0</c> registers it); when no view has the
+/// entry it falls back to the documented well-known install path for that class.
 /// </para>
 /// <para>
 /// <see cref="AttachProbeOrder"/> always puts the resolved ProgID first but
@@ -124,18 +124,41 @@ public sealed class XaeHostResolver
     /// <summary>The unbiased legacy probe order (no project context).</summary>
     public static IReadOnlyList<string> LegacyAttachProbeOrder => LegacyProbeOrder;
 
-    private static string? ProbeExeFromRegistry(string progId)
+    // Registry.ClassesRoot only shows the caller's own view. The 32-bit shell
+    // (TcXaeShell.DTE.15.0) registers its LocalServer32 in the 32-bit view only,
+    // so a 64-bit host must look there too — otherwise a shell installed outside
+    // the well-known path is never found.
+    private static readonly RegistryView[] ClassesRootViews =
+        [RegistryView.Registry64, RegistryView.Registry32];
+
+    internal static string? ProbeExeFromRegistry(string progId)
+    {
+        foreach (var view in ClassesRootViews)
+        {
+            using var root = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, view);
+            if (ProbeExeFromClassesRoot(root, progId) is string exe)
+                return exe;
+        }
+        return null;
+    }
+
+    private static string? ProbeExeFromClassesRoot(RegistryKey classesRoot, string progId)
     {
         // HKCR\<ProgID>\CLSID -> {clsid};  HKCR\CLSID\{clsid}\LocalServer32 -> exe
-        using var progKey = Registry.ClassesRoot.OpenSubKey($@"{progId}\CLSID");
+        using var progKey = classesRoot.OpenSubKey($@"{progId}\CLSID");
         if (progKey?.GetValue(null) is not string clsid || string.IsNullOrWhiteSpace(clsid))
             return null;
 
-        using var ls = Registry.ClassesRoot.OpenSubKey($@"CLSID\{clsid}\LocalServer32");
+        using var ls = classesRoot.OpenSubKey($@"CLSID\{clsid}\LocalServer32");
         if (ls?.GetValue(null) is not string raw || string.IsNullOrWhiteSpace(raw))
             return null;
 
-        // LocalServer32 may be quoted and/or carry args; take the exe token.
+        return ExeFromLocalServer32(raw);
+    }
+
+    /// <summary>LocalServer32 may be quoted and/or carry args; returns the exe token.</summary>
+    internal static string? ExeFromLocalServer32(string raw)
+    {
         var path = raw.Trim();
         if (path.StartsWith('"'))
         {

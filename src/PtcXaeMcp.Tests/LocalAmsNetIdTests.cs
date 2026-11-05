@@ -333,4 +333,14 @@ public class LocalAmsNetIdTests
         Assert.Contains("no TargetNetId could be read", ex.Message, StringComparison.Ordinal);
         Assert.Equal(0, local.Calls);
     }
+
+    [Fact]
+    public void AdsTools_Project_WithALocalTarget_IsTheLocalSystem()
+    {
+        // The XAE writes no TargetNetId into the .tsproj for a Local target; seen live as a refusal of "project".
+        var local = new FixedResolver(new LocalAmsNetId(RouterNetId, LocalNetIdSource.Router));
+
+        Assert.Equal(RouterNetId, AdsTargetNetId.Resolve("project", local, () => AdsTargetNetId.ProjectTargetIsLocal));
+        Assert.Equal(1, local.Calls);
+    }
 }

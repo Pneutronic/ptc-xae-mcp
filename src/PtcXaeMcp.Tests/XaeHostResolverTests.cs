@@ -127,4 +127,31 @@ public class XaeHostResolverTests
         Assert.Equal("TcXaeShell.DTE.15.0", order[0]);
         Assert.Equal(order.Distinct().Count(), order.Count);
     }
+
+    [Theory]
+    [InlineData(@"""C:\Program Files (x86)\Beckhoff\TcXaeShell\Common7\IDE\TcXaeShell.exe"" -Embedding", Exe32)]
+    [InlineData(@"C:\Program Files\Beckhoff\TcXaeShell\Common7\IDE\TcXaeShell.exe -Embedding", Exe64)]
+    [InlineData(@"  C:\Program Files\Beckhoff\TcXaeShell\Common7\IDE\TcXaeShell.exe  ", Exe64)]
+    public void ExeFromLocalServer32_StripsQuotesAndArguments(string raw, string expected)
+    {
+        Assert.Equal(expected, XaeHostResolver.ExeFromLocalServer32(raw));
+    }
+
+    // The 32-bit shell registers its LocalServer32 only in the 32-bit registry
+    // view; a 64-bit host reading the default view alone never saw it.
+    [SkippableFact]
+    public void RegistryProbe_FindsShellRegisteredOnlyInThe32BitView()
+    {
+        using var root32 = Microsoft.Win32.RegistryKey.OpenBaseKey(
+            Microsoft.Win32.RegistryHive.ClassesRoot, Microsoft.Win32.RegistryView.Registry32);
+        using var progKey = root32.OpenSubKey($@"{XaeHostResolver.ProgId32}\CLSID");
+        string? clsid = progKey?.GetValue(null) as string;
+        using var ls = clsid is null ? null : root32.OpenSubKey($@"CLSID\{clsid}\LocalServer32");
+        Skip.If(ls?.GetValue(null) is not string, "The 32-bit XAE shell is not registered on this machine.");
+
+        string? exe = XaeHostResolver.ProbeExeFromRegistry(XaeHostResolver.ProgId32);
+
+        Assert.NotNull(exe);
+        Assert.EndsWith("TcXaeShell.exe", exe, StringComparison.OrdinalIgnoreCase);
+    }
 }

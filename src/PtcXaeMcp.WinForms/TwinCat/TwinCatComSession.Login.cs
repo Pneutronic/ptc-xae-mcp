@@ -25,15 +25,20 @@ internal sealed partial class TwinCatComSession
     private static PlcOnlineCommand? FindPlcLoginCommand(dynamic dte) =>
         FindPlcCommandContaining(dte, "Loginto");
 
-    public LoginPlcResult LoginPlc(LoginMode mode, bool allowDownloadFallback = false) => ComBusyRetry.Run(() =>
+    // Each step retries only itself (see LogoutPlc): a retry of the whole login after the Login
+    // command had run could execute it a second time — a second, unrequested download.
+    public LoginPlcResult LoginPlc(LoginMode mode, bool allowDownloadFallback = false)
     {
-        dynamic dte = GetActiveTcDte();
+        var (dteObj, loginCmd, logoutBefore, mainWindow) = ComBusyRetry.Run<(object, PlcOnlineCommand?, PlcOnlineCommand?, IntPtr)>(() =>
+        {
+            dynamic d = GetActiveTcDte();
+            return ((object)d, FindPlcLoginCommand(d), FindPlcLogoutCommand(d), TryGetXaeMainWindow(d));
+        }, OpenTimeout);
+        dynamic dte = dteObj;
 
         // ── Primary: PLC Login DTE command ────────────────────────────────────
-        PlcOnlineCommand? loginCmd = FindPlcLoginCommand(dte);
         if (loginCmd is { } lc)
         {
-            PlcOnlineCommand? logoutBefore = FindPlcLogoutCommand(dte);
             switch (PlcOnlineInference.BeforeLogin(lc.Available, logoutBefore?.Available))
             {
                 case LoginPrecheck.AlreadyOnline:
@@ -42,7 +47,7 @@ internal sealed partial class TwinCatComSession
                         Mode: mode.ToString(),
                         DialogHandled: "none",
                         IsOnlineNow: true,
-                        RunState: DetermineRunState(dte),
+                        RunState: ComBusyRetry.Run(() => DetermineRunState(dteObj), OpenTimeout),
                         Message: $"PLC already online (Logout command '{logoutBefore!.Value.Name}' is available) — no-op.");
                 case LoginPrecheck.NoTarget:
                     return new LoginPlcResult(
@@ -66,22 +71,27 @@ internal sealed partial class TwinCatComSession
                                  $"Login command '{lc.Name}' or of the Logout command could not be read).");
             }
 
-            var watcher = new Win32DialogAutomation.LoginDialogWatcher(mode, allowDownloadFallback, TryGetXaeMainWindow(dte));
+            // The watcher stays up until the state has settled: confirmations after the 3-way modal
+            // (first download, replace the running application) can come seconds later.
+            var watcher = new Win32DialogAutomation.LoginDialogWatcher(mode, allowDownloadFallback, mainWindow);
+            PlcOnlineSettled after;
             watcher.Start();
             try
             {
-                dte.ExecuteCommand(lc.Name);
-                Thread.Sleep(1200);  // let XAE open the login dialog and settle
+                // A call the XAE rejects did not run, so retrying the call alone is safe.
+                ComBusyRetry.Run(() => { dte.ExecuteCommand(lc.Name); }, OpenTimeout);
+                // Verify: Logout command available ⟺ now online.
+                after = PlcOnlineSettle.Wait(
+                    OnlineFlagsProbe(dteObj, lc.Name, logoutBefore!.Value.Name),   // Proceed: the Logout flag was read
+                    expectOnline: true, LoginSettleTimeout, minWaitForOther: TimeSpan.FromSeconds(5), SettleInterval);
             }
             finally
             {
                 watcher.Stop();
             }
 
-            // Verify: Logout command available ⟺ now online.
-            PlcOnlineCommand? after = FindPlcLogoutCommand(dte);
-            bool? nowOnline = after?.Available;
-            string runState = nowOnline == true ? DetermineRunState(dte) : "unknown";
+            bool? nowOnline = after.Online;
+            string runState = nowOnline == true ? ComBusyRetry.Run(() => DetermineRunState(dteObj), OpenTimeout) : "unknown";
 
             return new LoginPlcResult(
                 Success: nowOnline == true,
@@ -102,6 +112,12 @@ internal sealed partial class TwinCatComSession
                           : ""));
         }
 
+        return ComBusyRetry.Run(() => LegacyLogin(dteObj, mode), OpenTimeout);
+    }
+
+    private LoginPlcResult LegacyLogin(object dteObj, LoginMode mode)
+    {
+        dynamic dte = dteObj;
         // ── Legacy fallback (older TC without the DTE command) ────────────────
         dynamic? plcNode = FindPlcSourceProjectNode(dte);
         if (plcNode is null)
@@ -134,7 +150,7 @@ internal sealed partial class TwinCatComSession
             Message: isOnlineNow == true
                 ? $"PLC logged in via ConsumeXml fallback (mode: {mode}) — now online."
                 : "[Error] ConsumeXml(<LoginCmd>) sent but PLC online state could not be confirmed.");
-    }, OpenTimeout);
+    }
 
     // Best-effort: try to read run state from DTE debugger mode.
     // Returns "running" / "stopped" / "unknown" — never throws.

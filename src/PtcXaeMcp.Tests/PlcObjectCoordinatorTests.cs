@@ -185,7 +185,7 @@ public class PlcObjectCoordinatorTests
     {
         var fake = OpenFake();
         var (summary, content) = Coord(fake).Read(Dut, "dut");
-        summary.Should().Be($"Read DUT/STRUCT '{Dut}'.");
+        summary.Should().Be($"Read DUT/STRUCT '{Dut}'. Revision: {PlcRevision.Of(content!.Declaration, "")}");
         content!.HasDeclaration.Should().BeTrue();
         content.HasImplementation.Should().BeFalse();
         content.Declaration.Should().Contain("ST_Point");
@@ -197,7 +197,7 @@ public class PlcObjectCoordinatorTests
     {
         var fake = OpenFake();
         var (summary, content) = Coord(fake).Read(Fb, "POU");
-        summary.Should().Be($"Read POU/FUNCTION_BLOCK '{Fb}' (ST).");
+        summary.Should().Be($"Read POU/FUNCTION_BLOCK '{Fb}' (ST). Revision: {PlcRevision.Of(content!.Declaration, content.Implementation)}");
         content!.Implementation.Should().Be("x := 1;");
     }
 
@@ -266,11 +266,45 @@ public class PlcObjectCoordinatorTests
     {
         var fake = OpenFake();
         string result = Coord(fake).Write(Dut, "DUT", "TYPE ST_Point :\nSTRUCT\n  X : INT;\n  Y : INT;\nEND_STRUCT\nEND_TYPE", null);
-        result.Should().Be($"Wrote DUT '{Dut}'.");
+        result.Should().MatchRegex($"^Wrote DUT '{System.Text.RegularExpressions.Regex.Escape(Dut)}'\\. Revision: [0-9a-f]{{16}}$");
         int logout = fake.CallLog.FindIndex(c => c.StartsWith("LogoutPlc", StringComparison.Ordinal));
         int write = fake.CallLog.FindIndex(c => c.StartsWith("WritePouBody", StringComparison.Ordinal));
         logout.Should().BeGreaterThanOrEqualTo(0);
         write.Should().BeGreaterThan(logout);
+    }
+
+    [Fact]
+    public void Write_WithTheRevisionOfTheRead_Writes()
+    {
+        var fake = OpenFake();
+        var (_, content) = Coord(fake).Read(Gvl, "GVL");
+
+        string result = Coord(fake).Write(Gvl, "GVL", "VAR_GLOBAL\n  b : BOOL;\nEND_VAR", null, expectedRevision: content!.Revision.ToUpperInvariant());
+
+        result.Should().StartWith($"Wrote GVL '{Gvl}'.");
+        fake.CallLog.Should().Contain(c => c.StartsWith("WritePouBody", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Write_AfterSomeoneElseChangedTheElement_IsRefusedBeforeTheLogout()
+    {
+        var fake = OpenFake();
+        var (_, content) = Coord(fake).Read(Gvl, "GVL");
+        fake.GvlDeclarationsByPath[Gvl] = "VAR_GLOBAL\n  nOther : INT;\nEND_VAR";
+
+        string result = Coord(fake).Write(Gvl, "GVL", "VAR_GLOBAL\n  b : BOOL;\nEND_VAR", null, expectedRevision: content!.Revision);
+
+        result.Should().StartWith($"[Error] '{Gvl}' changed since it was read (expected revision {content.Revision}, now ");
+        result.Should().Contain("Nothing was changed");
+        AssertNoLogoutNoWrite(fake);
+    }
+
+    [Fact]
+    public void Revision_DependsOnBothSectionsAndTheirBoundary()
+    {
+        PlcRevision.Of("a", "b").Should().NotBe(PlcRevision.Of("ab", ""));
+        PlcRevision.Of("a", "b").Should().NotBe(PlcRevision.Of("a", "c"));
+        PlcRevision.Of("a", "b").Should().MatchRegex("^[0-9a-f]{16}$");
     }
 
     [Fact]

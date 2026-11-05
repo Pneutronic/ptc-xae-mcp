@@ -59,6 +59,12 @@ public static class FixtureLayout
     /// <summary>A numeric step label present in <see cref="StepChainPouPath"/>.</summary>
     public const int StepChainStep = 1010;
 
+    /// <summary>MAIN's instance of FB_StepChain: a top-level symbol of the compiled PLC.</summary>
+    public const string StepChainInstanceSymbol = "MAIN.fbStepChain";
+
+    /// <summary>A member of <see cref="StepChainInstanceSymbol"/>; the .tmc lists it only inside the FB's data type.</summary>
+    public const string StepChainStepMember = StepChainInstanceSymbol + ".Step";
+
     public static string InterfacePath => PousFolder + "^I_FixtureDevice";
 
     /// <summary>

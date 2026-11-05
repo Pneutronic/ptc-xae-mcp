@@ -412,6 +412,14 @@ internal interface ITwinCatSession : IDisposable
     AdsBatchReadResult ReadAdsVariablesBatch(IReadOnlyList<string> symbolPaths, string? amsNetId, int adsPort);
 
     /// <summary>
+    /// Read symbols whose PLC types the caller already knows, by variable handle only: the PLC resolves each
+    /// path, no symbol table is loaded or searched. For deep member paths into large FB instances (arrays of
+    /// structs), where <see cref="ReadAdsVariablesBatch"/> walks the whole symbol tree per symbol. One
+    /// connection; each item carries its own outcome.
+    /// </summary>
+    AdsBatchReadResult ReadAdsValuesTyped(IReadOnlyList<AdsTypedRead> reads, string? amsNetId, int adsPort);
+
+    /// <summary>
     /// Measure the elapsed time between two symbol conditions (edge A → edge B)
     /// by polling a single ADS connection, bounded by <paramref name="timeoutMs"/>.
     /// A read-only cross-check / fallback for the test PRG's internal PLC-timer

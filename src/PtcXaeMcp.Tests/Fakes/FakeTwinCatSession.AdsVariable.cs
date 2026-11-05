@@ -16,8 +16,11 @@ internal sealed partial class FakeTwinCatSession
     {
         CallLog.Add($"ReadAdsVariable(sym={symbolPath}, net={amsNetId ?? "<null>"}, port={adsPort})");
         if (ReadAdsVariableThrows is not null) throw ReadAdsVariableThrows;
-        return FakeReadAdsVariableResult;
+        return ReadAdsVariableBySymbol?.Invoke(symbolPath) ?? FakeReadAdsVariableResult;
     }
+
+    /// <summary>Per-symbol answer for <see cref="ReadAdsVariable"/>; null falls back to <see cref="FakeReadAdsVariableResult"/>.</summary>
+    public Func<string, AdsVariableResult?>? ReadAdsVariableBySymbol { get; set; }
 
     /// <summary>Runs inside <see cref="WriteAdsVariable"/> (after the call is logged) with
     /// (symbolPath, value) — lets a test hold a write in flight to drive interleavings.</summary>
@@ -44,6 +47,24 @@ internal sealed partial class FakeTwinCatSession
         CallLog.Add($"ReadAdsVariablesBatch(n={symbolPaths.Count}, syms=[{string.Join(",", symbolPaths)}], net={amsNetId ?? "<null>"}, port={adsPort})");
         if (ReadAdsVariablesBatchThrows is not null) throw ReadAdsVariablesBatchThrows;
         return FakeReadAdsVariablesBatchResult;
+    }
+
+    /// <summary>Answers <see cref="ReadAdsValuesTyped"/> per symbol; null (or no entry) is an unreadable item.</summary>
+    public Func<AdsTypedRead, object?>? TypedValueBySymbol { get; set; }
+    /// <summary>A connection-level failure message for <see cref="ReadAdsValuesTyped"/>; null succeeds.</summary>
+    public string? ReadAdsValuesTypedFails { get; set; }
+    public int ReadAdsValuesTypedCalls { get; private set; }
+
+    public AdsBatchReadResult ReadAdsValuesTyped(IReadOnlyList<AdsTypedRead> reads, string? amsNetId, int adsPort)
+    {
+        ReadAdsValuesTypedCalls++;
+        CallLog.Add($"ReadAdsValuesTyped(n={reads.Count}, first={reads.FirstOrDefault()?.Symbol}, net={amsNetId ?? "<null>"}, port={adsPort})");
+        if (ReadAdsValuesTypedFails is not null)
+            return new AdsBatchReadResult(false, [], "1.2.3.4.1.1", adsPort, ReadAdsValuesTypedFails);
+        var items = reads.Select(r => TypedValueBySymbol?.Invoke(r) is { } v
+            ? new AdsBatchReadItem(r.Symbol, r.PlcType, v, true, "OK")
+            : new AdsBatchReadItem(r.Symbol, null, null, false, "[Error] Ads-Error 0x710 symbol not found")).ToList();
+        return new AdsBatchReadResult(true, items, "1.2.3.4.1.1", adsPort, "OK");
     }
 
     public SignalTransitionResult FakeMeasureSignalTransitionResult { get; set; } =

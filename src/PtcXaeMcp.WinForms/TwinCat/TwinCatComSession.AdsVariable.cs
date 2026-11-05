@@ -48,6 +48,9 @@ internal sealed partial class TwinCatComSession
     public AdsBatchReadResult ReadAdsVariablesBatch(IReadOnlyList<string> symbolPaths, string? amsNetId, int adsPort)
         => new(false, Array.Empty<AdsBatchReadItem>(), amsNetId ?? "local", adsPort, TwinCatNotBuilt.Message);
 
+    public AdsBatchReadResult ReadAdsValuesTyped(IReadOnlyList<AdsTypedRead> reads, string? amsNetId, int adsPort)
+        => new(false, Array.Empty<AdsBatchReadItem>(), amsNetId ?? "local", adsPort, TwinCatNotBuilt.Message);
+
     public SignalTransitionResult MeasureSignalTransition(string startSymbol, string startEquals,
         string endSymbol, string endEquals, int timeoutMs, string? amsNetId, int adsPort)
         => new(false, 0, false, TwinCatNotBuilt.Message);
@@ -444,6 +447,53 @@ internal sealed partial class TwinCatComSession
         }
     }
 
+    public AdsBatchReadResult ReadAdsValuesTyped(IReadOnlyList<AdsTypedRead> reads, string? amsNetId, int adsPort)
+    {
+        string resolvedNetId = ResolveAmsNetId(amsNetId);
+        try
+        {
+            using var client = new AdsClient();
+            client.Connect(resolvedNetId, adsPort);
+            var items = reads.Select(read => ReadTypedItem(client, read)).ToList();
+            return new(true, items, resolvedNetId, adsPort, "OK");
+        }
+        catch (Exception ex) when (ComCall.NotBusy(ex)) {
+            return new(false, Array.Empty<AdsBatchReadItem>(), resolvedNetId, adsPort,
+                $"ReadAdsValuesTyped failed: {ex.Message}");
+        }
+    }
+
+    // The handle is the PLC's own path lookup, so a wrong path or a missing PLC fails here per item
+    // (DeviceSymbolNotFound / TargetPortNotFound), never the whole call.
+    private static AdsBatchReadItem ReadTypedItem(AdsClient client, AdsTypedRead read)
+    {
+        uint handle;
+        try { handle = (uint)client.CreateVariableHandle(read.Symbol); }
+        catch (Exception ex) when (ComCall.NotBusy(ex)) {
+            return new(read.Symbol, null, null, false, $"[Error] {ex.Message}");
+        }
+        try
+        {
+            if (read.StringLength is int length)
+            {
+                byte[] raw = (byte[])client.ReadAny(handle, typeof(byte[]), new[] { length + 1 });
+                return new(read.Symbol, "STRING", DecodePlcString(raw, 0, length + 1), true, "OK");
+            }
+            string plcType = NormalizeTypeName(read.PlcType);
+            Type? dotNetType = MapPlcType(plcType);
+            if (dotNetType is null)
+                return new(read.Symbol, plcType, null, false, $"[Error] Unsupported PLC type '{plcType}'.");
+            return new(read.Symbol, plcType, ConvertToJson(client.ReadAny(handle, dotNetType), plcType), true, "OK");
+        }
+        catch (Exception ex) when (ComCall.NotBusy(ex)) {
+            return new(read.Symbol, read.PlcType, null, false, $"[Error] {ex.Message}");
+        }
+        finally
+        {
+            try { client.DeleteVariableHandle(handle); } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
+        }
+    }
+
     private static AdsBatchReadItem ReadBatchItem(AdsClient client, string symbolPath, string resolvedNetId, int adsPort)
     {
         var (sym, loadError) = LoadSymbol(client, symbolPath);
@@ -625,8 +675,10 @@ internal sealed partial class TwinCatComSession
 
     // Reads TargetNetId from the open solution's .tsproj. Parsed from the file
     // rather than asked of COM, so it also works when the XAE is busy or absent.
+    // A .tsproj without one targets Local (AdsTargetNetId.ProjectTargetIsLocal).
     private static string? ProjectTargetNetIdOrNull()
     {
+        bool readOne = false;
         try
         {
             string? sln = null;
@@ -645,10 +697,11 @@ internal sealed partial class TwinCatComSession
                         ?? doc.Descendants("Project").FirstOrDefault()?.Attribute("TargetNetId");
                 string? value = attr?.Value;
                 if (!string.IsNullOrWhiteSpace(value)) return value;
+                readOne = true;
             }
         }
         catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
-        return null;
+        return readOne ? AdsTargetNetId.ProjectTargetIsLocal : null;
     }
 
     private static List<string> SolutionTsprojPaths()

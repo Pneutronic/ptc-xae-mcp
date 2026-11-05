@@ -10,6 +10,43 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `expectSymbols` on `twincat_build_plc`, `twincat_build_solution`, `twincat_rebuild_plc` and
+  `twincat_rebuild_solution`: after the build every name is looked up in the PLC project's `.tmc` — a symbol, a
+  data type, a program or GVL, or a member path into an instance such as `MAIN.fbAxis.nState` (inherited members
+  included). A missing name makes the result an `[Error]` that says why: TwinCAT compiles only what a task's
+  program reaches, unless `{attribute 'linkalways'}` is set, so 0 errors do not prove that new code was compiled.
+- `twincat_login(mode='online_change')` verifies the change on the PLC: it reads
+  `TwinCAT_SystemInfoVarList._AppInfo.OnlineChangeCnt` over ADS before and after the login and the first task's
+  cycle counter twice afterwards. `onlineChange.verdict` is `applied`, `not_needed`, `not_applied` (the result is
+  then `success=false`), `download` or `unknown`; `onlineChange.plcCycling` says whether the application runs.
+- `twincat_plc_read` reports a revision (a hash of declaration and implementation);
+  `twincat_plc_write(expectedRevision)` refuses the write, before the automatic logout, when someone else changed
+  the element since it was read. The write result names the new revision.
+- `twincat_tcunit_results` (read-only, online over ADS): waits until the TcUnit runner has stored its results,
+  then returns `verdict` (`passed`, `failed`, `no_tests`, `unknown`), totals, suites and the failed test cases
+  with their messages (`includePassed` adds the passed ones). Values are read by variable handle with known types.
+  It warns when online changes followed the download, because TcUnit runs its tests only once after the start.
+
+### Changed
+- Build results list errors and warnings in full but only the first ten messages, with a note how many more
+  the Error List holds. The XAE's Error List keeps every message since its start; hundreds of device-description
+  notices had pushed the compiler verdict out of the result.
+
+### Fixed
+- `twincat_logout` and `twincat_login` report the state the XAE settles in. When the XAE rejected a call
+  while it was still logging in or out, the whole tool was retried: a logout it had just done came back as
+  "already offline — no-op" (`wasOnline=false`), and a login could execute the Login command a second time.
+  Now only the rejected call is retried, and the result waits until the same login state is read twice in a
+  row (the XAE shows both commands disabled or rejects calls for seconds in between). The login dialog
+  watcher stays up until then, so confirmations that follow the login dialog are answered too.
+- The PLC Login/Logout commands are looked up by their last known name instead of walking every XAE
+  command: `twincat_get_plc_online_state` and the logout before every PLC write take well under a second
+  instead of several seconds.
+- The 32-bit XAE shell is found in the 32-bit registry view.
+- `amsNetId="project"` with a Local target (the `.tsproj` has no `TargetNetId`) resolves to the local system
+  instead of refusing.
+
 ## [2.5.0] - 2026-11-02
 
 ### Added

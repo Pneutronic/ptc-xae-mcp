@@ -38,25 +38,27 @@ internal sealed partial class TwinCatMcpTools
     [Description("Compile only the PLC project via DTE.Solution.SolutionBuild.BuildProject. " +
                  "Faster than a full solution build for PLC-code-only changes. " +
                  "Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. " +
-                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.")]
+                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.")]
     public string BuildPlc(
         [Description("Name of the PLC project to build (e.g. 'PLC'). " +
                      "Leave empty to auto-detect the first .plcproj in the solution.")] string? plcProjectName = null,
         [Description("Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
+        [Description("Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check.")] string[]? expectSymbols = null,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_build_plc", new { plcProjectName, ignoreStaleFiles }, () =>
-            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).BuildPlc(plcProjectName, ignoreStaleFiles)), cancellationToken);
+        => bridge.Activity.Trace("twincat_build_plc", new { plcProjectName, ignoreStaleFiles, expectSymbols }, () =>
+            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).BuildPlc(plcProjectName, ignoreStaleFiles, expectSymbols)), cancellationToken);
 
     [McpServerTool(Name = "twincat_build_solution", ReadOnly = false, Destructive = false)]
     [Description("Trigger a full solution build via DTE.Solution.SolutionBuild.Build. " +
                  "Compiles PLC code and IO mapping. " +
                  "Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. " +
-                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Requires XAE running with a solution open.")]
+                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.")]
     public string BuildSolution(
         [Description("Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
+        [Description("Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check.")] string[]? expectSymbols = null,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_build_solution", new { ignoreStaleFiles }, () =>
-            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).BuildSolution(ignoreStaleFiles)), cancellationToken);
+        => bridge.Activity.Trace("twincat_build_solution", new { ignoreStaleFiles, expectSymbols }, () =>
+            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).BuildSolution(ignoreStaleFiles, expectSymbols)), cancellationToken);
 
     [McpServerTool(Name = "twincat_activate_config", ReadOnly = false, Destructive = true)]
     [Description("Activate the TwinCAT configuration: ITcSysManager::CheckAllObjects() then ActivateConfiguration(). " +

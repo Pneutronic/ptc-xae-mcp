@@ -201,8 +201,15 @@ internal static class AdsTargetNetId
     public const string ProjectKeyword = "project";
 
     /// <summary>
+    /// What <c>projectTargetNetId</c> returns for a project whose target is Local: the XAE writes no TargetNetId
+    /// into the .tsproj then. Null instead means the target could not be read at all (no solution open).
+    /// </summary>
+    public const string ProjectTargetIsLocal = "";
+
+    /// <summary>
     /// <paramref name="requested"/> when it is given. "project" is the open solution's own target (the .tsproj's
-    /// TargetNetId, from <paramref name="projectTargetNetId"/>), so it need not be looked up by hand. It is deliberately
+    /// TargetNetId, from <paramref name="projectTargetNetId"/>; the local system for a Local target), so it need
+    /// not be looked up by hand. It is deliberately
     /// NOT the default: silently redirecting a NetId-less call from the local system to a PLANT is the kind of change
     /// that is noticed one step too late. Without a value it is the local system as <paramref name="local"/> resolves
     /// it: the local AMS router's NetId (the registry's, then the loopback, only when the router does not answer).
@@ -213,10 +220,13 @@ internal static class AdsTargetNetId
         ArgumentNullException.ThrowIfNull(projectTargetNetId);
 
         if (string.Equals(requested, ProjectKeyword, StringComparison.OrdinalIgnoreCase))
-            return projectTargetNetId()
+        {
+            string target = projectTargetNetId()
                 ?? throw new InvalidOperationException(
                     "amsNetId=\"project\" requested, but no TargetNetId could be read from the " +
                     "open solution's .tsproj. Pass the NetId explicitly.");
+            return target == ProjectTargetIsLocal ? local.Resolve().NetId : target;
+        }
 
         if (!string.IsNullOrWhiteSpace(requested)) return requested;
         return local.Resolve().NetId;

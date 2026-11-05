@@ -863,7 +863,12 @@ internal sealed partial class TwinCatComSession
             return $"[Error] COM: Error List log unavailable: {ex.Message}";
         }
 
+        // Messages accumulate in the Error List since the XAE started (EtherCAT device-description notices by the
+        // hundred); listed in full they pushed this build's Output pane out of the capped log. Errors and warnings
+        // stay complete, messages are limited like in the build result (BuildCoordinator.AppendErrorListEntries).
         var sb = new System.Text.StringBuilder();
+        var listedMessages = new HashSet<string>(StringComparer.Ordinal);
+        int omittedMessages = 0;
         foreach (var e in entries)
         {
             string tag = BuildTruth.ClassifyErrorItem(e.Level, e.Description, compilerOutput) switch
@@ -872,6 +877,12 @@ internal sealed partial class TwinCatComSession
                 "warning" => "WARN",
                 _ => "MSG",
             };
+            if (tag == "MSG")
+            {
+                if (listedMessages.Contains(e.Description)) continue;
+                if (listedMessages.Count >= BuildCoordinator.MaxListedMessages) { omittedMessages++; continue; }
+                listedMessages.Add(e.Description);
+            }
 
             var loc = new System.Text.StringBuilder();
             if (!string.IsNullOrEmpty(e.File))
@@ -885,6 +896,8 @@ internal sealed partial class TwinCatComSession
 
             sb.AppendLine(loc.Length > 0 ? $"[{tag}] {loc} {e.Description}" : $"[{tag}] {e.Description}");
         }
+        if (omittedMessages > 0)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"[MSG] … {omittedMessages} more messages not shown (twincat_get_error_list lists them).");
         return sb.ToString().TrimEnd();
     }
 

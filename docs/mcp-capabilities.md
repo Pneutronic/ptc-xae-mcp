@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-214 tools, generated from the source attributes — one section per
+215 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -42,6 +42,7 @@
 - [PlcOnlineStatus](#plconlinestatus) (1)
 - [PlcProjectLifecycle](#plcprojectlifecycle) (7)
 - [PlcSearch](#plcsearch) (2)
+- [PlcTasks](#plctasks) (1)
 - [PouMembers](#poumembers) (8)
 - [Recovery](#recovery) (6)
 - [RuntimeControl](#runtimecontrol) (9)
@@ -1600,6 +1601,20 @@ Replace one exact piece of text in the declaration or the implementation of one 
 | `newText` | `string` |  | The replacement; an empty string deletes oldText. |
 | `occurrence` | `int?` | `null` | Optional 1-based occurrence when oldText occurs several times. Omit to require exactly one. |
 | `expectedRevision` | `string?` | `null` | Revision twincat_plc_read or twincat_plc_search reported for this element. When given, a different current revision refuses the replacement (someone else changed it). |
+
+## PlcTasks
+
+### `twincat_plc_task_create`
+
+Create a real-time task for a PLC: the task under SYSTEM > Tasks (TIRT.CreateChild) with cycle time and priority (ITcTaskModule), the PLC task reference under the PLC project linked to it (ITcPlcTaskReference.LinkedTask = 'TIRT^<name>') and, with program, the call of that PROGRAM. Refused with [Error] before the automatic logout and without a change: a name that is no IEC identifier or that a task already has, a cycle time <= 0 or not a whole multiple of 100 ns, a priority outside 1..63 or used by another task under TIRT (they are listed), an unknown PLC project or PROGRAM. Without priority the next free one is taken (highest priority in use + 1). The XAE may adjust cycle time or priority without an error, so the result shows the values read back and warns about a difference. If a later step fails, the [Error] names what was already created and how to finish or remove it. Saves on success; takes effect with the next Activate Configuration. Priorities of tasks outside TIRT (NC SAF/SVB) are not checked.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string` |  | Name of the new task (IEC identifier), e.g. 'FastTask'. The PLC task reference gets the same name. |
+| `cycleTimeMs` | `double` |  | Cycle time in milliseconds, > 0 and a whole multiple of 0.0001 ms (100 ns), e.g. 10 or 0.5. |
+| `priority` | `int?` | `null` | Priority 1..63 (a lower number is more urgent). Omit for the next free one. |
+| `plcProjectName` | `string?` | `null` | The PLC by its name under PLC or its project name (e.g. 'PLC' or 'PLC Project'). Optional when the solution has exactly one PLC project. |
+| `program` | `string?` | `null` | Optional PROGRAM the task calls, e.g. 'MAIN'. It must exist in the PLC project. |
 
 ## PouMembers
 

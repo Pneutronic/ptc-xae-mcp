@@ -67,6 +67,7 @@ public partial class McpServerTests
         Assert.Contains("twincat_plc_project_import", names);
         Assert.Contains("twincat_plc_project_export", names);
         Assert.Contains("twincat_plc_project_add_existing", names);
+        Assert.Contains("twincat_plc_task_create", names);
         Assert.Contains("twincat_read_init_symbols", names);
         Assert.Contains("twincat_write_init_symbol", names);
         Assert.Contains("twincat_read_retain_config", names);

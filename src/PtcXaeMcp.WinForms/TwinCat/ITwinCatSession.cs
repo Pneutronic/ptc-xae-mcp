@@ -721,6 +721,36 @@ internal interface ITwinCatSession : IDisposable
 
     /// <summary><c>ConsumeXml(xml)</c> on <paramref name="treePath"/>. The XAE ignores unknown content silently — callers read back.</summary>
     void ConsumeTreeItemXml(string treePath, string xml);
+
+    // ---- plc-task ----
+    /// <summary>Every real-time task under TIRT with its cycle time and priority as read from the item.</summary>
+    IReadOnlyList<RealtimeTaskInfo> ListRealtimeTasks();
+
+    /// <summary>
+    /// The PLC project <paramref name="plcProjectName"/> (its name under TIPC or its project name; null = the only one,
+    /// several are refused as ambiguous) with its PLC task references (ItemType 621) and its PROGRAM POUs.
+    /// </summary>
+    PlcTaskContext ReadPlcTaskContext(string? plcProjectName);
+
+    /// <summary><c>LookupTreeItem("TIRT").CreateChild(name, 1)</c> — a real-time task without image. Returns its tree path as read back.</summary>
+    string CreateRealtimeTask(string name);
+
+    /// <summary>
+    /// Sets ITcTaskModule.CycleTime (100 ns units) and .Priority on <paramref name="taskPath"/> (ConsumeXml TaskDef when the
+    /// properties are not on IDispatch) and returns the values read back from a fresh lookup. The setters may succeed although
+    /// the XAE adjusted the value — callers compare.
+    /// </summary>
+    RealtimeTaskInfo SetRealtimeTaskTiming(string taskPath, uint cycleTime100ns, int priority);
+
+    /// <summary>CreateChild(name, 621) under the PLC project node <paramref name="projectPath"/>: a PLC task reference. Returns its path.</summary>
+    string CreatePlcTaskReference(string projectPath, string name);
+
+    /// <summary>
+    /// ITcPlcTaskReference.LinkedTask = <paramref name="linkedTask"/> (e.g. "TIRT^FastTask") on the task reference, and the
+    /// value read back from a fresh lookup.
+    /// </summary>
+    PlcTaskReferenceInfo SetPlcTaskLink(string taskReferencePath, string linkedTask);
+
     // ---- persistent-snapshot ----
     /// <summary>Flatten each requested path into leaves and read them with sum commands over ONE connection / symbol load.
     /// Paths that do not exist come back in <c>Missing</c>, unreadable or unsupported leaves in <c>Skipped</c>.</summary>

@@ -87,4 +87,49 @@ internal static class XaeDte
             }
         }
     }
+
+    /// <summary>
+    /// Cleanup for a task created by twincat_plc_task_create (no MCP tool removes one): DeleteChild of the PLC task
+    /// reference under <paramref name="plcProjectPath"/> and of the real-time task under TIRT, best effort, unsaved.
+    /// Returns what happened per item.
+    /// </summary>
+    public static string DeleteTaskAndReference(string plcProjectPath, string taskName)
+    {
+        object dte = TryGet() ?? throw new InvalidOperationException("No running XAE (TcXaeShell.DTE) in the ROT.");
+        var refs = new List<object> { dte };
+        T Track<T>(T o) where T : class { refs.Add(o); return o; }
+        try
+        {
+            return Retry(() =>
+            {
+                dynamic solution = Track<object>(((dynamic)dte).Solution);
+                dynamic projects = Track<object>(solution.Projects);
+                dynamic project = Track<object>(projects.Item(1));
+                dynamic sysManager = Track<object>(project.Object);
+                var report = new List<string>();
+                foreach (string parent in new[] { plcProjectPath, "TIRT" })
+                {
+                    try
+                    {
+                        dynamic node = Track<object>(sysManager.LookupTreeItem(parent));
+                        node.DeleteChild(taskName);
+                        report.Add($"{parent}^{taskName}: deleted");
+                    }
+                    catch (COMException ex) when (ex.HResult != RpcECallRejected && ex.HResult != RpcEServerCallRetryLater)
+                    {
+                        report.Add($"{parent}^{taskName}: {ex.Message}");
+                    }
+                }
+                return string.Join("; ", report);
+            });
+        }
+        finally
+        {
+            for (int i = refs.Count - 1; i >= 0; i--)
+            {
+                try { if (Marshal.IsComObject(refs[i])) Marshal.FinalReleaseComObject(refs[i]); }
+                catch (Exception) { /* best effort */ }
+            }
+        }
+    }
 }

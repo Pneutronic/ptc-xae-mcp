@@ -15,6 +15,11 @@ pull-request numbers refer to those.
   through `ITcPlcIECProject6.SaveAsLibrary2`, `.library` stays the source library. New `encrypt` (compiled library
   only) and `overwrite`. The result reports the size of the file read back; an XAE without `SaveAsLibrary2` is
   named as such, and a refusal for a missing Title says where to set it.
+- `twincat_plc_task_create` (#32): a real-time task under TIRT with cycle time and priority, the PLC task reference
+  linked to it and optionally the PROGRAM it calls. A name in use, a priority another task has, a cycle time that is
+  not a positive multiple of 100 ns and an unknown PLC or PROGRAM are refused before anything changes; without
+  `priority` the next free one is taken. Cycle time, priority and link are read back (the XAE may adjust a value
+  without an error); a failed later step names what was already created.
 
 ### Changed
 - `twincat_save_as_library` refuses an `outputPath` with another extension than `.library` or `.compiled-library`,

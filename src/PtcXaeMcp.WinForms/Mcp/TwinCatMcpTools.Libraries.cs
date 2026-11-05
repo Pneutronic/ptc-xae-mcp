@@ -160,18 +160,24 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_save_as_library", ReadOnly = false, Destructive = true)]
-    [Description("Save as library / Save as library and install: export the open PLC project as a .library " +
-                 "file via ITcPlcIECProject.SaveAsLibrary — the counterpart to twincat_install_library. " +
-                 "install: also register it in the local XAE library repository (default false). " +
-                 "Requires XAE running with a solution open; the target directory must already exist.")]
+    [Description("Save as library / Save as compiled library (optionally install): export the open PLC project as a library " +
+                 "file — the counterpart to twincat_install_library. The extension of outputPath selects the format: " +
+                 "'.library' (source library, ITcPlcIECProject.SaveAsLibrary) or '.compiled-library' (compiled library, " +
+                 "ITcPlcIECProject6.SaveAsLibrary2); any other extension is refused. install: also register it in the local XAE " +
+                 "library repository (default false). overwrite: replace an existing file (default false: an existing file is refused). " +
+                 "encrypt: encrypt a .compiled-library (needs software protection on the project; refused for .library). " +
+                 "The PLC project's Title (Project Information) must be set. Read-back: the file exists and is not empty (size reported); " +
+                 "with install the installed-library list must show it. Requires XAE running with a solution open; the target directory must already exist.")]
     public string SaveAsLibrary(
-        [Description("Absolute path the .library file should be written to, e.g. 'C:\\Libs\\PTC_Library.library'.")] string outputPath,
+        [Description("Absolute path of the library file, ending in .library or .compiled-library, e.g. 'C:\\Libs\\PTC_Library.compiled-library'.")] string outputPath,
         [Description("Also install into the local XAE library repository. Default false.")] bool install = false,
+        [Description("Replace an existing file at outputPath. Default false (an existing file is refused).")] bool overwrite = false,
+        [Description("Encrypt the compiled library (.compiled-library only). Default false.")] bool encrypt = false,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_save_as_library", new { outputPath, install }, () =>
+        => bridge.Activity.Trace("twincat_save_as_library", new { outputPath, install, overwrite, encrypt }, () =>
             bridge.Dispatcher.Run(() =>
                 McpPathGuard.CheckRequiredFile(outputPath, bridge.Dispatcher.Session, "outputPath")
-                ?? new LibraryCoordinator(bridge.Dispatcher.Session).SaveAsLibrary(outputPath, install)), cancellationToken);
+                ?? new LibraryCoordinator(bridge.Dispatcher.Session).SaveAsLibrary(outputPath, install, overwrite, encrypt)), cancellationToken);
 
     [McpServerTool(Name = "twincat_library_signatures", ReadOnly = true)]
     [Description("The public API of the libraries the PLC project references — function blocks, functions, types and global lists with " +

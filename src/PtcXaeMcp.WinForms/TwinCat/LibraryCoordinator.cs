@@ -288,16 +288,48 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
         static string Key(InstalledLibrary l) => $"{l.Name}|{l.Version}|{l.Publisher}";
     }
 
-    public string SaveAsLibrary(string outputPath, bool install)
+    internal const string LibraryExtension = ".library";
+    internal const string CompiledLibraryExtension = ".compiled-library";
+
+    /// <summary>
+    /// Save the PLC project as a library. The extension of <paramref name="outputPath"/> selects the format:
+    /// .library through ITcPlcIECProject.SaveAsLibrary, .compiled-library through ITcPlcIECProject6.SaveAsLibrary2.
+    /// Every refusal (extension, encrypt on a .library, existing file without overwrite) comes before anything is
+    /// written or deleted.
+    /// </summary>
+    public string SaveAsLibrary(string outputPath, bool install, bool overwrite = false, bool encrypt = false)
     {
-        var error = SessionGuards.RequireOpenSolution(session);
-        if (error is not null) return error;
         if (string.IsNullOrWhiteSpace(outputPath))
             return "[Error] outputPath is required.";
+        bool compiled = outputPath.EndsWith(CompiledLibraryExtension, StringComparison.OrdinalIgnoreCase);
+        if (!compiled && !outputPath.EndsWith(LibraryExtension, StringComparison.OrdinalIgnoreCase))
+            return $"[Error] outputPath must end in {LibraryExtension} (source library) or {CompiledLibraryExtension} " +
+                   $"(compiled library); '{Path.GetFileName(outputPath)}' has neither. Nothing was saved.";
+        if (encrypt && !compiled)
+            return $"[Error] encrypt applies only to a {CompiledLibraryExtension}; a {LibraryExtension} is saved as source. " +
+                   "Nothing was saved.";
+
+        var error = SessionGuards.RequireOpenSolution(session);
+        if (error is not null) return error;
 
         string? dir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             return $"[Error] Target directory does not exist: {dir}";
+
+        // The XAE refuses an existing target (SaveAsLibrary2 with an ArgumentException); overwrite removes it first.
+        bool replaced = false;
+        if (File.Exists(outputPath))
+        {
+            if (!overwrite)
+                return $"[Error] '{outputPath}' already exists. Pass overwrite=true to replace it, or choose another path. " +
+                       "Nothing was saved.";
+            try { File.Delete(outputPath); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return $"[Error] '{outputPath}' exists and could not be deleted for overwrite=true: {ex.Message} Nothing was saved.";
+            }
+            replaced = true;
+        }
 
         IReadOnlyList<InstalledLibrary>? before = null;
         if (install)
@@ -306,20 +338,26 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
             catch (Exception ex) { return McpErrors.EnsureError(ComCall.Describe(ex)); }
         }
 
-        // B-14 (issue #152): the file must exist afterwards and be written by THIS call. File
-        // timestamps have ~2 s resolution on some file systems; allow that much slack.
-        DateTime started = DateTime.UtcNow.AddSeconds(-2);
         string message;
-        try { message = session.SaveAsLibrary(outputPath, install); }
-        catch (Exception ex) { return McpErrors.EnsureError(ComCall.Describe(ex)); }
+        try
+        {
+            message = compiled
+                ? session.SaveAsLibrary2(outputPath, encrypt, install)
+                : session.SaveAsLibrary(outputPath, install);
+        }
+        catch (NotSupportedException ex) { return McpErrors.EnsureError(ex.Message); }
+        catch (Exception ex) { return WithTitleHint(McpErrors.EnsureError(ComCall.Describe(ex))); }
 
+        // B-14 (issue #152): the file must exist afterwards. An existing file was refused or deleted above, so
+        // a file now present was written by this call.
+        string method = compiled ? "SaveAsLibrary2" : "SaveAsLibrary";
         if (!File.Exists(outputPath))
-            return $"[Error] Save as library did not land: '{outputPath}' does not exist after SaveAsLibrary returned.";
+            return $"[Error] Save as library did not land: '{outputPath}' does not exist after {method} returned.";
+        long length = new FileInfo(outputPath).Length;
+        if (length == 0)
+            return $"[Error] Save as library did not land: '{outputPath}' is empty (0 bytes) after {method} returned.";
         DateTime written = File.GetLastWriteTimeUtc(outputPath);
-        if (written < started)
-            return $"[Error] Save as library did not land: '{outputPath}' was last written {written:yyyy-MM-dd HH:mm:ss}Z, " +
-                   "before this call — it is an old file, SaveAsLibrary did not write it.";
-        string proof = $"read-back: {new FileInfo(outputPath).Length} bytes written {written:HH:mm:ss}Z";
+        string proof = $"read-back: {length} bytes written {written:HH:mm:ss}Z" + (replaced ? ", replaced the previous file" : "");
 
         if (install)
         {
@@ -337,6 +375,14 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
         }
         return $"{message} ({proof}).";
     }
+
+    // A library needs the Title of the PLC project's Project Information; without it the XAE refuses the save with
+    // "'Title' not specified". The message alone does not say where to set it.
+    internal static string WithTitleHint(string error) =>
+        error.Contains("Title", StringComparison.OrdinalIgnoreCase)
+            ? error + " Hint: a library needs the Title of the PLC project to be set (Project Information / project " +
+                      "properties > Common > Title in the XAE); set it, then save again."
+            : error;
 
     public (string Summary, IReadOnlyList<LibraryParameter> Parameters) GetParameters(string library)
     {

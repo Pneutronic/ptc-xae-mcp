@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-209 tools, generated from the source attributes — one section per
+214 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -41,6 +41,7 @@
 - [PlcObjects](#plcobjects) (6)
 - [PlcOnlineStatus](#plconlinestatus) (1)
 - [PlcProjectLifecycle](#plcprojectlifecycle) (7)
+- [PlcSearch](#plcsearch) (2)
 - [PouMembers](#poumembers) (8)
 - [Recovery](#recovery) (6)
 - [RuntimeControl](#runtimecontrol) (9)
@@ -1014,12 +1015,14 @@ Install a .library/.compiled-library file into the local XAE library repository 
 
 ### `twincat_save_as_library`
 
-Save as library / Save as library and install: export the open PLC project as a .library file via ITcPlcIECProject.SaveAsLibrary — the counterpart to twincat_install_library. install: also register it in the local XAE library repository (default false). Requires XAE running with a solution open; the target directory must already exist.
+Save as library / Save as compiled library (optionally install): export the open PLC project as a library file — the counterpart to twincat_install_library. The extension of outputPath selects the format: '.library' (source library, ITcPlcIECProject.SaveAsLibrary) or '.compiled-library' (compiled library, ITcPlcIECProject6.SaveAsLibrary2); any other extension is refused. install: also register it in the local XAE library repository (default false). overwrite: replace an existing file (default false: an existing file is refused). encrypt: encrypt a .compiled-library (needs software protection on the project; refused for .library). The PLC project's Title (Project Information) must be set. Read-back: the file exists and is not empty (size reported); with install the installed-library list must show it. Requires XAE running with a solution open; the target directory must already exist.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `outputPath` | `string` |  | Absolute path the .library file should be written to, e.g. 'C:\Libs\PTC_Library.library'. |
+| `outputPath` | `string` |  | Absolute path of the library file, ending in .library or .compiled-library, e.g. 'C:\Libs\PTC_Library.compiled-library'. |
 | `install` | `bool` | `false` | Also install into the local XAE library repository. Default false. |
+| `overwrite` | `bool` | `false` | Replace an existing file at outputPath. Default false (an existing file is refused). |
+| `encrypt` | `bool` | `false` | Encrypt the compiled library (.compiled-library only). Default false. |
 
 ### `twincat_library_signatures`
 
@@ -1030,6 +1033,7 @@ The public API of the libraries the PLC project references — function blocks, 
 | `library` | `string?` | `null` | Optional library name or placeholder, e.g. Tc2_MC2. Omit for every referenced library. |
 | `outputPath` | `string?` | `null` | Optional path of the XML file to write. Default under %LOCALAPPDATA%\ptc-xae-mcp\library-signatures. |
 | `typeName` | `string?` | `null` | Optional type name whose inputs/outputs/constants are returned inline, e.g. TON or MC_MoveAbsolute. |
+| `plcProjectName` | `string?` | `null` | Name of the PLC (or its project) whose libraries are meant. Leave empty for the first PLC project. |
 
 ### `twincat_get_library_parameters`
 
@@ -1350,7 +1354,7 @@ List the entries of an element's declaration, structured: STRUCT/UNION fields, E
 
 ### `twincat_plc_edit_entries`
 
-Add, change or remove ONE entry of an element's declaration, leaving the rest of the text byte-identical. op is add, set or remove. Entries: STRUCT/UNION fields, ENUM values (use value; the base type and attributes stay untouched), GVL variables (NORMAL and PARAMLIST), and the variables of a POU or MEMBER per section — a missing section is created by op=add. section (e.g. VAR_INPUT, 'VAR_GLOBAL PERSISTENT', 'VAR RETAIN') is required when it is ambiguous. add: name and type (not for enum values); afterName inserts after that entry instead of at the end of the section. set: pass what changes — type, initialValue ("" removes it), value (enum, "" removes it), address (AT address such as %I*, "" removes it), comment ("" removes it), newName; attributes replaces the entry's attribute pragmas (a name such as hide, "attribute 'hide'" or a full {attribute 'hide'}), an empty list removes them, null leaves them unchanged. remove: name only; the entry's attribute lines go with it. Refused with an [Error], before the automatic logout and without a change: an unknown kind, a duplicate name, several names in one entry or several entries on one line, DUT ALIAS and INTERFACE bodies, a parameter that does not apply. The write is verified by read-back. Renamed or removed entries break code and ADS callers — follow with twincat_rebuild_plc.
+Add, change or remove ONE entry of an element's declaration, leaving the rest of the text byte-identical. op is add, set or remove. Entries: STRUCT/UNION fields, ENUM values (use value; the base type and attributes stay untouched), GVL variables (NORMAL and PARAMLIST), and the variables of a POU or MEMBER per section — a missing section is created by op=add. section (e.g. VAR_INPUT, 'VAR_GLOBAL PERSISTENT', 'VAR RETAIN') is required when it is ambiguous. add: name and type (not for enum values); afterName inserts after that entry instead of at the end of the section. set: pass what changes — type, initialValue ("" removes it), value (enum, "" removes it), address (AT address such as %I*, "" removes it), comment ("" removes it), newName; attributes replaces the entry's attribute pragmas (a name such as hide, "attribute 'hide'" or a full {attribute 'hide'}), an empty list removes them, null leaves them unchanged. remove: name only; the entry's attribute lines go with it. Refused with an [Error], before the automatic logout and without a change: an unknown kind, a duplicate name, several names in one entry or several entries on one line, DUT ALIAS and INTERFACE bodies, a parameter that does not apply. The write is verified by read-back. With expectedRevision (from twincat_plc_read) the edit is refused, before the logout, when the element changed since that read; the result ends with the new 'Revision: …'. Renamed or removed entries break code and ADS callers — follow with twincat_rebuild_plc.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1367,6 +1371,7 @@ Add, change or remove ONE entry of an element's declaration, leaving the rest of
 | `afterName` | `string?` | `null` | op=add: insert after this existing entry instead of at the end of the section. |
 | `newName` | `string?` | `null` | op=set: new name for the entry. |
 | `attributes` | `string[]?` | `null` | Attribute pragmas of the entry. Each is a name (hide), "attribute 'hide'" or {attribute 'hide'}. Null leaves them unchanged, an empty array removes them. |
+| `expectedRevision` | `string?` | `null` | Revision twincat_plc_read reported for this element. When given, a different current revision refuses the edit (someone else changed it). Omit to edit unconditionally. |
 
 ## PlcInstanceSettings
 
@@ -1562,6 +1567,39 @@ Create a PLC instance (I/O image only, no PLC source) from a .tmc module class f
 |---|---|---|---|
 | `tmcPath` | `string` |  | Absolute path of the .tmc file. |
 | `name` | `string?` | `null` | Optional: the expected instance name (must equal the .tmc module name). |
+
+## PlcSearch
+
+### `twincat_plc_search`
+
+Search the declarations and implementations of every POU, METHOD, PROPERTY (Get/Set), ACTION, TRANSITION, INTERFACE, DUT and GVL of the open PLC project(s) — instead of reading every element. The text is the one twincat_plc_read returns (unsaved editor changes included). Matching is case-insensitive by default (ST is); regex=true takes a .NET regular expression (^ and $ per line), wholeWord=true skips hits inside longer identifiers. Each hit: element kind and tree path, section, line:column (the line numbers of twincat_plc_read), the element's revision (pass it to twincat_plc_replace_text / twincat_plc_write as expectedRevision) and an excerpt with the hit lines marked '>'. Graphical implementations (SFC, FBD, LD, CFC) are XML and not searched; they are listed as skipped, their declarations are searched. Paged: limit (default 100) and offset; the summary says the next offset.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `pattern` | `string` |  | Text to find; a regular expression when regex=true. |
+| `regex` | `bool` | `false` | True: pattern is a .NET regular expression. Default false (literal text). |
+| `caseSensitive` | `bool` | `false` | True: match case exactly. Default false (ST identifiers are case-insensitive). |
+| `wholeWord` | `bool` | `false` | True: only whole identifiers (no letter, digit or '_' directly before or after the hit). |
+| `scope` | `string?` | `null` | declaration, implementation or both (default). |
+| `pathPrefix` | `string?` | `null` | Optional caret-separated tree path: only this element and the elements below it, e.g. a folder or a POU with its members. |
+| `kind` | `string?` | `null` | Optional element kind filter: POU, INTERFACE, DUT, GVL or MEMBER. |
+| `contextLines` | `int` | `1` | Lines of context before and after each hit, 0–10. Default 1. |
+| `limit` | `int` | `100` | Hits per page, 1–1000. Default 100. |
+| `offset` | `int` | `0` | Hits to skip (paging). Default 0. |
+
+### `twincat_plc_replace_text`
+
+Replace one exact piece of text in the declaration or the implementation of one PLC element, leaving the rest byte-identical — instead of rewriting the whole section with twincat_plc_write. oldText must occur exactly once (case and whitespace as twincat_plc_read returns them; LF in oldText/newText also matches CRLF), or pass occurrence to pick the n-th. Refused with [Error], before the automatic logout and without a change: oldText not found (the message says where it nearly matched), found several times (with the lines), a section the element does not have, a graphical implementation (SFC/FBD/LD/CFC: use twincat_plc_write), a METHOD/PROPERTY/ACTION header put into a POU/INTERFACE/GVL/DUT declaration, or expectedRevision (from twincat_plc_read or twincat_plc_search) that no longer matches. The write is verified by an independent read-back. Returns the changed lines with two lines of context and the new revision for the next edit.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `path` | `string` |  | Caret-separated tree path of the element. |
+| `kind` | `string` |  | Element kind the node must have: POU, INTERFACE, DUT, GVL or MEMBER. |
+| `section` | `string` |  | declaration or implementation. |
+| `oldText` | `string` |  | The exact text to replace (may span lines). |
+| `newText` | `string` |  | The replacement; an empty string deletes oldText. |
+| `occurrence` | `int?` | `null` | Optional 1-based occurrence when oldText occurs several times. Omit to require exactly one. |
+| `expectedRevision` | `string?` | `null` | Revision twincat_plc_read or twincat_plc_search reported for this element. When given, a different current revision refuses the replacement (someone else changed it). |
 
 ## PouMembers
 

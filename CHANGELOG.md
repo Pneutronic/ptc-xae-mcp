@@ -10,6 +10,16 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_save_as_library` saves a compiled library (#30): an `outputPath` ending in `.compiled-library` goes
+  through `ITcPlcIECProject6.SaveAsLibrary2`, `.library` stays the source library. New `encrypt` (compiled library
+  only) and `overwrite`. The result reports the size of the file read back; an XAE without `SaveAsLibrary2` is
+  named as such, and a refusal for a missing Title says where to set it.
+
+### Changed
+- `twincat_save_as_library` refuses an `outputPath` with another extension than `.library` or `.compiled-library`,
+  and an existing file unless `overwrite=true` (which deletes it first), before anything is saved.
+
 ## [2.6.1] - 2026-11-05
 
 ### Added

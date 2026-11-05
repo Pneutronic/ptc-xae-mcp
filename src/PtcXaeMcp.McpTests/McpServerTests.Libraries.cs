@@ -22,6 +22,20 @@ public partial class McpServerTests
         Assert.Contains("outputPath", text);
     }
 
+    [SkippableFact]
+    public async Task SaveAsLibrary_UnknownExtension_IsAToolError()
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_save_as_library",
+            new Dictionary<string, object?> { ["outputPath"] = Path.Combine(Path.GetTempPath(), "ptc-save-as-lib.zip") });
+        var text = GetText(result);
+
+        Assert.DoesNotContain("An error occurred invoking", text);
+        Assert.StartsWith("[Error] outputPath must end in .library", text);
+        Assert.Contains(".compiled-library", text);
+    }
+
     // ── Test 13 ────────────────────────────────────────────────────────────────
 
     [SkippableFact]

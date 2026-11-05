@@ -103,6 +103,28 @@ internal sealed partial class FakeTwinCatSession
         return FakeSaveAsLibraryResult;
     }
 
+    public Exception? SaveAsLibrary2Throws { get; set; }
+    /// <summary>SaveAsLibrary2 is not on the XAE's IDispatch (an older XAE).</summary>
+    public bool SaveAsLibrary2NotOffered { get; set; }
+    /// <summary>What SaveAsLibrary2 writes ("" = an empty file).</summary>
+    public string SaveAsLibrary2Content { get; set; } = "fake compiled library";
+    public string SaveAsLibrary2(string outputPath, bool encrypt, bool install)
+    {
+        CallLog.Add($"SaveAsLibrary2({outputPath},{encrypt},{install})");
+        if (SaveAsLibrary2NotOffered)
+            throw new NotSupportedException("ITcPlcIECProject6.SaveAsLibrary2 is not offered by this XAE (fake).");
+        if (SaveAsLibrary2Throws is not null) throw SaveAsLibrary2Throws;
+        if (File.Exists(outputPath))
+            throw new InvalidOperationException($"ArgumentException: file already exists: {outputPath} (fake)");
+        if (!NoOpMutations.Contains(nameof(SaveAsLibrary2)))
+        {
+            File.WriteAllText(outputPath, SaveAsLibrary2Content);
+            if (install && !SaveAsLibraryInstallIsNoOp)
+                InstalledLibraries.Add(new InstalledLibrary(Path.GetFileNameWithoutExtension(outputPath), "1.0.0.0", "Fake", "Fake"));
+        }
+        return $"Saved compiled library: {outputPath}";
+    }
+
     public List<LibraryParameter> LibraryParameters { get; } = new();
     public Exception? SetLibraryParameterThrows { get; set; }
 

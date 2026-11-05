@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [2.6.1] - 2026-11-05
+
 ### Added
 - `twincat_plc_create` takes `implementation` (#22): the body of a new POU, METHOD, ACTION, TRANSITION, GET or SET
   is written right after it was created and read back like `twincat_plc_write`. Before, a body passed along was
@@ -376,7 +378,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.6.1...HEAD
+[2.6.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.1
 [2.6.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.0
 [2.5.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.5.0
 [2.4.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.4.0

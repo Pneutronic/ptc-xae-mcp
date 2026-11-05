@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-11-05
+
 ### Added
 - `expectSymbols` on `twincat_build_plc`, `twincat_build_solution`, `twincat_rebuild_plc` and
   `twincat_rebuild_solution`: after the build every name is looked up in the PLC project's `.tmc` — a symbol, a
@@ -344,7 +346,9 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.0
+[2.5.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.5.0
 [2.4.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.4.0
 [2.3.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.3.0
 [2.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.2.0

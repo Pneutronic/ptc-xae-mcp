@@ -159,6 +159,33 @@ internal sealed partial class FakeTwinCatSession
         return filePath;
     }
 
+    /// <summary>What <see cref="PlcOpenExportFrom"/> writes into the export file.</summary>
+    public string PlcOpenExportXml { get; set; } = "<project />";
+    public Exception? PlcOpenExportFromThrows { get; set; }
+    /// <summary>Thrown by the next <see cref="PlcOpenImportInto"/> calls, one per call (then the import succeeds).</summary>
+    public Queue<Exception> PlcOpenImportIntoThrows { get; } = new();
+    /// <summary>The content of every file <see cref="PlcOpenImportInto"/> was given, in order.</summary>
+    public List<string> PlcOpenImportedXml { get; } = new();
+    /// <summary>Runs inside a successful <see cref="PlcOpenImportInto"/> with the file content: the test puts the tree in place.</summary>
+    public Action<string>? OnPlcOpenImportInto { get; set; }
+
+    public void PlcOpenExportFrom(string plcProjectPath, string filePath, string selector)
+    {
+        CallLog.Add($"PlcOpenExportFrom({plcProjectPath}, {selector})");
+        if (PlcOpenExportFromThrows is not null) throw PlcOpenExportFromThrows;
+        File.WriteAllText(filePath, PlcOpenExportXml);
+    }
+
+    public void PlcOpenImportInto(string plcProjectPath, string filePath)
+    {
+        CallLog.Add($"PlcOpenImportInto({plcProjectPath}, {Path.GetFileName(filePath)})");
+        if (PlcOpenImportIntoThrows.Count > 0) throw PlcOpenImportIntoThrows.Dequeue();
+        PlcTreeMutated = true;
+        string xml = File.ReadAllText(filePath);
+        PlcOpenImportedXml.Add(xml);
+        OnPlcOpenImportInto?.Invoke(xml);
+    }
+
     public string PlcOpenImport(string filePath, int conflictMode)
     {
         CallLog.Add($"PlcOpenImport({filePath}, {conflictMode})");

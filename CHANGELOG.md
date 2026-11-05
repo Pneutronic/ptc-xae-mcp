@@ -20,6 +20,14 @@ pull-request numbers refer to those.
   not a positive multiple of 100 ns and an unknown PLC or PROGRAM are refused before anything changes; without
   `priority` the next free one is taken. Cycle time, priority and link are read back (the XAE may adjust a value
   without an error); a failed later step names what was already created.
+- `twincat_plc_move` (#31): moves a POU, INTERFACE, DUT or GVL into another folder of the same PLC project, or a
+  METHOD, ACTION, PROPERTY or TRANSITION into a folder inside its POU/INTERFACE, keeping the object GUIDs. The
+  element (for a member: its POU) is exported as PLCopen XML, placed in the target folder in the file's project
+  structure, deleted and imported into the same PLC project — no clipboard, the XAE stays in the background. A wrong
+  kind, a missing or non-folder target, the current folder, a name already in the target and a member target outside
+  its POU are refused before the logout. The move is verified by read-back (new path, old path gone, unchanged text
+  of the element and every member, unchanged object GUIDs); a failure after the delete re-imports the original into
+  its old folder. The exports are kept under `%LOCALAPPDATA%\ptc-xae-mcp\move`.
 
 ### Changed
 - `twincat_save_as_library` refuses an `outputPath` with another extension than `.library` or `.compiled-library`,

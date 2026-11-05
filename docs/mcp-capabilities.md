@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-215 tools, generated from the source attributes — one section per
+199 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -16,7 +16,7 @@
 - [ClientInfo](#clientinfo) (1)
 - [Coe](#coe) (4)
 - [CoreDump](#coredump) (3)
-- [Diagnostics](#diagnostics) (10)
+- [Diagnostics](#diagnostics) (8)
 - [Doctor](#doctor) (1)
 - [EditorNavigation](#editornavigation) (2)
 - [EtherCat](#ethercat) (6)
@@ -34,16 +34,15 @@
 - [Lifecycle](#lifecycle) (4)
 - [NcAxes](#ncaxes) (5)
 - [PersistentSnapshot](#persistentsnapshot) (5)
-- [PlcCode](#plccode) (9)
 - [PlcControl](#plccontrol) (3)
 - [PlcEntries](#plcentries) (2)
 - [PlcInstanceSettings](#plcinstancesettings) (5)
-- [PlcObjects](#plcobjects) (6)
+- [PlcObjects](#plcobjects) (7)
 - [PlcOnlineStatus](#plconlinestatus) (1)
 - [PlcProjectLifecycle](#plcprojectlifecycle) (7)
 - [PlcSearch](#plcsearch) (2)
 - [PlcTasks](#plctasks) (1)
-- [PouMembers](#poumembers) (8)
+- [PouMembers](#poumembers) (2)
 - [Recovery](#recovery) (6)
 - [RuntimeControl](#runtimecontrol) (9)
 - [Safety](#safety) (5)
@@ -357,23 +356,6 @@ Research probe for the TwinCAT Scope (measurement) project, used to verify the u
 Read-only diagnostic: dump the TwinCAT NC (TINC/Motion) tree — for every node its name, ItemType, ItemSubType, child count, path, and full ProduceXml(false). Requires XAE running with a solution open. Mirrors the PLC TIPC dump; used to discover NC-Task/axes/axis type discriminators and the axis parameter schema. Only registered when the host is started with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.
 
 _No parameters._
-
-### `twincat_open_plc_object`
-
-DEPRECATED — use twincat_open_object (this is a thin alias kept for back-compat). Opens a PLC source object (POU/GVL/DUT/INTERFACE) in the VISIBLE TwinCAT XAE editor and focuses it. Delegates to twincat_open_object, which also handles system-manager nodes. Only registered when the host is started with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the PLC source object to open (POU/GVL/DUT/INTERFACE). |
-| `bringToFront` | `bool` | `false` |  |
-
-### `twincat_close_plc_object`
-
-DEPRECATED — use twincat_close_object (this is a thin alias kept for back-compat). Closes the VISIBLE TwinCAT XAE editor tab for a PLC source object (saves first). Delegates to twincat_close_object. Only registered when the host is started with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the PLC source object to close, same as passed to twincat_open_plc_object. |
 
 ### `twincat_ibn_arm`
 
@@ -916,19 +898,15 @@ Check whether the IODD (IO-Link device description) for a device is installed in
 
 ### `twincat_link_variables`
 
-Create a link between two TwinCAT variables identified by their caret-separated tree paths. Requires XAE running with a solution open. Saves the project after linking. Use twincat_get_fieldbus_topology to find I/O paths (TIID^...) and twincat_list_pous to find PLC paths (TIPC^...). When TwinCAT refuses the link, the error names the cause: the type, bit size and direction of both variables, which path does not resolve, or which path is not a variable.
+Create a link between two TwinCAT variables identified by their caret-separated tree paths. Requires XAE running with a solution open. Saves the project after linking. Use twincat_get_fieldbus_topology to find I/O paths (TIID^...) and twincat_plc_list to find PLC paths (TIPC^...). When TwinCAT refuses the link, the error names the cause: the type, bit size and direction of both variables, which path does not resolve, or which path is not a variable.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `variable1TreePath` | `string?` | `null` | Full tree path of the first variable, e.g. 'TIPC^PLC^PLC Projekt^MAIN.bVar'. |
-| `variable2TreePath` | `string?` | `null` | Full tree path of the second variable, e.g. 'TIID^Device 1 (EtherCAT)^Box 1^Channel 1'. |
+| `variable1TreePath` | `string` |  | Full tree path of the first variable, e.g. 'TIPC^PLC^PLC Projekt^MAIN.bVar'. |
+| `variable2TreePath` | `string` |  | Full tree path of the second variable, e.g. 'TIID^Device 1 (EtherCAT)^Box 1^Channel 1'. |
 | `bitOffset1` | `int` | `0` | Bit offset within variable1TreePath (default 0). |
 | `bitOffset2` | `int` | `0` | Bit offset within variable2TreePath (default 0). |
 | `size` | `int` | `0` | Number of bits to link; 0 means minimum size of both variables (default 0). |
-| `v1` | `string?` | `null` | DEPRECATED alias for variable1TreePath, kept for one release so existing MCP clients that bind by this name keep working. Prefer variable1TreePath. |
-| `v2` | `string?` | `null` | DEPRECATED alias for variable2TreePath, kept for one release. Prefer variable2TreePath. |
-| `offs1` | `int?` | `null` | DEPRECATED alias for bitOffset1, kept for one release. Prefer bitOffset1. |
-| `offs2` | `int?` | `null` | DEPRECATED alias for bitOffset2, kept for one release. Prefer bitOffset2. |
 
 ### `twincat_unlink_variables`
 
@@ -936,10 +914,8 @@ Remove a variable link in TwinCAT. If variable2TreePath is omitted or empty, all
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `variable1TreePath` | `string?` | `null` | Full tree path of the first variable. |
+| `variable1TreePath` | `string` |  | Full tree path of the first variable. |
 | `variable2TreePath` | `string` | `""` | Full tree path of the second variable. Leave empty to remove all links from variable1TreePath. |
-| `v1` | `string?` | `null` | DEPRECATED alias for variable1TreePath, kept for one release. Prefer variable1TreePath. |
-| `v2` | `string?` | `null` | DEPRECATED alias for variable2TreePath, kept for one release. Prefer variable2TreePath. |
 
 ### `twincat_get_mapping_info`
 
@@ -1221,98 +1197,6 @@ Read-only poll of a restore proposal: returns JSON { restoreId, status, reason, 
 |---|---|---|---|
 | `restoreId` | `string` |  | The restoreId returned by twincat_persistent_snapshot_restore. |
 
-## PlcCode
-
-### `twincat_list_pous`
-
-DEPRECATED — use twincat_plc_list. Enumerate POU/GVL/DUT items in the open PLC project. Returns one line per item with kind (POU|GVL|DUT|FOLDER), tree path, and (for POUs) the implementation language.
-
-_No parameters._
-
-### `twincat_read_pou`
-
-DEPRECATED — use twincat_plc_read (kind=POU or INTERFACE). Read a POU's declaration and implementation by its caret-separated tree path (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN'). Returns the language and both sections. When openInEditor=true, also opens the POU in the visible XAE editor (video mode) — best-effort, never blocks the read.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the POU to read, e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN'. |
-| `openInEditor` | `bool` | `false` | When true, also opens the POU in the visible XAE editor (video mode), best-effort. Default false. |
-
-### `twincat_read_gvl`
-
-DEPRECATED — use twincat_plc_read (kind=GVL or DUT). Read a GVL or DUT declaration by its caret-separated tree path. Returns the declaration block (GVLs and DUTs have no implementation section). When openInEditor=true, also opens the object in the visible XAE editor (video mode) — best-effort, never blocks the read.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the GVL or DUT to read. |
-| `openInEditor` | `bool` | `false` | When true, also opens the object in the visible XAE editor (video mode), best-effort. Default false. |
-
-### `twincat_write_pou_body`
-
-DEPRECATED — use twincat_plc_write (kind=POU or INTERFACE). Replace one or both sections of an existing ST POU. Pass null for a section to leave it unchanged. Each section can be given INLINE (declaration/implementation) or READ FROM A FILE (declarationFile/implementationFile) — use the file form for generated content, so it never has to be retyped. Supplying both forms for the same section is an error. Refuses non-ST POUs and GVLs/DUTs with a structured error.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the existing ST POU to write. |
-| `declaration` | `string?` | `null` | New declaration ('VAR ... END_VAR' block). Null leaves it unchanged. Alternative to 'declarationFile'. |
-| `implementation` | `string?` | `null` | New implementation (ST source). Null leaves it unchanged. Alternative to 'implementationFile'. |
-| `declarationFile` | `string?` | `null` | Path to a file whose contents become the declaration. Alternative to 'declaration'. |
-| `implementationFile` | `string?` | `null` | Path to a file whose contents become the implementation. Alternative to 'implementation'. |
-
-### `twincat_write_gvl`
-
-DEPRECATED — use twincat_plc_write (kind=GVL or DUT). Replace the declaration of an existing GVL or DUT by its caret-separated tree path. These declaration-only objects have no implementation section, so only the declaration is written (ITcPlcDeclaration); the write is verified by reading back, and any mismatch throws. The declaration can be given inline or READ FROM A FILE via declarationFile — use the file form for generated content. Use twincat_write_pou_body for ST POUs (which also carry an implementation).
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the existing GVL or DUT to write. |
-| `declaration` | `string?` | `null` | New declaration block. Null leaves it unchanged. Alternative to 'declarationFile'. |
-| `declarationFile` | `string?` | `null` | Path to a file whose contents become the declaration. Alternative to 'declaration'. |
-
-### `twincat_create_pou`
-
-DEPRECATED — use twincat_plc_create (kind=POU, subtype=<pouType>). Create a new POU under an existing PLC folder. pouType is one of PROGRAM, FUNCTION_BLOCK, FUNCTION. returnType is required for FUNCTION (defaults to BOOL). implLanguage is ST, IL, SFC, FBD, CFC or LD (defaults to ST when omitted; any other value is an [Error]). parentPath is the caret-separated tree path of the folder (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application'). Returns the new node's tree path.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `parentPath` | `string` |  | Caret-separated tree path of the existing folder to create the POU under, e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application'. |
-| `name` | `string` |  | Name of the new POU. |
-| `pouType` | `string` |  | POU kind: PROGRAM, FUNCTION_BLOCK, or FUNCTION. |
-| `returnType` | `string?` | `null` | Return type, required for FUNCTION. Defaults to BOOL when omitted for a FUNCTION. |
-| `implLanguage` | `string?` | `null` | Implementation language: ST, IL, SFC, FBD, CFC, or LD. Defaults to ST when omitted; any other value is an [Error]. |
-
-### `twincat_create_dut`
-
-DEPRECATED — use twincat_plc_create (kind=DUT, subtype=<dutType>). Create a new DUT (Data Unit Type) under an existing PLC folder or the PLC project root. dutType is one of STRUCT, ENUM, UNION, ALIAS (defaults to STRUCT). Pass an optional declaration (the full 'TYPE ... END_TYPE' block) to populate it; if omitted, TwinCAT's default skeleton remains. ALIAS is an exception: it REQUIRES a declaration of the form 'TYPE <name> : <baseType>; END_TYPE' (e.g. 'TYPE A_Handle : UDINT; END_TYPE'), because the base type must be supplied when the alias is created. parentPath is the caret-separated tree path of the folder (e.g. 'TIPC^PLC^PLC Projekt^DUTs'). DUTs cannot be created under a POU/GVL/DUT leaf — only a folder or the PLC project node. Returns the new node's tree path.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `parentPath` | `string` |  | Caret-separated tree path of the existing folder or PLC project node to create the DUT under, e.g. 'TIPC^PLC^PLC Projekt^DUTs'. |
-| `name` | `string` |  | Name of the new DUT. |
-| `dutType` | `string?` | `null` | DUT kind: STRUCT, ENUM, UNION, or ALIAS. Defaults to STRUCT. ALIAS requires 'declaration'. |
-| `declaration` | `string?` | `null` | Full 'TYPE ... END_TYPE' block to populate the DUT. Required for ALIAS (e.g. 'TYPE A_Handle : UDINT; END_TYPE'); optional otherwise (TwinCAT's default skeleton is used when omitted). |
-
-### `twincat_create_gvl`
-
-DEPRECATED — use twincat_plc_create (kind=GVL). Create a new GVL (Global Variable List) under an existing PLC folder or the PLC project root. Set persistent=true to get persistent variables: an ordinary GVL whose declaration has a 'VAR_GLOBAL PERSISTENT' section (persistent is a section, not an object type). Pass an optional declaration (the full 'VAR_GLOBAL ... END_VAR' block; for persistent=true it must contain the PERSISTENT keyword, otherwise [Error]) to populate it; if omitted, TwinCAT's default skeleton remains (for persistent=true an empty 'VAR_GLOBAL PERSISTENT ... END_VAR'). parentPath is the caret-separated tree path of the folder (e.g. 'TIPC^PLC^PLC Projekt^GVLs'). GVLs cannot be created under a POU/GVL/DUT leaf — only a folder or the PLC project node. Returns the new node's tree path.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `parentPath` | `string` |  | Caret-separated tree path of the existing folder or PLC project node to create the GVL under, e.g. 'TIPC^PLC^PLC Projekt^GVLs'. |
-| `name` | `string` |  | Name of the new GVL. |
-| `persistent` | `bool` | `false` | True creates an ordinary GVL whose declaration has a 'VAR_GLOBAL PERSISTENT ... END_VAR' section (persistent variables are a section of a GVL, not an object type). A given declaration must contain the PERSISTENT keyword, otherwise [Error]. Default false. |
-| `declaration` | `string?` | `null` | Full 'VAR_GLOBAL ... END_VAR' (or PERSISTENT variant) block to populate the GVL. TwinCAT's default skeleton is used when omitted. |
-
-### `twincat_create_interface`
-
-DEPRECATED — use twincat_plc_create (kind=INTERFACE). Create a new INTERFACE under an existing PLC folder or the PLC project root. Pass an optional declaration (the full 'INTERFACE ... END_INTERFACE' block) to populate it; if omitted, TwinCAT's default skeleton remains. Interface methods are added afterwards with twincat_add_pou_member (kind=METHOD). parentPath is the caret-separated tree path of the folder (e.g. 'TIPC^PLC^PLC Projekt^POUs^04_Components'). Interfaces cannot be created under a POU/GVL/DUT leaf — only a folder or the PLC project node. Returns the new node's tree path.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `parentPath` | `string` |  | Caret-separated tree path of the existing folder or PLC project node to create the interface under, e.g. 'TIPC^PLC^PLC Projekt^POUs^04_Components'. |
-| `name` | `string` |  | Name of the new interface. |
-| `declaration` | `string?` | `null` | Full 'INTERFACE ... END_INTERFACE' block to populate it. TwinCAT's default skeleton is used when omitted. |
-
 ## PlcControl
 
 ### `twincat_plc_start`
@@ -1494,6 +1378,16 @@ Rename a PLC element by its caret-separated tree path. kind is checked against t
 | `newName` | `string` |  | New name of the element. |
 | `updateReferences` | `bool` | `false` |  |
 
+### `twincat_plc_move`
+
+Move a PLC element into another folder; the object GUID of the element and of its members stays the same (the .TcPOU keeps its Id). kind POU, INTERFACE, DUT or GVL: targetFolderPath is a FOLDER anywhere in the same PLC project (not a folder inside a POU) or the PLC project node. kind MEMBER (METHOD, ACTION, PROPERTY, TRANSITION): targetFolderPath is a FOLDER inside the same POU/INTERFACE, or that POU/INTERFACE itself; another POU is refused. The target folder must exist — create it first with twincat_plc_create (kind=FOLDER). The Automation Interface has no move, so the tool exports the element (for a MEMBER: its POU/INTERFACE) as PLCopen XML, places it in the target folder inside the file's project structure, deletes the original and imports the file into the same PLC project — no clipboard, no UI automation, the XAE is not brought to the front. kind is checked against the node's real type; a wrong kind, a missing target, a target that is not a folder or is the current folder, a name already in the target, a member target outside its POU and a property accessor (Get/Set) are refused before the automatic logout, nothing changed. After the import the move is verified: the element resolves at the new path, the old path is gone, the text of the element and of every member is unchanged (revision) and the object GUIDs equal the original's. A failure after the delete re-imports the original at its old place and says exactly what happened. The exports are kept under %LOCALAPPDATA%\ptc-xae-mcp\move. Not saved — twincat_save_project afterwards.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `path` | `string` |  | Caret-separated tree path of the element to move. |
+| `kind` | `string` |  | Element kind the node must have: POU, INTERFACE, DUT, GVL or MEMBER. |
+| `targetFolderPath` | `string` |  | Caret-separated tree path of the existing target folder (or the PLC project node). For kind=MEMBER a folder inside the same POU/INTERFACE, or the POU/INTERFACE itself. |
+
 ## PlcOnlineStatus
 
 ### `twincat_get_plc_online_state`
@@ -1618,66 +1512,6 @@ Create a real-time task for a PLC: the task under SYSTEM > Tasks (TIRT.CreateChi
 
 ## PouMembers
 
-### `twincat_list_pou_members`
-
-DEPRECATED — use twincat_plc_list (kind=MEMBER, parentPath=<pouPath>). Enumerate the METHOD/ACTION/PROPERTY members of a POU by its caret-separated tree path. PROPERTY nodes also list their Get/Set accessor children. One line per member with kind and tree path.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `pouPath` | `string` |  | Caret-separated tree path of the POU to enumerate members of. |
-
-### `twincat_add_pou_member`
-
-DEPRECATED — use twincat_plc_create (kind=MEMBER, subtype=<kind>, parentPath=<pouPath>). Add a structured member to an existing POU. kind is METHOD, ACTION, PROPERTY, GET, or SET. For METHOD/PROPERTY, returnType defaults to BOOL (a METHOD header is verified to read 'METHOD <name> : <returnType>'). implLanguage is ST, IL, SFC, FBD, CFC or LD (defaults to ST when omitted; any other value is an [Error]). GET/SET create nodes named Get/Set; name is ignored for them. PROPERTY is created together with its Get and/or Set accessor(s) (XAE does not auto-generate them) — accessors picks which: GET, SET, or BOTH (default). Use GET-only on an INTERFACE property that should be read-only, so implementers are not forced to write a Set. GET/SET add a single accessor to an existing property node. Returns the new member's tree path.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `pouPath` | `string` |  | Caret-separated tree path of the existing POU to add the member to. |
-| `kind` | `string` |  | Member kind: METHOD, ACTION, PROPERTY, GET, or SET. |
-| `name` | `string` |  | Name of the new member. Ignored for kind=GET/SET (nodes are always named Get/Set). |
-| `returnType` | `string?` | `null` | Return type for METHOD/PROPERTY. Defaults to BOOL when omitted. |
-| `implLanguage` | `string?` | `null` | Implementation language: ST, IL, SFC, FBD, CFC, or LD. Defaults to ST when omitted; any other value is an [Error]. |
-| `accessors` | `string?` | `null` | For kind=PROPERTY only: GET, SET, or BOTH (default). Ignored for other kinds. |
-
-### `twincat_read_pou_member`
-
-DEPRECATED — use twincat_plc_read (kind=MEMBER). Read a POU member's declaration and implementation by its caret-separated tree path (e.g. a METHOD, ACTION, or a PROPERTY's Get/Set accessor). A bare PROPERTY node returns only its declaration. When openInEditor=true, also opens the member (or its parent POU file) in the visible XAE editor (video mode) — best-effort, never blocks the read.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `memberPath` | `string` |  | Caret-separated tree path of the member to read. |
-| `openInEditor` | `bool` | `false` | When true, also opens the member (or its parent POU file) in the visible XAE editor (video mode), best-effort. Default false. |
-
-### `twincat_write_pou_member`
-
-DEPRECATED — use twincat_plc_write (kind=MEMBER). Replace one or both sections of an existing ST POU member. Pass null for a section to leave it unchanged. Each section can be given INLINE (declaration/implementation) or READ FROM A FILE (declarationFile/implementationFile) — use the file form for generated content such as a large block table, so it never has to be retyped or re-serialised. A transcription slip in an entry like FbTypes[17] is syntactically valid and therefore invisible to the compiler and to st_check. Supplying both forms for the same section is an error. Refuses non-ST members with a structured error.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `memberPath` | `string` |  | Caret-separated tree path of the existing ST POU member to write. |
-| `declaration` | `string?` | `null` | New declaration ('VAR ... END_VAR' block). Null leaves it unchanged. Alternative to 'declarationFile'. |
-| `implementation` | `string?` | `null` | New implementation (ST source). Null leaves it unchanged. Alternative to 'implementationFile'. |
-| `declarationFile` | `string?` | `null` | Path to a file whose contents become the declaration. Alternative to 'declaration'. |
-| `implementationFile` | `string?` | `null` | Path to a file whose contents become the implementation. Alternative to 'implementation'. |
-
-### `twincat_delete_plc_object`
-
-DEPRECATED — use twincat_plc_delete (kind=<kind of the element>). Delete a POU/GVL/DUT/INTERFACE/member (METHOD, ACTION, PROPERTY, Get/Set, TRANSITION) node by its caret-separated tree path. Whitelist: the PLC project root, the PLC instance, References, folders and any node whose type cannot be read are refused with an [Error]; the target is validated before the automatic logout. Deleting an object referenced elsewhere may break the build — follow with twincat_build_plc if that matters.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the node to delete. |
-
-### `twincat_rename_plc_object`
-
-DEPRECATED — use twincat_plc_rename (kind=<kind of the element>). Rename a POU/GVL/DUT/member node by its caret-separated tree path. Returns the new tree path. TwinCAT's prompt to update the references to the old name is answered by the tool: "Nein" by default, "Ja" with updateReferences=true; the result says whether it appeared. Rebuild afterwards.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the node to rename. |
-| `newName` | `string` |  | New name for the node. |
-| `updateReferences` | `bool` | `false` |  |
-
 ### `twincat_plcopen_export`
 
 Export one or more objects to a PLCopen XML file. selector is a ';'-separated list of dotted object names relative to the PLC project, e.g. "POUs.FB_Foo;POUs.MAIN" (a bare name without its container fails). filePath is the absolute path of the XML file to write.
@@ -1763,13 +1597,12 @@ Add an ADS route to a remote TwinCAT target. Use 'projectRoute=true' for a proje
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `amsNetId` | `string?` | `null` | AMS NetId of the remote target, e.g. '192.168.1.5.1.1'. |
+| `amsNetId` | `string` |  | AMS NetId of the remote target, e.g. '192.168.1.5.1.1'. |
 | `ipAddr` | `string?` | `null` | IP address of the remote target. Either ipAddr or hostName must be provided. |
 | `hostName` | `string?` | `null` | Hostname of the remote target. Either ipAddr or hostName must be provided. |
 | `userName` | `string?` | `null` | Username for system route authentication (not needed for project routes). |
 | `password` | `string?` | `null` | Password for system route authentication (not needed for project routes). |
 | `projectRoute` | `bool` | `true` | True = project route (stored in .tsproj, no credentials required). False = persistent system route (requires userName/password). Default: true. |
-| `netId` | `string?` | `null` | DEPRECATED alias for amsNetId, kept for one release so existing MCP clients that bind by this name keep working. Prefer amsNetId. |
 
 ### `twincat_set_target`
 
@@ -1777,9 +1610,8 @@ Set the project's target NetId and optionally target platform. Call this BEFORE 
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `amsNetId` | `string?` | `null` | AMS NetId of the target system, e.g. '192.168.1.5.1.1' or '127.0.0.1.1.1'. |
+| `amsNetId` | `string` |  | AMS NetId of the target system, e.g. '192.168.1.5.1.1' or '127.0.0.1.1.1'. |
 | `platform` | `string?` | `null` | Target platform string. Use 'TwinCAT OS (x64)' for User Mode Runtime. Omit to change only the NetId without touching the platform. |
-| `netId` | `string?` | `null` | DEPRECATED alias for amsNetId, kept for one release. Prefer amsNetId. |
 
 ### `twincat_set_system_mode`
 

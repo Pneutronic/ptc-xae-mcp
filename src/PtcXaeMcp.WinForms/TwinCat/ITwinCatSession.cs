@@ -284,6 +284,17 @@ internal interface ITwinCatSession : IDisposable
     PlcRenameResult RenamePlcObject(string treePath, string newName, bool updateReferences = false);
     string PlcOpenExport(string filePath, string selector);
     string PlcOpenImport(string filePath, int conflictMode);
+    /// <summary>
+    /// PlcOpenExport on the PLC project node at <paramref name="plcProjectPath"/> (not the first PLC project, as
+    /// <see cref="PlcOpenExport"/>). <paramref name="selector"/> is the dotted path of a top-level object relative to
+    /// that project ("POUs.Target.FB_Foo"); a member cannot be exported on its own. An existing file is replaced.
+    /// </summary>
+    void PlcOpenExportFrom(string plcProjectPath, string filePath, string selector);
+    /// <summary>
+    /// PlcOpenImport(file, 0 = no conflict handling, "", true) on the PLC project node at <paramref name="plcProjectPath"/>.
+    /// The objects land where the file's project structure puts them; folder nodes do not offer the import.
+    /// </summary>
+    void PlcOpenImportInto(string plcProjectPath, string filePath);
 
     void LinkVariables(string v1, string v2, int offs1 = 0, int offs2 = 0, int size = 0);
     void UnlinkVariables(string v1, string v2 = "");

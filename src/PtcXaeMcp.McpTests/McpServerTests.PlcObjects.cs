@@ -201,6 +201,22 @@ public partial class McpServerTests
         Assert.Contains("newName", text);
     }
 
+    [SkippableTheory]
+    [InlineData("BANANA", "TIPC^Nope^Target", "Unknown kind 'BANANA'")]
+    [InlineData("FOLDER", "TIPC^Nope^Target", "kind FOLDER cannot be moved")]
+    [InlineData("POU", "", "targetFolderPath is required")]
+    public async Task PlcMove_BadKindOrEmptyTarget_ReturnsErrorBeforeTouchingTheProject(string kind, string target, string expected)
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_plc_move",
+            new Dictionary<string, object?> { ["path"] = "TIPC^Nope^DoesNotExist", ["kind"] = kind, ["targetFolderPath"] = target });
+
+        var text = GetText(result);
+        Assert.StartsWith("[Error]", text);
+        Assert.Contains(expected, text);
+    }
+
     // The XAE's "Automatisches Umbenennen über Refactoring" prompt is answered by the rename tool; the answer
     // is an explicit, optional boolean that defaults to "Nein" (false).
     [SkippableTheory]

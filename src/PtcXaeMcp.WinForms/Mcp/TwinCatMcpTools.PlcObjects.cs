@@ -178,6 +178,28 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() =>
                 new PlcObjectCoordinator(bridge.Dispatcher.Session).Rename(path, kind, newName, updateReferences)), cancellationToken);
 
+    [McpServerTool(Name = "twincat_plc_move", ReadOnly = false, Destructive = true)]
+    [Description("Move a PLC element into another folder; the object GUID of the element and of its members stays the same (the .TcPOU keeps its Id). " +
+                 "kind POU, INTERFACE, DUT or GVL: targetFolderPath is a FOLDER anywhere in the same PLC project (not a folder inside a POU) or the PLC " +
+                 "project node. kind MEMBER (METHOD, ACTION, PROPERTY, TRANSITION): targetFolderPath is a FOLDER inside the same POU/INTERFACE, or that " +
+                 "POU/INTERFACE itself; another POU is refused. The target folder must exist — create it first with twincat_plc_create (kind=FOLDER). " +
+                 "The Automation Interface has no move, so the tool exports the element (for a MEMBER: its POU/INTERFACE) as PLCopen XML, places it in " +
+                 "the target folder inside the file's project structure, deletes the original and imports the file into the same PLC project — no " +
+                 "clipboard, no UI automation, the XAE is not brought to the front. kind is checked against the node's real type; a wrong kind, a " +
+                 "missing target, a target that is not a folder or is the current folder, a name already in the target, a member target outside its " +
+                 "POU and a property accessor (Get/Set) are refused before the automatic logout, nothing changed. After the import the move is " +
+                 "verified: the element resolves at the new path, the old path is gone, the text of the element and of every member is unchanged " +
+                 "(revision) and the object GUIDs equal the original's. A failure after the delete re-imports the original at its old place and says " +
+                 "exactly what happened. The exports are kept under %LOCALAPPDATA%\\ptc-xae-mcp\\move. Not saved — twincat_save_project afterwards.")]
+    public string PlcMove(
+        [Description("Caret-separated tree path of the element to move.")] string path,
+        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL or MEMBER.")] string kind,
+        [Description("Caret-separated tree path of the existing target folder (or the PLC project node). For kind=MEMBER a folder inside the same POU/INTERFACE, or the POU/INTERFACE itself.")] string targetFolderPath,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_plc_move", new { path, kind, targetFolderPath }, () =>
+            bridge.Dispatcher.Run(() =>
+                new PlcObjectCoordinator(bridge.Dispatcher.Session).Move(path, kind, targetFolderPath)), cancellationToken);
+
     internal const string UpdateReferencesHelp =
         "How to answer TwinCAT's prompt to update all references to the old name, if it asks: false (default) = \"Nein\", only the element is renamed; " +
         "true = \"Ja\", TwinCAT rewrites the references in the project.";

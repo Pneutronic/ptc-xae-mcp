@@ -10,16 +10,43 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-06
+
+### Breaking
+- **Removed the tools the `twincat_plc_*` verbs replaced** (they answered with a deprecation notice since 2.4.0).
+  An MCP client that still calls one gets "unknown tool":
+
+  | Removed | Use instead |
+  |---|---|
+  | `twincat_list_pous`, `twincat_list_pou_members` | `twincat_plc_list` (`kind`, `parentPath`) |
+  | `twincat_read_pou`, `twincat_read_gvl`, `twincat_read_pou_member` | `twincat_plc_read(path, kind)` |
+  | `twincat_write_pou_body`, `twincat_write_gvl`, `twincat_write_pou_member` | `twincat_plc_write(path, kind, …)` |
+  | `twincat_create_pou`, `twincat_create_dut`, `twincat_create_gvl`, `twincat_create_interface`, `twincat_add_pou_member` | `twincat_plc_create(kind, subtype, parentPath, name, …)` |
+  | `twincat_delete_plc_object`, `twincat_rename_plc_object` | `twincat_plc_delete`, `twincat_plc_rename` |
+  | `twincat_open_plc_object`, `twincat_close_plc_object` (diagnostics) | `twincat_open_object`, `twincat_close_object` |
+
+- **Removed the parameter aliases** `v1`, `v2`, `offs1`, `offs2` of `twincat_link_variables` /
+  `twincat_unlink_variables` (use `variable1TreePath`, `variable2TreePath`, `bitOffset1`, `bitOffset2`) and `netId`
+  of `twincat_add_route` / `twincat_set_target` (use `amsNetId`, now required).
+- **An argument a tool does not declare is refused** with `[Error]` and the tool's parameters, before the tool runs.
+  It used to be dropped without a word. Names compare case-insensitively.
+
 ### Added
-- `twincat_save_as_library` saves a compiled library (#30): an `outputPath` ending in `.compiled-library` goes
-  through `ITcPlcIECProject6.SaveAsLibrary2`, `.library` stays the source library. New `encrypt` (compiled library
-  only) and `overwrite`. The result reports the size of the file read back; an XAE without `SaveAsLibrary2` is
-  named as such, and a refusal for a missing Title says where to set it.
-- `twincat_plc_task_create` (#32): a real-time task under TIRT with cycle time and priority, the PLC task reference
-  linked to it and optionally the PROGRAM it calls. A name in use, a priority another task has, a cycle time that is
-  not a positive multiple of 100 ns and an unknown PLC or PROGRAM are refused before anything changes; without
-  `priority` the next free one is taken. Cycle time, priority and link are read back (the XAE may adjust a value
-  without an error); a failed later step names what was already created.
+- `twincat_plc_check_all_objects` (#27): "Check all objects" of a PLC project compiles every object, also functions,
+  FBs and GVLs no task's program reaches — `twincat_build_plc` compiles only what a task reaches, so an uncalled
+  function with errors builds with 0 errors, and in a library project nothing is checked. Runs through the
+  Automation Interface (`ITcPlcIECProject2.CheckAllObjects`) and leaves the XAE behind the user's work; clears the
+  Error List first, runs the build preflights and lists the errors with file and line. Only an XAE without that call
+  needs the XAE command, which selects the PLC project and brings the XAE to the front: `bringToFront=true`.
+- `twincat_plc_search` (read-only): searches the declarations and implementations of every POU, member, INTERFACE,
+  DUT and GVL instead of reading element by element — literal or regular expression, case-insensitive by default,
+  `wholeWord`, `scope`, `pathPrefix`, `kind`, paged with `limit`/`offset`. Each hit names element, section, line and
+  column as `twincat_plc_read` counts them, the element's revision and an excerpt. Graphical implementations are
+  listed as skipped.
+- `twincat_plc_replace_text`: replaces one exact piece of a declaration or implementation and leaves the rest
+  byte-identical. Not found (with where it nearly matched), found several times (with the lines), a stale
+  `expectedRevision`, a missing section or a graphical implementation are refused before the automatic logout; the
+  result shows the changed lines and the new revision.
 - `twincat_plc_move` (#31): moves a POU, INTERFACE, DUT or GVL into another folder of the same PLC project, or a
   METHOD, ACTION, PROPERTY or TRANSITION into a folder inside its POU/INTERFACE, keeping the object GUIDs. The
   element (for a member: its POU) is exported as PLCopen XML, placed in the target folder in the file's project
@@ -28,10 +55,39 @@ pull-request numbers refer to those.
   its POU are refused before the logout. The move is verified by read-back (new path, old path gone, unchanged text
   of the element and every member, unchanged object GUIDs); a failure after the delete re-imports the original into
   its old folder. The exports are kept under `%LOCALAPPDATA%\ptc-xae-mcp\move`.
+- `twincat_plc_project_info` (#28): reads the Project Information of a PLC project (Title, Version, Company, Author,
+  DefaultNamespace, Description, Released) and sets the fields that are given; a library needs the Title. Every set
+  field is read back before the project is saved; a version that is not four numbers is refused before the write.
+- `twincat_save_as_library` saves a compiled library (#30): an `outputPath` ending in `.compiled-library` goes
+  through `ITcPlcIECProject6.SaveAsLibrary2`, `.library` stays the source library. New `encrypt` (compiled library
+  only) and `overwrite`. The result reports the size of the file read back; a refusal for a missing Title names
+  `twincat_plc_project_info`.
+- `twincat_plc_task_create` (#32): a real-time task under TIRT with cycle time and priority, the PLC task reference
+  linked to it and optionally the PROGRAM it calls. A name in use, a priority another task has, a cycle time that is
+  not a positive multiple of 100 ns and an unknown PLC or PROGRAM are refused before anything changes; without
+  `priority` the next free one is taken. Cycle time, priority and link are read back; a failed later step names
+  what was already created.
+- `twincat_library_signatures` (read-only): the public API of the referenced libraries — function blocks,
+  functions, types and global lists with inputs, outputs and constants — as the XAE serialises it
+  (`ITcPlcLibraryManager2.ProduceAllLibrarySignatures`), written to a file outside the project. `typeName` returns
+  one type's signature inline, `library` narrows to one library, `plcProjectName` picks the PLC; referenced
+  libraries missing from the export are named.
+- `twincat_plc_static_analysis`: runs the PLC Static Analysis (TE1200) through the Automation Interface and reports
+  the findings compactly — counts per level, the most frequent rules, and level, rule, file, line and message per
+  finding (`minLevel`, `limit`/`offset`). Read from the SARIF export (TwinCAT 3.1.4026.20 or later, outside the
+  project); an XAE that cannot export SARIF is answered from the Error List's SA entries with the reason.
+- `twincat_doctor` (read-only, answers while another call holds the XAE): MCP version, TwinCAT System Service, local
+  AMS NetId, TcXaeShell instances, a dialog blocking the XAE, the open solution and the allowed file-path roots, each
+  with ok / warn / fail and the next step. Never starts an XAE or a runtime; an XAE that does not answer within 5 s
+  is reported.
+- `twincat_tcunit_results(junitPath)`: also writes the results as a JUnit XML file for a CI server.
+- `twincat_plc_edit_entries(expectedRevision)`: refuses the edit when the element changed since it was read; the
+  result ends with the new revision.
 
 ### Changed
 - `twincat_save_as_library` refuses an `outputPath` with another extension than `.library` or `.compiled-library`,
   and an existing file unless `overwrite=true` (which deletes it first), before anything is saved.
+- Tool descriptions and error messages that pointed to a removed tool name the `twincat_plc_*` replacement.
 
 ## [2.6.1] - 2026-11-05
 
@@ -401,7 +457,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v2.6.1...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.0.0
 [2.6.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.1
 [2.6.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.0
 [2.5.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.5.0

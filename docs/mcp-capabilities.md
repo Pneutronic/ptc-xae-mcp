@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-199 tools, generated from the source attributes — one section per
+200 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -39,6 +39,7 @@
 - [PlcInstanceSettings](#plcinstancesettings) (5)
 - [PlcObjects](#plcobjects) (7)
 - [PlcOnlineStatus](#plconlinestatus) (1)
+- [PlcProjectInfo](#plcprojectinfo) (1)
 - [PlcProjectLifecycle](#plcprojectlifecycle) (7)
 - [PlcSearch](#plcsearch) (2)
 - [PlcTasks](#plctasks) (1)
@@ -67,7 +68,7 @@ _No parameters._
 
 ### `twincat_read_ads_variable`
 
-Read the current RUNTIME value of a PLC symbol via ADS from a running TwinCAT PLC or User Mode Runtime (UMR). This reads LIVE values — not static source declarations (use twincat_read_gvl / twincat_read_pou for declarations). Returns JSON { success, symbol, plcType, value, amsNetId, adsPort } or [Error] string. Supported types: BOOL BIT BYTE WORD DWORD SINT INT DINT LINT USINT UINT UDINT ULINT REAL LREAL STRING, plus any ENUM (e.g. E_STATE) -- for an ENUM, value is { name, value }: name is the matching member's declared name (null if the raw value doesn't match any member), value is the raw underlying number. Default amsNetId = the local AMS router's NetId (the registry's, then the loopback, only when the router does not answer), default port 851.
+Read the current RUNTIME value of a PLC symbol via ADS from a running TwinCAT PLC or User Mode Runtime (UMR). This reads LIVE values — not static source declarations (use twincat_plc_read for declarations). Returns JSON { success, symbol, plcType, value, amsNetId, adsPort } or [Error] string. Supported types: BOOL BIT BYTE WORD DWORD SINT INT DINT LINT USINT UINT UDINT ULINT REAL LREAL STRING, plus any ENUM (e.g. E_STATE) -- for an ENUM, value is { name, value }: name is the matching member's declared name (null if the raw value doesn't match any member), value is the raw underlying number. Default amsNetId = the local AMS router's NetId (the registry's, then the loopback, only when the router does not answer), default port 851.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -315,7 +316,7 @@ SHOWCASE composite: locate a step's CASE branch (as twincat_locate_step) and mov
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the POU to search, as used by twincat_read_pou. |
+| `treePath` | `string` |  | Caret-separated tree path of the POU to search, as used by twincat_plc_read. |
 | `step` | `int` |  | Numeric step value to locate and show (as read live via ADS). |
 | `stepVariable` | `string?` | `null` | Name of the CASE selector variable. Defaults to 'Step' when omitted. |
 | `bringToFront` | `bool` | `false` |  |
@@ -389,21 +390,21 @@ _No parameters._
 
 ### `twincat_locate_step`
 
-HEADLESS: find the CASE branch of a step in an ST POU's step chain (FB_Base style 'CASE Step OF … 1010: …'). treePath is the caret-separated POU path (as twincat_read_pou); step is the numeric step value you read via ADS (e.g. MAIN.fbMachine.Step); stepVariable is the CASE selector (default 'Step'). Only NUMERIC LITERAL labels are matched ('1010:' or a comma list '100, 1110:'); ranges, constants and enum labels are listed in the error but never matched — on a miss, read the POU yourself and call twincat_goto_line with the line you determined. Returns the 1-based IMPLEMENTATION line (= the implementation pane's gutter number, NOT the .TcPOU file line), the label, the branch end line and the branch source so you can quote it. Does not touch the editor.
+HEADLESS: find the CASE branch of a step in an ST POU's step chain (FB_Base style 'CASE Step OF … 1010: …'). treePath is the caret-separated POU path (as twincat_plc_read); step is the numeric step value you read via ADS (e.g. MAIN.fbMachine.Step); stepVariable is the CASE selector (default 'Step'). Only NUMERIC LITERAL labels are matched ('1010:' or a comma list '100, 1110:'); ranges, constants and enum labels are listed in the error but never matched — on a miss, read the POU yourself and call twincat_goto_line with the line you determined. Returns the 1-based IMPLEMENTATION line (= the implementation pane's gutter number, NOT the .TcPOU file line), the label, the branch end line and the branch source so you can quote it. Does not touch the editor.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the POU to search, as used by twincat_read_pou. |
+| `treePath` | `string` |  | Caret-separated tree path of the POU to search, as used by twincat_plc_read. |
 | `step` | `int` |  | Numeric step value to locate (as read live via ADS, e.g. MAIN.fbMachine.Step). |
 | `stepVariable` | `string?` | `null` | Name of the CASE selector variable. Defaults to 'Step' when omitted. |
 
 ### `twincat_goto_line`
 
-VISIBLE: put the editor cursor on a line of a POU in the running TwinCAT XAE so a live demo shows exactly the code being discussed. Opens the object's tab (as twincat_open_object), focuses the requested pane via UIAutomation and runs the VS Edit.GoTo command, answering its 'Go To Line' dialog. line is 1-based within the pane: section='implementation' (default) counts lines of the implementation pane (= twincat_read_pou's implementation text split on newlines), section='declaration' counts the declaration pane. Works while Online (no logout; monitoring values stay visible) — but the declaration pane is the monitoring grid while Online, so use the implementation section then. Confirmation is structural (the Go-To dialog was seen and closed on OK); there is no caret read-back. Placing the cursor needs the XAE in the foreground: pass bringToFront=true (only when a person asked where it is); without it the call is an [Error] unless the XAE already is in front.
+VISIBLE: put the editor cursor on a line of a POU in the running TwinCAT XAE so a live demo shows exactly the code being discussed. Opens the object's tab (as twincat_open_object), focuses the requested pane via UIAutomation and runs the VS Edit.GoTo command, answering its 'Go To Line' dialog. line is 1-based within the pane: section='implementation' (default) counts lines of the implementation pane (= twincat_plc_read implementation text split on newlines), section='declaration' counts the declaration pane. Works while Online (no logout; monitoring values stay visible) — but the declaration pane is the monitoring grid while Online, so use the implementation section then. Confirmation is structural (the Go-To dialog was seen and closed on OK); there is no caret read-back. Placing the cursor needs the XAE in the foreground: pass bringToFront=true (only when a person asked where it is); without it the call is an [Error] unless the XAE already is in front.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `treePath` | `string` |  | Caret-separated tree path of the POU to open, as used by twincat_read_pou. |
+| `treePath` | `string` |  | Caret-separated tree path of the POU to open, as used by twincat_plc_read. |
 | `line` | `int` |  | 1-based line number within the pane selected by 'section'. |
 | `section` | `string?` | `null` | Which pane 'line' counts within: 'implementation' (default) or 'declaration'. |
 | `bringToFront` | `bool` | `false` |  |
@@ -1392,9 +1393,26 @@ Move a PLC element into another folder; the object GUID of the element and of it
 
 ### `twincat_get_plc_online_state`
 
-Check whether the TwinCAT XAE IDE is currently Online (logged in to a running PLC runtime). When Online, code edits (twincat_write_pou_body etc.) are blocked by the IDE. Use this as a guard before attempting code edits. Returns JSON { isOnline: bool|null, message: string }. isOnline=true → XAE is Online, edits blocked. isOnline=false → XAE is Offline, edits allowed. isOnline=null → state indeterminate (COM API not available on this TwinCAT version).
+Check whether the TwinCAT XAE IDE is currently Online (logged in to a running PLC runtime). When Online, code edits (twincat_plc_write etc.) are blocked by the IDE. Use this as a guard before attempting code edits. Returns JSON { isOnline: bool|null, message: string }. isOnline=true → XAE is Online, edits blocked. isOnline=false → XAE is Offline, edits allowed. isOnline=null → state indeterminate (COM API not available on this TwinCAT version).
 
 _No parameters._
+
+## PlcProjectInfo
+
+### `twincat_plc_project_info`
+
+Read or set the Project Information of a PLC project (the XAE's project properties > Common): Title, Version, Company, Author, DefaultNamespace, Description, Released. Without values it only reads and lists every field. With values it sets exactly those (an empty string clears a field), leaves the others unchanged, verifies them by read-back and saves the project. A library needs at least the Title — twincat_save_as_library fails with "'Title' not specified" without it — and normally a Version (four numbers, e.g. 1.0.0.0; anything else is refused before the write). plcProjectName picks one PLC of several.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `plcProjectName` | `string?` | `null` | Name of the PLC (or its project). Leave empty for the first PLC project. |
+| `title` | `string?` | `null` | Title of the project/library. Required to save it as a library. |
+| `version` | `string?` | `null` | Version as four numbers, e.g. 1.2.0.0. |
+| `company` | `string?` | `null` | Company (distributor of the library). |
+| `author` | `string?` | `null` | Author. |
+| `defaultNamespace` | `string?` | `null` | Default namespace of the library. |
+| `description` | `string?` | `null` | Description. |
+| `released` | `bool?` | `null` | Released flag of the library version. |
 
 ## PlcProjectLifecycle
 
@@ -2042,7 +2060,7 @@ Sets the active project variant by name. Optionally rebuilds the solution immedi
 
 ### `twincat_open_object`
 
-Surface ANY Solution-Explorer node in the VISIBLE TwinCAT XAE so a live MCP-driven demo/video always shows which object is being worked on. treePath is the same caret-separated path as twincat_read_pou (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' for a PLC object, or 'TIID^Device 1 (EtherCAT)' for an EtherCAT device). Two behaviours, because XAE treats the node families differently: a PLC source object (POU/GVL/DUT/INTERFACE) opens its OWN editor tab; a system-manager node (EtherCAT/IO, Motion/NC, TcCOM) and a Scope node are ACTIVATED in the Solution-Explorer tree (selected + Enter, like a double-click) — sysman nodes share ONE sysman editor (no per-node tab), and a Scope view opens on activation. Both bring the XAE to the foreground, so a system-manager or Scope node is shown only with bringToFront=true (otherwise an [Error], nothing selected); a PLC object opens its tab behind the user's work without it. For a Scope node pass the Solution-Explorer names, e.g. '<scope project>^<scope node>'. The read tools (read_pou, read_gvl, read_pou_member) auto-open. The headless write tools do NOT auto-open — call this explicitly before a write for full video coverage. Returns one line describing what happened (opened tab vs. selected node) and, with bringToFront, whether the XAE reached the foreground (Windows may refuse — reported, not an error).
+Surface ANY Solution-Explorer node in the VISIBLE TwinCAT XAE so a live MCP-driven demo/video always shows which object is being worked on. treePath is the same caret-separated path as twincat_plc_read (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' for a PLC object, or 'TIID^Device 1 (EtherCAT)' for an EtherCAT device). Two behaviours, because XAE treats the node families differently: a PLC source object (POU/GVL/DUT/INTERFACE) opens its OWN editor tab; a system-manager node (EtherCAT/IO, Motion/NC, TcCOM) and a Scope node are ACTIVATED in the Solution-Explorer tree (selected + Enter, like a double-click) — sysman nodes share ONE sysman editor (no per-node tab), and a Scope view opens on activation. Both bring the XAE to the foreground, so a system-manager or Scope node is shown only with bringToFront=true (otherwise an [Error], nothing selected); a PLC object opens its tab behind the user's work without it. For a Scope node pass the Solution-Explorer names, e.g. '<scope project>^<scope node>'. The read tools (read_pou, read_gvl, read_pou_member) auto-open. The headless write tools do NOT auto-open — call this explicitly before a write for full video coverage. Returns one line describing what happened (opened tab vs. selected node) and, with bringToFront, whether the XAE reached the foreground (Windows may refuse — reported, not an error).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

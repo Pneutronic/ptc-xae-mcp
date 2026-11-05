@@ -19,7 +19,7 @@ namespace PtcXaeMcp.IntegrationTests;
 ///
 /// <para><b>Localized PLC root.</b> The nested PLC project node is labelled
 /// "&lt;name&gt; Project" with a UI-language suffix ("FixturePlc Projekt" on a German
-/// XAE). It is therefore discovered from <c>twincat_list_pous</c> after the fixture
+/// XAE). It is therefore discovered from <c>twincat_plc_list</c> after the fixture
 /// is open (<see cref="DiscoverPlcRootAsync"/>), overridable via
 /// <see cref="PlcRootEnvVar"/>; every PLC path below derives from it.</para>
 /// </summary>
@@ -70,7 +70,7 @@ public static class FixtureLayout
     /// <summary>
     /// FB whose members live in a sub-folder (fix/pou-members-in-folders): folder
     /// <see cref="FolderMembersFolder"/> holds PROPERTY <c>Enabled</c> (Get + Set) and METHOD <c>Reset</c>.
-    /// list_pou_members used to skip folders under a POU, so these were missing.
+    /// Listing a POU's members used to skip folders under it, so these were missing.
     /// </summary>
     public static string FolderMembersPouPath => PousFolder + "^FB_FolderMembers";
     public const string FolderMembersFolder = "Members";
@@ -263,11 +263,12 @@ public static class FixtureLayout
 
     // ── PLC root discovery ────────────────────────────────────────────────────
 
-    private static readonly Regex PouLine = new(@"^\s*POU\s+(?<path>TIPC\^[^\^\r\n]+\^[^\^\r\n]+)\^",
+    // twincat_plc_list line: "  POU/PROGRAM              TIPC^FixturePlc^FixturePlc Projekt^POUs^MAIN [ST]".
+    private static readonly Regex PouLine = new(@"^\s*POU(?:/\S+)?\s+(?<path>TIPC\^[^\^\r\n]+\^[^\^\r\n]+)\^",
         RegexOptions.Multiline | RegexOptions.Compiled);
 
     /// <summary>
-    /// Reads the real (localized) PLC project root from <c>twincat_list_pous</c> of the
+    /// Reads the real (localized) PLC project root from <c>twincat_plc_list(kind=POU)</c> of the
     /// open fixture. Keeps the previous value when the listing is not (yet) usable.
     /// </summary>
     public static async Task DiscoverPlcRootAsync(McpClient client)
@@ -276,7 +277,8 @@ public static class FixtureLayout
         {
             try
             {
-                var result = await client.CallToolAsync("twincat_list_pous",
+                var result = await client.CallToolAsync("twincat_plc_list",
+                    new Dictionary<string, object?> { ["kind"] = "POU" },
                     cancellationToken: new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token);
                 string text = string.Join("\n", (result.Content ?? []).OfType<TextContentBlock>().Select(c => c.Text));
                 var match = PouLine.Match(text);

@@ -45,8 +45,8 @@ internal static class PouSpecLeftovers
 
         foreach (var path in paths)
         {
-            var text = GetText(await client.CallToolAsync("twincat_delete_plc_object",
-                new Dictionary<string, object?> { ["treePath"] = path }));
+            var text = GetText(await client.CallToolAsync("twincat_plc_delete",
+                new Dictionary<string, object?> { ["path"] = path, ["kind"] = "POU" }));
 
             // The tool surfaces failures as "[Error] ..." text (not IsError). A
             // "not found" means the node is already gone — that is the goal, so
@@ -67,15 +67,15 @@ internal static class PouSpecLeftovers
     /// <summary>Tree paths of every leftover <c>*_PouSpec_*</c> node in the open project.</summary>
     public static async Task<IReadOnlyList<string>> ListLeftoverPathsAsync(McpClient client)
     {
-        var text = GetText(await client.CallToolAsync("twincat_list_pous",
-            new Dictionary<string, object?>()));
+        var text = GetText(await client.CallToolAsync("twincat_plc_list",
+            new Dictionary<string, object?> { ["kind"] = "POU" }));
         return ParseLeftoverPaths(text);
     }
 
     /// <summary>
-    /// Extracts the tree paths of leftover POUs from <c>twincat_list_pous</c> output. Each
-    /// item line is <c>"  {Kind,-6} {Path}{ [lang]}"</c>; the path itself can contain
-    /// spaces (e.g. "PLC Projekt"), so we strip only the leading Kind token and an optional
+    /// Extracts the tree paths of leftover POUs from <c>twincat_plc_list</c> output. Each
+    /// item line is <c>"  {Kind/Subtype,-24} {Path}{ [lang]}"</c>; the path itself can contain
+    /// spaces (e.g. "PLC Projekt"), so we strip only the leading kind token and an optional
     /// trailing " [lang]" rather than splitting on whitespace.
     /// </summary>
     internal static IReadOnlyList<string> ParseLeftoverPaths(string listPousText)

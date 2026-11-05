@@ -8,8 +8,8 @@ namespace PtcXaeMcp.IntegrationTests;
 /// feature/plc-objects, live: the generic twincat_plc_* verbs against the neutral fixture
 /// (<see cref="FixtureLayout"/>). Elements the tests create carry a time-stamped name and are deleted in a
 /// finally block; the fixture's own elements are only read, or written back unchanged.
-/// <para>The legacy tools stay covered by <see cref="PlcCodeIntegrationTests"/> and
-/// <see cref="PouMembersIntegrationTests"/> (they now end in a <c>[Deprecated]</c> notice).</para>
+/// <para>The code-editing scenarios of <see cref="PlcCodeIntegrationTests"/> and the member scenarios of
+/// <see cref="PouMembersIntegrationTests"/> run through the same verbs.</para>
 /// </summary>
 [Collection("Stage XAE")]
 [Trait("Stage", "XAE")]
@@ -285,25 +285,6 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
         Assert.Contains("--- Declaration ---", pou);
         Assert.Contains("--- Implementation ---", pou);
         Assert.Contains("CASE Step OF", pou);
-    }
-
-    [Trait("Description", "Legacy-Tool read_pou liefert den Deprecated-Hinweis in der Kopfzeile; der Quelltext ab '--- Implementation ---' bleibt unverändert (nur lesend).")]
-    [SkippableFact(Timeout = 300_000)]
-    public async Task LegacyReadPou_CarriesTheNoticeOnTheFirstLine_NotInTheSource()
-    {
-        SkipIfNotReady();
-        await OpenFixtureAsync();
-
-        string legacy = await OkAsync("twincat_read_pou", ("treePath", FixtureLayout.StepChainPouPath));
-        string current = await OkAsync("twincat_plc_read", ("path", FixtureLayout.StepChainPouPath), ("kind", "POU"));
-
-        string firstLine = legacy.Split('\n')[0];
-        Assert.Contains("[Deprecated] use twincat_plc_read", firstLine);
-        Assert.DoesNotContain("[Deprecated]", legacy[legacy.IndexOf("--- Declaration ---", StringComparison.Ordinal)..]);
-        Assert.Equal(Normalise(ImplementationOf(current)), Normalise(ImplementationOf(legacy)));
-
-        string list = await OkAsync("twincat_list_pous");
-        Assert.Contains("[Deprecated] use twincat_plc_list", list);
     }
 
     // ── lifecycle per element ─────────────────────────────────────────────────

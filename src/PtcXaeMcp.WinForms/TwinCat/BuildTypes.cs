@@ -25,7 +25,9 @@ internal sealed record BuildResult(
     string? CompilerSummary = null,
     BuildArtifactInfo? Artifact = null,
     // Issue #152 C-10: why the build does not count as succeeded (null when it does).
-    string? FailureReason = null);
+    string? FailureReason = null,
+    // How the result was produced, when that matters to the caller (e.g. which way "Check all objects" ran).
+    string? Note = null);
 
 internal sealed record ActivateResult(
     bool Success,

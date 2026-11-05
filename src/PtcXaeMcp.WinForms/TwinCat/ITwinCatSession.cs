@@ -278,9 +278,11 @@ internal interface ITwinCatSession : IDisposable
     BuildResult BuildPlc(string? plcProjectName);
     /// <summary>
     /// "Check all objects" of a PLC project: compiles every object, also the ones no task reaches. Clears the
-    /// Error List first and selects the PLC project in the Solution Explorer (the command needs it).
+    /// Error List first and runs ITcPlcIECProject2.CheckAllObjects; only an XAE without that call falls back to
+    /// the XAE command, which selects the PLC project in the Solution Explorer and so needs
+    /// <paramref name="bringToFront"/>. <see cref="BuildResult.Note"/> says which way ran.
     /// </summary>
-    BuildResult CheckAllPlcObjects(string? plcProjectName);
+    BuildResult CheckAllPlcObjects(string? plcProjectName, bool bringToFront);
     BuildResult BuildSolution();
     /// <summary>
     /// ActivateConfiguration(), and with <paramref name="autoConfirmRestart"/> StartRestartTwinCAT(). Issue #195:

@@ -2,10 +2,13 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 
 // "Check all objects" of a PLC project (Build menu): compiles every object, also the ones no task
 // reaches. A build compiles only what a task's program calls, so an uncalled function with an
-// undeclared variable builds with 0 errors (live 2026-11-05). The Automation Interface has no call
-// for it — ITcSysManager.CheckAllObjects() is the system check before an activation — so it is the
-// XAE command, found by its locale-independent identity (German XAE: "Build.ÜberprüfealleObjekte",
-// TcXaeShell 4026.22; same command group as ErrorListClearCommand).
+// undeclared variable builds with 0 errors (live 2026-11-05). It runs through the Automation Interface,
+// ITcPlcIECProject2.CheckAllObjects() on the PLC project item (Infosys TE1000 ITcPlcIECProject2; not to be
+// confused with ITcSysManager.CheckAllObjects(), the system check before an activation): no window is
+// selected, so the XAE stays behind the user's work. Only an XAE that does not offer that call falls back
+// to the XAE command, found by its locale-independent identity (German XAE: "Build.ÜberprüfealleObjekte",
+// TcXaeShell 4026.22; same command group as ErrorListClearCommand) — it needs the PLC project selected in
+// the Solution Explorer, which brings the XAE to the front, so it runs only with bringToFront=true.
 internal static class CheckAllObjectsCommand
 {
     public const string Guid = "{3B11520B-7E70-4008-A6CF-B60AE84E12B1}";
@@ -63,7 +66,9 @@ internal static class CheckAllObjectsWait
 internal static class CheckAllObjectsVerdict
 {
     /// <summary>Why the check does not count as passed, or null when it does.</summary>
-    public static string? FailureReason(IReadOnlyList<BuildError> errors, string? compilerSummary, bool finished, TimeSpan timeout)
+    /// <param name="reportedSuccess">What ITcPlcIECProject2.CheckAllObjects() returned; null when the XAE command ran.</param>
+    public static string? FailureReason(IReadOnlyList<BuildError> errors, string? compilerSummary, bool finished, TimeSpan timeout,
+        bool? reportedSuccess = null)
     {
         if (!finished)
             return $"the check had not finished after {timeout.TotalMinutes:0} min (the Error List or the Output window was still changing).";
@@ -72,6 +77,9 @@ internal static class CheckAllObjectsVerdict
             return $"{listed} error(s) in the PLC project's objects.";
         if (compilerSummary is not null && BuildTruth.SummaryErrorCount(compilerSummary) is > 0)
             return $"the compiler reports {compilerSummary}.";
+        if (reportedSuccess == false)
+            return "CheckAllObjects() reported a failure, but neither the Error List nor the compiler output names an error — " +
+                   "look at the XAE's Error List and Output window.";
         return null;
     }
 }

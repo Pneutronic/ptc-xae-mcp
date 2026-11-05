@@ -368,6 +368,8 @@ public class BuildIntegrationTests : IAsyncLifetime
             Assert.Contains("[Error] Check all objects failed.", check);
             Assert.Contains("nCheckAllUndeclared", check);
             Assert.Contains(name, check);
+            // Without bringToFront the check runs through the Automation Interface and leaves the XAE behind.
+            Assert.Contains("Check: ran through the Automation Interface", check);
         }
         finally
         {

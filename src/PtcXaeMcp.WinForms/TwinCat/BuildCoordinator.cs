@@ -174,10 +174,10 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
         });
 
     /// <summary>"Check all objects" of a PLC project, with the same preflights as a build.</summary>
-    public string CheckAllObjects(string? plcProjectName, bool ignoreStaleFiles = false) =>
+    public string CheckAllObjects(string? plcProjectName, bool ignoreStaleFiles = false, bool bringToFront = false) =>
         Combine(CheckedBuild(plcProjectName, allProjects: false, ignoreStaleFiles, expectSymbols: null, () =>
         {
-            var r = session.CheckAllPlcObjects(plcProjectName);
+            var r = session.CheckAllPlcObjects(plcProjectName, bringToFront);
             return (FormatCheckAllObjectsResult(r), r.Log);
         }));
 
@@ -536,6 +536,8 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
             sb.AppendLine(CultureInfo.InvariantCulture, $"Reason: {result.FailureReason}");
         if (result.CompilerSummary is not null)
             sb.AppendLine(CultureInfo.InvariantCulture, $"Compiler: {result.CompilerSummary}");
+        if (result.Note is not null)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Check: {result.Note}");
         AppendErrorListEntries(sb, result.Errors);
         return sb.ToString().TrimEnd();
     }

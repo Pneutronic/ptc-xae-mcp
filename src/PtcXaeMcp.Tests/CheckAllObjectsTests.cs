@@ -131,4 +131,40 @@ public class CheckAllObjectsTests
 
         Assert.Contains("[Error] could not select the PLC project", result);
     }
+
+    [Fact]
+    public void Verdict_TheInterfaceReportsAFailure_WithoutANamedError_Fails() =>
+        Assert.StartsWith("CheckAllObjects() reported a failure, but neither the Error List nor the compiler output names an error",
+            CheckAllObjectsVerdict.FailureReason([], "0 errors, 0 warnings", true, Timeout, reportedSuccess: false));
+
+    [Fact]
+    public void Verdict_TheInterfaceReportsSuccess_AndNothingIsListed_Passes() =>
+        Assert.Null(CheckAllObjectsVerdict.FailureReason([], "0 errors, 0 warnings", true, Timeout, reportedSuccess: true));
+
+    [Fact]
+    public void Coordinator_DoesNotAllowTheFrontByDefault_AndPassesBringToFront()
+    {
+        var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = true };
+        new BuildCoordinator(fake).CheckAllObjects(null);
+        new BuildCoordinator(fake).CheckAllObjects(null, bringToFront: true);
+
+        Assert.Contains("CheckAllPlcObjects(<null>)", fake.CallLog);
+        Assert.Contains("CheckAllPlcObjects(<null>, bringToFront)", fake.CallLog);
+    }
+
+    [Fact]
+    public void Coordinator_SaysWhichWayTheCheckRan()
+    {
+        var fake = new FakeTwinCatSession
+        {
+            IsConnected = true,
+            SolutionOpen = true,
+            FakeCheckAllObjectsResult = new BuildResult(true, 0, [],
+                Note: "ran through the Automation Interface (ITcPlcIECProject2.CheckAllObjects); the XAE was not brought to the front."),
+        };
+
+        string result = new BuildCoordinator(fake).CheckAllObjects(null);
+
+        Assert.Contains("Check: ran through the Automation Interface (ITcPlcIECProject2.CheckAllObjects)", result);
+    }
 }

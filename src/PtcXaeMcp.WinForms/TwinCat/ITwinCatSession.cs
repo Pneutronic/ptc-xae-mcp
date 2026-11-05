@@ -276,6 +276,11 @@ internal interface ITwinCatSession : IDisposable
     void SetDeviceDisabled(string treePath, bool disabled);
 
     BuildResult BuildPlc(string? plcProjectName);
+    /// <summary>
+    /// "Check all objects" of a PLC project: compiles every object, also the ones no task reaches. Clears the
+    /// Error List first and selects the PLC project in the Solution Explorer (the command needs it).
+    /// </summary>
+    BuildResult CheckAllPlcObjects(string? plcProjectName);
     BuildResult BuildSolution();
     /// <summary>
     /// ActivateConfiguration(), and with <paramref name="autoConfirmRestart"/> StartRestartTwinCAT(). Issue #195:

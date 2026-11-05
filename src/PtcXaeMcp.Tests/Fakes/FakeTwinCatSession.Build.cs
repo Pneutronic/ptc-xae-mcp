@@ -22,6 +22,16 @@ internal sealed partial class FakeTwinCatSession
         return FakeBuildPlcResult;
     }
 
+    public BuildResult FakeCheckAllObjectsResult { get; set; } =
+        new BuildResult(true, 0, Array.Empty<BuildError>());
+
+    public BuildResult CheckAllPlcObjects(string? plcProjectName)
+    {
+        CallLog.Add($"CheckAllPlcObjects({plcProjectName ?? "<null>"})");
+        if (BuildThrows is not null) throw BuildThrows;
+        return FakeCheckAllObjectsResult;
+    }
+
     /// <summary>Runs inside <see cref="BuildSolution"/> before it returns (e.g. to block like a modal would).</summary>
     public Action? BuildSolutionHook { get; set; }
 

@@ -5,14 +5,14 @@
 
 # MCP tool reference
 
-208 tools, generated from the source attributes — one section per
+209 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
 
 - [ActiveProject](#activeproject) (1)
 - [AdsVariable](#adsvariable) (4)
-- [Build](#build) (13)
+- [Build](#build) (14)
 - [ClientInfo](#clientinfo) (1)
 - [Coe](#coe) (4)
 - [CoreDump](#coredump) (3)
@@ -126,6 +126,15 @@ Compile only the PLC project via DTE.Solution.SolutionBuild.BuildProject. Faster
 | `plcProjectName` | `string?` | `null` | Name of the PLC project to build (e.g. 'PLC'). Leave empty to auto-detect the first .plcproj in the solution. |
 | `ignoreStaleFiles` | `bool` | `false` | Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses. |
 | `expectSymbols` | `string[]?` | `null` | Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check. |
+
+### `twincat_plc_check_all_objects`
+
+'Check all objects' of a PLC project (the XAE's Build menu): compiles EVERY object, also functions, FBs and GVLs no task's program reaches. twincat_build_plc compiles only what a task reaches, so an uncalled object with errors builds with 0 errors — in a library project (no task) nothing is checked at all. Use this to verify a library or code that is not called yet. The Error List is cleared first (it keeps every message since the XAE started) and the PLC project is selected in the Solution Explorer (the command needs it). Runs the same preflights as twincat_build_plc (stale files refuse, library references warn). No errors: 'Check all objects: no errors'; otherwise '[Error] Check all objects failed.' with the reason and the errors with file and line. Requires XAE running with a solution open.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `plcProjectName` | `string?` | `null` | Name of the PLC (e.g. 'PLC') or of its project. Leave empty for the first PLC project in the solution. |
+| `ignoreStaleFiles` | `bool` | `false` | Check even when PLC source files changed on disk outside the XAE (the in-memory state is checked; the result starts with [Warn]). Default false refuses. |
 
 ### `twincat_build_solution`
 

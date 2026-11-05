@@ -337,6 +337,47 @@ public class BuildIntegrationTests : IAsyncLifetime
             $"Expected a verified clear, got: {clearText}");
     }
 
+    // ── Check all objects ─────────────────────────────────────────────────────
+
+    [Trait("Description", "twincat_plc_check_all_objects: eine nie aufgerufene Funktion mit nicht deklarierter Variable baut mit 0 Fehlern, Check all objects meldet den Fehler; nach dem Löschen der Funktion keine Fehler.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task CheckAllObjects_FindsTheErrorInAnUncalledFunction_ThatTheBuildMisses()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+        const string name = "F_CheckAllUnreached";
+        string path = FixtureLayout.PousFolder + "^" + name;
+
+        var created = await _client!.CallToolAsync("twincat_plc_create", new Dictionary<string, object?>
+        {
+            ["kind"] = "POU", ["subtype"] = "FUNCTION", ["parentPath"] = FixtureLayout.PousFolder,
+            ["name"] = name, ["returnType"] = "INT",
+        });
+        Assert.StartsWith("Created", GetText(created));
+        try
+        {
+            string written = GetText(await _client.CallToolAsync("twincat_plc_write", new Dictionary<string, object?>
+            {
+                ["path"] = path, ["kind"] = "POU", ["implementation"] = $"{name} := nCheckAllUndeclared + 1;",
+            }));
+            Assert.StartsWith("Wrote", written);
+
+            Assert.Contains("Build succeeded", await BuildPlc(), StringComparison.OrdinalIgnoreCase);
+
+            string check = GetText(await _client.CallToolAsync("twincat_plc_check_all_objects", new Dictionary<string, object?>()));
+            Assert.Contains("[Error] Check all objects failed.", check);
+            Assert.Contains("nCheckAllUndeclared", check);
+            Assert.Contains(name, check);
+        }
+        finally
+        {
+            await _client.CallToolAsync("twincat_plc_delete", new Dictionary<string, object?> { ["path"] = path, ["kind"] = "POU" });
+        }
+
+        string clean = GetText(await _client.CallToolAsync("twincat_plc_check_all_objects", new Dictionary<string, object?>()));
+        Assert.Contains("Check all objects: no errors", clean);
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private static string GetText(CallToolResult result)

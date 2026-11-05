@@ -234,7 +234,7 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
 
         // Optional declaration, written through the same verified path as write_pou_body. Without it
         // TwinCAT's default skeleton remains.
-        var partial = ApplyDeclaration(newPath, $"{normType} '{normName}'", declaration, "twincat_write_pou_body");
+        var partial = ApplyDeclaration(newPath, $"{normType} '{normName}'", declaration, "twincat_plc_write");
         return partial ?? $"Created {normType} '{normName}' at {newPath}.";
     }
 
@@ -281,7 +281,7 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
 
         // Fill the declaration through the same verified path as write_gvl
         // (set DeclarationText + read-back). Omitted → TwinCAT's default skeleton.
-        var partial = ApplyDeclaration(newPath, $"DUT {normType} '{name}'", declaration, "twincat_write_gvl");
+        var partial = ApplyDeclaration(newPath, $"DUT {normType} '{name}'", declaration, "twincat_plc_write");
         return partial ?? $"Created DUT {normType} '{name}' at {newPath}.";
     }
 
@@ -301,7 +301,7 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
         catch (Exception ex)
         {
             return "[Error] " + PartialCreate.Describe(what, newPath, "declaration", ex.Message,
-                $"Write it with {fixTool} ({(WriteToolName is null ? "treePath" : "path")} '{newPath}'), or delete the object with {DeleteToolName ?? "twincat_delete_plc_object"}.");
+                $"Write it with {fixTool} ({(WriteToolName is null ? "treePath" : "path")} '{newPath}'), or delete the object with {DeleteToolName ?? "twincat_plc_delete"}.");
         }
     }
 
@@ -358,7 +358,7 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
         try { newPath = session.CreateGvl(parentPath, name); }
         catch (Exception ex) { return $"[Error] {ex.Message}"; }
 
-        var partial = ApplyDeclaration(newPath, $"{kind} '{name}'", declaration, "twincat_write_gvl");
+        var partial = ApplyDeclaration(newPath, $"{kind} '{name}'", declaration, "twincat_plc_write");
         return partial ?? $"Created {kind} '{name}' at {newPath}.";
     }
 
@@ -526,7 +526,7 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
         // the same verified path as write_gvl (see CreateDut). Methods are added
         // afterwards via add_pou_member. Omitted → TwinCAT's default
         // `INTERFACE … END_INTERFACE` skeleton.
-        var partial = ApplyDeclaration(newPath, $"INTERFACE '{name}'", declaration, "twincat_write_pou_body");
+        var partial = ApplyDeclaration(newPath, $"INTERFACE '{name}'", declaration, "twincat_plc_write");
         return partial ?? $"Created INTERFACE '{name}' at {newPath}.";
     }
 }

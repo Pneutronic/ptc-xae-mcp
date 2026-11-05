@@ -14,7 +14,7 @@ internal sealed partial class TwinCatMcpTools
     [Description(
         "Surface ANY Solution-Explorer node in the VISIBLE TwinCAT XAE so a live MCP-driven " +
         "demo/video always shows which object is being worked on. treePath is the same caret-" +
-        "separated path as twincat_read_pou (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' " +
+        "separated path as twincat_plc_read (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' " +
         "for a PLC object, or 'TIID^Device 1 (EtherCAT)' for an EtherCAT device). Two behaviours, " +
         "because XAE treats the node families differently: a PLC source object (POU/GVL/DUT/" +
         "INTERFACE) opens its OWN editor tab; a system-manager node (EtherCAT/IO, Motion/NC, " +

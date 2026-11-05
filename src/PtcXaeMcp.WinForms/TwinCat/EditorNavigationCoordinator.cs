@@ -38,7 +38,7 @@ internal sealed class EditorNavigationCoordinator(ITwinCatSession session)
             var r = StepLocator.Locate(body.Implementation, step, selector);
             if (!r.Found)
                 return ($"[Error] Step {step} not located in '{treePath}': {r.Reason}. " +
-                        "Determine the implementation line yourself from twincat_read_pou and use twincat_goto_line.", null);
+                        "Determine the implementation line yourself from twincat_plc_read and use twincat_goto_line.", null);
 
             var loc = new StepLocation(treePath, step, selector, r.Line, r.Label, r.EndLine, r.Snippet);
             return (FormatLocate(loc), loc);

@@ -9,7 +9,7 @@ internal sealed partial class TwinCatMcpTools
     [McpServerTool(Name = "twincat_read_ads_variable", ReadOnly = true)]
     [Description("Read the current RUNTIME value of a PLC symbol via ADS from a running TwinCAT " +
                  "PLC or User Mode Runtime (UMR). This reads LIVE values — not static source " +
-                 "declarations (use twincat_read_gvl / twincat_read_pou for declarations). " +
+                 "declarations (use twincat_plc_read for declarations). " +
                  "Returns JSON { success, symbol, plcType, value, amsNetId, adsPort } or " +
                  "[Error] string. Supported types: BOOL BIT BYTE WORD DWORD SINT INT DINT LINT " +
                  "USINT UINT UDINT ULINT REAL LREAL STRING, plus any ENUM (e.g. E_STATE) -- for " +

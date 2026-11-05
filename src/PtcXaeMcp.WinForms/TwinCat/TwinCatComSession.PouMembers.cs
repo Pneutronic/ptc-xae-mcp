@@ -403,7 +403,7 @@ internal sealed partial class TwinCatComSession
         string methodPath = parentPath + "^" + name;
         string NotFixed(string why) =>
             $"METHOD '{name}' created at {methodPath}, header NOT fixed: {why} " +
-            $"Fix the header manually (twincat_write_pou_member) to '{MethodHeader.Want(name, ret)}'.";
+            $"Fix the header manually (twincat_plc_write, kind=MEMBER) to '{MethodHeader.Want(name, ret)}'.";
 
         string decl;
         try { decl = (string)methodNode.DeclarationText ?? string.Empty; }

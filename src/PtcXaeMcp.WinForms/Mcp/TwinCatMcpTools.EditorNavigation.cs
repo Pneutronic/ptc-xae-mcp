@@ -11,7 +11,7 @@ internal sealed partial class TwinCatMcpTools
     [McpServerTool(Name = "twincat_locate_step", ReadOnly = true)]
     [Description(
         "HEADLESS: find the CASE branch of a step in an ST POU's step chain (FB_Base style " +
-        "'CASE Step OF … 1010: …'). treePath is the caret-separated POU path (as twincat_read_pou); " +
+        "'CASE Step OF … 1010: …'). treePath is the caret-separated POU path (as twincat_plc_read); " +
         "step is the numeric step value you read via ADS (e.g. MAIN.fbMachine.Step); stepVariable " +
         "is the CASE selector (default 'Step'). Only NUMERIC LITERAL labels are matched ('1010:' " +
         "or a comma list '100, 1110:'); ranges, constants and enum labels are listed in the error " +
@@ -20,7 +20,7 @@ internal sealed partial class TwinCatMcpTools
         "gutter number, NOT the .TcPOU file line), the label, the branch end line and the branch " +
         "source so you can quote it. Does not touch the editor.")]
     public string LocateStep(
-        [Description("Caret-separated tree path of the POU to search, as used by twincat_read_pou.")] string treePath,
+        [Description("Caret-separated tree path of the POU to search, as used by twincat_plc_read.")] string treePath,
         [Description("Numeric step value to locate (as read live via ADS, e.g. MAIN.fbMachine.Step).")] int step,
         [Description("Name of the CASE selector variable. Defaults to 'Step' when omitted.")] string? stepVariable = null,
         CancellationToken cancellationToken = default)
@@ -38,7 +38,7 @@ internal sealed partial class TwinCatMcpTools
         "demo shows exactly the code being discussed. Opens the object's tab (as twincat_open_object), " +
         "focuses the requested pane via UIAutomation and runs the VS Edit.GoTo command, answering its " +
         "'Go To Line' dialog. line is 1-based within the pane: section='implementation' (default) " +
-        "counts lines of the implementation pane (= twincat_read_pou's implementation text split on " +
+        "counts lines of the implementation pane (= twincat_plc_read implementation text split on " +
         "newlines), section='declaration' counts the declaration pane. Works while Online (no logout; " +
         "monitoring values stay visible) — but the declaration pane is the monitoring grid while " +
         "Online, so use the implementation section then. Confirmation is structural (the Go-To dialog " +
@@ -46,7 +46,7 @@ internal sealed partial class TwinCatMcpTools
         "foreground: pass bringToFront=true (only when a person asked where it is); without it the call is an " +
         "[Error] unless the XAE already is in front.")]
     public string GotoLine(
-        [Description("Caret-separated tree path of the POU to open, as used by twincat_read_pou.")] string treePath,
+        [Description("Caret-separated tree path of the POU to open, as used by twincat_plc_read.")] string treePath,
         [Description("1-based line number within the pane selected by 'section'.")] int line,
         [Description("Which pane 'line' counts within: 'implementation' (default) or 'declaration'.")] string? section = null,
         [Description(BringToFrontHelp)] bool bringToFront = false,

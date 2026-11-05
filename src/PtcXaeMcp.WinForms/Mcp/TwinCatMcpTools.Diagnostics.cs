@@ -108,7 +108,7 @@ internal sealed class TwinCatMcpToolsDiagnostics(McpBridge bridge)
         "and the cursor confirmation. Only registered when the host is started with " +
         "--diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.")]
     public string ShowStep(
-        [Description("Caret-separated tree path of the POU to search, as used by twincat_read_pou.")] string treePath,
+        [Description("Caret-separated tree path of the POU to search, as used by twincat_plc_read.")] string treePath,
         [Description("Numeric step value to locate and show (as read live via ADS).")] int step,
         [Description("Name of the CASE selector variable. Defaults to 'Step' when omitted.")] string? stepVariable = null,
         [Description(TwinCatMcpTools.BringToFrontHelp)] bool bringToFront = false,

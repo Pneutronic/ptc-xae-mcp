@@ -323,12 +323,29 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
 
     // ---- create --------------------------------------------------------------
 
+    /// <param name="implementation">Written into the new element after it was created (through <see cref="Write"/>, with its
+    /// read-back). Before, a body passed to the tool was dropped without a word and the element kept its empty skeleton.</param>
     public string Create(string kind, string? subtype, string parentPath, string name, string? declaration = null,
-        string? returnType = null, string? implLanguage = null, string? accessors = null)
+        string? returnType = null, string? implLanguage = null, string? accessors = null, string? implementation = null)
     {
+        string created = CreateElement(kind, subtype, parentPath, name, declaration, returnType, implLanguage, accessors, implementation,
+            out string k, out string? sub);
+        if (implementation is null || created.StartsWith("[Error]", StringComparison.Ordinal)) return created;
+
+        string written = Write(CreatedPath(parentPath, k, sub, name), k, declaration: null, implementation);
+        return written.StartsWith("[Error]", StringComparison.Ordinal)
+            ? $"{created}\n[Error] The element was created, but its implementation was not written: {written["[Error]".Length..].TrimStart()}"
+            : $"{created}\n{written}";
+    }
+
+    private string CreateElement(string kind, string? subtype, string parentPath, string name, string? declaration,
+        string? returnType, string? implLanguage, string? accessors, string? implementation, out string k, out string? sub)
+    {
+        k = string.Empty;
+        sub = null;
         if (string.IsNullOrWhiteSpace(parentPath)) return "[Error] parentPath is required.";
         if (string.IsNullOrWhiteSpace(name)) return "[Error] name is required.";
-        string? err = ParseKindAndSubtype(kind, subtype, "create", out string k, out string? sub);
+        string? err = ParseKindAndSubtype(kind, subtype, "create", out k, out sub);
         if (err is not null) return err;
 
         // Default / required subtype per kind.
@@ -350,7 +367,7 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
                 return "[Error] subtype is required for kind=RECIPE (MANAGER | DEFINITION).";
         }
 
-        string? misfit = Misfit(k, sub, declaration, returnType, implLanguage, accessors);
+        string? misfit = Misfit(k, sub, declaration, returnType, implLanguage, accessors, implementation);
         if (misfit is not null) return misfit;
 
         switch (k)
@@ -474,10 +491,15 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
 
     // Parameters that do not apply to the requested element are an error, never silently ignored.
     private static string? Misfit(string kind, string? subtype, string? declaration, string? returnType,
-        string? implLanguage, string? accessors)
+        string? implLanguage, string? accessors, string? implementation = null)
     {
         string where = subtype is null ? $"kind={kind}" : $"kind={kind} (subtype {subtype})";
         string? Reject(string parameter, string why) => $"[Error] {parameter} does not apply to {where}: {why}.";
+
+        if (implementation is not null && !TakesImplementation(kind, subtype))
+            return Reject("implementation", kind == PlcKind.Member && subtype == "PROPERTY"
+                ? "a PROPERTY's code is in its Get/Set accessors; write those"
+                : "only a POU and its METHOD, ACTION, TRANSITION, GET and SET have an implementation");
 
         if (declaration is not null)
         {
@@ -500,6 +522,13 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
             return Reject("accessors", "only a PROPERTY has Get/Set accessors");
         return null;
     }
+
+    private static bool TakesImplementation(string kind, string? subtype) =>
+        kind == PlcKind.Pou || (kind == PlcKind.Member && subtype is "METHOD" or "ACTION" or "TRANSITION" or "GET" or "SET");
+
+    // Tree path of an element Create just made: GET/SET accessors are always named Get/Set.
+    private static string CreatedPath(string parentPath, string kind, string? subtype, string name) =>
+        $"{parentPath.Trim()}^{(kind == PlcKind.Member && subtype is "GET" ? "Get" : kind == PlcKind.Member && subtype is "SET" ? "Set" : name.Trim())}";
 
     // ---- delete --------------------------------------------------------------
 
@@ -560,6 +589,53 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
         if (target!.Value.Entry.Subtype is "GET" or "SET")
             return $"[Error] '{path}' is a property accessor: Get/Set nodes have fixed names and cannot be renamed.";
 
-        return new PouMembersCoordinator(session).RenamePlcObject(path, newName, folderName: k == PlcKind.Folder, updateReferences: updateReferences);
+        bool code = k is PlcKind.Pou or PlcKind.Member;
+        if (code)
+        {
+            string? collision;
+            try { collision = RenameCollision(path, k, newName.Trim()); }
+            catch (Exception ex) { return McpErrors.EnsureError(ComCall.IsBusy(ex) ? ComCall.Describe(ex) : ex.Message); }
+            if (collision is not null)
+                return $"[Error] '{path}' cannot be renamed to '{newName.Trim()}': {collision}. The XAE would accept it and only " +
+                       "the next build fails. Nothing was changed.";
+        }
+
+        string result = new PouMembersCoordinator(session).RenamePlcObject(path, newName, folderName: k == PlcKind.Folder, updateReferences: updateReferences);
+        return code && !result.StartsWith("[Error]", StringComparison.Ordinal) ? result + OldNameAssignments(path, k, newName.Trim()) : result;
+    }
+
+    // The new name against the element's own variables and, for a member, its POU's (see RenameChecks). An extra check:
+    // a declaration that cannot be read is skipped (the rename goes ahead as before); a busy XAE is rethrown.
+    private string? RenameCollision(string path, string kind, string newName)
+    {
+        string? Declaration(Func<PouBody> read)
+        {
+            try { return read().Declaration; }
+            catch (Exception ex) when (ComCall.NotBusy(ex)) { return null; }
+        }
+
+        if (kind == PlcKind.Member)
+        {
+            string parent = path[..path.LastIndexOf('^')];
+            return RenameChecks.Collision(newName, Declaration(() => session.ReadPouMember(path)), Declaration(() => session.ReadPou(parent)));
+        }
+        return RenameChecks.Collision(newName, Declaration(() => session.ReadPou(path)), null);
+    }
+
+    // Best effort after the rename: with the XAE's refactoring option off, "Old := …" (the return value of a METHOD or
+    // FUNCTION) stays in the body and the next build fails.
+    private string OldNameAssignments(string oldPath, string kind, string newName)
+    {
+        string oldName = oldPath[(oldPath.LastIndexOf('^') + 1)..];
+        string newPath = oldPath[..(oldPath.LastIndexOf('^') + 1)] + newName;
+        try
+        {
+            string body = (kind == PlcKind.Member ? session.ReadPouMember(newPath) : session.ReadPou(newPath)).Implementation;
+            IReadOnlyList<int> lines = RenameChecks.AssignmentsTo(body, oldName);
+            return lines.Count == 0 ? ""
+                : $"\n[Warn] The body still assigns to the old name '{oldName}' (line {string.Join(", ", lines)}): rename those " +
+                  $"return-value assignments to '{newName}' with twincat_plc_write, or the build fails.";
+        }
+        catch (Exception ex) when (!ComCall.IsFinal(ex)) { return ""; }
     }
 }

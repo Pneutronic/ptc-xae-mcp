@@ -163,7 +163,7 @@ public class VisibleEditorIntegrationTests : IAsyncLifetime
         await OpenFixtureAsync();
 
         var text = GetText(await _client!.CallToolAsync("twincat_open_object",
-            new Dictionary<string, object?> { ["treePath"] = EtherCatDevicePath }));
+            new Dictionary<string, object?> { ["treePath"] = EtherCatDevicePath, ["bringToFront"] = true }));
 
         Assert.DoesNotContain("[Error]", text);
         Assert.Contains("system-manager node", text);

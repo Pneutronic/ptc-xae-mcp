@@ -55,7 +55,7 @@ internal sealed class EditorNavigationCoordinator(ITwinCatSession session)
 
     // ---- twincat_goto_line -----------------------------------------------------
 
-    public (string Summary, GotoLineResult? Result) GotoLine(string treePath, int line, string? section)
+    public (string Summary, GotoLineResult? Result) GotoLine(string treePath, int line, string? section, bool bringToFront = false)
     {
         if (string.IsNullOrWhiteSpace(treePath))
             return ("[Error] treePath is required.", null);
@@ -69,7 +69,7 @@ internal sealed class EditorNavigationCoordinator(ITwinCatSession session)
 
         try
         {
-            var r = session.GotoLine(treePath, line, sec);
+            var r = session.GotoLine(treePath, line, sec, bringToFront);
             return (FormatGoto(r), r);
         }
         catch (Exception ex)
@@ -94,7 +94,7 @@ internal sealed class EditorNavigationCoordinator(ITwinCatSession session)
     {
         string sec = r.Section.ToString().ToLowerInvariant();
         string notePart = string.IsNullOrWhiteSpace(r.Note) ? "" : $" — {r.Note}";
-        string fgPart = !r.ForegroundRequested ? "OS foreground not requested"
+        string fgPart = !r.ForegroundRequested ? "XAE left where it is (brought to the foreground only with bringToFront=true)"
             : r.ForegroundConfirmed ? "XAE raised to foreground"
             : "OS foreground requested but not confirmed (Windows may block focus steal)";
 
@@ -113,12 +113,12 @@ internal sealed class EditorNavigationCoordinator(ITwinCatSession session)
 
     // ---- twincat_show_step -----------------------------------------------------
 
-    public (string Summary, StepLocation? Location, GotoLineResult? Result) ShowStep(string treePath, int step, string? stepVariable)
+    public (string Summary, StepLocation? Location, GotoLineResult? Result) ShowStep(string treePath, int step, string? stepVariable, bool bringToFront = false)
     {
         var (locateSummary, loc) = LocateStep(treePath, step, stepVariable);
         if (loc is null) return (locateSummary, null, null);
 
-        var (gotoSummary, r) = GotoLine(treePath, loc.Line, "implementation");
+        var (gotoSummary, r) = GotoLine(treePath, loc.Line, "implementation", bringToFront);
         if (r is null || McpErrors.IsError(gotoSummary))
             return ($"{gotoSummary} (step {step} was located at implementation line {loc.Line})", loc, r);
 

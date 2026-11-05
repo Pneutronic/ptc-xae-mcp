@@ -643,16 +643,19 @@ internal sealed class Win32DialogAutomation
         catch (Exception) { return null; }
     }
 
-    // ---- visible-for-video: raise XAE to OS foreground ------------------
+    // ---- foreground: only on request ---------------------------------------
+    //
+    // The MCP does not bring the XAE to the foreground on its own: it jumped in front of the engineer's work on every
+    // open, go-to and system-node selection (decision 2026-11-05). Only a tool called with bringToFront=true — a
+    // person asked where something is — raises it (BringXaeToFront). Keystroke fallbacks that need the XAE in front
+    // (Enter to open a system node, Ctrl+G) otherwise run only when it already is, and say so when it is not.
 
     /// <summary>
-    /// Best-effort raise of the XAE main window <paramref name="xaeMain"/> — the attached DTE's
-    /// window, not "some TcXaeShell" (C-23). Without a handle the single running TcXaeShell is used;
-    /// with several and no handle nothing is raised. Returns true only when that window IS the
-    /// foreground window afterwards (GetForegroundWindow), never on the SetForegroundWindow return
-    /// alone. Windows may refuse the foreground steal — then false, never an exception.
+    /// Raises the XAE main window <paramref name="xaeMain"/> (restores it when minimized). Only for a call with
+    /// bringToFront=true. Returns true only when that window IS the foreground window afterwards; Windows may
+    /// refuse the foreground change — then false, never an exception.
     /// </summary>
-    internal static bool TryRaiseXaeToForeground(IntPtr xaeMain)
+    internal static bool BringXaeToFront(IntPtr xaeMain)
     {
         try
         {
@@ -660,6 +663,21 @@ internal sealed class Win32DialogAutomation
             if (h == IntPtr.Zero) return false;
             if (IsIconic(h)) ShowWindow(h, SW_RESTORE);
             _ = SetForegroundWindow(h);
+            return IsForeground(h);
+        }
+        catch (Exception) { return false; }
+    }
+
+    /// <summary>
+    /// True when the XAE main window <paramref name="xaeMain"/> — the attached DTE's window, not "some
+    /// TcXaeShell" (C-23) — is the OS foreground window right now. Without a handle the single running TcXaeShell
+    /// is used. Never changes the foreground.
+    /// </summary>
+    internal static bool IsXaeForeground(IntPtr xaeMain)
+    {
+        try
+        {
+            IntPtr h = xaeMain != IntPtr.Zero ? xaeMain : XaeWindowScope.For(IntPtr.Zero).XaeMain;
             return IsForeground(h);
         }
         catch (Exception) { return false; }

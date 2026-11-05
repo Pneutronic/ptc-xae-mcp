@@ -359,7 +359,9 @@ internal static class LibraryParsing
     // more than one, an exact filename match against the solution's own base name is a safe
     // disambiguator (the common one-PLC-per-solution naming convention), and anything else
     // throws instead of guessing.
-    public static string? FindPlcprojNear(string solutionPath)
+    // plcName (the PLC instance name under TIPC) picks that PLC's .plcproj: the file named after it, else the one in a
+    // folder named after it (the XAE's layout, "<plc>\<plc>.plcproj"). Without a match it throws, never guesses.
+    public static string? FindPlcprojNear(string solutionPath, string? plcName = null)
     {
         if (string.IsNullOrEmpty(solutionPath)) return null;
         string? solutionDir = Path.GetDirectoryName(solutionPath);
@@ -371,6 +373,17 @@ internal static class LibraryParsing
             candidates = Directory.EnumerateFiles(solutionDir, "*.plcproj", SearchOption.AllDirectories).ToList();
         }
         catch { return null; }
+
+        if (plcName is not null)
+        {
+            var named = candidates.Where(c => string.Equals(Path.GetFileNameWithoutExtension(c), plcName, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (named.Count == 0)
+                named = candidates.Where(c => string.Equals(Path.GetFileName(Path.GetDirectoryName(c)), plcName, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (named.Count == 1) return named[0];
+            throw new InvalidOperationException(named.Count == 0
+                ? $"No .plcproj of PLC '{plcName}' found under '{solutionDir}' (candidates: {string.Join(", ", candidates.Select(Path.GetFileName))})."
+                : $"Ambiguous .plcproj for PLC '{plcName}': {string.Join(", ", named)}.");
+        }
 
         if (candidates.Count == 0) return null;
         if (candidates.Count == 1) return candidates[0];
@@ -384,7 +397,7 @@ internal static class LibraryParsing
         throw new InvalidOperationException(
             $"Ambiguous .plcproj — {candidates.Count} candidates found under '{solutionDir}': " +
             string.Join(", ", candidates.Select(Path.GetFileName)) +
-            ". Rename to match the solution, or resolve from the targeted PLC node instead.");
+            ". Name the PLC with plcProjectName (library tools), or rename one to match the solution.");
     }
 
     public static List<LibraryReference> MergeWithFile(

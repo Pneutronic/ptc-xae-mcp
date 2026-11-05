@@ -49,7 +49,7 @@ public class SegmentTreeWalkerTests
     {
         var f = new Fixture();
         var r = SegmentTreeWalker.Find(f.Tree,
-            ["Geräte", "Device 1 (EtherCAT)", "Term 1 (EK1100)", "Term 3 (EL3174)", "WcState"]);
+            ["Geräte", "Device 1 (EtherCAT)", "Term 1 (EK1100)", "Term 3 (EL3174)", "WcState"], mayExpand: true);
         Assert.Same(f.WcState3, r.Match);
     }
 
@@ -58,7 +58,7 @@ public class SegmentTreeWalkerTests
     {
         var f = new Fixture();
         var r = SegmentTreeWalker.Find(f.Tree,
-            ["Geräte", "Device 1 (EtherCAT)", "Term 1 (EK1100)", "Term 2 (EL1008)", "WcState"]);
+            ["Geräte", "Device 1 (EtherCAT)", "Term 1 (EK1100)", "Term 2 (EL1008)", "WcState"], mayExpand: true);
         Assert.Same(f.WcState2, r.Match);
     }
 
@@ -66,7 +66,7 @@ public class SegmentTreeWalkerTests
     public void OnlyThePathIsLeftExpanded_SideBranchesAreCollapsedAgain()
     {
         var f = new Fixture();
-        SegmentTreeWalker.Find(f.Tree, ["Geräte", "Device 1 (EtherCAT)", "Term 1 (EK1100)", "Term 3 (EL3174)", "WcState"]);
+        SegmentTreeWalker.Find(f.Tree, ["Geräte", "Device 1 (EtherCAT)", "Term 1 (EK1100)", "Term 3 (EL3174)", "WcState"], mayExpand: true);
         Assert.False(f.EA.IsCollapsed);
         Assert.False(f.Term1.IsCollapsed);
         Assert.False(f.Term3.IsCollapsed);
@@ -79,7 +79,7 @@ public class SegmentTreeWalkerTests
     public void Miss_RestoresEveryExpansionAndNamesTheMissingSegment()
     {
         var f = new Fixture();
-        var r = SegmentTreeWalker.Find(f.Tree, ["Geräte", "Device 1 (EtherCAT)", "Term 9 (EL9999)"]);
+        var r = SegmentTreeWalker.Find(f.Tree, ["Geräte", "Device 1 (EtherCAT)", "Term 9 (EL9999)"], mayExpand: true);
         Assert.Null(r.Match);
         Assert.Contains("'Term 9 (EL9999)' not found under 'Device 1 (EtherCAT)'", r.Note);
         foreach (var n in new[] { f.EA, f.Geraete, f.Device, f.System })
@@ -92,7 +92,7 @@ public class SegmentTreeWalkerTests
     public void UnknownAnchor_IsAMiss_WithEverythingRestored()
     {
         var f = new Fixture();
-        var r = SegmentTreeWalker.Find(f.Tree, ["MOTION", "NC-Task 1 SAF"]);
+        var r = SegmentTreeWalker.Find(f.Tree, ["MOTION", "NC-Task 1 SAF"], mayExpand: true);
         Assert.Null(r.Match);
         Assert.True(f.EA.IsCollapsed);
         Assert.True(f.System.IsCollapsed);
@@ -102,7 +102,7 @@ public class SegmentTreeWalkerTests
     public void SingleSegment_FindsTheShallowestNode()
     {
         var f = new Fixture();
-        var r = SegmentTreeWalker.Find(f.Tree, ["Tasks"]);
+        var r = SegmentTreeWalker.Find(f.Tree, ["Tasks"], mayExpand: true);
         Assert.Same(f.Tasks, r.Match);
     }
 
@@ -110,7 +110,30 @@ public class SegmentTreeWalkerTests
     public void NamesAreCaseInsensitive()
     {
         var f = new Fixture();
-        var r = SegmentTreeWalker.Find(f.Tree, ["geräte", "device 1 (ethercat)"]);
+        var r = SegmentTreeWalker.Find(f.Tree, ["geräte", "device 1 (ethercat)"], mayExpand: true);
+        Assert.Same(f.Device, r.Match);
+    }
+
+    [Fact]
+    public void WithoutMayExpand_NothingIsExpanded_AndTheCollapsedNodeIsNamed()
+    {
+        // Expanding a Solution-Explorer node pulls the XAE to the foreground (live 2026-11-05).
+        var f = new Fixture();
+        var r = SegmentTreeWalker.Find(f.Tree, ["Geräte", "Device 1 (EtherCAT)"]);
+        Assert.Null(r.Match);
+        Assert.Contains("is collapsed in the Solution Explorer", r.Note);
+        Assert.Contains("bringToFront=true", r.Note);
+        foreach (var n in new[] { f.EA, f.System, f.Geraete })
+            Assert.Equal(0, n.Expands);
+    }
+
+    [Fact]
+    public void WithoutMayExpand_AVisibleNode_IsFound()
+    {
+        var f = new Fixture();
+        f.EA.Expand();
+        f.Geraete.Expand();
+        var r = SegmentTreeWalker.Find(f.Tree, ["Geräte", "Device 1 (EtherCAT)"]);
         Assert.Same(f.Device, r.Match);
     }
 }

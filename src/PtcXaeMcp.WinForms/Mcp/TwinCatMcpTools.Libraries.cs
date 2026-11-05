@@ -9,6 +9,10 @@ namespace PtcXaeMcp.WinForms;
 
 internal sealed partial class TwinCatMcpTools
 {
+    internal const string PlcProjectNameHelp =
+        "The PLC whose references are meant, by its name under PLC or its project name (e.g. 'PLC' or 'PLC Project'). " +
+        "Leave empty for the first PLC project; with several PLC projects in the solution, name the one you mean.";
+
     [McpServerTool(Name = "twincat_list_library_references", ReadOnly = true)]
     [Description("List PLC library references for the open project. Reads the live XAE library manager when available and compares against the .plcproj on disk; falls back to the .plcproj alone when XAE is not ready. " +
                  "Each reference also shows the concrete library it resolves to (resolvedName, resolvedVersion, resolvedDistributor) and how that was determined (resolution): " +
@@ -18,14 +22,15 @@ internal sealed partial class TwinCatMcpTools
                  "format='json': { success, summary, count, references [{ placeholder, name, version, publisher, source, filePinnedVersion, versionMatchesFile, resolvedName, resolvedVersion, resolvedDistributor, resolution }], warnings }.")]
     public string ListLibraryReferences(
         [Description("Output format: 'text' (default) or 'json' (full records).")] string? format = null,
+        [Description(PlcProjectNameHelp)] string? plcProjectName = null,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_list_library_references", new { format }, () =>
+        => bridge.Activity.Trace("twincat_list_library_references", new { format, plcProjectName }, () =>
             bridge.Dispatcher.Run(() =>
             {
                 string? formatError = LibraryReferenceFormat.Validate(format, out bool json);
                 if (formatError is not null) return formatError;
 
-                var (summary, items, warnings) = new LibraryCoordinator(bridge.Dispatcher.Session).ListReferencesResolved();
+                var (summary, items, warnings) = new LibraryCoordinator(bridge.Dispatcher.Session).ListReferencesResolved(plcProjectName);
                 if (McpErrors.IsError(summary)) return summary;
                 if (items.Count == 0)
                     return json ? LibraryReferenceFormat.Json(summary, items, warnings) : summary;
@@ -54,11 +59,13 @@ internal sealed partial class TwinCatMcpTools
 
     [McpServerTool(Name = "twincat_check_libraries_installed", ReadOnly = true)]
     [Description("Check whether every PLC library reference of the open project is installed in the local XAE repository. Reports each reference as Installed, Missing, or VersionMismatch. Reference version '*' is satisfied by any installed version with the same name.")]
-    public string CheckLibrariesInstalled(CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_check_libraries_installed", null, () =>
+    public string CheckLibrariesInstalled(
+        [Description(PlcProjectNameHelp)] string? plcProjectName = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_check_libraries_installed", new { plcProjectName }, () =>
             bridge.Dispatcher.Run(() =>
             {
-                var (summary, items) = new LibraryCoordinator(bridge.Dispatcher.Session).CheckAvailability();
+                var (summary, items) = new LibraryCoordinator(bridge.Dispatcher.Session).CheckAvailability(plcProjectName);
                 if (McpErrors.IsError(summary) || items.Count == 0)
                     return summary;
 
@@ -88,13 +95,14 @@ internal sealed partial class TwinCatMcpTools
         [Description("Distributor/company, e.g. 'Beckhoff Automation GmbH'.")] string? company = null,
         [Description("Add as placeholder reference instead of a direct library reference.")] bool asPlaceholder = false,
         [Description("Add even if the library is not installed in the local XAE repository.")] bool force = false,
+        [Description(PlcProjectNameHelp)] string? plcProjectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_add_library_reference",
-            new { name, version, company, asPlaceholder, force }, () =>
+            new { name, version, company, asPlaceholder, force, plcProjectName }, () =>
             bridge.Dispatcher.Run(() =>
             {
                 var (summary, refs) = new LibraryCoordinator(bridge.Dispatcher.Session)
-                    .AddReference(name, version, company, asPlaceholder, force);
+                    .AddReference(name, version, company, asPlaceholder, force, plcProjectName);
                 if (McpErrors.IsError(summary) || refs.Count == 0)
                     return summary;
 
@@ -110,12 +118,13 @@ internal sealed partial class TwinCatMcpTools
                  "No-op if the reference is not present. Returns the updated reference list.")]
     public string RemoveLibraryReference(
         [Description("Library or placeholder name to remove, e.g. 'Tc2_MC2'.")] string name,
+        [Description(PlcProjectNameHelp)] string? plcProjectName = null,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_remove_library_reference", new { name }, () =>
+        => bridge.Activity.Trace("twincat_remove_library_reference", new { name, plcProjectName }, () =>
             bridge.Dispatcher.Run(() =>
             {
                 var (summary, refs) = new LibraryCoordinator(bridge.Dispatcher.Session)
-                    .RemoveReference(name);
+                    .RemoveReference(name, plcProjectName);
 
                 if (McpErrors.IsError(summary))
                     return summary;
@@ -220,12 +229,13 @@ internal sealed partial class TwinCatMcpTools
         [Description("Library name, e.g. 'Tc2_MC2'.")] string name,
         [Description("New version string, e.g. '3.3.73.0' or '*'.")] string version,
         [Description("Distributor override (optional).")] string? company = null,
+        [Description(PlcProjectNameHelp)] string? plcProjectName = null,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_set_library_version", new { name, version, company }, () =>
+        => bridge.Activity.Trace("twincat_set_library_version", new { name, version, company, plcProjectName }, () =>
             bridge.Dispatcher.Run(() =>
             {
                 var (summary, refs) = new LibraryCoordinator(bridge.Dispatcher.Session)
-                    .SetVersion(name, version, company);
+                    .SetVersion(name, version, company, plcProjectName);
                 if (McpErrors.IsError(summary) || refs.Count == 0)
                     return summary;
 

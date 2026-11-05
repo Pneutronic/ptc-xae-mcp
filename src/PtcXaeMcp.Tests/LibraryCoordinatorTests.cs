@@ -315,6 +315,26 @@ public class LibraryCoordinatorTests
         Assert.Equal(AvailabilityStatus.Installed, Assert.Single(items).Status);
     }
 
+    // ── plcProjectName (a solution with several PLC projects) ──────────────────
+
+    [Fact]
+    public void PlcProjectName_ReachesEverySessionCall_OfAddRemoveAndSetVersion()
+    {
+        var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = true };
+        var coordinator = new LibraryCoordinator(fake);
+
+        coordinator.AddReference("Tc2_Standard", "*", "Beckhoff Automation GmbH", asPlaceholder: true, force: false, plcProjectName: "LibPlc");
+        coordinator.SetVersion("Tc2_Standard", "3.4.5.0", null, plcProjectName: "LibPlc");
+        coordinator.RemoveReference("Tc2_Standard", plcProjectName: "LibPlc");
+        coordinator.CheckAvailability(plcProjectName: "LibPlc");
+
+        Assert.Contains("AddLibraryReference(Tc2_Standard,*,Beckhoff Automation GmbH,True,plc=LibPlc)", fake.CallLog);
+        Assert.Contains(fake.CallLog, c => c.StartsWith("SetLibraryVersion(Tc2_Standard,3.4.5.0,", StringComparison.Ordinal) && c.EndsWith(",plc=LibPlc)", StringComparison.Ordinal));
+        Assert.Contains("RemoveLibraryReference(Tc2_Standard,plc=LibPlc)", fake.CallLog);
+        Assert.DoesNotContain("ListLibraryReferences()", fake.CallLog);
+        Assert.Contains("ListLibraryReferences(LibPlc)", fake.CallLog);
+    }
+
     // ── AddReference ──────────────────────────────────────────────────────────
 
     [Fact]

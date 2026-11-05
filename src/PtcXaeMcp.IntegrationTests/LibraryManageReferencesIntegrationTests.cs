@@ -132,6 +132,64 @@ public class LibraryManageReferencesIntegrationTests : IAsyncLifetime
         Assert.True(restoreFailure is null, $"Fixture not restored: {restoreFailure}");
     }
 
+    [Trait("Description", "add_library_reference(asPlaceholder, plcProjectName) — Tc2_Utilities als Platzhalter des Fixture-PLC: gelistet und effektiv aufgelöst, danach entfernt; ein unbekannter PLC-Name ist ein [Error].")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task AddAsPlaceholder_ForTheNamedPlc_ResolvesAndIsRemoved()
+    {
+        SkipIfNotReady();
+
+        const string LibName = "Tc2_Utilities";
+        await OpenFixtureAsync();
+
+        string unknown = GetText(await _client!.CallToolAsync("twincat_list_library_references",
+            new Dictionary<string, object?> { ["plcProjectName"] = "NoSuchPlc" }));
+        Assert.StartsWith("[Error] PLC project 'NoSuchPlc' not found", unknown);
+
+        string initialList = await ListReferencesAsync();
+        bool wasAlreadyReferenced = LibraryReferenceListing.Contains(initialList, LibName);
+        var snapshot = ProjectFileSnapshot.Capture(_fixtureSln);
+
+        bool bodyFailed = false;
+        string? restoreFailure = null;
+        try
+        {
+            if (!wasAlreadyReferenced)
+            {
+                string added = GetText(await _client.CallToolAsync("twincat_add_library_reference", new Dictionary<string, object?>
+                {
+                    ["name"] = LibName, ["company"] = "Beckhoff Automation GmbH", ["asPlaceholder"] = true,
+                    ["plcProjectName"] = FixtureLayout.PlcName,
+                }));
+                Assert.StartsWith($"Added '{LibName}'", added);
+            }
+
+            string listed = GetText(await _client.CallToolAsync("twincat_list_library_references",
+                new Dictionary<string, object?> { ["plcProjectName"] = FixtureLayout.PlcName }));
+            string? line = listed.Split('\n').FirstOrDefault(l => l.TrimStart().StartsWith(LibName + ":", StringComparison.Ordinal));
+            Assert.True(line is not null, $"{LibName} not listed:\n{listed}");
+            Assert.Contains("effective]", line);
+        }
+        catch
+        {
+            bodyFailed = true;
+            throw;
+        }
+        finally
+        {
+            restoreFailure = await RestoreFixtureAsync(initialList, snapshot, async () =>
+            {
+                if (wasAlreadyReferenced) return;
+                if (!LibraryReferenceListing.Contains(await ListReferencesAsync(), LibName)) return;
+                var removeResult = await _client!.CallToolAsync("twincat_remove_library_reference",
+                    new Dictionary<string, object?> { ["name"] = LibName, ["plcProjectName"] = FixtureLayout.PlcName });
+                Console.WriteLine($"  remove_library_reference: {GetText(removeResult).Trim()}");
+            });
+            ReportRestore(restoreFailure, bodyFailed);
+        }
+
+        Assert.True(restoreFailure is null, $"Fixture not restored: {restoreFailure}");
+    }
+
     [Trait("Description", "set_library_version — vorhandene Referenz neu versionieren; Fixture wird im finally wiederhergestellt.")]
     [SkippableFact(Timeout = 300_000)]
     public async Task SetVersion_ExistingReference_RestoresOriginal()

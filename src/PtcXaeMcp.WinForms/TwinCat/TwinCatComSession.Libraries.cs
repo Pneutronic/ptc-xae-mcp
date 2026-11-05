@@ -7,15 +7,16 @@ internal sealed partial class TwinCatComSession
     // Fallback ItemType for the References child node (varies by XAE version).
     private const int ItemType_References = 617;
 
-    public IReadOnlyList<LibraryReference> ListLibraryReferences() =>
+    public IReadOnlyList<LibraryReference> ListLibraryReferences(string? plcProjectName = null) =>
         ComBusyRetry.Run<IReadOnlyList<LibraryReference>>(() =>
         {
+            string? plc = ResolvePlcInstanceName(plcProjectName);
             string? solutionPath = ActiveSolutionPath();
             string? plcproj = solutionPath is null
                 ? null
-                : LibraryParsing.FindPlcprojNear(solutionPath);
+                : LibraryParsing.FindPlcprojNear(solutionPath, plc);
 
-            var xaeRefs = TryListReferencesFromXae();
+            var xaeRefs = TryListReferencesFromXae(plc);
             if (xaeRefs.Count > 0)
             {
                 if (plcproj is not null)
@@ -53,7 +54,7 @@ internal sealed partial class TwinCatComSession
             return MaterialiseInstalled(scanResult);
         }, OpenTimeout);
 
-    private static List<LibraryReference> TryListReferencesFromXae()
+    private static List<LibraryReference> TryListReferencesFromXae(string? plcInstanceName)
     {
         var results = new List<LibraryReference>();
         try
@@ -61,7 +62,7 @@ internal sealed partial class TwinCatComSession
             dynamic? dte = GetActiveTcDteOrNull();
             if (dte is null) return results;
 
-            dynamic? plcProj = FindPlcSourceProjectNode(dte);
+            dynamic? plcProj = FindPlcSourceProjectNode(dte, plcInstanceName);
             if (plcProj is null) return results;
 
             dynamic? refsNode = FindReferencesChild(plcProj);
@@ -90,23 +91,24 @@ internal sealed partial class TwinCatComSession
     }
 
     public IReadOnlyList<LibraryReference> AddLibraryReference(
-        string name, string version, string? company, bool asPlaceholder)
+        string name, string version, string? company, bool asPlaceholder, string? plcProjectName = null)
     {
         // Mutate inside ComBusyRetry, then re-read outside to avoid nesting two retry blocks.
         ComBusyRetry.Run(() =>
         {
             dynamic dte = GetActiveTcDte();
             // ITcPlcLibraryManager lives on the ItemType-600 source-project node (same as ScanLibraries).
-            dynamic libMgr = GetLibraryManager(dte);
+            dynamic libMgr = GetLibraryManager(dte, ResolvePlcInstanceName(plcProjectName));
 
-            // AddLibrary creates a LibraryReference (direct ref); AddPlaceholder with "*" fails
-            // ("TcLibVersion invalid" or "not found" depending on overload). AddLibrary accepts
-            // "*" as version (= "newest") and the read path handles LibraryReference via plcproj.
+            // AddLibrary creates a LibraryReference (direct ref), AddPlaceholder a PlaceholderReference.
+            // AddPlaceholder takes (placeholder name, default library, default version, distributor); the
+            // placeholder is named after the library, as the XAE does. Called with the resolution string
+            // as its only argument it looked that string up as a *default placeholder* and failed with
+            // "Default Placeholder 'Tc2_Standard, * (Beckhoff Automation GmbH)' could not be found".
+            // Live 2026-11-05 (TC 3.1.4026.22): version "*" and an empty distributor are accepted and
+            // resolve to the newest installed Beckhoff library.
             if (asPlaceholder)
-            {
-                string addRes = BuildResolutionString(name, version, company);
-                libMgr.AddPlaceholder(addRes);
-            }
+                libMgr.AddPlaceholder(name, name, version, company ?? string.Empty);
             else if (!string.IsNullOrEmpty(company))
                 libMgr.AddLibrary(name, version, company);
             else
@@ -114,27 +116,28 @@ internal sealed partial class TwinCatComSession
 
             SaveAll();
         }, OpenTimeout);
-        return ListLibraryReferences();
+        return ListLibraryReferences(plcProjectName);
     }
 
-    public IReadOnlyList<LibraryReference> RemoveLibraryReference(string name)
+    public IReadOnlyList<LibraryReference> RemoveLibraryReference(string name, string? plcProjectName = null)
     {
         ComBusyRetry.Run(() =>
         {
             dynamic dte = GetActiveTcDte();
-            dynamic libMgr = GetLibraryManager(dte);
+            dynamic libMgr = GetLibraryManager(dte, ResolvePlcInstanceName(plcProjectName));
             libMgr.RemoveReference(name);
             SaveAll();
         }, OpenTimeout);
-        return ListLibraryReferences();
+        return ListLibraryReferences(plcProjectName);
     }
 
     public IReadOnlyList<LibraryReference> SetLibraryVersion(
-        string name, string version, string? company)
+        string name, string version, string? company, string? plcProjectName = null)
     {
+        string? plc = ComBusyRetry.Run(() => ResolvePlcInstanceName(plcProjectName), ProbeTimeout);
         try
         {
-            SetLibraryVersionViaCom(name, version, company);
+            SetLibraryVersionViaCom(name, version, company, plc);
         }
         catch (InvalidOperationException comEx) when (ComCall.NotBusy(comEx)) {
             // Placeholder pin via COM failed — safe file-based path: save-close the
@@ -143,7 +146,7 @@ internal sealed partial class TwinCatComSession
             {
                 string s = ActiveSolutionPath()
                     ?? throw new InvalidOperationException("No active solution path resolved.");
-                string p = LibraryParsing.FindPlcprojNear(s)
+                string p = LibraryParsing.FindPlcprojNear(s, plc)
                     ?? throw new InvalidOperationException("No .plcproj found near the solution.");
                 return (s, p);
             }, ProbeTimeout);
@@ -161,18 +164,18 @@ internal sealed partial class TwinCatComSession
                 OpenSolution(sln);
             }
         }
-        return ListLibraryReferences();
+        return ListLibraryReferences(plcProjectName);
     }
 
-    private void SetLibraryVersionViaCom(string name, string version, string? company)
+    private void SetLibraryVersionViaCom(string name, string version, string? company, string? plcInstanceName)
     {
         ComBusyRetry.Run(() =>
         {
             dynamic dte = GetActiveTcDte();
-            dynamic libMgr = GetLibraryManager(dte);
+            dynamic libMgr = GetLibraryManager(dte, plcInstanceName);
 
             // Determine whether the existing reference is a placeholder.
-            dynamic? plcProj = FindPlcSourceProjectNode(dte);
+            dynamic? plcProj = FindPlcSourceProjectNode(dte, plcInstanceName);
             dynamic? refsNode = plcProj is null ? null : FindReferencesChild(plcProj);
             bool isPlaceholder = false;
             if (refsNode is not null)
@@ -393,18 +396,53 @@ internal sealed partial class TwinCatComSession
             ? $"{name}, {version}"
             : $"{name}, {version} ({company})";
 
-    private static dynamic GetLibraryManager(dynamic dte)
+    private static dynamic GetLibraryManager(dynamic dte, string? plcInstanceName = null)
     {
         // Per Infosys 242733963, ITcPlcLibraryManager (AddLibrary/RemoveReference) must be
         // obtained via sysMan.LookupTreeItem("TIPC^<plcName>^<projName>^References").
         // Navigating via plcNode.NestedProject.Child() yields a different COM pointer that
         // exposes ScanLibraries (read) but does NOT dispatch AddLibrary/RemoveReference.
-        return FindLibraryManagerNode(dte)
-            ?? throw new InvalidOperationException(
-                "References node not found via TIPC path — open a solution with a PLC project first.");
+        return FindLibraryManagerNode(dte, plcInstanceName)
+            ?? throw new InvalidOperationException(plcInstanceName is null
+                ? "References node not found via TIPC path — open a solution with a PLC project first."
+                : $"References node of PLC '{plcInstanceName}' not found via TIPC path.");
     }
 
-    private static dynamic? FindLibraryManagerNode(dynamic dte)
+    /// <summary>
+    /// The PLC instance name under TIPC for <paramref name="plcProjectName"/>, which may name the PLC or its
+    /// project ("FixturePlc" or "FixturePlc Projekt"); null for null (the first PLC). Before, every library
+    /// tool acted on the first PLC project of the solution.
+    /// </summary>
+    private static string? ResolvePlcInstanceName(string? plcProjectName)
+    {
+        if (string.IsNullOrWhiteSpace(plcProjectName)) return null;
+        string wanted = plcProjectName.Trim();
+        dynamic dte = GetActiveTcDte();
+        var seen = new List<string>();
+        dynamic? projects = ComCall.ReadProp<object?>(() => dte.Solution.Projects, null);
+        int count = projects is null ? 0 : ComCall.ReadProp(() => (int)projects.Count, 0);
+        for (int i = 1; i <= count; i++)
+        {
+            object? sysObj = ComCall.ReadProp<object?>(() => ((dynamic)projects!.Item(i)).Object as object, null);
+            if (sysObj is null) continue;
+            object? tipc = (object?)LookupTreeItemOrNull(sysObj, "TIPC");
+            if (tipc is null) continue;
+            foreach (object plcNode in (List<object>)Children(tipc))
+            {
+                string plcName = NameOf(plcNode);
+                object? nested = ComCall.ReadProp<object?>(() => ((dynamic)plcNode).NestedProject, null);
+                string projectName = nested is null ? string.Empty : NameOf(nested);
+                if (string.Equals(plcName, wanted, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(projectName, wanted, StringComparison.OrdinalIgnoreCase))
+                    return plcName;
+                if (plcName.Length > 0 && !seen.Contains(plcName)) seen.Add(plcName);
+            }
+        }
+        throw new InvalidOperationException(
+            $"PLC project '{wanted}' not found under TIPC (PLCs: {(seen.Count == 0 ? "none" : string.Join(", ", seen))}).");
+    }
+
+    private static dynamic? FindLibraryManagerNode(dynamic dte, string? plcInstanceName = null)
     {
         try
         {
@@ -438,6 +476,7 @@ internal sealed partial class TwinCatComSession
                     string plcName = string.Empty;
                     try { plcName = (string)plcNode.Name ?? string.Empty; } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { continue; }
                     if (string.IsNullOrEmpty(plcName)) continue;
+                    if (plcInstanceName is not null && !string.Equals(plcName, plcInstanceName, StringComparison.OrdinalIgnoreCase)) continue;
 
                     // Verify it's a PLC project and get the source-project name.
                     // No NestedProject = a referenced stand-alone PLC project (.tspproj) seen from the

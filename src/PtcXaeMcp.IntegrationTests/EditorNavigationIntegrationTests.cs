@@ -89,7 +89,7 @@ public class EditorNavigationIntegrationTests : IAsyncLifetime
         await OpenFixtureAsync();
 
         var text = GetText(await _client!.CallToolAsync("twincat_show_step",
-            new Dictionary<string, object?> { ["treePath"] = _stepPou, ["step"] = _step }));
+            new Dictionary<string, object?> { ["treePath"] = _stepPou, ["step"] = _step, ["bringToFront"] = true }));
 
         Assert.DoesNotContain("[Error]", text);
         Assert.Contains($"Located step {_step}", text);
@@ -114,7 +114,7 @@ public class EditorNavigationIntegrationTests : IAsyncLifetime
         await OpenFixtureAsync();
 
         var text = GetText(await _client!.CallToolAsync("twincat_goto_line",
-            new Dictionary<string, object?> { ["treePath"] = _stepPou, ["line"] = 3, ["section"] = "declaration" }));
+            new Dictionary<string, object?> { ["treePath"] = _stepPou, ["line"] = 3, ["section"] = "declaration", ["bringToFront"] = true }));
 
         Assert.DoesNotContain("[Error]", text);
         Assert.Contains("Cursor set to declaration line 3", text);
@@ -153,9 +153,9 @@ public class EditorNavigationIntegrationTests : IAsyncLifetime
         await OpenFixtureAsync();
 
         var first = GetText(await _client!.CallToolAsync("twincat_goto_line",
-            new Dictionary<string, object?> { ["treePath"] = _stepPou, ["line"] = 5 }));
+            new Dictionary<string, object?> { ["treePath"] = _stepPou, ["line"] = 5, ["bringToFront"] = true }));
         var second = GetText(await _client!.CallToolAsync("twincat_goto_line",
-            new Dictionary<string, object?> { ["treePath"] = _stepPou, ["line"] = 8 }));
+            new Dictionary<string, object?> { ["treePath"] = _stepPou, ["line"] = 8, ["bringToFront"] = true }));
 
         Assert.Contains("Cursor set to implementation line 5", first);
         Assert.Contains("Cursor set to implementation line 8", second);

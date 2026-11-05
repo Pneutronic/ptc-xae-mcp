@@ -364,9 +364,9 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
 
     // ---- visible-for-video ---------------------------------------------------
     // Opt-in "show me this object" action: open a PLC source object in the visible
-    // XAE editor and bring it forward. Mirrors ReadPou's guard order (blank path →
+    // XAE editor (brought forward only with bringToFront). Mirrors ReadPou's guard order (blank path →
     // error before any session touch; RequireOpenSolution; session throw → [Error]).
-    public (string Summary, OpenPlcObjectResult? Result) OpenPlcObject(string treePath)
+    public (string Summary, OpenPlcObjectResult? Result) OpenPlcObject(string treePath, bool bringToFront = false)
     {
         if (string.IsNullOrWhiteSpace(treePath))
             return ("[Error] treePath is required.", null);
@@ -376,7 +376,7 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
 
         try
         {
-            var r = session.OpenPlcObject(treePath);
+            var r = session.OpenPlcObject(treePath, bringToFront);
             return (FormatPlcOpenSummary(r.TreePath, r.AlreadyOpen, r.ForegroundRequested, r.ForegroundConfirmed, r.Note), r);
         }
         catch (Exception ex)
@@ -402,7 +402,7 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
     }
 
     private static string ForegroundPart(bool requested, bool confirmed) =>
-        !requested ? "OS foreground not requested"
+        !requested ? "XAE left where it is (brought to the foreground only with bringToFront=true)"
         : confirmed ? "XAE raised to foreground"
         : "OS foreground requested but not confirmed (Windows may block focus steal)";
 
@@ -410,7 +410,7 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
     // PLC objects → own editor tab (FormatPlcOpenSummary, identical to OpenPlcObject).
     // Sysman nodes → selected in the shared sysman editor (no per-node tab). Same guard
     // order as ReadPou (blank path → error before any session touch; RequireOpenSolution).
-    public (string Summary, OpenObjectResult? Result) OpenObject(string treePath)
+    public (string Summary, OpenObjectResult? Result) OpenObject(string treePath, bool bringToFront = false)
     {
         if (string.IsNullOrWhiteSpace(treePath))
             return ("[Error] treePath is required.", null);
@@ -420,10 +420,10 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
 
         try
         {
-            var r = session.OpenObject(treePath);
+            var r = session.OpenObject(treePath, bringToFront);
             string summary = r.Kind == OpenObjectKind.PlcObject
                 ? FormatPlcOpenSummary(r.TreePath, r.AlreadyOpen, r.ForegroundRequested, r.ForegroundConfirmed, r.Note)
-                : FormatSysmanOpenSummary(r.TreePath, r.ForegroundConfirmed, r.Note);
+                : FormatSysmanOpenSummary(r.TreePath, r.ForegroundRequested, r.ForegroundConfirmed, r.Note);
             return (summary, r);
         }
         catch (Exception ex)
@@ -432,16 +432,16 @@ internal sealed class PlcCodeCoordinator(ITwinCatSession session)
         }
     }
 
-    private static string FormatSysmanOpenSummary(string treePath, bool foregroundConfirmed, string? note)
+    private static string FormatSysmanOpenSummary(string treePath, bool foregroundRequested, bool foregroundConfirmed, string? note)
     {
-        string fgPart = ForegroundPart(true, foregroundConfirmed);
+        string fgPart = ForegroundPart(foregroundRequested, foregroundConfirmed);
         string notePart = string.IsNullOrWhiteSpace(note) ? "" : $" — {note}";
         // Issue #124: the session activates the node (select + Enter) when the XAE is in the foreground.
         bool activated = note?.Contains("Enter sent to open its editor", StringComparison.Ordinal) == true;
         return activated
             ? $"Opened object: activated system-manager node '{treePath}' (selected + Enter, like a double-click) — its " +
               $"editor is open (the shared sysman editor; a Scope node opens its Scope view); {fgPart}.{notePart}"
-            : $"Opened object: selected system-manager node '{treePath}' — the shared sysman editor now shows it; {fgPart}.{notePart}";
+            : $"Opened object: selected system-manager node '{treePath}' — the shared sysman editor follows the selection once it is open (opening it needs the XAE in the foreground); {fgPart}.{notePart}";
     }
 
     public string CloseObject(string treePath)

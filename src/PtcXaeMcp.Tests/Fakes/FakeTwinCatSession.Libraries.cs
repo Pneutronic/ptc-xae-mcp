@@ -9,9 +9,9 @@ internal sealed partial class FakeTwinCatSession
     public Exception? ListReferencesThrows { get; set; }
     public Exception? ListInstalledThrows { get; set; }
 
-    public IReadOnlyList<LibraryReference> ListLibraryReferences()
+    public IReadOnlyList<LibraryReference> ListLibraryReferences(string? plcProjectName = null)
     {
-        CallLog.Add("ListLibraryReferences()");
+        CallLog.Add($"ListLibraryReferences({plcProjectName})");
         if (ListReferencesThrows is not null) throw ListReferencesThrows;
         return LibraryReferences;
     }
@@ -27,9 +27,9 @@ internal sealed partial class FakeTwinCatSession
     public Exception? RemoveLibraryReferenceThrows { get; set; }
     public Exception? SetLibraryVersionThrows { get; set; }
 
-    public IReadOnlyList<LibraryReference> AddLibraryReference(string name, string version, string? company, bool asPlaceholder)
+    public IReadOnlyList<LibraryReference> AddLibraryReference(string name, string version, string? company, bool asPlaceholder, string? plcProjectName = null)
     {
-        CallLog.Add($"AddLibraryReference({name},{version},{company},{asPlaceholder})");
+        CallLog.Add($"AddLibraryReference({name},{version},{company},{asPlaceholder}{Plc(plcProjectName)})");
         if (AddLibraryReferenceThrows is not null) throw AddLibraryReferenceThrows;
         if (NoOpMutations.Contains(nameof(AddLibraryReference))) return LibraryReferences;
         LibraryReferences.Add(new LibraryReference(
@@ -42,9 +42,9 @@ internal sealed partial class FakeTwinCatSession
         return LibraryReferences;
     }
 
-    public IReadOnlyList<LibraryReference> RemoveLibraryReference(string name)
+    public IReadOnlyList<LibraryReference> RemoveLibraryReference(string name, string? plcProjectName = null)
     {
-        CallLog.Add($"RemoveLibraryReference({name})");
+        CallLog.Add($"RemoveLibraryReference({name}{Plc(plcProjectName)})");
         if (RemoveLibraryReferenceThrows is not null) throw RemoveLibraryReferenceThrows;
         if (NoOpMutations.Contains(nameof(RemoveLibraryReference))) return LibraryReferences;
         // Like ITcPlcLibraryManager.RemoveReference: addressed by the placeholder name.
@@ -52,9 +52,9 @@ internal sealed partial class FakeTwinCatSession
         return LibraryReferences;
     }
 
-    public IReadOnlyList<LibraryReference> SetLibraryVersion(string name, string version, string? company)
+    public IReadOnlyList<LibraryReference> SetLibraryVersion(string name, string version, string? company, string? plcProjectName = null)
     {
-        CallLog.Add($"SetLibraryVersion({name},{version},{company})");
+        CallLog.Add($"SetLibraryVersion({name},{version},{company}{Plc(plcProjectName)})");
         if (SetLibraryVersionThrows is not null) throw SetLibraryVersionThrows;
         int idx = LibraryReferences.FindIndex(r =>
             string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -64,6 +64,9 @@ internal sealed partial class FakeTwinCatSession
         LibraryReferences[idx] = old with { Version = version, Publisher = company ?? old.Publisher };
         return LibraryReferences;
     }
+
+    // Logged only when given, so the log of a call without a PLC name stays as it was.
+    private static string Plc(string? plcProjectName) => plcProjectName is null ? "" : $",plc={plcProjectName}";
 
     public Exception? InstallLibraryThrows { get; set; }
     public IReadOnlyList<InstalledLibrary> InstallLibrary(string libraryPath, bool overwrite)

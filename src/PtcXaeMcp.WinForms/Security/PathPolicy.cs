@@ -20,7 +20,7 @@ internal static class PathPolicy
     /// <summary>
     /// True if <paramref name="path"/> resolves under one of: the open
     /// solution's directory (<paramref name="solutionDirectory"/>, may be
-    /// null if no solution is open), <c>%TEMP%</c>,
+    /// null if no solution is open), the git repository holding it, <c>%TEMP%</c>,
     /// <c>%LOCALAPPDATA%\ptc-xae-mcp</c>, the local TwinCAT install
     /// directory, or an extra root from <c>PTC_XAE_MCP_ALLOWED_PATHS</c>.
     /// </summary>
@@ -39,7 +39,7 @@ internal static class PathPolicy
         }
 
         reason = $"'{full}' is outside every allowed directory (the open solution's " +
-                 "directory, %TEMP%, %LOCALAPPDATA%\\ptc-xae-mcp, the local TwinCAT " +
+                 "directory or the git repository holding it, %TEMP%, %LOCALAPPDATA%\\ptc-xae-mcp, the local TwinCAT " +
                  $"installation, or a root listed in {AllowedPathsEnvVar}).";
         return false;
     }
@@ -81,6 +81,9 @@ internal static class PathPolicy
     private static IEnumerable<string?> AllowedRoots(string? solutionDirectory)
     {
         yield return solutionDirectory;
+        // A solution often sits below the repository root (<repo>\Source\<project>\), while the library goes to
+        // <repo>\Library\: the repository holding the solution is the user's own tree too.
+        yield return RepositoryRootOf(solutionDirectory);
         yield return Path.GetTempPath();
         yield return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ptc-xae-mcp");
@@ -91,6 +94,29 @@ internal static class PathPolicy
         string extra = Environment.GetEnvironmentVariable(AllowedPathsEnvVar) ?? string.Empty;
         foreach (string root in extra.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             yield return root;
+    }
+
+    /// <summary>Levels above the solution directory searched for the repository root.</summary>
+    internal const int MaxRepositoryDepth = 6;
+
+    /// <summary>
+    /// The nearest directory at or above <paramref name="solutionDirectory"/> that holds a <c>.git</c> folder or file
+    /// (a worktree), at most <see cref="MaxRepositoryDepth"/> levels up; null when there is none.
+    /// </summary>
+    internal static string? RepositoryRootOf(string? solutionDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(solutionDirectory)) return null;
+        try
+        {
+            var dir = new DirectoryInfo(Path.GetFullPath(solutionDirectory));
+            for (int level = 0; dir is not null && level <= MaxRepositoryDepth; level++, dir = dir.Parent)
+            {
+                string git = Path.Combine(dir.FullName, ".git");
+                if (Directory.Exists(git) || File.Exists(git)) return dir.FullName;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
+        return null;
     }
 
     private static bool TryGetFullPath(string? path, out string fullPath, out string reason)

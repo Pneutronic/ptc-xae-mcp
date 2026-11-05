@@ -33,11 +33,13 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     SaveProjectResult SaveProjectVerified();
 
-    IReadOnlyList<LibraryReference> ListLibraryReferences();
+    // plcProjectName: the PLC (or its project) whose references are meant; null = the first PLC project, and a
+    // file read in a solution with several PLC projects refuses as ambiguous.
+    IReadOnlyList<LibraryReference> ListLibraryReferences(string? plcProjectName = null);
     IReadOnlyList<InstalledLibrary> ListInstalledLibraries();
-    IReadOnlyList<LibraryReference> AddLibraryReference(string name, string version, string? company, bool asPlaceholder);
-    IReadOnlyList<LibraryReference> RemoveLibraryReference(string name);
-    IReadOnlyList<LibraryReference> SetLibraryVersion(string name, string version, string? company);
+    IReadOnlyList<LibraryReference> AddLibraryReference(string name, string version, string? company, bool asPlaceholder, string? plcProjectName = null);
+    IReadOnlyList<LibraryReference> RemoveLibraryReference(string name, string? plcProjectName = null);
+    IReadOnlyList<LibraryReference> SetLibraryVersion(string name, string version, string? company, string? plcProjectName = null);
     IReadOnlyList<InstalledLibrary> InstallLibrary(string libraryPath, bool overwrite);
     /// <summary>
     /// Export the currently open PLC project as a .library file via
@@ -200,7 +202,7 @@ internal interface ITwinCatSession : IDisposable
     /// are NOT changed to auto-open. Refuses non-openable nodes (folders, the PLC
     /// project root, the References node) by throwing.
     /// </summary>
-    OpenPlcObjectResult OpenPlcObject(string treePath);
+    OpenPlcObjectResult OpenPlcObject(string treePath, bool bringToFront = false);
 
     /// <summary>
     /// Close the visible XAE editor tab for a PLC source object (counterpart to
@@ -217,7 +219,7 @@ internal interface ITwinCatSession : IDisposable
     /// UIAutomation so the single shared sysman editor re-renders to show it (these
     /// share one editor — there is no per-node tab). Best-effort OS foreground raise.
     /// </summary>
-    OpenObjectResult OpenObject(string treePath);
+    OpenObjectResult OpenObject(string treePath, bool bringToFront = false);
 
     /// <summary>
     /// Counterpart to <see cref="OpenObject"/>. For a PLC object: save + close its
@@ -235,7 +237,7 @@ internal interface ITwinCatSession : IDisposable
     /// Never logs out (verified Online). Throws when the object cannot be opened or
     /// the pane is absent (e.g. declaration pane while Online = monitoring grid).
     /// </summary>
-    GotoLineResult GotoLine(string treePath, int line, EditorSection section);
+    GotoLineResult GotoLine(string treePath, int line, EditorSection section, bool bringToFront = false);
 
     // ---- Structured POU members & object lifecycle (feature/pou-handling) ----
     IReadOnlyList<PouMemberEntry> ListPouMembers(string pouPath);

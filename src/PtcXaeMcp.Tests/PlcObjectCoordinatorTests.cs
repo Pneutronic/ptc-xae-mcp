@@ -50,6 +50,41 @@ public class PlcObjectCoordinatorTests
     }
 
     [Fact]
+    public void Rename_AMethodToTheNameOfItsOwnInput_IsRefusedBeforeTheLogout()
+    {
+        var fake = OpenFake();
+        fake.PouBodiesByPath["^POUs^FB_Motor^Run"] = new PouBody("METHOD Run : BOOL\nVAR_INPUT\n\tNewStep : BOOL;\nEND_VAR", "Run := NewStep;", "ST");
+
+        Coord(fake).Rename("^POUs^FB_Motor^Run", "MEMBER", "NewStep")
+            .Should().StartWith("[Error] '^POUs^FB_Motor^Run' cannot be renamed to 'NewStep': 'NewStep' is already a variable (VAR_INPUT")
+            .And.Contain("in its own declaration");
+        AssertNoLogoutNoWrite(fake);
+    }
+
+    [Fact]
+    public void Rename_AMethodToTheNameOfAVariableOfItsPou_IsRefused()
+    {
+        var fake = OpenFake();
+        fake.PouBodiesByPath[Fb] = new PouBody("FUNCTION_BLOCK FB_Motor\nVAR\n\tbStart : BOOL;\nEND_VAR", "", "ST");
+
+        Coord(fake).Rename("^POUs^FB_Motor^Run", "MEMBER", "bStart")
+            .Should().Contain("'bStart' is already a variable (VAR").And.Contain("in the declaration of its POU");
+        AssertNoLogoutNoWrite(fake);
+    }
+
+    [Fact]
+    public void Rename_WithTheOldReturnAssignmentLeft_Warns()
+    {
+        var fake = OpenFake();
+        // What the XAE leaves when its refactoring option is off: the node is renamed, the body is not.
+        fake.PouBodiesByPath["^POUs^FB_Motor^Start"] = new PouBody("METHOD Start : BOOL", "IF x THEN\n  Run := TRUE;\nEND_IF", "ST");
+
+        Coord(fake).Rename("^POUs^FB_Motor^Run", "MEMBER", "Start")
+            .Should().StartWith("Renamed '^POUs^FB_Motor^Run'")
+            .And.Contain("[Warn] The body still assigns to the old name 'Run' (line 2)");
+    }
+
+    [Fact]
     public void Rename_DefaultIsNotToUpdateReferences()
     {
         var fake = OpenFake();
@@ -390,6 +425,28 @@ public class PlcObjectCoordinatorTests
         var fake = OpenFake();
         Coord(fake).Create("POU", "PROGRAM", "^POUs", "P_New", declaration: "PROGRAM P_New\nMETHOD Foo : BOOL")
             .Should().Contain("embedded 'METHOD' header");
+        AssertNoLogoutNoWrite(fake);
+    }
+
+    [Fact]
+    public void Create_Function_WithAnImplementation_CreatesThenWritesTheBody()
+    {
+        var fake = OpenFake();
+        string result = Coord(fake).Create("POU", "FUNCTION", "^POUs", "F_New", returnType: "INT", implementation: "F_New := 1;");
+        result.Should().StartWith("Created FUNCTION 'F_New' at ^POUs^F_New.");
+        result.Should().Contain("Wrote POU '^POUs^F_New'.");
+        fake.CallLog.Should().Contain(c => c.StartsWith("WritePouBody(^POUs^F_New, decl=<null>, impl=<set>", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("DUT", null, "only a POU and its METHOD")]
+    [InlineData("GVL", null, "only a POU and its METHOD")]
+    [InlineData("MEMBER", "PROPERTY", "a PROPERTY's code is in its Get/Set accessors")]
+    public void Create_AnImplementationForAnElementWithoutOne_IsRefusedBeforeTheLogout(string kind, string? subtype, string why)
+    {
+        var fake = OpenFake();
+        Coord(fake).Create(kind, subtype, "^POUs", "X_New", implementation: "x := 1;")
+            .Should().StartWith("[Error] implementation does not apply").And.Contain(why);
         AssertNoLogoutNoWrite(fake);
     }
 

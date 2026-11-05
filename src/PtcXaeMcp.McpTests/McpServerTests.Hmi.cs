@@ -246,11 +246,10 @@ public partial class McpServerTests
     public async Task RuntimeTmc_InvalidRuntime_IsRefused(string tool, string runtime)
     {
         SkipIfNotReachable();
-        string text = await CallAsync(tool, new Dictionary<string, object?>
-        {
-            ["runtime"] = runtime,
-            ["tmcFile"] = Path.Combine(Path.GetTempPath(), "PLC.tmc"),
-        });
+        var arguments = new Dictionary<string, object?> { ["runtime"] = runtime };
+        // Only the enable tool takes a TMC file; an argument a tool does not declare is refused.
+        if (tool == "twincat_hmi_enable_runtime_tmc") arguments["tmcFile"] = Path.Combine(Path.GetTempPath(), "PLC.tmc");
+        string text = await CallAsync(tool, arguments);
         Assert.StartsWith("[Error] runtime is required", text);
     }
 

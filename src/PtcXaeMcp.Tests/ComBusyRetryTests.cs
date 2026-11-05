@@ -78,8 +78,9 @@ public class ComBusyRetryTests
         // its HResult is the last busy code and the busy exception is the inner one.
         int calls = 0;
         var ex = Assert.Throws<XaeBlockedException>(() =>
+            // 300 ms: a first attempt slowed by JIT or a loaded machine must not use up the whole window (it did at 30 ms).
             ComBusyRetry.Run(() => { calls++; throw Busy(); },
-                timeout: TimeSpan.FromMilliseconds(30), delay: TimeSpan.FromMilliseconds(10)));
+                timeout: TimeSpan.FromMilliseconds(300), delay: TimeSpan.FromMilliseconds(10)));
 
         Assert.True(calls >= 2, $"Expected at least 2 attempts before timeout, saw {calls}");
         Assert.Equal(RPC_E_CALL_REJECTED, ex.HResult);

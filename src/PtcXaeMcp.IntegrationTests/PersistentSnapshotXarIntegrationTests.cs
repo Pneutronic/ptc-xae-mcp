@@ -9,7 +9,8 @@ namespace PtcXaeMcp.IntegrationTests;
 /// for <see cref="IbnLiveIntegrationTests"/>: the neutral fixture activated on the stage's explicit runtime target
 /// and in Run, a --diagnostics MCP server on port 5010 (the human-confirm step has no MCP tool; the live suite uses
 /// the diagnostics-only <c>twincat_persistent_snapshot_test_confirm</c>, like <c>twincat_ibn_arm</c>).
-/// Every call passes the target as <c>amsNetId</c> (issue #195).
+/// Every call that reads or writes the runtime passes the target as <c>amsNetId</c> (issue #195); the confirm step
+/// takes only the restore id (an argument a tool does not declare is refused).
 /// </summary>
 [Collection("Stage XAR")]
 [Trait("Stage", "XAR")]
@@ -54,7 +55,7 @@ public class PersistentSnapshotXarIntegrationTests : IAsyncLifetime
 
     private async Task<string> CallAsync(string tool, Dictionary<string, object?> args)
     {
-        args["amsNetId"] = _xar.AmsNetId;
+        if (tool != "twincat_persistent_snapshot_test_confirm") args["amsNetId"] = _xar.AmsNetId;
         var result = await _client!.CallToolAsync(tool, args,
             cancellationToken: new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token);
         string text = string.Join("\n", result.Content.OfType<TextContentBlock>().Select(c => c.Text));

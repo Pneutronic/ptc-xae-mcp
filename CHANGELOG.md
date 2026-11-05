@@ -10,6 +10,34 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `expectSymbols` on `twincat_build_plc`, `twincat_build_solution`, `twincat_rebuild_plc` and
+  `twincat_rebuild_solution`: after the build every name is looked up in the PLC project's `.tmc` — a symbol, a
+  data type, a program or GVL, or a member path into an instance such as `MAIN.fbAxis.nState` (inherited members
+  included). A missing name makes the result an `[Error]` that says why: TwinCAT compiles only what a task's
+  program reaches, unless `{attribute 'linkalways'}` is set, so 0 errors do not prove that new code was compiled.
+- `twincat_login(mode='online_change')` verifies the change on the PLC: it reads
+  `TwinCAT_SystemInfoVarList._AppInfo.OnlineChangeCnt` over ADS before and after the login and the first task's
+  cycle counter twice afterwards. `onlineChange.verdict` is `applied`, `not_needed`, `not_applied` (the result is
+  then `success=false`), `download` or `unknown`; `onlineChange.plcCycling` says whether the application runs.
+- `twincat_plc_read` reports a revision (a hash of declaration and implementation);
+  `twincat_plc_write(expectedRevision)` refuses the write, before the automatic logout, when someone else changed
+  the element since it was read. The write result names the new revision.
+- `twincat_tcunit_results` (read-only, online over ADS): waits until the TcUnit runner has stored its results,
+  then returns `verdict` (`passed`, `failed`, `no_tests`, `unknown`), totals, suites and the failed test cases
+  with their messages (`includePassed` adds the passed ones). Values are read by variable handle with known types.
+  It warns when online changes followed the download, because TcUnit runs its tests only once after the start.
+
+### Changed
+- Build results list errors and warnings in full but only the first ten messages, with a note how many more
+  the Error List holds. The XAE's Error List keeps every message since its start; hundreds of device-description
+  notices had pushed the compiler verdict out of the result.
+
+### Fixed
+- The 32-bit XAE shell is found in the 32-bit registry view.
+- `amsNetId="project"` with a Local target (the `.tsproj` has no `TargetNetId`) resolves to the local system
+  instead of refusing.
+
 ## [2.5.0] - 2026-11-02
 
 ### Added

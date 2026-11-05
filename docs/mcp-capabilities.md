@@ -17,6 +17,7 @@
 - [Coe](#coe) (4)
 - [CoreDump](#coredump) (3)
 - [Diagnostics](#diagnostics) (10)
+- [Doctor](#doctor) (1)
 - [EditorNavigation](#editornavigation) (2)
 - [EtherCat](#ethercat) (6)
 - [EventLogger](#eventlogger) (2)
@@ -391,6 +392,14 @@ TEST SUPPORT ONLY - never registered for released clients; in production a resto
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `restoreId` | `string` |  | The restoreId returned by twincat_persistent_snapshot_restore. |
+
+## Doctor
+
+### `twincat_doctor`
+
+Check everything the tools depend on in one call, each with ok / warn / fail and the next step: MCP server version, TwinCAT System Service, local AMS NetId (router answer or fallback), TcXaeShell instances (none, one, several), a dialog blocking the XAE, the open solution, and the roots file-path parameters may use. Read-only and bounded: it never starts an XAE or a runtime, and an XAE that does not answer within 5 s is reported, not waited for. Use it first when tools fail for unclear reasons.
+
+_No parameters._
 
 ## EditorNavigation
 
@@ -2117,7 +2126,7 @@ Run the PLC Static Analysis (TE1200: SA rules, naming conventions, metrics) on t
 
 ### `twincat_tcunit_results`
 
-Read the results of the TcUnit tests in a RUNNING PLC over ADS (read-only). TcUnit, a PLC library the project references, runs its test suites once after the application starts and keeps the outcome in GVL_TcUnit.TcUnitRunner. This waits until the runner has finished and stored the results (AllTestSuitesFinished, then StoredGeneralTestResults and StoredTestSuiteResults), then reads the totals, every suite and the cases of the failed suites. It does not deploy: build first (twincat_build_plc with expectSymbols=['GVL_TcUnit.TcUnitRunner'] proves the runner is compiled in), then start the tests with twincat_activate_config(autoConfirmRestart=true) or twincat_login(mode='download') and call this. After an online change the tests do not run again — the result then warns with the PLC's OnlineChangeCnt. Returns JSON { success, verdict: passed | failed | no_tests | unknown, message, totals { suites, tests, passed, failed, duration }, onlineChangeCnt, suites [{ name, tests, failed, duration, cases [{ name, failed, skipped, message }] }], unreadableSymbols, amsNetId, adsPort }, or an [Error] when TcUnit is not there or does not finish within timeoutSeconds.
+Read the results of the TcUnit tests in a RUNNING PLC over ADS (read-only). TcUnit, a PLC library the project references, runs its test suites once after the application starts and keeps the outcome in GVL_TcUnit.TcUnitRunner. This waits until the runner has finished and stored the results (AllTestSuitesFinished, then StoredGeneralTestResults and StoredTestSuiteResults), then reads the totals, every suite and the cases of the failed suites. It does not deploy: build first (twincat_build_plc with expectSymbols=['GVL_TcUnit.TcUnitRunner'] proves the runner is compiled in), then start the tests with twincat_activate_config(autoConfirmRestart=true) or twincat_login(mode='download') and call this. After an online change the tests do not run again — the result then warns with the PLC's OnlineChangeCnt. Returns JSON { success, verdict: passed | failed | no_tests | unknown, message, totals { suites, tests, passed, failed, duration }, onlineChangeCnt, suites [{ name, tests, failed, duration, cases [{ name, failed, skipped, message }] }], unreadableSymbols, amsNetId, adsPort }, or an [Error] when TcUnit is not there or does not finish within timeoutSeconds. junitPath also writes the result as a JUnit XML file for a CI server (the JSON then names it in junitFile); with includePassed=true the file lists every case.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -2125,6 +2134,7 @@ Read the results of the TcUnit tests in a RUNNING PLC over ADS (read-only). TcUn
 | `adsPort` | `int?` | `null` | ADS port of the PLC application. Default 851. |
 | `timeoutSeconds` | `int?` | `null` | Seconds to wait for TcUnit to finish. Default 60, at most 600. |
 | `includePassed` | `bool` | `false` | Also list the passed cases, and the cases of passed suites. Default false: only failed and skipped cases. |
+| `junitPath` | `string?` | `null` | Optional path of a JUnit XML file to write the results to, e.g. for a CI server. |
 
 ## VariantManagement
 

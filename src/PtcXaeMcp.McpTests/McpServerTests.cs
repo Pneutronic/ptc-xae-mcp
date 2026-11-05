@@ -95,7 +95,7 @@ public partial class McpServerTests : IAsyncLifetime
     /// </summary>
     internal static readonly IReadOnlySet<string> NonMutatingTools = new HashSet<string>(StringComparer.Ordinal)
     {
-        "twincat_get_status", "twincat_get_log", "twincat_stop", "twincat_get_client_info",
+        "twincat_get_status", "twincat_get_log", "twincat_stop", "twincat_get_client_info", "twincat_doctor",
         "twincat_get_active_project", "twincat_resolve_host", "ptc_test_marker",
         "twincat_validate_schema",
         "twincat_list_library_references", "twincat_list_installed_libraries", "twincat_check_libraries_installed",

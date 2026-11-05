@@ -34,6 +34,15 @@ pull-request numbers refer to those.
   notices had pushed the compiler verdict out of the result.
 
 ### Fixed
+- `twincat_logout` and `twincat_login` report the state the XAE settles in. When the XAE rejected a call
+  while it was still logging in or out, the whole tool was retried: a logout it had just done came back as
+  "already offline — no-op" (`wasOnline=false`), and a login could execute the Login command a second time.
+  Now only the rejected call is retried, and the result waits until the same login state is read twice in a
+  row (the XAE shows both commands disabled or rejects calls for seconds in between). The login dialog
+  watcher stays up until then, so confirmations that follow the login dialog are answered too.
+- The PLC Login/Logout commands are looked up by their last known name instead of walking every XAE
+  command: `twincat_get_plc_online_state` and the logout before every PLC write take well under a second
+  instead of several seconds.
 - The 32-bit XAE shell is found in the 32-bit registry view.
 - `amsNetId="project"` with a Local target (the `.tsproj` has no `TargetNetId`) resolves to the local system
   instead of refusing.

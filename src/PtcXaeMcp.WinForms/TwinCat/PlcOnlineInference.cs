@@ -30,3 +30,71 @@ internal static class PlcOnlineInference
         return loginAvailable.Value ? LoginPrecheck.Proceed : LoginPrecheck.NoTarget;
     }
 }
+
+/// <summary>IsAvailable of the PLC Login and Logout commands at one moment; null = unreadable.</summary>
+internal readonly record struct PlcOnlineFlags(bool? Login, bool? Logout)
+{
+    // While the XAE logs in or out it rejects calls or shows both commands disabled for a few
+    // seconds (live 2026-11-05: up to 10 s during an online change). Such a reading says nothing.
+    public bool InTransition => Login is null || Logout is null || (Login == false && Logout == false);
+}
+
+/// <summary>Result of waiting for the login state after a Login or Logout command.</summary>
+internal readonly record struct PlcOnlineSettled(bool? Online, bool Settled);
+
+// After a Login or Logout command one read after a fixed sleep caught the XAE mid-transition:
+// a login read "offline" that became online later, a logout read "offline" while it was still
+// logging out. The state is taken only when the same non-transitional reading repeats.
+internal static class PlcOnlineSettle
+{
+    public const int StableReads = 2;
+
+    /// <summary>
+    /// Reads <paramref name="probe"/> (null = the XAE rejected the call) until the same
+    /// non-transitional state is read <see cref="StableReads"/> times in a row and is either the
+    /// expected one or still holds after <paramref name="minWaitForOther"/> (a refused login
+    /// stays offline). At <paramref name="timeout"/> the last readable Logout flag is returned
+    /// with Settled=false.
+    /// </summary>
+    public static PlcOnlineSettled Wait(
+        Func<PlcOnlineFlags?> probe,
+        bool expectOnline,
+        TimeSpan timeout,
+        TimeSpan minWaitForOther,
+        TimeSpan interval,
+        Func<TimeSpan>? elapsed = null,
+        Action<TimeSpan>? sleep = null)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        elapsed ??= () => sw.Elapsed;
+        sleep ??= Thread.Sleep;
+
+        PlcOnlineFlags? previous = null;
+        int streak = 0;
+        bool? lastOnline = null;
+        while (true)
+        {
+            PlcOnlineFlags? read = probe();
+            if (read is { InTransition: false } flags)
+            {
+                lastOnline = flags.Logout;
+                streak = previous == flags ? streak + 1 : 1;
+                previous = flags;
+                bool expected = expectOnline
+                    ? flags.Logout == true
+                    : flags.Logout == false && flags.Login == true;
+                if (streak >= StableReads && (expected || elapsed() >= minWaitForOther))
+                    return new PlcOnlineSettled(flags.Logout, true);
+            }
+            else
+            {
+                if (read is { Logout: not null } partial) lastOnline = partial.Logout;
+                previous = null;
+                streak = 0;
+            }
+
+            if (elapsed() >= timeout) return new PlcOnlineSettled(lastOnline, false);
+            sleep(interval);
+        }
+    }
+}

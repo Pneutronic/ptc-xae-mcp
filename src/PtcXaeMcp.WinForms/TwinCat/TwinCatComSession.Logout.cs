@@ -39,8 +39,26 @@ internal sealed partial class TwinCatComSession
     private static PlcOnlineCommand? FindPlcLogoutCommand(dynamic dte) =>
         FindPlcCommandContaining(dte, "Logoutfrom");
 
+    // Command name last found per needle. Walking every DTE command takes seconds (several thousand
+    // commands) and runs before each PLC write (EnsureOfflineForWrite); a name that no longer
+    // resolves falls back to the walk.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> PlcCommandNames = new();
+
     private static PlcOnlineCommand? FindPlcCommandContaining(dynamic dte, string needle)
     {
+        if (PlcCommandNames.TryGetValue(needle, out string? known))
+        {
+            try
+            {
+                dynamic cmd = dte.Commands.Item(known, 0);
+                string name = (string)cmd.Name ?? string.Empty;
+                if (name.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return new PlcOnlineCommand(name, ReadAvailable(cmd));
+            }
+            catch (Exception comEx) when (ComCall.NotBusy(comEx)) { /* gone or renamed — walk */ }
+            PlcCommandNames.TryRemove(needle, out _);
+        }
+
         try
         {
             foreach (dynamic cmd in dte.Commands)
@@ -50,23 +68,58 @@ internal sealed partial class TwinCatComSession
                 catch (Exception comEx) when (ComCall.NotBusy(comEx)) { continue; }
                 if (name.IndexOf(needle, StringComparison.OrdinalIgnoreCase) < 0) continue;
 
-                bool? avail;
-                try { avail = (bool)cmd.IsAvailable; }
-                catch (Exception comEx) when (ComCall.NotBusy(comEx)) { avail = null; }
-                return new PlcOnlineCommand(name, avail);
+                PlcCommandNames[needle] = name;
+                return new PlcOnlineCommand(name, ReadAvailable(cmd));
             }
         }
         catch (Exception comEx) when (ComCall.NotBusy(comEx)) { /* Commands enumeration unavailable — caller falls back */ }
         return null;
     }
 
-    public LogoutPlcResult LogoutPlc() => ComBusyRetry.Run(() =>
+    private static bool? ReadAvailable(dynamic cmd)
     {
-        dynamic dte = GetActiveTcDte();
+        try { return (bool)cmd.IsAvailable; }
+        catch (Exception comEx) when (ComCall.NotBusy(comEx)) { return null; }
+    }
+
+    private static readonly TimeSpan LogoutSettleTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan LoginSettleTimeout = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan SettleInterval = TimeSpan.FromMilliseconds(250);
+
+    // Reads both flags by command name, without walking every DTE command; null while the XAE
+    // rejects calls (it does so for seconds while it logs in or out).
+    private static Func<PlcOnlineFlags?> OnlineFlagsProbe(object dteObj, string? loginName, string logoutName) => () =>
+    {
+        dynamic dte = dteObj;
+        try
+        {
+            bool? logout = ReadCommandAvailable(dte, logoutName);
+            bool? login = loginName is null ? (logout is null ? null : !logout) : ReadCommandAvailable(dte, loginName);
+            return new PlcOnlineFlags(login, logout);
+        }
+        catch (Exception ex) when (ComCall.IsBusy(ex)) { return null; }
+    };
+
+    private static bool? ReadCommandAvailable(dynamic dte, string name)
+    {
+        try { return (bool)dte.Commands.Item(name, 0).IsAvailable; }
+        catch (Exception comEx) when (ComCall.NotBusy(comEx)) { return null; }
+    }
+
+    // Each step retries only itself. A retry of the whole logout after the command had run read
+    // the state mid-transition and answered "already offline — no-op" for a logout it had done
+    // (live 2026-11-05); for a login it could execute the Login command a second time.
+    public LogoutPlcResult LogoutPlc()
+    {
+        var (dteObj, logoutCmd) = ComBusyRetry.Run<(object, PlcOnlineCommand?)>(() =>
+        {
+            dynamic d = GetActiveTcDte();
+            return ((object)d, FindPlcLogoutCommand(d));
+        }, OpenTimeout);
+        dynamic dte = dteObj;
 
         // ── Primary: the PLC Logout DTE command ───────────────────────────────
         // Its availability is the authoritative online state; executing it logs out.
-        PlcOnlineCommand? logoutCmd = FindPlcLogoutCommand(dte);
         if (logoutCmd is { } lc)
         {
             if (lc.Available is null)
@@ -76,29 +129,38 @@ internal sealed partial class TwinCatComSession
                 return new LogoutPlcResult(false, false,
                     $"PLC already offline (Logout command '{lc.Name}' is disabled) — no-op.");
 
+            bool executed;
             try
             {
-                dte.ExecuteCommand(lc.Name);
-                Thread.Sleep(800);   // let XAE switch state before re-reading
+                // A call the XAE rejects did not run, so retrying the call alone is safe.
+                ComBusyRetry.Run(() => { dte.ExecuteCommand(lc.Name); }, OpenTimeout);
+                executed = true;
+            }
+            catch (Exception ex) when (ComCall.NotBusy(ex)) { executed = false; }   // fall through to the legacy paths
 
-                // Verify: the Logout command should now be disabled (offline).
-                // after.Available IS the online state — available ⟺ still online.
-                PlcOnlineCommand? after = FindPlcLogoutCommand(dte);
-                bool? nowOnline = after?.Available;
-                return new LogoutPlcResult(true, nowOnline,
-                    nowOnline switch
+            if (executed)
+            {
+                PlcOnlineCommand? loginCmd = ComBusyRetry.Run(() => (PlcOnlineCommand?)FindPlcLoginCommand(dte), OpenTimeout);
+                PlcOnlineSettled after = PlcOnlineSettle.Wait(
+                    OnlineFlagsProbe(dteObj, loginCmd?.Name, lc.Name), expectOnline: false,
+                    LogoutSettleTimeout, minWaitForOther: TimeSpan.FromSeconds(3), SettleInterval);
+                string unsettled = after.Settled ? "" : $" (the state had not settled after {LogoutSettleTimeout.TotalSeconds:0} s)";
+                return new LogoutPlcResult(true, after.Online,
+                    after.Online switch
                     {
-                        false => $"PLC logged out via '{lc.Name}' — now offline.",
-                        true  => $"Logout command '{lc.Name}' executed but PLC still appears online.",
+                        false => $"PLC logged out via '{lc.Name}' — now offline{unsettled}.",
+                        true  => $"Logout command '{lc.Name}' executed but PLC still appears online{unsettled}.",
                         null  => $"Logout command '{lc.Name}' executed but the online state could not be read back.",
                     });
             }
-            catch (Exception ex) when (ComCall.NotBusy(ex)) {
-                // Command exists but execution failed — fall through to legacy paths.
-                _ = ex;
-            }
         }
 
+        return ComBusyRetry.Run(() => LegacyLogout(dteObj), OpenTimeout);
+    }
+
+    private LogoutPlcResult LegacyLogout(object dteObj)
+    {
+        dynamic dte = dteObj;
         // ── Legacy fallback (older TC versions where the command isn't found) ──
         // ConsumeXml("<LogoutCmd/>") on the PLC source-project node, then
         // DTE.Debugger.Stop(). Guarded by best-effort online detection.
@@ -155,7 +217,7 @@ internal sealed partial class TwinCatComSession
             WasOnline: wasOnline ?? (logoutMethod != "none"),
             IsOnlineNow: isOnlineNow,
             Message: msg);
-    }, OpenTimeout);
+    }
 
     // CleanSolution and Rebuild* are implemented in TwinCatComSession.Build.cs
     // (partial class — they live there to co-locate with SolutionBuild usage).

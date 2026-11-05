@@ -44,7 +44,11 @@ public class MutatingCallGuardTests
     [InlineData("twincat_plc_delete")]
     [InlineData("twincat_plc_rename")]
     [InlineData("twincat_plc_edit_entries")]
+<<<<<<< HEAD
     [InlineData("twincat_plc_replace_text")]
+=======
+    [InlineData("twincat_plc_static_analysis")]
+>>>>>>> 812548f (Run the PLC Static Analysis and report its findings compactly)
     [InlineData("twincat_plc_project_create")]
     [InlineData("twincat_plc_instance_from_tmc")]
     [InlineData("twincat_solution_open_archive")]

@@ -48,6 +48,7 @@
 - [Schema](#schema) (5)
 - [Scope](#scope) (18)
 - [ScopeFile](#scopefile) (2)
+- [StaticAnalysis](#staticanalysis) (1)
 - [TcUnit](#tcunit) (1)
 - [VariantManagement](#variantmanagement) (2)
 - [VisibleEditor](#visibleeditor) (2)
@@ -2097,6 +2098,20 @@ EXPERIMENTAL — convert a saved TwinCAT Scope recording (.svdx) into an export 
 | `path` | `string` |  | Path of the .svdx file. |
 | `targetPath` | `string` |  | Output file; its extension selects the format, e.g. C:\temp\run1.csv. |
 | `overwrite` | `bool` | `false` | Replace an existing target file. Default false. |
+
+## StaticAnalysis
+
+### `twincat_plc_static_analysis`
+
+Run the PLC Static Analysis (TE1200: SA rules, naming conventions, metrics) on the open PLC project and return the findings compactly — level, rule, file, line, message — so a generate-check-correct loop needs one call. checkAll=true (default) also checks objects no task reaches. The results are read from the SARIF export (TwinCAT >= 3.1.4026.20, written to %LOCALAPPDATA%\ptc-xae-mcp\static-analysis, outside the project); an XAE that cannot export SARIF is answered from the Error List's SA entries and the result says why. settingsFile loads a .csa rule set first. Without a TE1200 license TwinCAT runs only its free subset of rules. The analysis compiles like a build; it saves nothing. Counts and the most frequent rules always cover every finding; the listed findings are filtered by minLevel (default warning) and paged with limit/offset.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `checkAll` | `bool` | `true` | True (default): check all objects, also code no task calls. False: only the objects in use. |
+| `settingsFile` | `string?` | `null` | Optional .csa static-analysis settings file to load before the run. |
+| `minLevel` | `string` | `"warning"` | Lowest level listed: error, warning (default) or note. |
+| `limit` | `int` | `100` | Findings per page, 1–1000. Default 100. |
+| `offset` | `int` | `0` | Findings to skip (paging). Default 0. |
 
 ## TcUnit
 

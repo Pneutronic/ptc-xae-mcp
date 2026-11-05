@@ -361,6 +361,13 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     IReadOnlyList<BuildError> GetErrorList();
 
+    /// <summary>
+    /// PLC Static Analysis on the PLC project: optionally loads a .csa settings file, runs the analysis
+    /// (all objects or only the ones in use) and exports the results as SARIF to <paramref name="sarifPath"/>
+    /// where the XAE can. Saves nothing.
+    /// </summary>
+    StaticAnalysisRun RunStaticAnalysis(bool checkAll, string? settingsFile, string sarifPath);
+
     // ---- ethercat-device-descriptions ----
     /// <summary>Raises the XAE command "Reload Device Descriptions" (by GUID/ID) so newly placed ESI files become known.</summary>
     DeviceDescriptionReloadResult ReloadDeviceDescriptions();

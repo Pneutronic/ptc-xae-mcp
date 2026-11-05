@@ -94,6 +94,19 @@ internal sealed partial class FakeTwinCatSession
         return FakeErrorList;
     }
 
+    /// <summary>SARIF text RunStaticAnalysis writes to the given path; null = the XAE wrote no SARIF.</summary>
+    public string? StaticAnalysisSarif { get; set; }
+    public string? StaticAnalysisSarifNote { get; set; }
+    public Exception? RunStaticAnalysisThrows { get; set; }
+
+    public StaticAnalysisRun RunStaticAnalysis(bool checkAll, string? settingsFile, string sarifPath)
+    {
+        CallLog.Add($"RunStaticAnalysis(checkAll={checkAll}, settings={settingsFile ?? "<none>"}, sarif={sarifPath})");
+        if (RunStaticAnalysisThrows is not null) throw RunStaticAnalysisThrows;
+        if (StaticAnalysisSarif is not null) File.WriteAllText(sarifPath, StaticAnalysisSarif);
+        return new StaticAnalysisRun(StaticAnalysisSarif is not null, StaticAnalysisSarifNote, "PLC project");
+    }
+
     // ---- build-recovery ----
     public LogoutPlcResult FakeLogoutPlcResult { get; set; } =
         new LogoutPlcResult(false, false, "Was already offline (fake).");

@@ -109,6 +109,30 @@ public class LibraryParsingTests
     }
 
     [Fact]
+    public void FindPlcprojNear_WithAPlcName_PicksThatPlcsFile_ByFileOrFolderName()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "ptc-xae-mcp-tests-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string sln = Path.Combine(dir, "MySolution.sln");
+            Directory.CreateDirectory(Path.Combine(dir, "Main"));
+            Directory.CreateDirectory(Path.Combine(dir, "LibPlc"));
+            File.WriteAllText(sln, "");
+            string main = Path.Combine(dir, "Main", "Main.plcproj");
+            string lib = Path.Combine(dir, "LibPlc", "Renamed.plcproj");
+            File.WriteAllText(main, "<Project/>");
+            File.WriteAllText(lib, "<Project/>");
+
+            Assert.Equal(main, LibraryParsing.FindPlcprojNear(sln, "main"));
+            Assert.Equal(lib, LibraryParsing.FindPlcprojNear(sln, "LibPlc"));
+            var ex = Assert.Throws<InvalidOperationException>(() => LibraryParsing.FindPlcprojNear(sln, "Other"));
+            Assert.Contains("No .plcproj of PLC 'Other'", ex.Message);
+            Assert.Contains("plcProjectName", Assert.Throws<InvalidOperationException>(() => LibraryParsing.FindPlcprojNear(sln)).Message);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public void FindPlcprojNear_MultipleCandidates_OneMatchesSolutionName_ResolvesToIt()
     {
         var dir = Path.Combine(Path.GetTempPath(), "ptc-xae-mcp-tests-" + Guid.NewGuid().ToString("N"));

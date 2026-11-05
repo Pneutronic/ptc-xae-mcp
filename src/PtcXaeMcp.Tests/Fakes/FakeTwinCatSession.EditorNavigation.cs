@@ -12,9 +12,9 @@ internal sealed partial class FakeTwinCatSession
             PaneFocused: true, DialogSeen: true, CursorConfirmed: true,
             ForegroundRequested: true, ForegroundConfirmed: true, Trigger: "Edit.GoTo command", Note: null);
 
-    public GotoLineResult GotoLine(string treePath, int line, EditorSection section)
+    public GotoLineResult GotoLine(string treePath, int line, EditorSection section, bool bringToFront = false)
     {
-        CallLog.Add($"GotoLine({treePath}, {line}, {section})");
+        CallLog.Add($"GotoLine({treePath}, {line}, {section}{(bringToFront ? ",front" : "")})");
         if (GotoLineThrows is not null) throw GotoLineThrows;
         return FakeGotoLineResult with { TreePath = treePath, Line = line, Section = section };
     }

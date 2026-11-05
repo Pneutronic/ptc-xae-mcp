@@ -233,6 +233,35 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
         Assert.Matches("Revision: [0-9a-f]{16}", write);
     }
 
+    [Trait("Description", "plc_create mit implementation schreibt den Rumpf gleich mit; Umbenennen einer Methode auf den Namen ihres Eingangs wird vor der Änderung abgelehnt.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task Create_WithABody_AndRename_OntoAnInputName_IsRefused()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+        string fb = FixtureLayout.PousFolder + "^FB_CreateBodyProbe";
+        string method = fb + "^M_Run";
+
+        await OkAsync("twincat_plc_create", ("kind", "POU"), ("subtype", "FUNCTION_BLOCK"),
+            ("parentPath", FixtureLayout.PousFolder), ("name", "FB_CreateBodyProbe"));
+        try
+        {
+            string created = await OkAsync("twincat_plc_create", ("kind", "MEMBER"), ("subtype", "METHOD"), ("parentPath", fb),
+                ("name", "M_Run"), ("returnType", "BOOL"),
+                ("declaration", "METHOD M_Run : BOOL\nVAR_INPUT\n\tbGo : BOOL;\nEND_VAR\n"), ("implementation", "M_Run := bGo;"));
+            Assert.Contains($"Wrote MEMBER '{method}'", created);
+            Assert.Contains("M_Run := bGo;", await OkAsync("twincat_plc_read", ("path", method), ("kind", "MEMBER")));
+
+            string refused = await CallAsync("twincat_plc_rename", ("path", method), ("kind", "MEMBER"), ("newName", "bGo"));
+            Assert.StartsWith($"[Error] '{method}' cannot be renamed to 'bGo': 'bGo' is already a variable", refused);
+            await OkAsync("twincat_plc_read", ("path", method), ("kind", "MEMBER"));
+        }
+        finally
+        {
+            await TryDeleteAsync(fb, "POU");
+        }
+    }
+
     private static string RevisionOf(string read)
     {
         var m = System.Text.RegularExpressions.Regex.Match(read, "Revision: ([0-9a-f]{16})");

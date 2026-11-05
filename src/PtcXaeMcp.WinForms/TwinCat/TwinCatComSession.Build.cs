@@ -560,7 +560,8 @@ internal sealed partial class TwinCatComSession
         }
 
         if (hwnd == IntPtr.Zero) return "no XAE main-window handle";
-        SolutionExplorerAutomation.TryActivatePath(hwnd, display, out string note);
+        // The trial flow ends with a person typing the security code into the XAE, so here it is raised on purpose.
+        SolutionExplorerAutomation.TryActivatePath(hwnd, display, bringToFront: true, out string note);
         return note;
     }
 

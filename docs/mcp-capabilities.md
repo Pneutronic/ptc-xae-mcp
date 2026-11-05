@@ -305,6 +305,7 @@ SHOWCASE composite: locate a step's CASE branch (as twincat_locate_step) and mov
 | `treePath` | `string` |  | Caret-separated tree path of the POU to search, as used by twincat_read_pou. |
 | `step` | `int` |  | Numeric step value to locate and show (as read live via ADS). |
 | `stepVariable` | `string?` | `null` | Name of the CASE selector variable. Defaults to 'Step' when omitted. |
+| `bringToFront` | `bool` | `false` |  |
 
 ### `twincat_safety_recon`
 
@@ -350,6 +351,7 @@ DEPRECATED — use twincat_open_object (this is a thin alias kept for back-compa
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the PLC source object to open (POU/GVL/DUT/INTERFACE). |
+| `bringToFront` | `bool` | `false` |  |
 
 ### `twincat_close_plc_object`
 
@@ -393,13 +395,14 @@ HEADLESS: find the CASE branch of a step in an ST POU's step chain (FB_Base styl
 
 ### `twincat_goto_line`
 
-VISIBLE: put the editor cursor on a line of a POU in the running TwinCAT XAE so a live demo shows exactly the code being discussed. Opens the object's tab (as twincat_open_object), focuses the requested pane via UIAutomation and runs the VS Edit.GoTo command, answering its 'Go To Line' dialog. line is 1-based within the pane: section='implementation' (default) counts lines of the implementation pane (= twincat_read_pou's implementation text split on newlines), section='declaration' counts the declaration pane. Works while Online (no logout; monitoring values stay visible) — but the declaration pane is the monitoring grid while Online, so use the implementation section then. Confirmation is structural (the Go-To dialog was seen and closed on OK); there is no caret read-back. The OS foreground raise is best-effort and reported, never an error.
+VISIBLE: put the editor cursor on a line of a POU in the running TwinCAT XAE so a live demo shows exactly the code being discussed. Opens the object's tab (as twincat_open_object), focuses the requested pane via UIAutomation and runs the VS Edit.GoTo command, answering its 'Go To Line' dialog. line is 1-based within the pane: section='implementation' (default) counts lines of the implementation pane (= twincat_read_pou's implementation text split on newlines), section='declaration' counts the declaration pane. Works while Online (no logout; monitoring values stay visible) — but the declaration pane is the monitoring grid while Online, so use the implementation section then. Confirmation is structural (the Go-To dialog was seen and closed on OK); there is no caret read-back. Placing the cursor needs the XAE in the foreground: pass bringToFront=true (only when a person asked where it is); without it the call is an [Error] unless the XAE already is in front.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the POU to open, as used by twincat_read_pou. |
 | `line` | `int` |  | 1-based line number within the pane selected by 'section'. |
 | `section` | `string?` | `null` | Which pane 'line' counts within: 'implementation' (default) or 'declaration'. |
+| `bringToFront` | `bool` | `false` |  |
 
 ## EtherCat
 
@@ -942,6 +945,7 @@ List PLC library references for the open project. Reads the live XAE library man
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `format` | `string?` | `null` | Output format: 'text' (default) or 'json' (full records). |
+| `plcProjectName` | `string?` | `null` |  |
 
 ### `twincat_list_installed_libraries`
 
@@ -953,7 +957,9 @@ _No parameters._
 
 Check whether every PLC library reference of the open project is installed in the local XAE repository. Reports each reference as Installed, Missing, or VersionMismatch. Reference version '*' is satisfied by any installed version with the same name.
 
-_No parameters._
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `plcProjectName` | `string?` | `null` |  |
 
 ### `twincat_add_library_reference`
 
@@ -966,6 +972,7 @@ Add a PLC library (or placeholder) reference to the open project's References no
 | `company` | `string?` | `null` | Distributor/company, e.g. 'Beckhoff Automation GmbH'. |
 | `asPlaceholder` | `bool` | `false` | Add as placeholder reference instead of a direct library reference. |
 | `force` | `bool` | `false` | Add even if the library is not installed in the local XAE repository. |
+| `plcProjectName` | `string?` | `null` |  |
 
 ### `twincat_remove_library_reference`
 
@@ -974,6 +981,7 @@ Remove a PLC library or placeholder reference from the open project by name. No-
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `name` | `string` |  | Library or placeholder name to remove, e.g. 'Tc2_MC2'. |
+| `plcProjectName` | `string?` | `null` |  |
 
 ### `twincat_install_library`
 
@@ -1021,6 +1029,7 @@ Change the pinned version of an existing PLC library reference. name: library na
 | `name` | `string` |  | Library name, e.g. 'Tc2_MC2'. |
 | `version` | `string` |  | New version string, e.g. '3.3.73.0' or '*'. |
 | `company` | `string?` | `null` | Distributor override (optional). |
+| `plcProjectName` | `string?` | `null` |  |
 
 ## Lifecycle
 
@@ -1389,7 +1398,7 @@ List PLC elements. Without arguments: every POU, INTERFACE, DUT, GVL and FOLDER 
 
 ### `twincat_plc_create`
 
-Create a PLC element under parentPath. kind + subtype pick the element: POU/PROGRAM|FUNCTION|FUNCTION_BLOCK, DUT/STRUCT|ENUM|UNION|ALIAS (default STRUCT; ALIAS needs a 'TYPE <name> : <baseType>; END_TYPE' declaration), GVL/NORMAL|PARAMLIST (default NORMAL; persistent variables are a 'VAR_GLOBAL PERSISTENT' section of a NORMAL GVL — put it in the declaration), INTERFACE, MEMBER/METHOD|ACTION|PROPERTY|GET|SET (parentPath is the POU or INTERFACE; GET/SET are named Get/Set; PROPERTY gets its accessors per 'accessors'; TRANSITION under a POU is ST, implementation only), FOLDER (under a folder, the PLC project node, a POU or an INTERFACE), TEXTLIST/LOCAL, IMAGEPOOL/LOCAL, UML/CLASSDIAGRAM, VISU/MANAGER|VISUALIZATION and RECIPE/MANAGER (all under a folder or the PLC project node), VISU/TARGET|WEB (under a visualization manager), RECIPE/DEFINITION (under a recipe manager), TASKREF/PROGRAM (under a PLC task node; name = the PROGRAM to run). The GLOBAL text list / image pool, the text-list enumeration and the trend elements are refused by XAE and not offered. declaration optionally fills the new element (not for FOLDER, ACTION). returnType applies to FUNCTION, METHOD, PROPERTY (default BOOL); implLanguage (ST, IL, SFC, FBD, CFC, LD; default ST) to POUs and members; accessors (GET | SET | BOTH, default BOTH) to PROPERTY only. A parameter that does not apply to the element is an [Error]. Logs the XAE out first. Returns the new element's tree path. A new GVL, an FB nobody instantiates or a function is not compiled until a task's program uses it (or it carries {attribute 'linkalways'}); twincat_build_plc(expectSymbols=[...]) proves what landed in the compiled PLC.
+Create a PLC element under parentPath. kind + subtype pick the element: POU/PROGRAM|FUNCTION|FUNCTION_BLOCK, DUT/STRUCT|ENUM|UNION|ALIAS (default STRUCT; ALIAS needs a 'TYPE <name> : <baseType>; END_TYPE' declaration), GVL/NORMAL|PARAMLIST (default NORMAL; persistent variables are a 'VAR_GLOBAL PERSISTENT' section of a NORMAL GVL — put it in the declaration), INTERFACE, MEMBER/METHOD|ACTION|PROPERTY|GET|SET (parentPath is the POU or INTERFACE; GET/SET are named Get/Set; PROPERTY gets its accessors per 'accessors'; TRANSITION under a POU is ST, implementation only), FOLDER (under a folder, the PLC project node, a POU or an INTERFACE), TEXTLIST/LOCAL, IMAGEPOOL/LOCAL, UML/CLASSDIAGRAM, VISU/MANAGER|VISUALIZATION and RECIPE/MANAGER (all under a folder or the PLC project node), VISU/TARGET|WEB (under a visualization manager), RECIPE/DEFINITION (under a recipe manager), TASKREF/PROGRAM (under a PLC task node; name = the PROGRAM to run). The GLOBAL text list / image pool, the text-list enumeration and the trend elements are refused by XAE and not offered. declaration optionally fills the new element (not for FOLDER, ACTION); implementation optionally writes its body right after (POU, METHOD, ACTION, TRANSITION, GET, SET — a PROPERTY's code goes into its accessors), read back like twincat_plc_write. returnType applies to FUNCTION, METHOD, PROPERTY (default BOOL); implLanguage (ST, IL, SFC, FBD, CFC, LD; default ST) to POUs and members; accessors (GET | SET | BOTH, default BOTH) to PROPERTY only. A parameter that does not apply to the element is an [Error]. Logs the XAE out first. Returns the new element's tree path. A new GVL, an FB nobody instantiates or a function is not compiled until a task's program uses it (or it carries {attribute 'linkalways'}); twincat_build_plc(expectSymbols=[...]) proves what landed in the compiled PLC.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1401,16 +1410,18 @@ Create a PLC element under parentPath. kind + subtype pick the element: POU/PROG
 | `returnType` | `string?` | `null` | Return type for FUNCTION, METHOD and PROPERTY. Defaults to BOOL. |
 | `implLanguage` | `string?` | `null` | Implementation language: ST, IL, SFC, FBD, CFC or LD. Defaults to ST. |
 | `accessors` | `string?` | `null` | For subtype=PROPERTY only: GET, SET or BOTH (default). |
+| `implementation` | `string?` | `null` | Optional body (implementation) written right after the element was created: ST text, or XAE's XML for SFC/FBD/CFC/LD. For a POU, METHOD, ACTION, TRANSITION, GET or SET. |
 
 ### `twincat_plc_read`
 
-Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation (with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] such as "'<path>' is a GVL, not a DUT". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the visible XAE editor (video mode), best-effort.
+Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation (with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] such as "'<path>' is a GVL, not a DUT". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the XAE editor (video mode), best-effort, behind the user's work unless bringToFront=true.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `path` | `string` |  | Caret-separated tree path of the element to read. |
 | `kind` | `string` |  | Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER. |
 | `openInEditor` | `bool` | `false` | When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false. |
+| `bringToFront` | `bool` | `false` |  |
 
 ### `twincat_plc_write`
 
@@ -2101,11 +2112,12 @@ Sets the active project variant by name. Optionally rebuilds the solution immedi
 
 ### `twincat_open_object`
 
-Surface ANY Solution-Explorer node in the VISIBLE TwinCAT XAE so a live MCP-driven demo/video always shows which object is being worked on. treePath is the same caret-separated path as twincat_read_pou (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' for a PLC object, or 'TIID^Device 1 (EtherCAT)' for an EtherCAT device). Two behaviours, because XAE treats the node families differently: a PLC source object (POU/GVL/DUT/INTERFACE) opens its OWN editor tab; a system-manager node (EtherCAT/IO, Motion/NC, TcCOM) and a Scope node are ACTIVATED in the Solution-Explorer tree (selected + Enter, like a double-click) — sysman nodes share ONE sysman editor (no per-node tab), and a Scope view opens on activation; when the XAE cannot be brought to the foreground the node is only selected (said so in the result). For a Scope node pass the Solution-Explorer names, e.g. '<scope project>^<scope node>'. The read tools (read_pou, read_gvl, read_pou_member) auto-open. The headless write tools do NOT auto-open — call this explicitly before a write for full video coverage. Returns one line describing what happened (opened tab vs. selected node) and whether the OS foreground raise was confirmed (Windows may block a focus steal — reported, not an error).
+Surface ANY Solution-Explorer node in the VISIBLE TwinCAT XAE so a live MCP-driven demo/video always shows which object is being worked on. treePath is the same caret-separated path as twincat_read_pou (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' for a PLC object, or 'TIID^Device 1 (EtherCAT)' for an EtherCAT device). Two behaviours, because XAE treats the node families differently: a PLC source object (POU/GVL/DUT/INTERFACE) opens its OWN editor tab; a system-manager node (EtherCAT/IO, Motion/NC, TcCOM) and a Scope node are ACTIVATED in the Solution-Explorer tree (selected + Enter, like a double-click) — sysman nodes share ONE sysman editor (no per-node tab), and a Scope view opens on activation. Both bring the XAE to the foreground, so a system-manager or Scope node is shown only with bringToFront=true (otherwise an [Error], nothing selected); a PLC object opens its tab behind the user's work without it. For a Scope node pass the Solution-Explorer names, e.g. '<scope project>^<scope node>'. The read tools (read_pou, read_gvl, read_pou_member) auto-open. The headless write tools do NOT auto-open — call this explicitly before a write for full video coverage. Returns one line describing what happened (opened tab vs. selected node) and, with bringToFront, whether the XAE reached the foreground (Windows may refuse — reported, not an error).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the node to surface, e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' for a PLC object, or 'TIID^Device 1 (EtherCAT)' for an EtherCAT device. |
+| `bringToFront` | `bool` | `false` |  |
 
 ### `twincat_close_object`
 

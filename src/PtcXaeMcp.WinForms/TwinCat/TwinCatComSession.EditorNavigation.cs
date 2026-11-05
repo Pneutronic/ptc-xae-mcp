@@ -23,15 +23,22 @@ internal sealed partial class TwinCatComSession
         Appear: TimeSpan.FromSeconds(5), Close: TimeSpan.FromSeconds(3),
         Reopen: TimeSpan.FromMilliseconds(800), CommandReturn: TimeSpan.Zero);
 
-    public GotoLineResult GotoLine(string treePath, int line, EditorSection section)
+    public GotoLineResult GotoLine(string treePath, int line, EditorSection section, bool bringToFront = false)
     {
         if (string.IsNullOrWhiteSpace(treePath))
             throw new InvalidOperationException("treePath is required.");
         if (line < 1)
             throw new InvalidOperationException($"line must be >= 1, got {line}.");
 
-        // 1. Tab activation (reliable) + best-effort OS foreground — the proven path.
-        var open = OpenPlcObject(treePath);
+        // Placing the cursor needs keyboard focus in the editor pane (UIAutomation SetFocus), which activates the
+        // XAE window. The XAE is brought to the foreground only on request (a person asked where it is).
+        if (!bringToFront && !ComBusyRetry.Run(() => Win32DialogAutomation.IsXaeForeground((IntPtr)TryGetXaeMainWindow(GetActiveTcDte())), ProbeTimeout))
+            throw new InvalidOperationException(
+                "placing the cursor needs the XAE in the foreground, and it is not brought there unasked. Call again with " +
+                "bringToFront=true when a person asked where it is; twincat_locate_step finds a step without touching the XAE.");
+
+        // 1. Tab activation (reliable); the XAE is raised only with bringToFront.
+        var open = OpenPlcObject(treePath, bringToFront);
 
         // 2. The pane's cleartext lets us pick the right SynEdControl by content — and bounds the
         //    line: the XAE crashes on a line beyond the pane (issue #150).
@@ -65,7 +72,7 @@ internal sealed partial class TwinCatComSession
         string pre = GoToDialogAutomation.TryCancelDialog(mainHwnd) ? "orphaned Go-To dialog from an earlier call cancelled; " : "";
 
         // 6. Trigger the command and drive its dialog(s).
-        var (dialogSeen, closed, trigger, note) = TriggerAndDriveGoToDialog(mainHwnd, line);
+        var (dialogSeen, closed, trigger, note) = TriggerAndDriveGoToDialog(mainHwnd, line, bringToFront);
 
         return new GotoLineResult(
             TreePath: treePath,
@@ -103,7 +110,7 @@ internal sealed partial class TwinCatComSession
     // (typically: the pane never got keyboard focus). Sent only when the attached XAE main
     // window is the OS foreground window immediately before sending (issue #150, C-8).
     private static (bool DialogSeen, bool Closed, string Trigger, string Note) TriggerAndDriveGoToDialog(
-        IntPtr mainHwnd, int line)
+        IntPtr mainHwnd, int line, bool bringToFront)
     {
         using var commandDone = new ManualResetEventSlim(false);
         Exception? commandError = null;
@@ -136,7 +143,7 @@ internal sealed partial class TwinCatComSession
             }
             if (commandError is not null) note += $"; Edit.GoTo command failed: {FirstLine(commandError.Message)}";
 
-            Win32DialogAutomation.TryRaiseXaeToForeground(mainHwnd);
+            if (bringToFront) Win32DialogAutomation.BringXaeToFront(mainHwnd);
             if (!GoToDialogAutomation.SendCtrlGToXae(mainHwnd))
                 return (false, false, trigger, $"{note}; Ctrl+G fallback not sent: the XAE window is not the foreground window");
 

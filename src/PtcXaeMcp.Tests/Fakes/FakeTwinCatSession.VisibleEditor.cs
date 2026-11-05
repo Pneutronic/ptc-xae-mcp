@@ -11,9 +11,9 @@ internal sealed partial class FakeTwinCatSession
         new("^POUs^MAIN", Opened: true, AlreadyOpen: false,
             ForegroundRequested: true, ForegroundConfirmed: true, Note: null);
 
-    public OpenPlcObjectResult OpenPlcObject(string treePath)
+    public OpenPlcObjectResult OpenPlcObject(string treePath, bool bringToFront = false)
     {
-        CallLog.Add($"OpenPlcObject({treePath})");
+        CallLog.Add($"OpenPlcObject({treePath}{(bringToFront ? ",front" : "")})");
         if (OpenPlcObjectThrows is not null) throw OpenPlcObjectThrows;
         return FakeOpenPlcObjectResult;
     }

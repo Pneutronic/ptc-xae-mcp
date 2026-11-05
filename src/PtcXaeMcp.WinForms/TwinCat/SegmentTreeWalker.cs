@@ -17,6 +17,9 @@ internal interface IWalkNode
 /// levels such as "E/A" above the model's roots); every further segment must be a DIRECT child of
 /// the previous match. Only nodes on the way are expanded, and every node this walk expanded is
 /// collapsed again unless it is an ancestor of the match — on a miss, all of them.
+/// Expanding a Solution-Explorer node pulls the XAE to the foreground (live 2026-11-05: Select and ScrollIntoView
+/// do not, Expand does), so a collapsed node is opened only with <c>mayExpand</c>; otherwise the walk stops there
+/// and says so.
 /// </summary>
 internal static class SegmentTreeWalker
 {
@@ -25,16 +28,22 @@ internal static class SegmentTreeWalker
 
     internal sealed record WalkResult(IWalkNode? Match, string Note);
 
-    public static WalkResult Find(IWalkNode root, IReadOnlyList<string> segments)
+    internal const string CollapsedNote =
+        "is collapsed in the Solution Explorer; opening it brings the XAE to the foreground, which happens only with bringToFront=true";
+
+    public static WalkResult Find(IWalkNode root, IReadOnlyList<string> segments, bool mayExpand = false)
     {
         if (segments.Count == 0) return new WalkResult(null, "empty path");
 
         var expanded = new List<IWalkNode>();
-        var anchors = FindAnchors(root, segments[0], expanded);
+        string? collapsed = null;
+        var anchors = FindAnchors(root, segments[0], expanded, mayExpand, ref collapsed);
         if (anchors.Count == 0)
         {
             Restore(expanded, keep: null);
-            return new WalkResult(null, $"'{segments[0]}' not found in the Solution Explorer tree");
+            return new WalkResult(null, collapsed is null
+                ? $"'{segments[0]}' not found in the Solution Explorer tree"
+                : $"'{segments[0]}' not found in the visible Solution Explorer tree: '{collapsed}' {CollapsedNote}");
         }
 
         string miss = "";
@@ -45,7 +54,12 @@ internal static class SegmentTreeWalker
             int i = 1;
             for (; i < segments.Count; i++)
             {
-                if (current.IsCollapsed) { current.Expand(); expanded.Add(current); }
+                if (current.IsCollapsed)
+                {
+                    if (!mayExpand) { miss = $"'{current.Name}' {CollapsedNote}"; break; }
+                    current.Expand();
+                    expanded.Add(current);
+                }
                 var next = current.Children().FirstOrDefault(c => c.IsItem && NameEquals(c.Name, segments[i]));
                 if (next is null) { miss = $"'{segments[i]}' not found under '{current.Name}'"; break; }
                 current = next;
@@ -63,7 +77,8 @@ internal static class SegmentTreeWalker
     }
 
     // Shallowest tree items named like the first segment, each with its ancestor chain.
-    private static List<(IWalkNode Node, List<IWalkNode> Ancestors)> FindAnchors(IWalkNode root, string name, List<IWalkNode> expanded)
+    private static List<(IWalkNode Node, List<IWalkNode> Ancestors)> FindAnchors(
+        IWalkNode root, string name, List<IWalkNode> expanded, bool mayExpand, ref string? collapsed)
     {
         var level = new List<(IWalkNode Node, List<IWalkNode> Ancestors)> { (root, new List<IWalkNode>()) };
         for (int depth = 0; depth <= MaxAnchorDepth && level.Count > 0; depth++)
@@ -75,7 +90,12 @@ internal static class SegmentTreeWalker
             if (depth == MaxAnchorDepth) break;
             foreach (var (node, ancestors) in level)
             {
-                if (node.IsCollapsed) { node.Expand(); expanded.Add(node); }
+                if (node.IsCollapsed)
+                {
+                    if (!mayExpand) { collapsed ??= node.Name; continue; }
+                    node.Expand();
+                    expanded.Add(node);
+                }
                 var chain = node.IsItem ? new List<IWalkNode>(ancestors) { node } : ancestors;
                 foreach (var c in node.Children()) next.Add((c, chain));
             }

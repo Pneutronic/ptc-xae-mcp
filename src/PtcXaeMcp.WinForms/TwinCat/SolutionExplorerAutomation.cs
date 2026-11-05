@@ -29,20 +29,31 @@ internal static class SolutionExplorerAutomation
     /// collapsed again on a miss. The shared system-manager editor follows the selection. Returns
     /// false (with a reason in <paramref name="note"/>) on any miss; never throws.
     /// </summary>
-    public static bool TrySelectPath(IntPtr xaeMainWindow, IReadOnlyList<string> segments, out string note) =>
-        TrySelect(xaeMainWindow, segments, out _, out note);
+    /// <param name="mayExpand">Open collapsed nodes on the way. That pulls the XAE to the foreground, so only on
+    /// request (bringToFront); without it a node inside a collapsed one is not found.</param>
+    public static bool TrySelectPath(IntPtr xaeMainWindow, IReadOnlyList<string> segments, out string note, bool mayExpand = false) =>
+        TrySelect(xaeMainWindow, segments, mayExpand, out _, out note);
 
     /// <summary>
-    /// Selects the node like <see cref="TrySelectPath"/>, then opens its editor: focuses the row, raises the
-    /// XAE and presses Enter (only when the XAE is the foreground window, see
-    /// <see cref="GoToDialogAutomation.SendEnterToXae"/>). Selection alone does not open the shared
-    /// system-manager editor while none is open (live, 2026-10-08, SYSTEM &gt; License). Never throws.
+    /// Selects the node like <see cref="TrySelectPath"/>, then opens its editor: focuses the row and presses Enter
+    /// (<see cref="GoToDialogAutomation.SendEnterToXae"/>). Selection alone does not open the shared
+    /// system-manager editor while none is open (live, 2026-10-08, SYSTEM &gt; License). Both need the XAE in the
+    /// foreground (UIAutomation SetFocus activates the window too); it is raised only with
+    /// <paramref name="bringToFront"/>. Otherwise, when the XAE is not in front, the node is only selected and
+    /// false is returned. Never throws.
     /// </summary>
-    public static bool TryActivatePath(IntPtr xaeMainWindow, IReadOnlyList<string> segments, out string note)
+    public static bool TryActivatePath(IntPtr xaeMainWindow, IReadOnlyList<string> segments, bool bringToFront, out string note)
     {
-        if (!TrySelect(xaeMainWindow, segments, out var match, out note)) return false;
+        if (!TrySelect(xaeMainWindow, segments, mayExpand: bringToFront, out var match, out note)) return false;
 
-        Win32DialogAutomation.TryRaiseXaeToForeground(xaeMainWindow);
+        if (bringToFront) Win32DialogAutomation.BringXaeToFront(xaeMainWindow);
+        if (!Win32DialogAutomation.IsXaeForeground(xaeMainWindow))
+        {
+            note += bringToFront
+                ? "; Windows refused to bring the XAE to the foreground, so its editor was not opened"
+                : "; the XAE is not the foreground window (it is raised only with bringToFront=true), so its editor was not opened";
+            return false;
+        }
         try { match!.SetFocus(); }
         catch (Exception ex) { note += $"; SetFocus failed: {ex.Message}"; return false; }
 
@@ -55,7 +66,7 @@ internal static class SolutionExplorerAutomation
         return true;
     }
 
-    private static bool TrySelect(IntPtr xaeMainWindow, IReadOnlyList<string> segments, out AutomationElement? selected, out string note)
+    private static bool TrySelect(IntPtr xaeMainWindow, IReadOnlyList<string> segments, bool mayExpand, out AutomationElement? selected, out string note)
     {
         selected = null;
         note = string.Empty;
@@ -77,7 +88,7 @@ internal static class SolutionExplorerAutomation
         if (tree is null) { note = "Solution Explorer tree not found (is it open?)"; return false; }
 
         SegmentTreeWalker.WalkResult walk;
-        try { walk = SegmentTreeWalker.Find(new UiaNode(tree), segments); }
+        try { walk = SegmentTreeWalker.Find(new UiaNode(tree), segments, mayExpand); }
         catch (Exception ex) { note = $"tree walk failed: {ex.Message}"; return false; }
         if (walk.Match is not UiaNode { Element: var match }) { note = walk.Note; return false; }
 

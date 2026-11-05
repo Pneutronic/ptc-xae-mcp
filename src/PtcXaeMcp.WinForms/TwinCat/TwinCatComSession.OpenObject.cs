@@ -13,7 +13,7 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 // container guard); everything else is a sysman node.
 internal sealed partial class TwinCatComSession
 {
-    public OpenObjectResult OpenObject(string treePath)
+    public OpenObjectResult OpenObject(string treePath, bool bringToFront = false)
     {
         if (string.IsNullOrWhiteSpace(treePath))
             throw new InvalidOperationException("treePath is required.");
@@ -22,12 +22,19 @@ internal sealed partial class TwinCatComSession
         {
             // Proven file-open path → own editor tab. Re-uses OpenPlcObject verbatim
             // (its own COM attach + container guard) and maps to the generalized shape.
-            var p = OpenPlcObject(treePath);
+            var p = OpenPlcObject(treePath, bringToFront);
             return new OpenObjectResult(treePath, OpenObjectKind.PlcObject,
                 p.Opened, p.AlreadyOpen, p.ForegroundRequested, p.ForegroundConfirmed, p.Note);
         }
 
-        return SelectSysmanNode(treePath);
+        // Selecting a system-manager node makes the XAE show it in its shared editor and come to the front by itself
+        // (live 2026-11-05, even for a visible node that needed no expanding). So it is not touched unasked.
+        if (!bringToFront && !ComBusyRetry.Run(() => Win32DialogAutomation.IsXaeForeground((IntPtr)TryGetXaeMainWindow(GetActiveTcDte())), ProbeTimeout))
+            throw new InvalidOperationException(
+                $"showing the system-manager node '{treePath}' makes the XAE come to the foreground, which happens only " +
+                "with bringToFront=true (when a person asked where it is). Nothing was selected.");
+
+        return SelectSysmanNode(treePath, bringToFront);
     }
 
     public CloseObjectResult CloseObject(string treePath)
@@ -60,7 +67,7 @@ internal sealed partial class TwinCatComSession
     // English alias (`TIID^Device 1 (EtherCAT)`) while the SE shows localized names (`Geräte` for
     // TIID); ITcSmTreeItem.Name of each prefix is the localized bridge. Segments that are not in
     // the sysman tree (e.g. Scope nodes) are used as typed.
-    private OpenObjectResult SelectSysmanNode(string treePath) => ComBusyRetry.Run(() =>
+    private OpenObjectResult SelectSysmanNode(string treePath, bool bringToFront) => ComBusyRetry.Run(() =>
     {
         dynamic dte = GetActiveTcDte();
 
@@ -93,23 +100,23 @@ internal sealed partial class TwinCatComSession
         // Issue #124: like a user's double-click — select the row AND activate it (Enter). Selection alone does
         // not open the shared system-manager editor while none is open (live 2026-10-08), and a Scope view
         // (a separate measurement project, not in the sysman tree) opens only on activation.
-        bool selected = SolutionExplorerAutomation.TryActivatePath(hwnd, display, out string note);
+        bool selected = SolutionExplorerAutomation.TryActivatePath(hwnd, display, bringToFront, out string note);
         if (!selected)
         {
-            // Activation needs the XAE in the foreground; still surface the node by selecting it.
-            selected = SolutionExplorerAutomation.TrySelectPath(hwnd, display, out string selectNote);
+            // Activation needs the XAE in the foreground (raised only with bringToFront); still surface the node by selecting it.
+            selected = SolutionExplorerAutomation.TrySelectPath(hwnd, display, out string selectNote, mayExpand: bringToFront);
             note = selected ? $"{note}; selected only (the editor may not have opened)" : $"{note}; {selectNote}";
         }
         if (!selected)
             throw new InvalidOperationException(
                 $"Could not surface system-manager node '{string.Join("^", display)}' (from '{treePath}'): {note}");
 
-        try { dte.MainWindow.Activate(); } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
-        bool foreground = Win32DialogAutomation.TryRaiseXaeToForeground(hwnd);
+        // TryActivatePath raised the XAE when bringToFront asked for it; it is never raised otherwise.
+        bool foreground = Win32DialogAutomation.IsXaeForeground(hwnd);
 
         return new OpenObjectResult(treePath, OpenObjectKind.SysmanNode,
             Opened: true, AlreadyOpen: false,
-            ForegroundRequested: true, ForegroundConfirmed: foreground, Note: note);
+            ForegroundRequested: bringToFront, ForegroundConfirmed: foreground, Note: note);
     }, OpenTimeout);
 
     private static string? TryGetLocalizedName(dynamic? node)

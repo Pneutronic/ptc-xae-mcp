@@ -10,6 +10,36 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_plc_create` takes `implementation` (#22): the body of a new POU, METHOD, ACTION, TRANSITION, GET or SET
+  is written right after it was created and read back like `twincat_plc_write`. Before, a body passed along was
+  dropped without a word. For an element without a body (DUT, GVL, a PROPERTY itself) it is an `[Error]` before
+  anything is created.
+- `plcProjectName` on `twincat_list_library_references`, `twincat_check_libraries_installed`,
+  `twincat_add_library_reference`, `twincat_remove_library_reference` and `twincat_set_library_version` (#24): the
+  PLC (by its name or its project name) whose references are meant. Before, the live path acted on the first PLC
+  project and the file path refused a solution with several PLC projects as ambiguous.
+
+### Changed
+- **The XAE is no longer brought to the foreground on its own.** `twincat_open_object`,
+  `twincat_plc_read(openInEditor)`, `twincat_goto_line` and `twincat_show_step` raised it in front of the user's
+  work on every call; they now take `bringToFront` (default false) for when a person asks where something is.
+  Without it a PLC object opens behind the user's work. **Callers of `twincat_goto_line`, `twincat_show_step` and
+  of `twincat_open_object` on a system-manager or Scope node must pass `bringToFront=true`:** without it these are
+  an `[Error]` unless the XAE already is in front, because the XAE comes forward by itself when it shows them
+  (selecting such a node in the Solution Explorer, expanding a collapsed node, focusing an editor pane).
+- `twincat_plc_rename` of a POU or member (#23) refuses a new name that is already a variable of the element or,
+  for a member, of its POU (the XAE accepts it and only the next build fails), and warns when the body still
+  assigns the return value to the old name.
+
+### Fixed
+- File paths (e.g. `twincat_save_as_library`'s `outputPath`) may lie anywhere in the git repository that holds the
+  open solution, not only below the solution's folder (#26): a solution in `<repo>\Source\<project>\` could not
+  save its library to `<repo>\Library\`.
+- `twincat_add_library_reference(asPlaceholder=true)` adds the placeholder (#25). It failed for every library with
+  "Default Placeholder '<name>, * (<distributor>)' could not be found", because the whole resolution was passed
+  as the placeholder name.
+
 ## [2.6.0] - 2026-11-05
 
 ### Added

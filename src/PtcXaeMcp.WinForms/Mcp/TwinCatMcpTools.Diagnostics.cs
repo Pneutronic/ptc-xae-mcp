@@ -112,12 +112,13 @@ internal sealed class TwinCatMcpToolsDiagnostics(McpBridge bridge)
         [Description("Caret-separated tree path of the POU to search, as used by twincat_read_pou.")] string treePath,
         [Description("Numeric step value to locate and show (as read live via ADS).")] int step,
         [Description("Name of the CASE selector variable. Defaults to 'Step' when omitted.")] string? stepVariable = null,
+        [Description(TwinCatMcpTools.BringToFrontHelp)] bool bringToFront = false,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_show_step", new { treePath, step, stepVariable }, () =>
+        => bridge.Activity.Trace("twincat_show_step", new { treePath, step, stepVariable, bringToFront }, () =>
             bridge.Dispatcher.Run(() =>
             {
                 var (summary, loc, _) = new EditorNavigationCoordinator(bridge.Dispatcher.Session)
-                    .ShowStep(treePath, step, stepVariable);
+                    .ShowStep(treePath, step, stepVariable, bringToFront);
                 return loc is null ? summary : summary + "\n" + TwinCatMcpTools.FormatBranch(loc);
             }), cancellationToken);
 
@@ -214,11 +215,12 @@ internal sealed class TwinCatMcpToolsDiagnostics(McpBridge bridge)
         "registered when the host is started with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.")]
     public string OpenPlcObject(
         [Description("Caret-separated tree path of the PLC source object to open (POU/GVL/DUT/INTERFACE).")] string treePath,
+        [Description(TwinCatMcpTools.BringToFrontHelp)] bool bringToFront = false,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_open_plc_object", new { treePath }, () =>
+        => bridge.Activity.Trace("twincat_open_plc_object", new { treePath, bringToFront }, () =>
             bridge.Dispatcher.Run(() =>
             {
-                var (summary, _) = new PlcCodeCoordinator(bridge.Dispatcher.Session).OpenObject(treePath);
+                var (summary, _) = new PlcCodeCoordinator(bridge.Dispatcher.Session).OpenObject(treePath, bringToFront);
                 return summary;
             }), cancellationToken);
 

@@ -31,6 +31,35 @@ public class PathPolicyTests
         Assert.Empty(reason);
     }
 
+    [Theory]
+    [InlineData(true)]   // a repository: .git folder
+    [InlineData(false)]  // a worktree: .git file
+    public void RepositoryRootOf_FindsTheRepositoryAboveTheSolution(bool gitFolder)
+    {
+        string repo = Path.Combine(Path.GetTempPath(), "ptc-xae-mcp-tests-" + Guid.NewGuid().ToString("N"));
+        string solutionDir = Path.Combine(repo, "Source", "Project");
+        Directory.CreateDirectory(solutionDir);
+        try
+        {
+            if (gitFolder) Directory.CreateDirectory(Path.Combine(repo, ".git"));
+            else File.WriteAllText(Path.Combine(repo, ".git"), "gitdir: elsewhere");
+
+            Assert.Equal(repo, PathPolicy.RepositoryRootOf(solutionDir));
+        }
+        finally { Directory.Delete(repo, recursive: true); }
+    }
+
+    [Fact]
+    public void RepositoryRootOf_WithoutARepository_IsNull()
+    {
+        // Deeper than MaxRepositoryDepth below a fresh folder, so the search never leaves it.
+        string root = Path.Combine(Path.GetTempPath(), "ptc-xae-mcp-tests-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Combine(root, "a", "b", "c", "d", "e", "f", "g", "h");
+        Directory.CreateDirectory(dir);
+        try { Assert.Null(PathPolicy.RepositoryRootOf(dir)); }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     [Fact]
     public void IsAllowed_PathUnderSolutionDirectory_ReturnsTrue()
     {

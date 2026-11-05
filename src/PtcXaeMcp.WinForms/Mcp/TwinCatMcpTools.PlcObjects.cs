@@ -57,7 +57,8 @@ internal sealed partial class TwinCatMcpTools
                  "VISU/MANAGER|VISUALIZATION and RECIPE/MANAGER (all under a folder or the PLC project node), VISU/TARGET|WEB (under a visualization " +
                  "manager), RECIPE/DEFINITION (under a recipe manager), TASKREF/PROGRAM (under a PLC task node; name = the PROGRAM to run). " +
                  "The GLOBAL text list / image pool, the text-list enumeration and the trend elements are refused by XAE and not offered. " +
-                 "declaration optionally fills the new element (not for FOLDER, ACTION). returnType applies to FUNCTION, METHOD, PROPERTY (default BOOL); implLanguage " +
+                 "declaration optionally fills the new element (not for FOLDER, ACTION); implementation optionally writes its body right after (POU, METHOD, ACTION, " +
+                 "TRANSITION, GET, SET — a PROPERTY's code goes into its accessors), read back like twincat_plc_write. returnType applies to FUNCTION, METHOD, PROPERTY (default BOOL); implLanguage " +
                  "(ST, IL, SFC, FBD, CFC, LD; default ST) to POUs and members; accessors (GET | SET | BOTH, default BOTH) to PROPERTY only. A parameter that does " +
                  "not apply to the element is an [Error]. Logs the XAE out first. Returns the new element's tree path. " +
                  "A new GVL, an FB nobody instantiates or a function is not compiled until a task's program uses it (or it carries " +
@@ -71,31 +72,33 @@ internal sealed partial class TwinCatMcpTools
         [Description("Return type for FUNCTION, METHOD and PROPERTY. Defaults to BOOL.")] string? returnType = null,
         [Description("Implementation language: ST, IL, SFC, FBD, CFC or LD. Defaults to ST.")] string? implLanguage = null,
         [Description("For subtype=PROPERTY only: GET, SET or BOTH (default).")] string? accessors = null,
+        [Description("Optional body (implementation) written right after the element was created: ST text, or XAE's XML for SFC/FBD/CFC/LD. For a POU, METHOD, ACTION, TRANSITION, GET or SET.")] string? implementation = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_create",
-            new { kind, subtype, parentPath, name, declaration, returnType, implLanguage, accessors }, () =>
+            new { kind, subtype, parentPath, name, declaration, returnType, implLanguage, accessors, implementation }, () =>
             bridge.Dispatcher.Run(() =>
                 new PlcObjectCoordinator(bridge.Dispatcher.Session)
-                    .Create(kind, subtype, parentPath, name, declaration, returnType, implLanguage, accessors)), cancellationToken);
+                    .Create(kind, subtype, parentPath, name, declaration, returnType, implLanguage, accessors, implementation)), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_read", ReadOnly = true)]
     [Description("Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation " +
                  "(with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or " +
                  "TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] " +
                  "such as \"'<path>' is a GVL, not a DUT\". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to " +
-                 "twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the visible XAE editor (video mode), " +
-                 "best-effort. " + PlcKindHelp)]
+                 "twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the XAE editor (video mode), " +
+                 "best-effort, behind the user's work unless bringToFront=true. " + PlcKindHelp)]
     public string PlcRead(
         [Description("Caret-separated tree path of the element to read.")] string path,
         [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind,
         [Description("When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false.")] bool openInEditor = false,
+        [Description(BringToFrontHelp)] bool bringToFront = false,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_plc_read", new { path, kind, openInEditor }, () =>
+        => bridge.Activity.Trace("twincat_plc_read", new { path, kind, openInEditor, bringToFront }, () =>
             bridge.Dispatcher.Run(() =>
             {
                 if (openInEditor)
                 {
-                    try { bridge.Dispatcher.Session.OpenPlcObject(path); } catch (Exception ex) when (!ComCall.IsFinal(ex)) { } // a blocked XAE fails the tool now, not a second time in the read
+                    try { bridge.Dispatcher.Session.OpenPlcObject(path, bringToFront); } catch (Exception ex) when (!ComCall.IsFinal(ex)) { } // a blocked XAE fails the tool now, not a second time in the read
                 }
 
                 var (summary, content) = new PlcObjectCoordinator(bridge.Dispatcher.Session).Read(path, kind);

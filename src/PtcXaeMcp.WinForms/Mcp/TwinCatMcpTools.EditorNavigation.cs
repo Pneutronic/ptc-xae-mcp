@@ -42,16 +42,18 @@ internal sealed partial class TwinCatMcpTools
         "newlines), section='declaration' counts the declaration pane. Works while Online (no logout; " +
         "monitoring values stay visible) — but the declaration pane is the monitoring grid while " +
         "Online, so use the implementation section then. Confirmation is structural (the Go-To dialog " +
-        "was seen and closed on OK); there is no caret read-back. The OS foreground raise is " +
-        "best-effort and reported, never an error.")]
+        "was seen and closed on OK); there is no caret read-back. Placing the cursor needs the XAE in the " +
+        "foreground: pass bringToFront=true (only when a person asked where it is); without it the call is an " +
+        "[Error] unless the XAE already is in front.")]
     public string GotoLine(
         [Description("Caret-separated tree path of the POU to open, as used by twincat_read_pou.")] string treePath,
         [Description("1-based line number within the pane selected by 'section'.")] int line,
         [Description("Which pane 'line' counts within: 'implementation' (default) or 'declaration'.")] string? section = null,
+        [Description(BringToFrontHelp)] bool bringToFront = false,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_goto_line", new { treePath, line, section }, () =>
+        => bridge.Activity.Trace("twincat_goto_line", new { treePath, line, section, bringToFront }, () =>
             bridge.Dispatcher.Run(() =>
-                new EditorNavigationCoordinator(bridge.Dispatcher.Session).GotoLine(treePath, line, section).Summary), cancellationToken);
+                new EditorNavigationCoordinator(bridge.Dispatcher.Session).GotoLine(treePath, line, section, bringToFront).Summary), cancellationToken);
 
     // twincat_show_step moved to TwinCatMcpToolsDiagnostics (Mcp/TwinCatMcpTools.Diagnostics.cs) —
     // it is a demo/showcase tool, registered only with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.

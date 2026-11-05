@@ -8,13 +8,13 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
     /// </summary>
     internal Func<string, string?> FindRepositoryCopy { get; init; } = LibraryRepository.FindCopy;
 
-    public (string Summary, IReadOnlyList<LibraryReference> References) ListReferences()
+    public (string Summary, IReadOnlyList<LibraryReference> References) ListReferences(string? plcProjectName = null)
     {
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return (error, Array.Empty<LibraryReference>());
 
         IReadOnlyList<LibraryReference> refs;
-        try { refs = session.ListLibraryReferences(); }
+        try { refs = session.ListLibraryReferences(plcProjectName); }
         catch (InvalidOperationException ex) { return ($"[Error] {ex.Message}", Array.Empty<LibraryReference>()); }
         if (refs.Count == 0)
             return ("No library references found.", refs);
@@ -31,9 +31,9 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
     /// resolution of each placeholder is used when readable; otherwise the result is the reference's fixed version or
     /// the newest installed one, which the warnings say.
     /// </summary>
-    public (string Summary, IReadOnlyList<ResolvedLibraryReference> Items, IReadOnlyList<string> Warnings) ListReferencesResolved()
+    public (string Summary, IReadOnlyList<ResolvedLibraryReference> Items, IReadOnlyList<string> Warnings) ListReferencesResolved(string? plcProjectName = null)
     {
-        var (summary, refs) = ListReferences();
+        var (summary, refs) = ListReferences(plcProjectName);
         if (McpErrors.IsError(summary) || refs.Count == 0)
             return (summary, Array.Empty<ResolvedLibraryReference>(), Array.Empty<string>());
 
@@ -42,7 +42,7 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
         IReadOnlyList<InstalledLibrary> installed = Array.Empty<InstalledLibrary>();
         try
         {
-            var context = session.ReadPlcLibraryContexts(null).FirstOrDefault();
+            var context = session.ReadPlcLibraryContexts(plcProjectName).FirstOrDefault();
             if (context is not null)
             {
                 placeholders = context.Placeholders;
@@ -85,13 +85,13 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
     // tc3_plc_intro/41891384434359666059 "Using libraries"). The join key is the
     // resolved library Name (case-insensitive); Version "*" satisfies any installed
     // version with the same name.
-    public (string Summary, IReadOnlyList<LibraryAvailability> Items) CheckAvailability()
+    public (string Summary, IReadOnlyList<LibraryAvailability> Items) CheckAvailability(string? plcProjectName = null)
     {
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return (error, Array.Empty<LibraryAvailability>());
 
         IReadOnlyList<LibraryReference> refs;
-        try { refs = session.ListLibraryReferences(); }
+        try { refs = session.ListLibraryReferences(plcProjectName); }
         catch (InvalidOperationException ex) { return ($"[Error] {ex.Message}", Array.Empty<LibraryAvailability>()); }
         if (refs.Count == 0)
             return ("No library references found.", Array.Empty<LibraryAvailability>());
@@ -154,7 +154,7 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
     }
 
     public (string Summary, IReadOnlyList<LibraryReference> References) AddReference(
-        string name, string version, string? company, bool asPlaceholder, bool force)
+        string name, string version, string? company, bool asPlaceholder, bool force, string? plcProjectName = null)
     {
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return (error, Array.Empty<LibraryReference>());
@@ -184,13 +184,13 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
 
         // Idempotency: already referenced → no-op with informative message.
         IReadOnlyList<LibraryReference> existing;
-        try { existing = session.ListLibraryReferences(); }
+        try { existing = session.ListLibraryReferences(plcProjectName); }
         catch (InvalidOperationException ex) { return ($"[Error] {ex.Message}", Array.Empty<LibraryReference>()); }
         if (existing.Any(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase)))
             return ($"Library '{name}' is already referenced.", existing);
 
         IReadOnlyList<LibraryReference> refs;
-        try { refs = session.AddLibraryReference(name, version, company, asPlaceholder); }
+        try { refs = session.AddLibraryReference(name, version, company, asPlaceholder, plcProjectName); }
         catch (Exception ex) { return (McpErrors.EnsureError(ComCall.Describe(ex)), Array.Empty<LibraryReference>()); }
 
         // B-12 (issue #152): the refreshed list (re-read after the save) must show the reference.
@@ -215,13 +215,13 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
     private static string Describe(LibraryReference r) =>
         string.IsNullOrWhiteSpace(r.EffectiveResolution) ? $"{r.Name}, {r.Version}" : r.EffectiveResolution;
 
-    public (string Summary, IReadOnlyList<LibraryReference> References) RemoveReference(string name)
+    public (string Summary, IReadOnlyList<LibraryReference> References) RemoveReference(string name, string? plcProjectName = null)
     {
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return (error, Array.Empty<LibraryReference>());
 
         IReadOnlyList<LibraryReference> existing;
-        try { existing = session.ListLibraryReferences(); }
+        try { existing = session.ListLibraryReferences(plcProjectName); }
         catch (InvalidOperationException ex) { return ($"[Error] {ex.Message}", Array.Empty<LibraryReference>()); }
         var target = existing.FirstOrDefault(r => Refers(r, name));
         if (target is null)
@@ -232,7 +232,7 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
         string key = string.IsNullOrWhiteSpace(target.Placeholder) ? target.Name : target.Placeholder;
 
         IReadOnlyList<LibraryReference> refs;
-        try { refs = session.RemoveLibraryReference(key); }
+        try { refs = session.RemoveLibraryReference(key, plcProjectName); }
         catch (Exception ex) { return (McpErrors.EnsureError(ComCall.Describe(ex)), Array.Empty<LibraryReference>()); }
 
         if (refs.Any(r => Refers(r, target.Name) || Refers(r, key)))
@@ -388,13 +388,13 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
     }
 
     public (string Summary, IReadOnlyList<LibraryReference> References) SetVersion(
-        string name, string version, string? company)
+        string name, string version, string? company, string? plcProjectName = null)
     {
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return (error, Array.Empty<LibraryReference>());
 
         IReadOnlyList<LibraryReference> existing;
-        try { existing = session.ListLibraryReferences(); }
+        try { existing = session.ListLibraryReferences(plcProjectName); }
         catch (InvalidOperationException ex) { return ($"[Error] {ex.Message}", Array.Empty<LibraryReference>()); }
         var current = existing.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
         if (current is null)
@@ -407,7 +407,7 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
             company = current.Publisher;
 
         IReadOnlyList<LibraryReference> refs;
-        try { refs = session.SetLibraryVersion(name, version, company); }
+        try { refs = session.SetLibraryVersion(name, version, company, plcProjectName); }
         catch (InvalidOperationException ex) { return ($"[Error] {ex.Message}", Array.Empty<LibraryReference>()); }
         return ($"Set '{name}' to version {version}.", refs);
     }

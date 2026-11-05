@@ -29,10 +29,10 @@ internal sealed partial class TwinCatComSession
     //      reachable on a full VS shell — TcXaeShell's limited DTE has no
     //      ToolWindows, so this is a no-op there and the reconstruction above is the
     //      real path. Kept for full-VS hosts.
-    //   5. Focus: dte.MainWindow.Activate() to raise the document inside XAE, then a
-    //      best-effort Win32 SetForegroundWindow on the XAE process window. Windows
-    //      may refuse the foreground steal — reported as ForegroundConfirmed=false,
-    //      never an error.
+    //   5. Focus: only with bringToFront (a person asked where it is):
+    //      dte.MainWindow.Activate() and a best-effort Win32 SetForegroundWindow on the
+    //      XAE process window. Windows may refuse — reported as ForegroundConfirmed=false,
+    //      never an error. Without it the editor opens behind whatever the user works in.
 
     // Container item types that have no editor document to open.
     private static readonly int[] NonOpenableItemTypes =
@@ -42,7 +42,7 @@ internal sealed partial class TwinCatComSession
         ItemType_References,  // 617 — library-manager / References node
     };
 
-    public OpenPlcObjectResult OpenPlcObject(string treePath) => ComBusyRetry.Run(() =>
+    public OpenPlcObjectResult OpenPlcObject(string treePath, bool bringToFront = false) => ComBusyRetry.Run(() =>
     {
         if (string.IsNullOrWhiteSpace(treePath))
             throw new InvalidOperationException("treePath is required.");
@@ -79,7 +79,8 @@ internal sealed partial class TwinCatComSession
             try
             {
                 dynamic? window = dte.ItemOperations.OpenFile(diskPath);
-                try { window?.Activate(); } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
+                // Window.Activate can pull the whole XAE in front: only on request.
+                if (bringToFront) { try { window?.Activate(); } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { } }
                 opened = true;
                 strategy = "OpenFile(reconstructed disk path)";
             }
@@ -100,17 +101,21 @@ internal sealed partial class TwinCatComSession
                     ? "Could not resolve the on-disk source file from the tree path (and the Solution Explorer fallback is unavailable on this shell)."
                     : $"OpenFile('{diskPath}') and the Solution Explorer fallback both failed."));
 
-        // ── Focus: raise the document inside XAE, then OS foreground ──────────
-        try { dte.MainWindow.Activate(); } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
-
+        // ── Focus: only with bringToFront (a person asked where it is) ──────────
         // The attached DTE's own main window — not "some TcXaeShell" (issue #150, C-23).
-        bool foregroundConfirmed = Win32DialogAutomation.TryRaiseXaeToForeground(TryGetXaeMainWindow(dte));
+        IntPtr xaeMain = TryGetXaeMainWindow(dte);
+        if (bringToFront)
+        {
+            try { dte.MainWindow.Activate(); } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
+            Win32DialogAutomation.BringXaeToFront(xaeMain);
+        }
+        bool foregroundConfirmed = Win32DialogAutomation.IsXaeForeground(xaeMain);
 
         return new OpenPlcObjectResult(
             TreePath: treePath,
             Opened: opened,
             AlreadyOpen: alreadyOpen,
-            ForegroundRequested: true,
+            ForegroundRequested: bringToFront,
             ForegroundConfirmed: foregroundConfirmed,
             Note: $"open via {strategy}");
     }, OpenTimeout);

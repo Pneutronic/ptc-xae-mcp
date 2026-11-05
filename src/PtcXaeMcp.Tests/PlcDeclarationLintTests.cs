@@ -33,7 +33,7 @@ public class PlcDeclarationLintTests
         string? result = PlcDeclarationLint.CheckNoEmbeddedMemberHeader(declaration);
         Assert.NotNull(result);
         Assert.StartsWith("[Error]", result);
-        Assert.Contains("twincat_add_pou_member", result);
+        Assert.Contains("twincat_plc_create", result);
     }
 
     // The exact false-positive a live test hit: a variable literally named Method/

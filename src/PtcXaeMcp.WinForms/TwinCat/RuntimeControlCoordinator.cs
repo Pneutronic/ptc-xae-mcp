@@ -25,7 +25,7 @@ internal sealed class RuntimeControlCoordinator(ITwinCatSession session)
         if (error is not null) return error;
 
         if (string.IsNullOrWhiteSpace(netId))
-            return "[Error] netId is required.";
+            return "[Error] amsNetId is required.";
         if (ipAddr is null && hostName is null)
             return "[Error] Either ipAddr or hostName must be provided.";
 
@@ -39,7 +39,7 @@ internal sealed class RuntimeControlCoordinator(ITwinCatSession session)
         if (error is not null) return error;
 
         if (string.IsNullOrWhiteSpace(netId))
-            return "[Error] netId is required.";
+            return "[Error] amsNetId is required.";
 
         try { return session.SetTarget(netId, platform); }
         catch (Exception ex) { return $"[Error] {ex.Message}"; }

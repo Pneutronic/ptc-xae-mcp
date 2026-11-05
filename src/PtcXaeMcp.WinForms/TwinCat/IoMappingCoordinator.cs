@@ -5,9 +5,9 @@ internal sealed class IoMappingCoordinator(ITwinCatSession session)
     public string LinkVariables(string v1, string v2, int offs1 = 0, int offs2 = 0, int size = 0)
     {
         if (string.IsNullOrWhiteSpace(v1))
-            return "[Error] v1 is required.";
+            return "[Error] variable1TreePath is required.";
         if (string.IsNullOrWhiteSpace(v2))
-            return "[Error] v2 is required.";
+            return "[Error] variable2TreePath is required.";
 
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return error;
@@ -23,7 +23,7 @@ internal sealed class IoMappingCoordinator(ITwinCatSession session)
     public string UnlinkVariables(string v1, string v2 = "")
     {
         if (string.IsNullOrWhiteSpace(v1))
-            return "[Error] v1 is required.";
+            return "[Error] variable1TreePath is required.";
 
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return error;

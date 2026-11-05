@@ -11,48 +11,33 @@ internal sealed partial class TwinCatMcpTools
     [Description("Create a link between two TwinCAT variables identified by their caret-separated tree paths. " +
                  "Requires XAE running with a solution open. Saves the project after linking. " +
                  "Use twincat_get_fieldbus_topology to find I/O paths (TIID^...) and " +
-                 "twincat_list_pous to find PLC paths (TIPC^...). " +
+                 "twincat_plc_list to find PLC paths (TIPC^...). " +
                  "When TwinCAT refuses the link, the error names the cause: the type, bit size and direction of both " +
                  "variables, which path does not resolve, or which path is not a variable.")]
     public string LinkVariables(
-        [Description("Full tree path of the first variable, e.g. 'TIPC^PLC^PLC Projekt^MAIN.bVar'.")] string? variable1TreePath = null,
-        [Description("Full tree path of the second variable, e.g. 'TIID^Device 1 (EtherCAT)^Box 1^Channel 1'.")] string? variable2TreePath = null,
+        [Description("Full tree path of the first variable, e.g. 'TIPC^PLC^PLC Projekt^MAIN.bVar'.")] string variable1TreePath,
+        [Description("Full tree path of the second variable, e.g. 'TIID^Device 1 (EtherCAT)^Box 1^Channel 1'.")] string variable2TreePath,
         [Description("Bit offset within variable1TreePath (default 0).")] int bitOffset1 = 0,
         [Description("Bit offset within variable2TreePath (default 0).")] int bitOffset2 = 0,
         [Description("Number of bits to link; 0 means minimum size of both variables (default 0).")] int size = 0,
-        [Description("DEPRECATED alias for variable1TreePath, kept for one release so existing MCP clients that bind by this name keep working. Prefer variable1TreePath.")] string? v1 = null,
-        [Description("DEPRECATED alias for variable2TreePath, kept for one release. Prefer variable2TreePath.")] string? v2 = null,
-        [Description("DEPRECATED alias for bitOffset1, kept for one release. Prefer bitOffset1.")] int? offs1 = null,
-        [Description("DEPRECATED alias for bitOffset2, kept for one release. Prefer bitOffset2.")] int? offs2 = null,
         CancellationToken cancellationToken = default)
-    {
-        string t1 = ParamAliases.Coalesce(variable1TreePath, v1) ?? "";
-        string t2 = ParamAliases.Coalesce(variable2TreePath, v2) ?? "";
-        int o1 = ParamAliases.Coalesce(bitOffset1, offs1);
-        int o2 = ParamAliases.Coalesce(bitOffset2, offs2);
-        return bridge.Activity.Trace("twincat_link_variables",
-            new { v1 = t1, v2 = t2, offs1 = o1, offs2 = o2, size }, () =>
+        => bridge.Activity.Trace("twincat_link_variables",
+            new { variable1TreePath, variable2TreePath, bitOffset1, bitOffset2, size }, () =>
             bridge.Dispatcher.Run(() =>
-                new IoMappingCoordinator(bridge.Dispatcher.Session).LinkVariables(t1, t2, o1, o2, size)), cancellationToken);
-    }
+                new IoMappingCoordinator(bridge.Dispatcher.Session).LinkVariables(
+                    variable1TreePath ?? "", variable2TreePath ?? "", bitOffset1, bitOffset2, size)), cancellationToken);
 
     [McpServerTool(Name = "twincat_unlink_variables", ReadOnly = false, Destructive = true)]
     [Description("Remove a variable link in TwinCAT. " +
                  "If variable2TreePath is omitted or empty, all links from variable1TreePath are removed. " +
                  "Requires XAE running with a solution open. Saves the project after unlinking.")]
     public string UnlinkVariables(
-        [Description("Full tree path of the first variable.")] string? variable1TreePath = null,
+        [Description("Full tree path of the first variable.")] string variable1TreePath,
         [Description("Full tree path of the second variable. Leave empty to remove all links from variable1TreePath.")] string variable2TreePath = "",
-        [Description("DEPRECATED alias for variable1TreePath, kept for one release. Prefer variable1TreePath.")] string? v1 = null,
-        [Description("DEPRECATED alias for variable2TreePath, kept for one release. Prefer variable2TreePath.")] string? v2 = null,
         CancellationToken cancellationToken = default)
-    {
-        string t1 = ParamAliases.Coalesce(variable1TreePath, v1) ?? "";
-        string t2 = ParamAliases.Coalesce(variable2TreePath, v2) ?? "";
-        return bridge.Activity.Trace("twincat_unlink_variables", new { v1 = t1, v2 = t2 },
+        => bridge.Activity.Trace("twincat_unlink_variables", new { variable1TreePath, variable2TreePath },
             () => bridge.Dispatcher.Run(() =>
-                new IoMappingCoordinator(bridge.Dispatcher.Session).UnlinkVariables(t1, t2)), cancellationToken);
-    }
+                new IoMappingCoordinator(bridge.Dispatcher.Session).UnlinkVariables(variable1TreePath ?? "", variable2TreePath ?? "")), cancellationToken);
 
     [McpServerTool(Name = "twincat_get_mapping_info", ReadOnly = false, Destructive = true)]
     [Description("Export all current variable mappings as XML (VarLinks format) via ITcSysManager3::ProduceMappingInfo. " +

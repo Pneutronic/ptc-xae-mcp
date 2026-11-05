@@ -38,7 +38,6 @@ public class MutatingCallGuardTests
     [InlineData("twincat_build_solution")]
     [InlineData("twincat_close_project")]
     [InlineData("twincat_save_project")]
-    [InlineData("twincat_delete_plc_object")]
     [InlineData("twincat_plc_create")]
     [InlineData("twincat_plc_write")]
     [InlineData("twincat_plc_delete")]

@@ -201,11 +201,10 @@ public partial class McpServerTests
         Assert.Contains("newName", text);
     }
 
-    // The XAE's "Automatisches Umbenennen über Refactoring" prompt is answered by the rename tools; the answer
+    // The XAE's "Automatisches Umbenennen über Refactoring" prompt is answered by the rename tool; the answer
     // is an explicit, optional boolean that defaults to "Nein" (false).
     [SkippableTheory]
     [InlineData("twincat_plc_rename")]
-    [InlineData("twincat_rename_plc_object")]
     public async Task RenameTools_HaveOptionalBooleanUpdateReferences(string tool)
     {
         SkipIfNotReachable();

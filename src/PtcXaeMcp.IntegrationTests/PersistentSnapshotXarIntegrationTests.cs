@@ -10,7 +10,7 @@ namespace PtcXaeMcp.IntegrationTests;
 /// and in Run, a --diagnostics MCP server on port 5010 (the human-confirm step has no MCP tool; the live suite uses
 /// the diagnostics-only <c>twincat_persistent_snapshot_test_confirm</c>, like <c>twincat_ibn_arm</c>).
 /// Every call that reads or writes the runtime passes the target as <c>amsNetId</c> (issue #195); the confirm step
-/// takes only the restore id (an argument a tool does not declare is refused).
+/// and the restore status take only the restore id (an argument a tool does not declare is refused).
 /// </summary>
 [Collection("Stage XAR")]
 [Trait("Stage", "XAR")]
@@ -53,9 +53,13 @@ public class PersistentSnapshotXarIntegrationTests : IAsyncLifetime
         if (_client is null) throw new SkipException("persistent-snapshot: MCP client could not be created for Stage XAR.");
     }
 
+    // These act on a pending restore by its id, not on a target.
+    private static readonly HashSet<string> TakesOnlyTheRestoreId =
+        ["twincat_persistent_snapshot_test_confirm", "twincat_persistent_snapshot_restore_status"];
+
     private async Task<string> CallAsync(string tool, Dictionary<string, object?> args)
     {
-        if (tool != "twincat_persistent_snapshot_test_confirm") args["amsNetId"] = _xar.AmsNetId;
+        if (!TakesOnlyTheRestoreId.Contains(tool)) args["amsNetId"] = _xar.AmsNetId;
         var result = await _client!.CallToolAsync(tool, args,
             cancellationToken: new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token);
         string text = string.Join("\n", result.Content.OfType<TextContentBlock>().Select(c => c.Text));

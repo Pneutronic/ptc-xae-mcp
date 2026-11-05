@@ -755,7 +755,7 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
     // ── search / replace_text ─────────────────────────────────────────────────
 
     private static readonly Regex SearchHit = new(
-        @"^\S+ (?<path>\S.*?) — (?<section>declaration|implementation) L(?<line>\d+):(?<col>\d+) \(Revision: (?<rev>[0-9a-f]{16})\)$",
+        @"^\S+ (?<path>\S.*?) — (?<section>declaration|implementation) L(?<line>\d+):(?<col>\d+) \(Revision: (?<rev>[0-9a-f]{16})\)\r?$",
         RegexOptions.Multiline);
 
     [Trait("Description", "plc_search findet ein Token in Deklaration und Implementierung eines neuen FB mit den Zeilen, die plc_read zeigt — projektweit und mit pathPrefix gleich.")]

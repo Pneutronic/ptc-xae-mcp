@@ -31,6 +31,7 @@ public partial class McpServerTests
         Assert.Contains("twincat_library_signatures", names);
         Assert.Contains("twincat_plc_static_analysis", names);
         Assert.Contains("twincat_doctor", names);
+        Assert.Contains("twincat_plc_project_info", names);
         Assert.Contains("twincat_add_library_reference", names);
         Assert.Contains("twincat_remove_library_reference", names);
         Assert.Contains("twincat_set_library_version", names);

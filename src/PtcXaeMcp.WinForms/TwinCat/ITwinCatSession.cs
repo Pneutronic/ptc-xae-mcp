@@ -54,6 +54,10 @@ internal interface ITwinCatSession : IDisposable
     /// <see cref="NotSupportedException"/> when the XAE does not offer the method on IDispatch.
     /// </summary>
     string SaveAsLibrary2(string outputPath, bool encrypt, bool install);
+    /// <summary>ProduceXml(false) of the PLC project item (the nested project, TIPC^&lt;plc&gt;^&lt;plc&gt; Project).</summary>
+    string ReadPlcProjectXml(string? plcProjectName);
+    /// <summary>ConsumeXml on the PLC project item; the XAE's XmlAutomationException comes back as the exception.</summary>
+    void ConsumePlcProjectXml(string? plcProjectName, string xml);
     /// <summary>
     /// The type signatures of every resolved library of the PLC project as XML
     /// (ITcPlcLibraryManager2.ProduceAllLibrarySignatures). Changes nothing.

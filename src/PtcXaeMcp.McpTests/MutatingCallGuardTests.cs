@@ -76,6 +76,7 @@ public class MutatingCallGuardTests
     [InlineData("twincat_hmi_map_offline_symbol")]
     [InlineData("twincat_save_as_library")]
     [InlineData("twincat_plc_task_create")]
+    [InlineData("twincat_plc_project_info")]
     public void MutatingTools_AreNotOnTheNonMutatingList(string tool)
     {
         McpServerTests.NonMutatingTools.Should().NotContain(tool);

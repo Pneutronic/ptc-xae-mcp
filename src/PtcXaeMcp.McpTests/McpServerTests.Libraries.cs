@@ -7,6 +7,17 @@ namespace PtcXaeMcp.McpTests;
 public partial class McpServerTests
 {
     [SkippableFact]
+    public async Task PlcProjectInfo_ABadVersion_IsRefusedBeforeAnything()
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_plc_project_info",
+            new Dictionary<string, object?> { ["version"] = "1.0" });
+
+        Assert.StartsWith("[Error] version '1.0' is not a library version", GetText(result));
+    }
+
+    [SkippableFact]
     public async Task LibrarySignatures_IsListedReadOnly_AndRefusesAnOutputPathOutsideTheAllowedRoots()
     {
         SkipIfNotReachable();

@@ -4,9 +4,9 @@ using ModelContextProtocol.Protocol;
 namespace PtcXaeMcp.IntegrationTests;
 
 /// <summary>
-/// twincat_save_as_library with a .compiled-library target, live against the neutral fixture: the XAE either writes
-/// the compiled library (file exists, not empty, an existing file needs overwrite) or refuses because the fixture's
-/// PLC project has no Title — then the answer must carry the hint where to set it. Anything else fails.
+/// twincat_plc_project_info and twincat_save_as_library, live against the neutral fixture: the Title and Version are
+/// set and read back, then the PLC project is saved as .library and as .compiled-library (files exist and are not
+/// empty, an existing file needs overwrite).
 /// </summary>
 [Collection("Stage XAE")]
 [Trait("Stage", "XAE")]
@@ -51,9 +51,9 @@ public class SaveAsLibraryIntegrationTests : IAsyncLifetime
         return text;
     }
 
-    [Trait("Description", "Fixture als .compiled-library nach %TEMP% speichern → Datei existiert und ist nicht leer, vorhandene Datei nur mit overwrite; fehlt der Title, nennt der Fehler den Hinweis; andere Endung abgelehnt.")]
+    [Trait("Description", "Title und Version per plc_project_info setzen und zurücklesen, dann Fixture als .library und .compiled-library nach %TEMP% speichern → Dateien existieren und sind nicht leer, vorhandene Datei nur mit overwrite; andere Endung abgelehnt.")]
     [SkippableFact(Timeout = 600_000)]
-    public async Task SaveAsCompiledLibrary_WritesTheFile_OrNamesTheMissingTitle()
+    public async Task ProjectInfo_ThenSaveAsLibraryAndCompiledLibrary_WritesTheFiles()
     {
         LiveXae.GuardReady(_ready);
 
@@ -62,22 +62,28 @@ public class SaveAsLibraryIntegrationTests : IAsyncLifetime
         Assert.False(open.StartsWith("[Error]", StringComparison.Ordinal), open);
         await PlcProjectReadiness.AwaitAsync(_client!);
 
+        // A library needs the Title of the PLC project; the fixture has none.
+        string info = await CallAsync("twincat_plc_project_info",
+            new Dictionary<string, object?> { ["title"] = "PtcXaeMcpFixtureLib", ["version"] = "1.2.3.4", ["company"] = "Fixture" });
+        Assert.StartsWith("Set Title, Version, Company (verified by read-back, project saved).", info);
+        string read = await CallAsync("twincat_plc_project_info", new Dictionary<string, object?>());
+        Assert.Contains("Title: PtcXaeMcpFixtureLib", read);
+        Assert.Contains("Version: 1.2.3.4", read);
+
         string path = Path.Combine(Path.GetTempPath(), $"PtcFixtureLib_{Guid.NewGuid():N}.compiled-library");
+        string plain = Path.ChangeExtension(path, ".library");
         try
         {
             string wrongExtension = await CallAsync("twincat_save_as_library",
                 new Dictionary<string, object?> { ["outputPath"] = Path.ChangeExtension(path, ".zip") });
             Assert.StartsWith("[Error] outputPath must end in .library", wrongExtension);
 
+            string library = await CallAsync("twincat_save_as_library", new Dictionary<string, object?> { ["outputPath"] = plain });
+            Assert.False(library.StartsWith("[Error]", StringComparison.Ordinal), library);
+            Assert.True(File.Exists(plain) && new FileInfo(plain).Length > 0, $"{plain} missing or empty after: {library}");
+
             string text = await CallAsync("twincat_save_as_library", new Dictionary<string, object?> { ["outputPath"] = path });
-            if (text.StartsWith("[Error]", StringComparison.Ordinal))
-            {
-                // The only accepted refusal: the fixture's PLC project has no Title. It must say where to set it.
-                Assert.True(text.Contains("Title", StringComparison.OrdinalIgnoreCase) && text.Contains("Hint: a library needs the Title", StringComparison.Ordinal),
-                    $"Save as compiled library failed for another reason than a missing Title: {text}");
-                Assert.False(File.Exists(path), $"{path} was written although the tool reported an error");
-                return;
-            }
+            Assert.False(text.StartsWith("[Error]", StringComparison.Ordinal), text);
 
             Assert.Contains("compiled library", text);
             Assert.Contains("bytes written", text);
@@ -97,6 +103,7 @@ public class SaveAsLibraryIntegrationTests : IAsyncLifetime
         finally
         {
             try { File.Delete(path); } catch (IOException) { }
+            try { File.Delete(plain); } catch (IOException) { }
         }
     }
 }

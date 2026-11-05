@@ -380,8 +380,8 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
     // "'Title' not specified". The message alone does not say where to set it.
     internal static string WithTitleHint(string error) =>
         error.Contains("Title", StringComparison.OrdinalIgnoreCase)
-            ? error + " Hint: a library needs the Title of the PLC project to be set (Project Information / project " +
-                      "properties > Common > Title in the XAE); set it, then save again."
+            ? error + " Hint: a library needs the Title of the PLC project to be set — set it with " +
+                      "twincat_plc_project_info(title=…, version=…), then save again."
             : error;
 
     public (string Summary, IReadOnlyList<LibraryParameter> Parameters) GetParameters(string library)

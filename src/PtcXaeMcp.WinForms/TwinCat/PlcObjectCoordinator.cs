@@ -67,7 +67,7 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
     private static readonly string[] ContentlessKinds =
         [PlcKind.TextList, PlcKind.ImagePool, PlcKind.Visu, PlcKind.Recipe, PlcKind.Trend, PlcKind.Uml, PlcKind.TaskRef];
 
-    private static readonly string[] ContentVerbs = ["read", "write", "list_entries", "edit_entries"];
+    private static readonly string[] ContentVerbs = ["read", "write", "list_entries", "edit_entries", "replace_text"];
 
     // Null when the verb works for the kind in this build, else the reason as an "[Error] ...".
     private static string? Unsupported(string kind, string verb)
@@ -298,10 +298,8 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
             string current;
             try { current = ReadContent(path, k, entry).Revision; }
             catch (Exception ex) { return McpErrors.EnsureError(ComCall.IsBusy(ex) ? ComCall.Describe(ex) : ex.Message); }
-            if (!PlcRevision.Matches(expectedRevision, current))
-                return $"[Error] '{path}' changed since it was read (expected revision {expectedRevision.Trim()}, now {current}) — " +
-                       "someone else wrote it in between. Nothing was changed. Read it again with twincat_plc_read, apply your edit " +
-                       "to that text and write with the new revision.";
+            var stale = RevisionRefusal(path, expectedRevision, current);
+            if (stale is not null) return stale;
         }
 
         error = SessionGuards.EnsureOfflineForWrite(session);

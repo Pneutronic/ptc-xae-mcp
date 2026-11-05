@@ -157,6 +157,38 @@ public partial class McpServerTests
     }
 
     [SkippableFact]
+    public async Task PlcSearch_BadParameters_ReturnErrors()
+    {
+        SkipIfNotReachable();
+
+        var empty = GetText(await CallToolAsync("twincat_plc_search", new Dictionary<string, object?> { ["pattern"] = " " }));
+        Assert.Equal("[Error] pattern is required.", empty);
+
+        var scope = GetText(await CallToolAsync("twincat_plc_search",
+            new Dictionary<string, object?> { ["pattern"] = "x", ["scope"] = "body" }));
+        Assert.StartsWith("[Error] Unknown scope 'body'", scope);
+
+        var regex = GetText(await CallToolAsync("twincat_plc_search",
+            new Dictionary<string, object?> { ["pattern"] = "(", ["regex"] = true }));
+        Assert.StartsWith("[Error] pattern is not a valid regular expression", regex);
+    }
+
+    [SkippableFact]
+    public async Task PlcReplaceText_BadSection_ReturnsErrorBeforeTouchingTheProject()
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_plc_replace_text",
+            new Dictionary<string, object?>
+            {
+                ["path"] = "TIPC^Nope^DoesNotExist", ["kind"] = "POU", ["section"] = "body",
+                ["oldText"] = "a", ["newText"] = "b",
+            });
+
+        Assert.Equal("[Error] section must be declaration or implementation.", GetText(result));
+    }
+
+    [SkippableFact]
     public async Task PlcObjects_Rename_EmptyNewName_ReturnsError()
     {
         SkipIfNotReachable();

@@ -71,7 +71,7 @@ internal sealed partial class PlcObjectCoordinator
 
     public string EditEntries(string path, string kind, string op, string name, string? section = null, string? type = null,
         string? value = null, string? initialValue = null, string? address = null, string? comment = null,
-        string? afterName = null, string? newName = null, IReadOnlyList<string>? attributes = null)
+        string? afterName = null, string? newName = null, IReadOnlyList<string>? attributes = null, string? expectedRevision = null)
     {
         if (string.IsNullOrWhiteSpace(path)) return "[Error] path is required.";
         string normOp = (op ?? "").Trim().ToLowerInvariant();
@@ -95,7 +95,17 @@ internal sealed partial class PlcObjectCoordinator
         if (shapeError is not null) return shapeError;
 
         string declaration;
-        try { declaration = ReadDeclarationOf(path, k); }
+        try
+        {
+            if (string.IsNullOrWhiteSpace(expectedRevision)) declaration = ReadDeclarationOf(path, k);
+            else
+            {
+                var content = ReadContent(path, k, entry);
+                var stale = RevisionRefusal(path, expectedRevision, content.Revision);
+                if (stale is not null) return stale;
+                declaration = content.Declaration;
+            }
+        }
         catch (Exception ex) { return McpErrors.EnsureError(ComCall.IsBusy(ex) ? ComCall.Describe(ex) : ex.Message); }
 
         var result = DeclarationEntryEditor.Apply(declaration, shape!.Value, edit);
@@ -121,6 +131,10 @@ internal sealed partial class PlcObjectCoordinator
         string consequence = normOp == "add"
             ? "Run twincat_build_plc to check the project still builds."
             : "Code and ADS callers that used the old entry break — run twincat_rebuild_plc to find them.";
-        return $"{result.Summary} Written to {k} '{path}' (verified by read-back). {consequence}";
+        // The new revision lets the caller chain the next edit without another read; best-effort.
+        string revision = "";
+        try { revision = $" Revision: {ReadContent(path, k, entry).Revision}"; }
+        catch (Exception ex) when (!ComCall.IsFinal(ex)) { }
+        return $"{result.Summary} Written to {k} '{path}' (verified by read-back). {consequence}{revision}";
     }
 }

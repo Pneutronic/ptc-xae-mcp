@@ -75,6 +75,9 @@ internal sealed partial class FakeTwinCatSession
             Declaration = declaration ?? existing.Declaration,
             Implementation = implementation ?? existing.Implementation,
         };
+        // A DUT/GVL is read back through ReadGvl: keep that view in step with the write.
+        if (declaration is not null && GvlDeclarationsByPath.ContainsKey(treePath))
+            GvlDeclarationsByPath[treePath] = declaration;
     }
 
     public string CreatePou(string parentPath, string name, string pouType, string returnType, string implLanguage)

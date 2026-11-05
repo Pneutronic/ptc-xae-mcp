@@ -57,7 +57,9 @@ internal sealed partial class TwinCatMcpTools
                  "\"attribute 'hide'\" or a full {attribute 'hide'}), an empty list removes them, null leaves them unchanged. remove: name only; the entry's " +
                  "attribute lines go with it. Refused with an [Error], before the automatic logout and without a change: an unknown kind, a duplicate name, " +
                  "several names in one entry or several entries on one line, DUT ALIAS and INTERFACE bodies, a parameter that does not apply. The write is " +
-                 "verified by read-back. Renamed or removed entries break code and ADS callers — follow with twincat_rebuild_plc. " + PlcKindHelp)]
+                 "verified by read-back. With expectedRevision (from twincat_plc_read) the edit is refused, before the logout, when the element " +
+                 "changed since that read; the result ends with the new 'Revision: …'. Renamed or removed entries break code and ADS callers — " +
+                 "follow with twincat_rebuild_plc. " + PlcKindHelp)]
     public string PlcEditEntries(
         [Description("Caret-separated tree path of the element (DUT, GVL, POU or MEMBER).")] string path,
         [Description("Element kind the node must have: DUT, GVL, POU or MEMBER.")] string kind,
@@ -72,10 +74,12 @@ internal sealed partial class TwinCatMcpTools
         [Description("op=add: insert after this existing entry instead of at the end of the section.")] string? afterName = null,
         [Description("op=set: new name for the entry.")] string? newName = null,
         [Description("Attribute pragmas of the entry. Each is a name (hide), \"attribute 'hide'\" or {attribute 'hide'}. Null leaves them unchanged, an empty array removes them.")] string[]? attributes = null,
+        [Description("Revision twincat_plc_read reported for this element. When given, a different current revision refuses the edit (someone else changed it). Omit to edit unconditionally.")] string? expectedRevision = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_edit_entries",
-            new { path, kind, op, name, section, type, value, initialValue, address, comment, afterName, newName, attributes }, () =>
+            new { path, kind, op, name, section, type, value, initialValue, address, comment, afterName, newName, attributes, expectedRevision }, () =>
             bridge.Dispatcher.Run(() =>
                 new PlcObjectCoordinator(bridge.Dispatcher.Session).EditEntries(
-                    path, kind, op, name, section, type, value, initialValue, address, comment, afterName, newName, attributes)), cancellationToken);
+                    path, kind, op, name, section, type, value, initialValue, address, comment, afterName, newName, attributes,
+                    expectedRevision)), cancellationToken);
 }

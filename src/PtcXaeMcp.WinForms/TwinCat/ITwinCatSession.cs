@@ -48,6 +48,11 @@ internal interface ITwinCatSession : IDisposable
     /// a manual GUI step, interrupting every library-iteration cycle.
     /// </summary>
     string SaveAsLibrary(string outputPath, bool install);
+    /// <summary>
+    /// The type signatures of every resolved library of the PLC project as XML
+    /// (ITcPlcLibraryManager2.ProduceAllLibrarySignatures). Changes nothing.
+    /// </summary>
+    LibrarySignatureExport ProduceLibrarySignatures();
     IReadOnlyList<LibraryParameter> ListLibraryParameters(string placeholder);
     IReadOnlyList<LibraryParameter> SetLibraryParameter(string placeholder, string listName, string key, string value);
     string DumpTipcTree();

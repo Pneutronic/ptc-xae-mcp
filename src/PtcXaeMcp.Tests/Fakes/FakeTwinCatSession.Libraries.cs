@@ -9,6 +9,16 @@ internal sealed partial class FakeTwinCatSession
     public Exception? ListReferencesThrows { get; set; }
     public Exception? ListInstalledThrows { get; set; }
 
+    public LibrarySignatureExport LibrarySignatures { get; set; } = new("", "References", "TcXaeShell 64-bit");
+    public Exception? ProduceLibrarySignaturesThrows { get; set; }
+
+    public LibrarySignatureExport ProduceLibrarySignatures(string? plcProjectName = null)
+    {
+        CallLog.Add($"ProduceLibrarySignatures({plcProjectName})");
+        if (ProduceLibrarySignaturesThrows is not null) throw ProduceLibrarySignaturesThrows;
+        return LibrarySignatures;
+    }
+
     public IReadOnlyList<LibraryReference> ListLibraryReferences(string? plcProjectName = null)
     {
         CallLog.Add($"ListLibraryReferences({plcProjectName})");

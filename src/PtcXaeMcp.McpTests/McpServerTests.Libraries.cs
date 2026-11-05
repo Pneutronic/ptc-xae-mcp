@@ -6,6 +6,22 @@ namespace PtcXaeMcp.McpTests;
 /// <summary>Library references: list, check, add/remove/set version.</summary>
 public partial class McpServerTests
 {
+    [SkippableFact]
+    public async Task LibrarySignatures_IsListedReadOnly_AndRefusesAnOutputPathOutsideTheAllowedRoots()
+    {
+        SkipIfNotReachable();
+
+        var tools = await _client!.ListToolsAsync();
+        var tool = tools.Single(t => t.Name == "twincat_library_signatures");
+        Assert.True(tool.ProtocolTool.Annotations?.ReadOnlyHint);
+
+        var result = await CallToolAsync("twincat_library_signatures",
+            new Dictionary<string, object?> { ["outputPath"] = @"C:\Windows\System32\ptc-libsig.xml" });
+        var text = GetText(result);
+        Assert.StartsWith("[Error]", text);
+        Assert.Contains("outputPath", text);
+    }
+
     // ── Test 13 ────────────────────────────────────────────────────────────────
 
     [SkippableFact]

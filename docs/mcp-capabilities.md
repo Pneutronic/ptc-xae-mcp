@@ -29,7 +29,7 @@
 - [IbnLive](#ibnlive) (7)
 - [IoLink](#iolink) (3)
 - [IoMapping](#iomapping) (4)
-- [Libraries](#libraries) (10)
+- [Libraries](#libraries) (11)
 - [Lifecycle](#lifecycle) (4)
 - [NcAxes](#ncaxes) (5)
 - [PersistentSnapshot](#persistentsnapshot) (5)
@@ -1010,6 +1010,16 @@ Save as library / Save as library and install: export the open PLC project as a 
 |---|---|---|---|
 | `outputPath` | `string` |  | Absolute path the .library file should be written to, e.g. 'C:\Libs\PTC_Library.library'. |
 | `install` | `bool` | `false` | Also install into the local XAE library repository. Default false. |
+
+### `twincat_library_signatures`
+
+The public API of the libraries the PLC project references — function blocks, functions, types and global lists with their inputs, outputs and constants — as the XAE serialises it (ITcPlcLibraryManager2.ProduceAllLibrarySignatures). Use it before calling a library FB instead of guessing its inputs: compiled vendor libraries (Tc2_MC2, Tc3_EventLogger, …) have no readable source. Writes the XML to outputPath (default: <LOCALAPPDATA>\ptc-xae-mcp\library-signatures\<solution>.library-signatures.xml, outside the project) and returns per library name, version, distributor and the count of types per kind; typeName (e.g. MC_MoveAbsolute, case-insensitive) adds that type's inputs, outputs and constants. library narrows to one library (name or placeholder). Referenced libraries that are missing from the export (not resolved) are named. Changes nothing in the project. Methods and properties of an FB are probably not part of the export.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `library` | `string?` | `null` | Optional library name or placeholder, e.g. Tc2_MC2. Omit for every referenced library. |
+| `outputPath` | `string?` | `null` | Optional path of the XML file to write. Default under %LOCALAPPDATA%\ptc-xae-mcp\library-signatures. |
+| `typeName` | `string?` | `null` | Optional type name whose inputs/outputs/constants are returned inline, e.g. TON or MC_MoveAbsolute. |
 
 ### `twincat_get_library_parameters`
 

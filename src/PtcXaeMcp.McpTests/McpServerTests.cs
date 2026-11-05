@@ -99,6 +99,7 @@ public partial class McpServerTests : IAsyncLifetime
         "twincat_get_active_project", "twincat_resolve_host", "ptc_test_marker",
         "twincat_validate_schema",
         "twincat_list_library_references", "twincat_list_installed_libraries", "twincat_check_libraries_installed",
+        "twincat_library_signatures",
         "twincat_ipc_read_inventory", "twincat_ethercat_read_identities", "twincat_list_library_repositories",
         "twincat_get_fieldbus_topology", "twincat_get_device_xml", "twincat_get_iolink_config",
         "twincat_read_ethercat_startup", "twincat_read_soe_parameter",

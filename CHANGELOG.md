@@ -29,6 +29,17 @@ pull-request numbers refer to those.
   are told to reload it when the window changes the policy. Emergency stops (`twincat_stop`, `twincat_shutdown`,
   `twincat_force_close_xae`, the IBN abort/disarm/release) are never blocked. Without any setting nothing changes
   (`runtime`, no lists). A restricted level is named in the window title; `twincat_get_status` shows the policy.
+- `twincat_plc_list(limit, offset)` and `twincat_get_error_list(minLevel, limit, offset)`: page through a large
+  project or a long Error List; the last line then gives `total`, `has_more` and `next_offset`. `minLevel` keeps only
+  errors or errors and warnings. Without these arguments the output is unchanged.
+- `twincat_plc_read(paths)`: reads up to 50 elements of one kind in a single call, each under a `=== <path> ===`
+  line; an element that cannot be read is reported as its `[Error]` while the others are still read.
+
+### Changed
+- The most frequent errors name the next step on a second line `Next: …`: no XAE, no solution open, a PLC path that
+  does not exist (with how to find the real, localized path).
+- `twincat_plc_read`: `path` and `kind` are no longer marked required in the schema (because of `paths`); a call
+  without either path is refused as before.
 
 ## [3.0.0] - 2026-11-06
 

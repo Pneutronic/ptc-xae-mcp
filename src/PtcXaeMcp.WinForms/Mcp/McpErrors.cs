@@ -26,6 +26,19 @@ internal static class McpErrors
     /// <summary>Returns true when <paramref name="result"/> is a successful MCP string.</summary>
     internal static bool IsOk(string? result) => !IsError(result);
 
+    /// <summary>The line that names the next step after an error.</summary>
+    internal const string NextPrefix = "Next: ";
+
+    /// <summary>
+    /// <c>[Error] message</c> plus a second line <c>Next: hint</c> with the concrete next step, as text so every
+    /// client reads it. A message that already has a Next line keeps it.
+    /// </summary>
+    internal static string WithNext(string error, string hint)
+    {
+        string text = EnsureError(error);
+        return text.Contains("\n" + NextPrefix, StringComparison.Ordinal) ? text : $"{text}\n{NextPrefix}{hint}";
+    }
+
     /// <summary>
     /// Ensures <paramref name="result"/> carries the [Error] prefix exactly once.
     /// Pass-through when already prefixed (including a result that already

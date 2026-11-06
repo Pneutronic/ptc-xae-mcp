@@ -174,7 +174,7 @@ public sealed class PlcProjectLifecycleTests : IDisposable
     public void Create_NoSolution_IsRefused()
     {
         var fake = new FakeTwinCatSession { IsConnected = true };
-        Coordinator(fake).CreateProject("Plc2", null).Should().Be("[Error] No solution is currently open.");
+        Coordinator(fake).CreateProject("Plc2", null).Should().StartWith("[Error] No solution is currently open.\nNext: ");
     }
 
     [Fact]

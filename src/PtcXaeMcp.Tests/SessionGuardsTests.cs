@@ -11,7 +11,7 @@ public class SessionGuardsTests
     public void NoProcess_ReportsNoInstance()
     {
         var s = new FakeTwinCatSession { IsConnected = false };
-        Assert.Equal("[Error] No TwinCAT XAE instance is running.", SessionGuards.RequireOpenSolution(s));
+        Assert.StartsWith("[Error] No TwinCAT XAE instance is running.\nNext: twincat_open_project", SessionGuards.RequireOpenSolution(s));
     }
 
     [Fact]
@@ -55,7 +55,8 @@ public class SessionGuardsTests
     public void NoSolution_ReportsNoSolution()
     {
         var s = new FakeTwinCatSession { IsConnected = true, SolutionOpen = false };
-        Assert.Equal("[Error] No solution is currently open.", SessionGuards.RequireOpenSolution(s));
+        Assert.Equal("[Error] No solution is currently open.\nNext: twincat_open_project(slnPath) opens one; " +
+                     "twincat_get_active_project shows what the XAE has.", SessionGuards.RequireOpenSolution(s));
     }
 
     [Fact]

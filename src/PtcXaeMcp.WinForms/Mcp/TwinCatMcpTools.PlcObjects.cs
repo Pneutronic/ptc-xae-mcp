@@ -24,27 +24,32 @@ internal sealed partial class TwinCatMcpTools
                  "kind filters by element kind; parentPath restricts to the subtree below a tree path. Under a POU, an INTERFACE or a " +
                  "PROPERTY, parentPath lists its MEMBERs (METHOD, ACTION, PROPERTY, Get/Set), including members inside folders under a POU; " +
                  "kind=MEMBER requires such a parentPath. recursive=false lists only the direct children. One line per element: " +
-                 "kind/subtype, tree path, language. " + PlcKindHelp)]
+                 "kind/subtype, tree path, language. limit/offset page through a large project: the last line then gives total, has_more and next_offset. " +
+                 PlcKindHelp)]
     public string PlcList(
         [Description("Optional element kind filter, e.g. POU, DUT, GVL, MEMBER.")] string? kind = null,
         [Description("Optional caret-separated tree path; only elements below it are listed. Required for kind=MEMBER.")] string? parentPath = null,
         [Description("False lists only the direct children of parentPath. Default true.")] bool recursive = true,
+        [Description("Most elements to return; 0 (default) returns all.")] int limit = 0,
+        [Description("Elements to skip, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_plc_list", new { kind, parentPath, recursive }, () =>
-            bridge.Dispatcher.Run(() =>
+        => bridge.Activity.Trace("twincat_plc_list", new { kind, parentPath, recursive, limit, offset }, () =>
+            Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
             {
                 var (summary, entries) = new PlcObjectCoordinator(bridge.Dispatcher.Session).List(kind, parentPath, recursive);
                 if (McpErrors.IsError(summary) || entries.Count == 0)
                     return summary;
 
+                var page = Mcp.McpPaging.Apply(entries, limit, offset);
                 var sb = new StringBuilder();
                 sb.AppendLine(summary);
-                foreach (var e in entries)
+                foreach (var e in page.Items)
                 {
                     string what = e.Subtype is null ? e.Kind : $"{e.Kind}/{e.Subtype}";
                     string lang = string.IsNullOrEmpty(e.Language) ? "" : $" [{e.Language}]";
                     sb.AppendLine(CultureInfo.InvariantCulture, $"  {what,-24} {e.Path}{lang}");
                 }
+                if (page.Paged) sb.AppendLine(page.Footer());
                 return sb.ToString().TrimEnd();
             }), cancellationToken);
 
@@ -86,39 +91,85 @@ internal sealed partial class TwinCatMcpTools
                  "TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] " +
                  "such as \"'<path>' is a GVL, not a DUT\". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to " +
                  "twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the XAE editor (video mode), " +
-                 "best-effort, behind the user's work unless bringToFront=true. " + PlcKindHelp)]
+                 "best-effort, behind the user's work unless bringToFront=true. " +
+                 "paths reads several elements of the same kind in one call instead of path: each under a '=== <path> ===' line, a failing " +
+                 "one as its [Error] while the others are still read; the first line counts read and failed. " + PlcKindHelp)]
     public string PlcRead(
-        [Description("Caret-separated tree path of the element to read.")] string path,
-        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind,
-        [Description("When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false.")] bool openInEditor = false,
+        [Description("Caret-separated tree path of the element to read. Give either path or paths.")] string? path = null,
+        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind = "",
+        [Description("When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false. Not with paths.")] bool openInEditor = false,
         [Description(BringToFrontHelp)] bool bringToFront = false,
+        [Description("Several caret-separated tree paths of the same kind, read one after the other (at most 50). Instead of path.")] string[]? paths = null,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_plc_read", new { path, kind, openInEditor, bringToFront }, () =>
-            bridge.Dispatcher.Run(() =>
-            {
-                if (openInEditor)
-                {
-                    try { bridge.Dispatcher.Session.OpenPlcObject(path, bringToFront); } catch (Exception ex) when (!ComCall.IsFinal(ex)) { } // a blocked XAE fails the tool now, not a second time in the read
-                }
+        => bridge.Activity.Trace("twincat_plc_read", new { path, kind, openInEditor, bringToFront, paths }, () =>
+        {
+            bool one = !string.IsNullOrWhiteSpace(path);
+            bool many = paths is { Length: > 0 };
+            if (one == many)
+                return "[Error] Give either path (one element) or paths (several elements), not both and not neither.";
+            if (string.IsNullOrWhiteSpace(kind))
+                return "[Error] kind is required: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.";
+            if (many && paths!.Length > MaxBatchPaths)
+                return $"[Error] paths takes at most {MaxBatchPaths} elements (got {paths.Length}); read them in several calls.";
+            if (many && openInEditor)
+                return "[Error] openInEditor works with path only, not with paths.";
 
-                var (summary, content) = new PlcObjectCoordinator(bridge.Dispatcher.Session).Read(path, kind);
-                if (McpErrors.IsError(summary) || content is null)
-                    return summary;
+            return bridge.Dispatcher.Run(() =>
+            {
+                var coordinator = new PlcObjectCoordinator(bridge.Dispatcher.Session);
+                if (one)
+                {
+                    if (openInEditor)
+                    {
+                        try { bridge.Dispatcher.Session.OpenPlcObject(path!, bringToFront); } catch (Exception ex) when (!ComCall.IsFinal(ex)) { } // a blocked XAE fails the tool now, not a second time in the read
+                    }
+                    return ReadOne(coordinator, path!, kind);
+                }
 
                 var sb = new StringBuilder();
-                sb.AppendLine(summary);
-                if (content.HasDeclaration)
+                int failed = 0;
+                var parts = new List<string>();
+                foreach (var p in paths!)
                 {
-                    sb.AppendLine("--- Declaration ---");
-                    sb.AppendLine(content.Declaration);
+                    string text;
+                    // One element that throws must not cost the others; a blocked XAE (final) still ends the call.
+                    try { text = ReadOne(coordinator, p, kind); }
+                    catch (Exception ex) when (!ComCall.IsFinal(ex)) { text = McpErrors.EnsureError(ComCall.Describe(ex)); }
+                    if (McpErrors.IsError(text)) failed++;
+                    parts.Add($"=== {p} ===\n{text}");
                 }
-                if (content.HasImplementation)
-                {
-                    sb.AppendLine("--- Implementation ---");
-                    sb.AppendLine(content.Implementation);
-                }
+                if (failed == paths.Length)
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"[Error] None of the {paths.Length} elements could be read.");
+                else
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"Read {paths.Length - failed} of {paths.Length} elements ({failed} failed).");
+                foreach (var part in parts) sb.AppendLine(part);
                 return sb.ToString().TrimEnd();
-            }), cancellationToken);
+            });
+        }, cancellationToken);
+
+    /// <summary>The most elements one <c>twincat_plc_read(paths)</c> call reads.</summary>
+    internal const int MaxBatchPaths = 50;
+
+    private static string ReadOne(PlcObjectCoordinator coordinator, string path, string kind)
+    {
+        var (summary, content) = coordinator.Read(path, kind);
+        if (McpErrors.IsError(summary) || content is null)
+            return summary;
+
+        var sb = new StringBuilder();
+        sb.AppendLine(summary);
+        if (content.HasDeclaration)
+        {
+            sb.AppendLine("--- Declaration ---");
+            sb.AppendLine(content.Declaration);
+        }
+        if (content.HasImplementation)
+        {
+            sb.AppendLine("--- Implementation ---");
+            sb.AppendLine(content.Implementation);
+        }
+        return sb.ToString().TrimEnd();
+    }
 
     [McpServerTool(Name = "twincat_plc_write", ReadOnly = false, Destructive = true)]
     [Description("Replace the declaration and/or the implementation of an existing PLC element. A section that is null stays unchanged. " +

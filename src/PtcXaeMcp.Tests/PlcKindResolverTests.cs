@@ -193,7 +193,7 @@ public class PlcKindResolverTests
     [Fact]
     public void Check_MissingNode_IsNotFound()
     {
-        PlcKindResolver.Check("p", PlcKind.Pou, PlcNodeInfo.Missing).Should().Be("[Error] PLC tree path not found: p");
+        PlcKindResolver.Check("p", PlcKind.Pou, PlcNodeInfo.Missing).Should().Be("[Error] PLC tree path not found: p\nNext: " + PlcKindResolver.NotFoundHint);
     }
 
     [Fact]

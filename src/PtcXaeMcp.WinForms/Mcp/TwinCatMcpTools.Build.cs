@@ -16,10 +16,17 @@ internal sealed partial class TwinCatMcpTools
                  "the first line gives both the total and the distinct count. " +
                  "The Error List also shows runtime EventLogger events, sometimes twice; " +
                  "for alarm diagnosis use twincat_read_event_logger, which is authoritative. " +
+                 "minLevel keeps only errors ('error') or errors and warnings ('warning'); limit/offset page through a long list " +
+                 "(the last line then gives total, has_more and next_offset). " +
                  "Requires XAE running with a solution open.")]
-    public string GetErrorList(CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_get_error_list", null, () =>
-            bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).GetErrorList()), cancellationToken);
+    public string GetErrorList(
+        [Description("'error', 'warning' or 'message' (default: everything).")] string? minLevel = null,
+        [Description("Most (distinct) entries to return; 0 (default) returns all.")] int limit = 0,
+        [Description("Entries to skip, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_get_error_list", new { minLevel, limit, offset }, () =>
+            Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
+                new BuildCoordinator(bridge.Dispatcher.Session).GetErrorList(minLevel, limit, offset)), cancellationToken);
 
     [McpServerTool(Name = "twincat_clear_error_list", ReadOnly = false, Destructive = false)]
     [Description("Clear all entries in the XAE Error List window (the 'Löschen' / 'Clear' toolbar action). " +

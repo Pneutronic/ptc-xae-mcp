@@ -91,8 +91,19 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
     // whatever is currently in the Error List window. Previously the only way
     // to learn the current count was the side effect of ClearErrorList's
     // return value, i.e. a tool that also erases the thing it reports.
-    public string GetErrorList()
+    /// <param name="minLevel">'error', 'warning' or 'message'; null keeps everything.</param>
+    /// <param name="limit">Most distinct entries to list; 0 lists all (see <see cref="Mcp.McpPaging"/>).</param>
+    public string GetErrorList(string? minLevel = null, int limit = 0, int offset = 0)
     {
+        int rank = minLevel?.Trim().ToLowerInvariant() switch
+        {
+            null or "" or "message" => 2,
+            "warning" => 1,
+            "error" => 0,
+            _ => -1,
+        };
+        if (rank < 0) return $"[Error] minLevel must be 'error', 'warning' or 'message' (got '{minLevel}').";
+
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return error;
 
@@ -118,7 +129,11 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
         int messageCount = distinct.Count - errorCount - warningCount;
         string distinctNote = distinct.Count == errors.Count ? "" : $"{distinct.Count} distinct; ";
         sb.AppendLine(CultureInfo.InvariantCulture, $"{errors.Count} entries ({distinctNote}{errorCount} error, {warningCount} warning, {messageCount} message).");
-        foreach (var (e, count) in distinct)
+        var shown = rank == 2 ? distinct : distinct.Where(d => LevelRank(d.Entry.Level) <= rank).ToList();
+        if (rank < 2)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Showing level {minLevel!.Trim().ToLowerInvariant()} and above: {shown.Count} entries.");
+        var page = Mcp.McpPaging.Apply(shown, limit, offset);
+        foreach (var (e, count) in page.Items)
         {
             string location = e.File is not null
                 ? $" ({e.File}{(e.Line.HasValue ? $":{e.Line}" : "")})"
@@ -126,8 +141,12 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
             string times = count > 1 ? $" ({count}× in the Error List)" : "";
             sb.AppendLine(CultureInfo.InvariantCulture, $"[{e.Level.ToUpperInvariant()}]{location} {e.Description}{times}");
         }
+        if (page.Paged) sb.AppendLine(page.Footer());
         return sb.ToString().TrimEnd();
     }
+
+    // error 0, warning 1, anything else (message) 2.
+    private static int LevelRank(string level) => level switch { "error" => 0, "warning" => 1, _ => 2 };
 
     /// <summary>The disk-vs-XAE baseline; tests pass their own instance.</summary>
     internal StaleBufferGuard StaleGuard { get; init; } = StaleBufferGuard.Shared;

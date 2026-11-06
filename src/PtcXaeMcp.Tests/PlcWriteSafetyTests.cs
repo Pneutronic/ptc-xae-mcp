@@ -277,7 +277,7 @@ public class PlcWriteSafetyTests
             _     => c.CreateInterface(parent, "I_New", null),
         };
 
-        Assert.Equal($"[Error] Parent path not found: {parent}", r);
+        Assert.StartsWith($"[Error] Parent path not found: {parent}\nNext: twincat_plc_list", r);
         Assert.DoesNotContain("LogoutPlc()", fake.CallLog);
     }
 
@@ -287,7 +287,7 @@ public class PlcWriteSafetyTests
         var fake = OpenFake();
         fake.MissingPlcPaths.Add(PouPath);
         string r = new PouMembersCoordinator(fake).AddPouMember(PouPath, "METHOD", "M_Run", "INT", null);
-        Assert.Equal($"[Error] POU not found: {PouPath}", r);
+        Assert.StartsWith($"[Error] POU not found: {PouPath}\nNext: ", r);
         Assert.DoesNotContain("LogoutPlc()", fake.CallLog);
     }
 

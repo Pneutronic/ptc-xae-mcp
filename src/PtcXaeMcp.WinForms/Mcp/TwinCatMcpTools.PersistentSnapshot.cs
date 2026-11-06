@@ -15,22 +15,25 @@ internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_list_ads_symbols", ReadOnly = true)]
     [Description("Read-only browse of the ONLINE symbol table of a running PLC / UMR via ADS (no values -- " +
-                 "use twincat_read_ads_variables_batch for those). Returns JSON { success, count, truncated, " +
-                 "symbols: [{ path, type, size, isPersistent, readOnly, comment }], amsNetId, adsPort } or " +
-                 "[Error]. isPersistent is the runtime's IsPersistent flag (VAR_GLOBAL PERSISTENT); RETAIN " +
+                 "use twincat_read_ads_variables_batch for those). Returns JSON { success, total, offset, returned, " +
+                 "has_more, next_offset, symbols: [{ path, type, size, isPersistent, readOnly, comment }], amsNetId, " +
+                 "adsPort } or [Error]. Paged with limit/offset: call again with offset=next_offset while has_more is " +
+                 "true. total is null when the walk stopped after 100000 symbols (narrow root or maxDepth). " +
+                 "isPersistent is the runtime's IsPersistent flag (VAR_GLOBAL PERSISTENT); RETAIN " +
                  "variables are NOT flagged over ADS. Default amsNetId = the local AMS router's NetId, port 851.")]
     public string ListAdsSymbols(
         [Description("Symbol to list the children of, e.g. 'GVL_Recipe'. Omit for the top level.")] string? root = null,
         [Description("How many levels below root to list. Default 1.")] int? maxDepth = null,
         [Description("Only symbols the runtime flags as persistent. Default false.")] bool persistentOnly = false,
-        [Description("Maximum entries returned (default 500, max 5000).")] int? limit = null,
+        [Description("Symbols per page: default 500, at most 5000 (0 = 5000).")] int? limit = null,
+        [Description("Symbols to skip, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
         [Description("Optional AMS Net ID. Omit for the local TwinCAT runtime.")] string? amsNetId = null,
         [Description("ADS port of the PLC runtime. Default 851.")] int? adsPort = null,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_list_ads_symbols", new { root, maxDepth, persistentOnly, limit, amsNetId, adsPort }, () =>
-            bridge.Dispatcher.Run(() =>
+        => bridge.Activity.Trace("twincat_list_ads_symbols", new { root, maxDepth, persistentOnly, limit, offset, amsNetId, adsPort }, () =>
+            Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
                 new PersistentSnapshotCoordinator(bridge.Dispatcher.Session, bridge.SnapshotRestore)
-                    .ListSymbols(root, maxDepth, persistentOnly, limit, amsNetId, adsPort)), cancellationToken);
+                    .ListSymbols(root, maxDepth, persistentOnly, limit, amsNetId, adsPort, offset)), cancellationToken);
 
     [McpServerTool(Name = "twincat_persistent_snapshot_save", ReadOnly = true)]
     [Description("Capture the remanent data of a running PLC into a snapshot file (format " +
@@ -63,8 +66,11 @@ internal sealed partial class TwinCatMcpTools
     [McpServerTool(Name = "twincat_persistent_snapshot_compare", ReadOnly = true)]
     [Description("Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via " +
                  "otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, " +
-                 "equalCount, differenceCount, differences[{ path, snapshotPath, type, snapshot, live }], " +
-                 "onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] } (lists capped by limit). " +
+                 "equalCount, differenceCount, onlyInSnapshotCount, onlyOnPlcCount, typeMismatchCount, total, offset, " +
+                 "returned, has_more, next_offset, differences[{ path, snapshotPath, type, snapshot, live }], " +
+                 "onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] }. limit/offset page the four " +
+                 "leaf lists together: each list shows its items [offset, offset+limit); total is the longest list, so " +
+                 "call again with offset=next_offset while has_more is true; the *Count fields give each list's size. " +
                  "equal is true when every leaf of the snapshot matches. onlyInSnapshot = orphans with no counterpart " +
                  "on the PLC after pathMap; onlyOnPlc = remanent leaves the snapshot does not have (information " +
                  "only, it does not make equal false). Types are decided by the PLC as it is now (integer widths, " +
@@ -77,12 +83,13 @@ internal sealed partial class TwinCatMcpTools
         [Description("Absolute path of the PLC .tmc used to re-select the live remanent set. Omit to find it.")] string? tmcPath = null,
         [Description("Optional AMS Net ID. Omit for the local TwinCAT runtime.")] string? amsNetId = null,
         [Description("ADS port of the PLC runtime. Default 851.")] int? adsPort = null,
-        [Description("Cap per result list (default 200).")] int? limit = null,
+        [Description("Items per list and page: default 200, at most 5000 (0 = 5000).")] int? limit = null,
+        [Description("Items to skip in every list, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_persistent_snapshot_compare", new { snapshotPath, otherPath, pathMap, tmcPath, amsNetId, adsPort, limit }, () =>
-            bridge.Dispatcher.Run(() =>
+        => bridge.Activity.Trace("twincat_persistent_snapshot_compare", new { snapshotPath, otherPath, pathMap, tmcPath, amsNetId, adsPort, limit, offset }, () =>
+            Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
                 new PersistentSnapshotCoordinator(bridge.Dispatcher.Session, bridge.SnapshotRestore)
-                    .Compare(snapshotPath, otherPath, pathMap, tmcPath, amsNetId, adsPort, limit)), cancellationToken);
+                    .Compare(snapshotPath, otherPath, pathMap, tmcPath, amsNetId, adsPort, limit, offset)), cancellationToken);
 
     [McpServerTool(Name = "twincat_persistent_snapshot_restore", ReadOnly = false, Destructive = true)]
     [Description("Restore a snapshot into the running PLC -- DESTRUCTIVE and human-gated. dryRun defaults to " +

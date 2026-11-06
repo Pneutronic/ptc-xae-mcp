@@ -655,6 +655,66 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
         }
     }
 
+    private string PousDir =>
+        Path.Combine(Path.GetDirectoryName(_fixtureSln)!, FixtureLayout.SolutionName, FixtureLayout.PlcName, "POUs");
+
+    // #23 c: after a rename and a save, the file on disk must carry the new name (seen once: the XAE did not mark
+    // the element changed, Save skipped it, and the disk kept the old name while COM showed the new one).
+    [Trait("Description", "#23c: METHOD (abwechselnd mit/ohne updateReferences), ACTION und PROPERTY in 5 Runden umbenennen und speichern, dann den FB selbst → die Datei auf der Platte trägt jedes Mal den neuen Namen, keinen alten.")]
+    [SkippableFact(Timeout = 900_000)]
+    public async Task Rename_TheFileOnDiskFollows_AfterEverySave()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+
+        string stamp = Stamp();
+        string fb = $"FB_RenDisk_{stamp}";
+        string fbPath = $"{FixtureLayout.PousFolder}^{fb}";
+        string current = fbPath;
+
+        try
+        {
+            await OkAsync("twincat_plc_create", ("kind", "POU"), ("subtype", "FUNCTION_BLOCK"), ("parentPath", FixtureLayout.PousFolder), ("name", fb));
+            await OkAsync("twincat_plc_create", ("kind", "MEMBER"), ("subtype", "METHOD"), ("parentPath", fbPath), ("name", "M_R0"), ("returnType", "BOOL"));
+            await OkAsync("twincat_plc_create", ("kind", "MEMBER"), ("subtype", "ACTION"), ("parentPath", fbPath), ("name", "ACT_R0"), ("implLanguage", "ST"));
+            await OkAsync("twincat_plc_create", ("kind", "MEMBER"), ("subtype", "PROPERTY"), ("parentPath", fbPath), ("name", "P_R0"), ("returnType", "INT"));
+            await OkAsync("twincat_save_project");
+
+            string file = Path.Combine(PousDir, fb + ".TcPOU");
+            Assert.True(File.Exists(file), $"no file {file}");
+
+            for (int round = 1; round <= 5; round++)
+            {
+                bool updateReferences = round % 2 == 0;
+                foreach (var prefix in new[] { "M_R", "ACT_R", "P_R" })
+                    await OkAsync("twincat_plc_rename", ("path", $"{fbPath}^{prefix}{round - 1}"), ("kind", "MEMBER"),
+                        ("newName", $"{prefix}{round}"), ("updateReferences", updateReferences));
+                await OkAsync("twincat_save_project");
+
+                string onDisk = await File.ReadAllTextAsync(file);
+                foreach (var prefix in new[] { "M_R", "ACT_R", "P_R" })
+                {
+                    Assert.True(onDisk.Contains($"Name=\"{prefix}{round}\"", StringComparison.Ordinal),
+                        $"round {round} (updateReferences={updateReferences}): {prefix}{round} is not in the saved file");
+                    Assert.False(onDisk.Contains($"Name=\"{prefix}{round - 1}\"", StringComparison.Ordinal),
+                        $"round {round} (updateReferences={updateReferences}): the saved file still has {prefix}{round - 1}");
+                }
+            }
+
+            string renamedFb = fb + "_X";
+            await OkAsync("twincat_plc_rename", ("path", fbPath), ("kind", "POU"), ("newName", renamedFb));
+            current = $"{FixtureLayout.PousFolder}^{renamedFb}";
+            await OkAsync("twincat_save_project");
+
+            var declaring = Directory.EnumerateFiles(PousDir, "*.TcPOU")
+                .Where(f => File.ReadAllText(f).Contains($"FUNCTION_BLOCK {renamedFb}", StringComparison.Ordinal)).ToList();
+            Assert.True(declaring.Count == 1, $"files declaring {renamedFb}: {declaring.Count}");
+            Assert.DoesNotContain(Directory.EnumerateFiles(PousDir, "*.TcPOU"),
+                f => Regex.IsMatch(File.ReadAllText(f), $@"FUNCTION_BLOCK {Regex.Escape(fb)}\b"));
+        }
+        finally { await TryDeleteAsync(current, "POU"); }
+    }
+
     [Trait("Description", "Elemente ohne zugänglichen Inhalt (TEXTLIST, IMAGEPOOL, UML, VISU, RECIPE, TASKREF): anlegen, auflisten (mit Subtyp), umbenennen, löschen; read/write/entries antworten [Error] mit Grund; nicht anlegbare Subtypen werden benannt.")]
     [SkippableFact(Timeout = 600_000)]
     public async Task ContentlessElements_Lifecycle_AndContentVerbsRefuse()
@@ -801,6 +861,12 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
 
             string scoped = await OkAsync("twincat_plc_search", ("pattern", token), ("wholeWord", true), ("pathPrefix", path));
             Assert.Equal(SearchHit.Matches(all).Select(m => m.Value), SearchHit.Matches(scoped).Select(m => m.Value));
+
+            // The paging convention: the last line is the page footer; a second page continues where the first stopped.
+            Assert.EndsWith("Page: offset 0, returned 5 of 5; has_more false", all.TrimEnd());
+            string second = await OkAsync("twincat_plc_search", ("pattern", token), ("wholeWord", true), ("limit", 2), ("offset", 2));
+            Assert.EndsWith("Page: offset 2, returned 2 of 5; has_more true, next_offset 4", second.TrimEnd());
+            Assert.Equal(SearchHit.Matches(all).Select(m => m.Value).Skip(2).Take(2), SearchHit.Matches(second).Select(m => m.Value));
         }
         finally
         {

@@ -31,6 +31,8 @@ public partial class McpServerTests
         Assert.Contains("twincat_library_signatures", names);
         Assert.Contains("twincat_plc_static_analysis", names);
         Assert.Contains("twincat_doctor", names);
+        Assert.Contains("twincat_xae_dialogs", names);
+        Assert.Contains("twincat_xae_dialog_answer", names);
         Assert.Contains("twincat_plc_project_info", names);
         Assert.Contains("twincat_add_library_reference", names);
         Assert.Contains("twincat_remove_library_reference", names);
@@ -70,6 +72,10 @@ public partial class McpServerTests
         Assert.Contains("twincat_plc_project_export", names);
         Assert.Contains("twincat_plc_project_add_existing", names);
         Assert.Contains("twincat_plc_task_create", names);
+        Assert.Contains("twincat_event_class_create", names);
+        Assert.Contains("twincat_event_class_read", names);
+        Assert.Contains("twincat_event_class_update", names);
+        Assert.Contains("twincat_plc_add_global_data_type", names);
         Assert.Contains("twincat_read_init_symbols", names);
         Assert.Contains("twincat_write_init_symbol", names);
         Assert.Contains("twincat_read_retain_config", names);

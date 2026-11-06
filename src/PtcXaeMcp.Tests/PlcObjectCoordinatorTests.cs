@@ -203,7 +203,7 @@ public class PlcObjectCoordinatorTests
     {
         var fake = OpenFake();
         fake.MissingPlcPaths.Add("^POUs^Nope");
-        Coord(fake).Read("^POUs^Nope", "POU").Summary.Should().Be("[Error] PLC tree path not found: ^POUs^Nope");
+        Coord(fake).Read("^POUs^Nope", "POU").Summary.Should().StartWith("[Error] PLC tree path not found: ^POUs^Nope\nNext: ");
     }
 
     [Fact]

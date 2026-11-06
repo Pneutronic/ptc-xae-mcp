@@ -25,12 +25,18 @@ public partial class McpServerTests
     {
         SkipIfNotReachable();
         var result = await CallToolAsync("twincat_read_event_logger",
-            new Dictionary<string, object?> { ["maxEvents"] = 10 });
+            new Dictionary<string, object?> { ["limit"] = 10 });
         var text = GetText(result);
         Assert.False(string.IsNullOrWhiteSpace(text));
         bool isJson = text.TrimStart().StartsWith("{", StringComparison.Ordinal);
         bool isError = text.StartsWith("[Error]", StringComparison.Ordinal);
         Assert.True(isJson || isError, $"Unexpected response: {text}");
+        if (isJson)
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(text);
+            Assert.True(doc.RootElement.GetProperty("returned").GetInt32() <= 10, text);
+            Assert.True(doc.RootElement.TryGetProperty("has_more", out _), text);
+        }
     }
 
     // ── Test 86 — xae-event-logger: confirm invalid mode → [Error] ────────────

@@ -95,13 +95,15 @@ public class EventLoggerTests
                 "EventLogger read: 1 events, 1 active alarms."),
         };
 
-        var json = new EventLoggerCoordinator(fake).ReadEventLogger(0, null, null);
+        var json = new EventLoggerCoordinator(fake).ReadEventLogger(null, 0, null, null);
 
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         Assert.True(root.GetProperty("success").GetBoolean());
         Assert.Equal(1, root.GetProperty("loggedCount").GetInt32());
         Assert.Equal(1, root.GetProperty("activeAlarmCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("total").GetInt32());
+        Assert.False(root.GetProperty("has_more").GetBoolean());
         var ev = root.GetProperty("events")[0];
         Assert.Equal("Alarm", ev.GetProperty("type").GetString());
         Assert.Equal("Motor overtemp", ev.GetProperty("text").GetString());
@@ -109,15 +111,94 @@ public class EventLoggerTests
     }
 
     [Fact]
-    public void Coordinator_Read_DefaultsMaxEventsWhenZero()
+    public void Coordinator_Read_DefaultPage_ReadsOneEventMoreThanItShows()
     {
         var fake = new FakeTwinCatSession();
 
-        _ = new EventLoggerCoordinator(fake).ReadEventLogger(0, null, null);
+        _ = new EventLoggerCoordinator(fake).ReadEventLogger(null, 0, null, null);
+        _ = new EventLoggerCoordinator(fake).ReadEventLogger(0, 0, null, null);
 
-        // 0 must not be passed through as "return zero events"; coordinator
-        // substitutes a sane default.
-        Assert.DoesNotContain("ReadEventLogger(max=0", fake.CallLog[0]);
+        // Default page 100 (+1 to learn whether more follow); limit 0 asks for the maximum of 1000.
+        Assert.Contains("ReadEventLogger(max=101,", fake.CallLog[0]);
+        Assert.Contains("ReadEventLogger(max=1001,", fake.CallLog[1]);
+    }
+
+    private static List<EventLogEntry> Cache(int count, Func<int, string>? severity = null) =>
+        Enumerable.Range(1, count).Select(i => SampleEvent() with { EventId = (uint)i, Severity = severity?.Invoke(i) ?? "Info" }).ToList();
+
+    private static JsonElement Read(FakeTwinCatSession fake, int? limit, int offset, string? minSeverity = null)
+    {
+        string json = new EventLoggerCoordinator(fake).ReadEventLogger(limit, offset, minSeverity, null);
+        return JsonDocument.Parse(json).RootElement.Clone();
+    }
+
+    private static List<uint> Ids(JsonElement root) =>
+        root.GetProperty("events").EnumerateArray().Select(e => e.GetProperty("eventId").GetUInt32()).ToList();
+
+    [Fact]
+    public void Coordinator_Read_PageWithMoreInTheLogger_HasNoTotalButANextOffset()
+    {
+        var fake = new FakeTwinCatSession { FakeEventCache = Cache(25) };
+
+        var root = Read(fake, 10, 0);
+
+        Assert.Equal(Enumerable.Range(1, 10).Select(i => (uint)i), Ids(root));
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("total").ValueKind);
+        Assert.Equal(10, root.GetProperty("returned").GetInt32());
+        Assert.True(root.GetProperty("has_more").GetBoolean());
+        Assert.Equal(10, root.GetProperty("next_offset").GetInt32());
+        Assert.Contains("ReadEventLogger(max=11,", fake.CallLog[0]);
+    }
+
+    [Fact]
+    public void Coordinator_Read_LastPage_KnowsTheTotal()
+    {
+        var fake = new FakeTwinCatSession { FakeEventCache = Cache(25) };
+
+        var root = Read(fake, 10, 20);
+
+        Assert.Equal(Enumerable.Range(21, 5).Select(i => (uint)i), Ids(root));
+        Assert.Equal(25, root.GetProperty("total").GetInt32());
+        Assert.False(root.GetProperty("has_more").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("next_offset").ValueKind);
+    }
+
+    [Fact]
+    public void Coordinator_Read_PagingThroughAll_VisitsEveryEventOnce()
+    {
+        var fake = new FakeTwinCatSession { FakeEventCache = Cache(23) };
+        var seen = new List<uint>();
+        int? offset = 0;
+        while (offset is { } o)
+        {
+            var root = Read(fake, 5, o);
+            seen.AddRange(Ids(root));
+            offset = root.GetProperty("has_more").GetBoolean() ? root.GetProperty("next_offset").GetInt32() : null;
+        }
+        Assert.Equal(Enumerable.Range(1, 23).Select(i => (uint)i), seen);
+    }
+
+    [Fact]
+    public void Coordinator_Read_SeverityFilter_WidensTheReadUntilThePageIsFull()
+    {
+        // Only every tenth event is an error: a page of 3 errors needs more than the first 4 events.
+        var fake = new FakeTwinCatSession { FakeEventCache = Cache(100, i => i % 10 == 0 ? "Error" : "Info") };
+
+        var root = Read(fake, 3, 0, "Error");
+
+        Assert.Equal(new uint[] { 10, 20, 30 }, Ids(root));
+        Assert.True(root.GetProperty("has_more").GetBoolean());
+        Assert.Equal(3, root.GetProperty("next_offset").GetInt32());
+        Assert.True(fake.CallLog.Count > 1, string.Join(" | ", fake.CallLog));
+    }
+
+    [Fact]
+    public void Coordinator_Read_NegativeOffset_IsRefusedWithoutReading()
+    {
+        var fake = new FakeTwinCatSession();
+
+        Assert.StartsWith("[Error] offset must be 0 or more", new EventLoggerCoordinator(fake).ReadEventLogger(null, -1, null, null));
+        Assert.Empty(fake.CallLog);
     }
 
     [Fact]
@@ -130,7 +211,7 @@ public class EventLoggerTests
                 "Not connected to the TC3 EventLogger."),
         };
 
-        var text = new EventLoggerCoordinator(fake).ReadEventLogger(50, null, null);
+        var text = new EventLoggerCoordinator(fake).ReadEventLogger(50, 0, null, null);
 
         Assert.StartsWith("[Error]", text);
         Assert.Contains("Not connected", text);

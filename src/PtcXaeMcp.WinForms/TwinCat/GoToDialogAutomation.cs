@@ -19,6 +19,11 @@ internal interface IGoToDialogWin32
     void Close(IntPtr dialog);
     /// <summary>An XAE error/assertion message box that may be dismissed, or null.</summary>
     GoToDialogAutomation.ErrorBox? FindErrorBox(IntPtr xaeMain);
+    /// <summary>
+    /// Cancels one other dialog that blocks the XAE (e.g. "Variable deklarieren" opened by keys that reached the
+    /// editor) through its Cancel button — never a destructive dialog. Returns its title, or null when there is none.
+    /// </summary>
+    string? CancelStrayDialog(IntPtr xaeMain);
 }
 
 /// <summary>
@@ -156,8 +161,44 @@ internal static class GoToDialogAutomation
             why += gone ? " — Go-To dialog cancelled (WM_CLOSE) to keep XAE responsive"
                         : " — WM_CLOSE sent but the Go-To dialog is STILL open; close it in the XAE";
         }
+        var swept = SweepAfterFailure(w, xaeMain, t, commandDone);
+        if (swept.Count > 0)
+            why += $" — afterwards cancelled to leave the XAE free: {string.Join(", ", swept.Select(s => $"'{s}'"))}";
         string done = notes.Count == 0 ? "" : $"{string.Join("; ", notes)}; ";
         return new DriveOutcome(true, false, $"Go-To dialog '{title}': {done}{why}", answered);
+    }
+
+    /// <summary>How long a failed drive keeps clearing dialogs it left behind.</summary>
+    internal static readonly TimeSpan SweepWindow = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// A failed drive must not leave the XAE modal: the command may still re-open the Go-To dialog after the verdict,
+    /// and keys that reached the editor can open another dialog ("Variable deklarieren") the command then waits for.
+    /// For <see cref="SweepWindow"/>, or until the command has returned and nothing is open, every Go-To dialog is
+    /// cancelled (WM_CLOSE) and every other non-destructive blocking dialog is cancelled through its Cancel button.
+    /// Seen in a live run: both were left open and blocked every later call. Returns what was cancelled.
+    /// </summary>
+    internal static List<string> SweepAfterFailure(IGoToDialogWin32 w, IntPtr xaeMain, Timings t, Func<bool>? commandDone)
+    {
+        var swept = new List<string>();
+        var deadline = DateTime.UtcNow + SweepWindow;
+        while (DateTime.UtcNow < deadline && swept.Count < 8)
+        {
+            if (w.CancelStrayDialog(xaeMain) is { } stray)
+            {
+                swept.Add(stray);
+                continue;
+            }
+            if (w.FindDialog(xaeMain) is { } goTo)
+            {
+                w.Close(goTo.Hwnd);
+                if (WaitUntil(() => !w.IsOpen(goTo.Hwnd), t.Close)) swept.Add(goTo.Title);
+                continue;
+            }
+            if (commandDone is null || commandDone()) break;
+            Thread.Sleep(100);
+        }
+        return swept;
     }
 
     private static string Flatten(string text) =>
@@ -367,6 +408,30 @@ internal static class GoToDialogAutomation
             _ = SendMessageTimeoutInt(dialog, WM_COMMAND, (IntPtr)IDOK, okButton, SMTO_ABORTIFHUNG, 1000, out _);
 
         public void Close(IntPtr dialog) => _ = PostMessage(dialog, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+
+        public string? CancelStrayDialog(IntPtr xaeMain)
+        {
+            if (xaeMain == IntPtr.Zero) return null;
+            try
+            {
+                var windows = PromptWindowReader.Snapshot(XaeWindowScope.For(xaeMain));
+                IntPtr goTo = FindDialog(xaeMain)?.Hwnd ?? IntPtr.Zero; // the Go-To dialog itself is closed by WM_CLOSE
+                foreach (var view in XaeDialogInspector.View(windows, XaeDialogs.IsEnabled))
+                {
+                    if (!view.Blocking || view.Class == XaeDialogClass.KnownDestructive) continue;
+                    var window = windows.First(p => XaeDialogInspector.IdOf(p.Hwnd) == view.Id);
+                    if (window.Hwnd == goTo) continue;
+                    var cancel = window.Buttons.FirstOrDefault(b =>
+                        b.Caption.Equals("Abbrechen", StringComparison.OrdinalIgnoreCase) ||
+                        b.Caption.Equals("Cancel", StringComparison.OrdinalIgnoreCase));
+                    if (cancel is null || !XaeDialogs.IsEnabled(window.Hwnd)) continue;
+                    PromptWindowReader.Press(window, cancel);
+                    return XaeDialogs.WaitClosed(window.Hwnd, TimeSpan.FromSeconds(2)) ? view.Title : null;
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.Windows.Automation.ElementNotAvailableException) { }
+            return null;
+        }
 
         // Message boxes of the XAE process (owned by its main window, or ownerless like the .NET
         // assertion box) — never the host's.

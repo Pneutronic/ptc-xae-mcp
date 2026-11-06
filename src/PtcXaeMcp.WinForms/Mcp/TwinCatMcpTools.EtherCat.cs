@@ -66,21 +66,25 @@ internal sealed partial class TwinCatMcpTools
                  "picks the latest installed revision). Malformed ESI files are skipped and counted. " +
                  "The first scan of the full directory can take several seconds; results are cached per " +
                  "process until an ESI file changes. Result body is a one-line summary followed by " +
-                 "indented JSON.")]
+                 "indented JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, " +
+                 "devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }. " +
+                 "Paged with limit/offset: total counts every match, call again with offset=next_offset while " +
+                 "has_more is true.")]
     public string ListEtherCatBoxCatalog(
         [Description("Case-insensitive substring of the ESI Type/vInfo, e.g. 'EL1008', 'EK11' or 'AX52'. " +
-                     "Strongly recommended — without it the first maxResults of several thousand types are returned.")]
+                     "Strongly recommended — without it the first page of several thousand types is returned.")]
         string? filter = null,
-        [Description("Maximum number of devices returned (default 100, capped at 1000). " +
-                     "The summary/JSON report the total match count and whether the list was truncated.")]
-        int maxResults = EsiCatalogScanner.DefaultMaxResults,
+        [Description("Devices per page: default 100, at most 1000 (0 = 1000).")]
+        int? limit = null,
+        [Description("Devices to skip, for the next page (next_offset of the previous call). Default 0.")]
+        int offset = 0,
         [Description("true (default): only the newest revision per product/variant. " +
                      "false: every revision found in the ESI files.")]
         bool latestRevisionOnly = true,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_list_ethercat_box_catalog",
-            new { filter, maxResults, latestRevisionOnly }, () =>
-            EsiCatalogScanner.ListCatalog(filter, maxResults, latestRevisionOnly,
+            new { filter, limit, offset, latestRevisionOnly }, () =>
+            EsiCatalogScanner.ListCatalog(filter, limit, offset, latestRevisionOnly,
                 esiDirectory: null, cancellationToken), cancellationToken);
 
     [McpServerTool(Name = "twincat_remove_ethercat_box", ReadOnly = false, Destructive = true)]

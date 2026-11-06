@@ -165,6 +165,8 @@
        root namespace the SDK derives from the assembly name. -->
   <ItemGroup>
     <EmbeddedResource Include="Assets\logo.png" LogicalName="PtcXaeMcp.WinForms.Assets.logo.png" />
+    <!-- MCP prompt texts (McpPrompts), one file per prompt, looked up by file name. -->
+    <EmbeddedResource Include="Mcp\Prompts\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.%(Filename).md" />
   </ItemGroup>
 
   <!-- xae-event-logger: TC3 EventLogger ADS proxy (managed interop, no VS dep).

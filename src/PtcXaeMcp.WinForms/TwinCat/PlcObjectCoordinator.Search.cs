@@ -10,11 +10,14 @@ internal sealed record PlcSearchMatch(
 /// <summary>An element (or one of its sections) the search could not look into, and why.</summary>
 internal sealed record PlcSearchSkip(string Path, string Reason);
 
+/// <summary>The hits of one page; <see cref="Page"/> is null only for an [Error].</summary>
 internal sealed record PlcSearchResult(
-    string Summary, IReadOnlyList<PlcSearchMatch> Matches, int Total, int Offset, bool HasMore, int NextOffset,
-    IReadOnlyList<PlcSearchSkip> Skipped)
+    string Summary, IReadOnlyList<PlcSearchMatch> Matches, Mcp.McpPageInfo? Page, IReadOnlyList<PlcSearchSkip> Skipped)
 {
-    internal static PlcSearchResult Error(string message) => new(message, [], 0, 0, false, 0, []);
+    public bool HasMore => Page?.HasMore ?? false;
+    public int? NextOffset => Page?.NextOffset;
+
+    internal static PlcSearchResult Error(string message) => new(message, [], null, []);
 }
 
 // twincat_plc_search / twincat_plc_replace_text. The Automation Interface has no search: every text element is read
@@ -22,7 +25,8 @@ internal sealed record PlcSearchResult(
 // plc_read shows), and a replacement goes through the same verified write path as twincat_plc_write.
 internal sealed partial class PlcObjectCoordinator
 {
-    internal const int SearchMaxLimit = 1000;
+    /// <summary>Hits per page of twincat_plc_search: default 100, at most 1000.</summary>
+    internal static readonly Mcp.McpLimit SearchPage = new(100, 1000);
     private const string Declaration = "declaration";
     private const string Implementation = "implementation";
 
@@ -31,7 +35,7 @@ internal sealed partial class PlcObjectCoordinator
     // ---- search ----------------------------------------------------------------
 
     public PlcSearchResult Search(string pattern, bool regex = false, bool caseSensitive = false, bool wholeWord = false,
-        string? scope = null, string? pathPrefix = null, string? kind = null, int contextLines = 1, int limit = 100, int offset = 0)
+        string? scope = null, string? pathPrefix = null, string? kind = null, int contextLines = 1, int? limit = null, int offset = 0)
     {
         var (matcher, patternError) = PlcTextSearch.Compile(pattern, regex, caseSensitive, wholeWord);
         if (patternError is not null) return PlcSearchResult.Error("[Error] " + patternError);
@@ -48,8 +52,7 @@ internal sealed partial class PlcObjectCoordinator
                 return PlcSearchResult.Error($"[Error] kind {k} has no text to search. Expected POU, INTERFACE, DUT, GVL or MEMBER.");
             normKind = k;
         }
-        if (limit < 1 || limit > SearchMaxLimit) return PlcSearchResult.Error($"[Error] limit must be between 1 and {SearchMaxLimit}.");
-        if (offset < 0) return PlcSearchResult.Error("[Error] offset must not be negative.");
+        if (Mcp.McpPaging.Validate(limit, offset) is { } invalid) return PlcSearchResult.Error(invalid);
         if (contextLines < 0 || contextLines > 10) return PlcSearchResult.Error("[Error] contextLines must be between 0 and 10.");
 
         var error = SessionGuards.RequireOpenSolution(session);
@@ -101,20 +104,18 @@ internal sealed partial class PlcObjectCoordinator
 
         string skippedNote = skipped.Count == 0 ? "" : $", {skipped.Count} skipped";
         string searchedText = $"{searched} element{(searched == 1 ? "" : "s")} searched";
+        var page = Mcp.McpPaging.Apply(matches, limit, offset, SearchPage);
         if (matches.Count == 0)
             return new($"No match for '{pattern}' in {searchedText}{(skipped.Count == 0 ? "" : $" ({skipped.Count} skipped)")}.",
-                [], 0, offset, false, 0, skipped);
+                [], page, skipped);
 
-        var page = matches.Skip(offset).Take(limit).ToList();
-        bool hasMore = offset + page.Count < matches.Count;
         int elements = matches.Select(m => m.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         string head = $"Found {matches.Count} match{(matches.Count == 1 ? "" : "es")} in {elements} element{(elements == 1 ? "" : "s")} " +
                       $"({searchedText}{skippedNote}).";
-        string shown = page.Count == 0
+        string shown = page.Returned == 0
             ? $" offset {offset} is past the last match."
-            : string.Create(CultureInfo.InvariantCulture, $" Showing {offset + 1}–{offset + page.Count}") +
-              (hasMore ? $"; more with offset={offset + page.Count}." : ".");
-        return new(head + shown, page, matches.Count, offset, hasMore, hasMore ? offset + page.Count : 0, skipped);
+            : string.Create(CultureInfo.InvariantCulture, $" Showing {page.Offset + 1}–{page.Offset + page.Returned}.");
+        return new(head + shown, page.Items, page, skipped);
     }
 
     // Every element with text, in tree order, a POU's/INTERFACE's members right after it. Folders and the elements

@@ -76,7 +76,22 @@ internal sealed class McpBridge : IDisposable
     {
         _host = host;
         _diagnosticsEnabled = diagnosticsEnabled;
+
+        Policy = new AccessPolicyState(AccessPolicy.DefaultPath, Environment.GetEnvironmentVariable);
+        Surface = new ToolSurface(Environment.GetEnvironmentVariable, () => Policy.Current, Theme.ThemeManager.Settings.ToolProfile);
+        Activity.AccessGate = AccessGate.Create(() => Policy.Current,
+            () => _host.Dispatcher.Session.ProjectTargetNetId(), () => _host.UmrManager.InstanceNetIds());
+        Policy.Changed += Surface.NotifyToolListChanged;
+        // A call that answered [Blocked] reports its real result here once the XAE returns it.
+        _host.Dispatcher.LateResult = Activity.RecordLateResult;
+        HostLog.Shared.Info($"Access policy: {Policy.Current.Summary()}.");
     }
+
+    /// <summary>The access policy in force (window + environment, the stricter wins).</summary>
+    public AccessPolicyState Policy { get; }
+
+    /// <summary>Which tools each session sees (tool profile + access policy).</summary>
+    public ToolSurface Surface { get; }
 
     /// <summary>True when the diagnostics/test-support tools are registered; the GUI shows the
     /// test-harness controls (single-step, narration) only then (issue #269).</summary>
@@ -146,15 +161,32 @@ internal sealed class McpBridge : IDisposable
             builder.Services.AddSingleton(Sessions);
             builder.Services.AddSingleton(Activity);
             var mcpBuilder = builder.Services
-                .AddMcpServer(opts => opts.ServerInfo = new() { Name = "ptc-xae-mcp", Title = ProductInfo.DisplayName, Version = ThisAssemblyVersion() })
+                .AddMcpServer(opts =>
+                {
+                    opts.ServerInfo = new() { Name = "ptc-xae-mcp", Title = ProductInfo.DisplayName, Version = ThisAssemblyVersion() };
+                    // The tool list changes when the window changes the tool profile or the access policy.
+                    opts.Capabilities ??= new();
+                    opts.Capabilities.Tools ??= new();
+                    opts.Capabilities.Tools.ListChanged = true;
+                })
                 .WithHttpTransport(opts =>
                     // Register every client at the real connect boundary (the
                     // initialize handshake) instead of relying on a single
                     // diagnostic tool to populate the registry (issue #71).
                     opts.SessionMigrationHandler = new McpSessionTracker(Sessions))
                 .WithTools<TwinCatMcpTools>()
-                // An argument a tool does not declare is refused before the tool runs (it used to be dropped silently).
-                .WithRequestFilters(filters => filters.AddCallToolFilter(Mcp.UnknownArguments.Filter));
+                // Workflow prompts and context resources; every resource read goes through the matching tool.
+                .WithPrompts<McpPrompts>()
+                .WithResources<McpResources>()
+                .WithRequestFilters(filters =>
+                {
+                    filters.AddListPromptsFilter(next => McpPrompts.ListFilter(Surface, next));
+                    // An argument a tool does not declare is refused before the tool runs (it used to be dropped silently).
+                    filters.AddCallToolFilter(Mcp.UnknownArguments.Filter);
+                    // The tool profile of the client and the access policy decide which tools a session sees.
+                    filters.AddCallToolFilter(Surface.CallFilter);
+                    filters.AddListToolsFilter(Surface.ListFilter);
+                });
 
             // Diagnostics/research/test-support tools (ptc_test_marker, twincat_show_step,
             // twincat_safety_recon, twincat_safety_probe_create_alias, twincat_dump_nc_tree,
@@ -245,6 +277,8 @@ internal sealed class McpBridge : IDisposable
                 hostLog = HostLog.Shared.CurrentPath,
                 activityLog = Activity.JsonLog.CurrentPath,
                 authRequired = LocalhostGuard.AuthRequired(),
+                accessPolicy = Policy.Current.Summary(),
+                toolProfile = Surface.EnvironmentProfile ?? Surface.WindowProfile,
             }));
 
             app.MapMcp("/");

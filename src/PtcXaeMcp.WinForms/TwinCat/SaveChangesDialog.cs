@@ -129,11 +129,27 @@ internal static class PromptWindowReader
                 d.Controls.Where(c => !c.IsButton).Select(c => c.Text).Where(t => !string.IsNullOrWhiteSpace(t)).ToList(),
                 w32Buttons);
 
-        // WPF: texts and buttons live only in the UI Automation tree.
+        // WPF: texts and buttons live only in the UI Automation tree. The title bar (window title, system menu,
+        // its Close button) is the frame, not the dialog, and is left out.
         var root = AutomationElement.FromHandle(d.Hwnd);
         var texts = new List<string>();
         var buttons = new List<PromptButton>();
-        foreach (AutomationElement e in root.FindAll(TreeScope.Descendants, Condition.TrueCondition))
+        var walker = TreeWalker.ControlViewWalker;
+        // Depth-first in document order: children are pushed last-first so the first one is visited first.
+        var pending = new Stack<AutomationElement>();
+        PushChildren(root);
+        var ordered = new List<AutomationElement>();
+        while (pending.Count > 0 && ordered.Count <= 200) // bounded: a prompt has a handful of elements
+        {
+            var e = pending.Pop();
+            ControlType? type;
+            try { type = e.Current.ControlType; }
+            catch (ElementNotAvailableException) { continue; }
+            if (type == ControlType.TitleBar || type == ControlType.MenuBar) continue;
+            ordered.Add(e);
+            PushChildren(e);
+        }
+        foreach (var e in ordered)
         {
             string name;
             ControlType? type;
@@ -142,9 +158,20 @@ internal static class PromptWindowReader
             if (string.IsNullOrWhiteSpace(name)) continue;
             if (type == ControlType.Button) buttons.Add(new PromptButton(name));
             else texts.Add(name);
-            if (texts.Count + buttons.Count > 200) break; // bounded: a prompt has a handful of elements
         }
         return new PromptWindow(d.Hwnd, d.Pid, d.Owner, d.ClassName, d.Title, texts, buttons);
+
+        void PushChildren(AutomationElement parent)
+        {
+            var children = new List<AutomationElement>();
+            try
+            {
+                for (var child = walker.GetFirstChild(parent); child is not null; child = walker.GetNextSibling(child))
+                    children.Add(child);
+            }
+            catch (ElementNotAvailableException) { return; }
+            for (int i = children.Count - 1; i >= 0; i--) pending.Push(children[i]);
+        }
     }
 
     /// <summary>

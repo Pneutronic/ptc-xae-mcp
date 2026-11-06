@@ -291,12 +291,47 @@ public class HmiCoordinatorTests
         var (summary, json) = new HmiCoordinator(WithMappedSymbols()).ListMappedSymbols(null, null, null, false, false);
 
         Assert.StartsWith("4 mapped symbol(s)", summary);
-        Assert.Contains("5 total", summary);
+        Assert.Contains("5 mapped in all", summary);
         using var doc = JsonDocument.Parse(json);
         var names = doc.RootElement.GetProperty("symbols").EnumerateArray()
             .Select(e => e.GetProperty("mappedName").GetString()).ToList();
         Assert.DoesNotContain("ADS.AdsSyncReadReq", names);
         Assert.Equal(names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase), names);
+        Assert.Equal(4, doc.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal(5, doc.RootElement.GetProperty("mappedCount").GetInt32());
+        Assert.False(doc.RootElement.GetProperty("has_more").GetBoolean());
+        Assert.False(doc.RootElement.TryGetProperty("count", out _));
+    }
+
+    [Fact]
+    public void ListMapped_LimitAndOffset_PageTheFilteredList()
+    {
+        var coordinator = new HmiCoordinator(WithMappedSymbols());
+        var (_, fullJson) = coordinator.ListMappedSymbols(null, null, null, false, false);
+        var all = JsonDocument.Parse(fullJson).RootElement.GetProperty("symbols").EnumerateArray()
+            .Select(e => e.GetProperty("mappedName").GetString()).ToList();
+
+        var (summary, json) = coordinator.ListMappedSymbols(null, null, null, false, false, limit: 2, offset: 1);
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        Assert.Equal(all.Skip(1).Take(2), root.GetProperty("symbols").EnumerateArray().Select(e => e.GetProperty("mappedName").GetString()));
+        Assert.Equal(4, root.GetProperty("total").GetInt32());
+        Assert.Equal(1, root.GetProperty("offset").GetInt32());
+        Assert.Equal(2, root.GetProperty("returned").GetInt32());
+        Assert.True(root.GetProperty("has_more").GetBoolean());
+        Assert.Equal(3, root.GetProperty("next_offset").GetInt32());
+        Assert.Contains("Showing 2–3, next_offset 3.", summary);
+    }
+
+    [Fact]
+    public void ListMapped_NegativeLimit_IsRefusedBeforeAnythingIsRead()
+    {
+        var fake = WithMappedSymbols();
+        var (summary, _) = new HmiCoordinator(fake).ListMappedSymbols(null, null, null, false, false, limit: -3);
+
+        Assert.StartsWith("[Error] limit must be 0 or more", summary);
+        Assert.DoesNotContain(fake.CallLog, c => c.StartsWith("ListHmiMappedSymbols", StringComparison.Ordinal));
     }
 
     [Fact]

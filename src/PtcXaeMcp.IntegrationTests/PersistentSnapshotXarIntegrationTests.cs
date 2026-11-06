@@ -85,6 +85,36 @@ public class PersistentSnapshotXarIntegrationTests : IAsyncLifetime
             .Select(s => s.GetProperty("path").GetString()!).ToList();
         Assert.Contains(paths, p => p.StartsWith(Recipe, StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(paths, p => p.Equals(FixtureLayout.RetainSymbol, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(paths.Count, doc.RootElement.GetProperty("total").GetInt32());
+        Assert.False(doc.RootElement.GetProperty("has_more").GetBoolean());
+    }
+
+    [Trait("Description", "list_ads_symbols blättert mit limit/offset: alle Seiten zusammen ergeben genau die Liste eines Aufrufs; maxResults/truncated gibt es nicht mehr.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task ListSymbols_PagesThroughTheTopLevel()
+    {
+        SkipIfNotReady();
+        List<string> all;
+        int total;
+        using (var doc = Json(await CallAsync("twincat_list_ads_symbols", new() { ["maxDepth"] = 1, ["limit"] = 0 })))
+        {
+            all = doc.RootElement.GetProperty("symbols").EnumerateArray().Select(s => s.GetProperty("path").GetString()!).ToList();
+            total = doc.RootElement.GetProperty("total").GetInt32();
+            Assert.False(doc.RootElement.TryGetProperty("truncated", out _));
+        }
+        Assert.Equal(total, all.Count);
+        Assert.True(total >= 2, $"only {total} top-level symbols");
+
+        var seen = new List<string>();
+        int? offset = 0;
+        while (offset is { } o && seen.Count <= total)
+        {
+            using var page = Json(await CallAsync("twincat_list_ads_symbols", new() { ["maxDepth"] = 1, ["limit"] = 3, ["offset"] = o }));
+            Assert.Equal(total, page.RootElement.GetProperty("total").GetInt32());
+            seen.AddRange(page.RootElement.GetProperty("symbols").EnumerateArray().Select(s => s.GetProperty("path").GetString()!));
+            offset = page.RootElement.GetProperty("has_more").GetBoolean() ? page.RootElement.GetProperty("next_offset").GetInt32() : null;
+        }
+        Assert.Equal(all, seen);
     }
 
     [Trait("Description", "save (roots) → Werte per write_ads_variable ändern → compare meldet genau diese → dry-run-Plan → restore + Test-Confirm → compare gleich; ohne Confirm bleibt alles unverändert.")]
@@ -120,6 +150,22 @@ public class PersistentSnapshotXarIntegrationTests : IAsyncLifetime
                 var diffs = cmp.RootElement.GetProperty("differences").EnumerateArray()
                     .Select(d => d.GetProperty("path").GetString()!).OrderBy(p => p, StringComparer.Ordinal).ToList();
                 Assert.Equal(new[] { count, name }.OrderBy(p => p, StringComparer.Ordinal).ToList(), diffs);
+            }
+
+            // 3b. The same comparison one difference per page: two pages, the second continues the first.
+            using (var p1 = Json(await CallAsync("twincat_persistent_snapshot_compare",
+                       new() { ["snapshotPath"] = _snapshotFile, ["tmcPath"] = null, ["limit"] = 1 })))
+            using (var p2 = Json(await CallAsync("twincat_persistent_snapshot_compare",
+                       new() { ["snapshotPath"] = _snapshotFile, ["tmcPath"] = null, ["limit"] = 1, ["offset"] = 1 })))
+            {
+                Assert.Equal(2, p1.RootElement.GetProperty("differenceCount").GetInt32());
+                Assert.Equal(1, p1.RootElement.GetProperty("differences").GetArrayLength());
+                Assert.True(p1.RootElement.GetProperty("has_more").GetBoolean());
+                Assert.Equal(1, p1.RootElement.GetProperty("next_offset").GetInt32());
+                Assert.Equal(1, p2.RootElement.GetProperty("differences").GetArrayLength());
+                var paged = new[] { p1, p2 }.Select(p => p.RootElement.GetProperty("differences")[0].GetProperty("path").GetString()!)
+                    .OrderBy(p => p, StringComparer.Ordinal).ToList();
+                Assert.Equal(new[] { count, name }.OrderBy(p => p, StringComparer.Ordinal).ToList(), paged);
             }
 
             // 4. Dry run: plan with a hash, nothing written.

@@ -49,6 +49,10 @@ internal static class PlcKindResolver
     /// <summary>The kind of an ItemType, or null for system nodes and unknown types.</summary>
     public static string? KindOf(int itemType) => PlcElementCatalog.ForItemType(itemType)?.Kind;
 
+    /// <summary>The next step after a PLC path that does not exist.</summary>
+    internal const string NotFoundHint =
+        "twincat_plc_list (parentPath = the part before the last '^') or twincat_plc_search shows the real paths; node labels are localized.";
+
     /// <summary>
     /// Null when the node at <paramref name="path"/> exists and is an element of <paramref name="kind"/>
     /// (and of <paramref name="subtype"/>, when given); otherwise the "[Error] ..." text. <paramref name="kind"/>
@@ -57,7 +61,7 @@ internal static class PlcKindResolver
     public static string? Check(string path, string kind, PlcNodeInfo node, string? subtype = null)
     {
         if (!node.Exists)
-            return $"[Error] PLC tree path not found: {path}";
+            return McpErrors.WithNext($"PLC tree path not found: {path}", NotFoundHint);
         if (node.ItemType is not int itemType)
             return $"[Error] Cannot verify kind of '{path}': its ItemType could not be read.";
 

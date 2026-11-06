@@ -12,6 +12,12 @@ internal interface ITwinCatSession : IDisposable
 
     bool HasOpenSolution();
     string? ActiveSolutionPath();
+
+    /// <summary>
+    /// The open solution's target NetId from its .tsproj: "" for a Local target, null when there is no solution or
+    /// it cannot be read. For the access policy's NetId rules.
+    /// </summary>
+    string? ProjectTargetNetId() => null;
     TwinCatEnvironmentStatus Probe();
 
     /// <param name="hostOverride">Attach to / launch exactly this XAE host instead of the one the project's
@@ -109,6 +115,13 @@ internal interface ITwinCatSession : IDisposable
     /// the safety project has not been mapped/built yet.
     /// </summary>
     string SafetyLinkAliasDevice(string aliasDevicePath, string plcSymbolPath);
+
+    /// <summary>
+    /// Test support for the live suite: opens the XAE's Options dialog (Tools > Options) through
+    /// <c>DTE.ExecuteCommand</c>, a COM call that returns only once the dialog is closed — a harmless call held by an
+    /// XAE dialog. Only the diagnostics tool surface calls it.
+    /// </summary>
+    string OpenOptionsDialogAndWait() => throw new NotSupportedException("This session cannot open the XAE Options dialog.");
 
     // ---- nc-axes (Motion) ----
     string DumpTincTree();
@@ -766,6 +779,34 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     PlcTaskReferenceInfo SetPlcTaskLink(string taskReferencePath, string linkedTask);
 
+    // ---- event-classes ----
+    /// <summary>ExportXml(false) of every type-system type that has EventIds (the event classes), built-in ones included.</summary>
+    IReadOnlyList<string> ReadEventClassXml();
+
+    /// <summary>ITcTypeSystem.CreateType(<paramref name="dataTypeXml"/>); returns ExportXml of the type <paramref name="name"/> read back from a fresh enumeration.</summary>
+    string CreateTypeSystemType(string name, string dataTypeXml);
+
+    /// <summary>
+    /// DeleteType(<paramref name="guid"/>) then CreateType(<paramref name="dataTypeXml"/>), read back like
+    /// <see cref="CreateTypeSystemType"/>. When the CreateType fails, <paramref name="previousXml"/> is created again.
+    /// </summary>
+    string ReplaceTypeSystemType(string guid, string name, string dataTypeXml, string previousXml);
+
+    /// <summary>ExportXml(false) of every type of the type system (built-in, library, PLC and project types).</summary>
+    IReadOnlyList<string> ReadTypeSystemXml();
+
+    /// <summary>
+    /// Every PLC project with its .plcproj, the pins under its ExternalTypes.tmc node and that file's text; with
+    /// <paramref name="withPlcObjects"/> also its DUTs, POUs and interfaces (a walk of the PLC tree).
+    /// </summary>
+    IReadOnlyList<PlcExternalTypesInfo> ReadPlcExternalTypes(bool withPlcObjects = false);
+
+    /// <summary>
+    /// Saves and closes the solution, applies <paramref name="edits"/> to the files, reopens it (also after a failed edit)
+    /// and waits until its PLC projects are loaded again. Throws without changing a file when the solution does not close.
+    /// </summary>
+    void EditFilesWithSolutionClosed(IReadOnlyList<SolutionFileEdit> edits);
+
     // ---- persistent-snapshot ----
     /// <summary>Flatten each requested path into leaves and read them with sum commands over ONE connection / symbol load.
     /// Paths that do not exist come back in <c>Missing</c>, unreadable or unsupported leaves in <c>Skipped</c>.</summary>
@@ -774,7 +815,8 @@ internal interface ITwinCatSession : IDisposable
     /// <summary>Write leaves with sum commands (halve-and-retry on a refused batch), then read EVERY leaf back.</summary>
     SnapshotWriteResult WriteSnapshotLeaves(IReadOnlyList<SnapshotLeafWrite> writes, string? amsNetId, int adsPort);
 
-    /// <summary>Read-only browse of the online symbol table (no values).</summary>
+    /// <summary>Read-only browse of the online symbol table (no values). <paramref name="limit"/> is the walk ceiling:
+    /// at most that many entries, <c>Truncated</c> when the table holds more; the caller pages the result.</summary>
     AdsSymbolListResult ListAdsSymbols(string? root, int maxDepth, bool persistentOnly, int limit, string? amsNetId, int adsPort);
 
     /// <summary>ADS state of the PLC runtime ("Run", "Stop", …), shown prominently in the restore popup.</summary>

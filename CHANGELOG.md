@@ -10,6 +10,117 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-06
+
+### Breaking
+- **One paging convention for every list tool.** Parameters `limit` and `offset` (default 0). `limit` omitted = the
+  tool's default page, `limit=0` = as many as the tool returns (its maximum), a larger `limit` is cut to the maximum;
+  a negative `limit` or `offset` is refused before anything is read. JSON results carry `total`, `offset`,
+  `returned`, `has_more` and `next_offset` (null on the last page) right before their item list; text results end
+  with the line `Page: offset 0, returned 100 of 340; has_more true, next_offset 100`. Call again with
+  `offset=next_offset` while `has_more` is true. The old parameter names are removed and refused by name with the
+  valid parameters listed.
+
+  | Tool | Old | New (default / maximum) |
+  |---|---|---|
+  | `twincat_list_ethercat_box_catalog` | `maxResults` (100, cap 1000); JSON `totalMatches`, `truncated` | `limit` (100 / 1000), `offset`; `total`, `has_more`, `next_offset` |
+  | `twincat_read_event_logger` | `maxEvents` (0 = 100, no cap) | `limit` (100 / 1000), `offset` on the logged events, newest first; `total` is null while the logger holds more than was read; at most the newest 10000 are searched; `activeAlarms` stays complete; `loggedCount` = events read for this page |
+  | `twincat_list_ads_symbols` | `limit` (500, cap 5000); JSON `count`, `truncated` | `limit` (500 / 5000), `offset`; `total` (null when the walk stopped at 100000 symbols) |
+  | `twincat_persistent_snapshot_compare` | `limit` = cap per list | `limit` (200 / 5000), `offset`: one window over `differences`, `onlyInSnapshot`, `onlyOnPlc`, `typeMismatches`; `total` = the longest list; per-list sizes in `differenceCount`, `onlyInSnapshotCount`, `onlyOnPlcCount` and the new `typeMismatchCount` |
+  | `twincat_hmi_list_mapped_symbols` | no paging; JSON `total` (all mapped), `count` (filtered) | `limit` (500 / 5000), `offset`; `total` = the filtered symbols, `mappedCount` = all mapped (was `total`); `count` removed |
+  | `twincat_read_coe_dictionary` | everything; JSON `objectCount` | `indexFilter` stays, plus `limit` (100 / 1000), `offset`; `objectCount` replaced by `total` |
+  | `twincat_plc_search`, `twincat_plc_static_analysis` | `limit` 1–1000 (0 refused), summary "Showing a–b; more with offset=n" | `limit` (100 / 1000; 0 = 1000), `offset`; the last line is the page footer |
+  | `twincat_plc_list`, `twincat_get_error_list` | `limit` (0 = all), footer only when paged | unchanged |
+
+  Not paged: `twincat_get_log` (`maxChars`) and `twincat_read_scope_file` (`maxPoints`, decimation).
+
+### Added
+- **A call held by an XAE dialog no longer hangs.** While a tool runs, the server looks every 0.5 s for an XAE dialog
+  that blocks the XAE and asks something (a button other than Cancel; progress and wait windows do not count). When
+  one stays for 3 s, the call answers `[Blocked] XAE dialog '<title>' (id …, <class>; buttons: …)` and names what to do:
+  `twincat_xae_dialog_answer` or the XAE, and only a person for a known-destructive dialog. The XAE call itself keeps
+  running; until it returns no other call starts, and each one is refused with `[Error]` naming the dialog and the next
+  step (`twincat_xae_dialogs` and `twincat_xae_dialog_answer` still work). When the XAE call returns, its result is
+  written to the activity log as `<tool> (late result)` and the next call can run. `twincat_xae_dialogs` names the call
+  that waits for a dialog. Calls from the window's own buttons behave as before. `PTC_XAE_MCP_DIALOG_WATCH=off`
+  switches this off (every call then waits for the XAE as before).
+- `ptc_test_hold_xae_dialog` (only with `--diagnostics`): a test hook for the live suite that opens Tools > Options
+  inside a COM call, so a call held by an XAE dialog can be tested.
+- **EventLogger event classes** (#29). `twincat_event_class_create` creates an event class (name, display text, events
+  with id, name, severity and text) in the TwinCAT type system and keeps it in the .tsproj (`PersistentType`, so it
+  survives save and reopen although nothing references it); the PLC reaches its events as `TC_EVENTS.<class>.<event>`
+  at once. `twincat_event_class_read` lists the event classes of the project (built-in ones on request) or shows one
+  with its events and the PLC projects that pin it. `twincat_event_class_update` changes the display text and/or the
+  complete event list with the GUID kept (DeleteType + CreateType, so the PLC follows at once); a class from a TMC
+  file is refused, because a second definition with the same GUID is what makes the XAE report "A different data
+  type … with same GUID exists already".
+- `twincat_plc_add_global_data_type` (#29): "Add Global Data Type" for a data type of the project's type system — a
+  STRUCT, ENUM, ALIAS or an event class kept in the .tsproj — into a PLC project, so a library saved from it carries
+  the type (`externaltypes.auxiliary`); for an event class its users get `TC_EVENTS.<class>`. Every project data type
+  it uses (struct members, enum and alias base types, nested) is taken along, so `ExternalTypes.tmc` is
+  self-contained; built-in types are not copied, and a type from a library, a TMC file or a PLC is named in a warning
+  instead. It writes what the XAE command writes — the types into `ExternalTypes.tmc` next to the .plcproj and the
+  .plcproj entry — while the solution is saved, closed and reopened (the XAE has no automation call for it), and
+  reads the `ExternalTypes.tmc` node of every pinned type back from the tree. Refused before anything changes: a
+  built-in, library, TMC or PLC type, and a collision — the PLC project already has a DUT, POU or interface of the
+  name of a type to pin, or `ExternalTypes.tmc` holds another type of that name or GUID. Pinning unchanged types again
+  changes nothing. Updating a pinned event class writes the pin again: the type system drops it on the update, which
+  left `ExternalTypes.tmc` empty; the other pins of the file are written back with it.
+- **Tool profiles per client.** Every tool belongs to one toolset (`meta`, `project`, `build`, `plc`, `ads`,
+  `runtime`, `license`, `io`, `hmi`, `scope`, `nc`, `safety`, `ibn`). A client sees the toolsets of its profile:
+  `all`, or `core` (`meta`, `project`, `build`, `plc`, `ads`, `runtime`, about half the tools) for clients that cope
+  badly with many tools. The profile is chosen by the client's self-reported name (Claude: `all`; Cursor, VS Code,
+  Copilot, Windsurf: `core`; any other client: `all`), unless the window (Settings → Tool profile) or
+  `PTC_XAE_MCP_TOOLSETS` (`all`, `core` or a list such as `plc,hmi`) sets one for every client. A call to a hidden
+  tool is refused with `[Error]` naming its toolset. `twincat_get_client_info` and `/health` show the profile in force.
+- **Access policy.** An access level — `read` (only tools that change nothing), `engineer` (also the project:
+  PLC code, IO tree, mapping, libraries, build, save) or `runtime` (also target systems: activate, login, PLC
+  start/stop, ADS writes, routes, target, system mode, User Mode Runtime, trial licenses) — plus blocked NetIds (no
+  runtime action on them, reading stays allowed) and allowed NetIds (runtime actions only on them; `local` = this PC
+  and its User Mode Runtimes). Set in the window (Settings, saved to `%LOCALAPPDATA%\ptc-xae-mcp\policy.json`) or
+  with `PTC_XAE_MCP_ACCESS`, `PTC_XAE_MCP_BLOCKED_NETIDS`, `PTC_XAE_MCP_ALLOWED_NETIDS`; when both are set the
+  stricter wins. No tool can change it, and the file tools cannot reach `policy.json`. It is checked before every
+  tool call, also from the tool console; tools above the level are left out of the tool list, and connected clients
+  are told to reload it when the window changes the policy. Emergency stops (`twincat_stop`, `twincat_shutdown`,
+  `twincat_force_close_xae`, the IBN abort/disarm/release) are never blocked. Without any setting nothing changes
+  (`runtime`, no lists). A restricted level is named in the window title; `twincat_get_status` shows the policy.
+- `twincat_plc_list(limit, offset)` and `twincat_get_error_list(minLevel, limit, offset)`: page through a large
+  project or a long Error List; the last line then gives `total`, `has_more` and `next_offset`. `minLevel` keeps only
+  errors or errors and warnings. Without these arguments the output is unchanged.
+- `twincat_plc_read(paths)`: reads up to 50 elements of one kind in a single call, each under a `=== <path> ===`
+  line; an element that cannot be read is reported as its `[Error]` while the others are still read.
+
+- **MCP prompts**: step-by-step workflows a user picks in the client (in Claude Code as a slash command):
+  `plc-change` (find, read, change with revision, build with `expectSymbols`, check), `commission-ethercat`,
+  `diagnose-runtime` (reads only), `run-tcunit`, `scope-measure`, `doctor`. A prompt about a toolset the client's
+  profile hides is not listed.
+- **MCP resources** to pull context into the chat without a tool call (in Claude Code with `@`):
+  `ptc-xae://status`, `ptc-xae://plc/elements`, `ptc-xae://plc/element/{path}` (one element's text and revision,
+  path URI-encoded), `ptc-xae://build/errors`, `ptc-xae://toolsets`. Each read goes through the matching tool, so
+  the access policy, the single-operation lock and the activity log apply.
+
+- `twincat_xae_dialogs` (read-only) lists the dialogs the XAE has open — id, title, texts, buttons, whether it
+  blocks the XAE — and classifies each as `known-safe`, `unknown` or `known-destructive` (confirms an activation,
+  restart, download, login, delete, safety or license action). `twincat_xae_dialog_answer(id, button)` presses a
+  button and reports whether the dialog closed and whether another followed; it refuses a known-destructive dialog
+  and a destructive button on any dialog — a person answers those in the XAE. Both use Win32 and UI Automation (so
+  also the shell's WPF prompts such as "save changes?"), no COM, and answer while another call is blocked by the
+  dialog (verified live with the reload prompt for a file changed on disk and with a "save changes?" prompt stacked
+  on a Go To dialog).
+
+### Changed
+- The most frequent errors name the next step on a second line `Next: …`: no XAE, no solution open, a PLC path that
+  does not exist (with how to find the real, localized path).
+- `twincat_plc_read`: `path` and `kind` are no longer marked required in the schema (because of `paths`); a call
+  without either path is refused as before.
+
+### Fixed
+- A failed `twincat_goto_line` / `twincat_show_step` no longer leaves the XAE modal. When the Go-To dialog did not
+  lead to a confirmed cursor, the XAE could re-open the dialog after the verdict, and keys that reached the editor
+  could open "Variable deklarieren"; both stayed open and blocked every later call (seen in a live run). For a few
+  seconds after a failure every Go-To dialog is now cancelled and any other non-destructive dialog that blocks the
+  XAE is closed with its Cancel button; the result names what was cancelled.
+
 ## [3.0.0] - 2026-11-06
 
 ### Breaking
@@ -457,7 +568,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.1.0
 [3.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.0.0
 [2.6.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.1
 [2.6.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.0

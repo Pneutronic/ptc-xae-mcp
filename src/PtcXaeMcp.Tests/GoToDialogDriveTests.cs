@@ -49,7 +49,7 @@ public class GoToDialogDriveTests
 
         public bool CommandDone
         {
-            get { lock (_gate) return !CommandHangs && _open is null && _box is null && ErrorChain.Count == 0 && Shown >= Dialogs; }
+            get { lock (_gate) return !CommandHangs && _open is null && _box is null && ErrorChain.Count == 0 && StrayDialogs.Count == 0 && Shown >= Dialogs; }
         }
 
         public GoToDialogAutomation.ErrorBox? FindErrorBox(IntPtr xaeMain) { lock (_gate) return _box; }
@@ -104,6 +104,21 @@ public class GoToDialogDriveTests
 
         public void CommandOk(IntPtr dialog, IntPtr okButton) => Click(okButton);
 
+        /// <summary>Other dialogs that block the XAE (e.g. "Variable deklarieren"); the command waits while any is open.</summary>
+        public Queue<string> StrayDialogs { get; init; } = new();
+        public List<string> CancelledStrays { get; } = new();
+
+        public string? CancelStrayDialog(IntPtr xaeMain)
+        {
+            lock (_gate)
+            {
+                if (StrayDialogs.Count == 0) return null;
+                string title = StrayDialogs.Dequeue();
+                CancelledStrays.Add(title);
+                return title;
+            }
+        }
+
         public void Close(IntPtr dialog)
         {
             lock (_gate)
@@ -114,6 +129,32 @@ public class GoToDialogDriveTests
         }
 
         private void CloseOpen() { _open = null; _nextOpenAt = DateTime.UtcNow + ReopenDelay; }
+    }
+
+    // Seen live: the first Go-To closed on OK, then "Variable deklarieren" blocked the command; the second Go-To
+    // dialog it re-opened later and the declare dialog were left behind and blocked every later call.
+    [Fact]
+    public void AFailedDrive_CancelsTheStrayDialogAndTheReopenedGoTo_SoTheXaeIsFree()
+    {
+        var xae = new FakeXae { Dialogs = 2, ReopenDelay = TimeSpan.FromMilliseconds(400), StrayDialogs = new(["Variable deklarieren"]) };
+
+        var r = GoToDialogAutomation.Drive(xae, Main, 5, Command with { Reopen = TimeSpan.FromMilliseconds(100) }, () => xae.CommandDone);
+
+        Assert.False(r.Closed);
+        Assert.Equal(["Variable deklarieren"], xae.CancelledStrays);
+        Assert.Null(xae.FindDialog(Main));
+        Assert.True(xae.CommandDone, "the XAE is still modal after the failed drive");
+        Assert.Contains("afterwards cancelled to leave the XAE free: 'Variable deklarieren'", r.Note);
+    }
+
+    [Fact]
+    public void ASuccessfulDrive_SweepsNothing()
+    {
+        var xae = new FakeXae { Dialogs = 2 };
+        var r = GoToDialogAutomation.Drive(xae, Main, 5, Command, () => xae.CommandDone);
+        Assert.True(r.Closed);
+        Assert.Equal(0, xae.WmCloses);
+        Assert.DoesNotContain("afterwards cancelled", r.Note);
     }
 
     [Fact]

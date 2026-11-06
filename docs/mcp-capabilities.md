@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-200 tools, generated from the source attributes — one section per
+207 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -16,10 +16,11 @@
 - [ClientInfo](#clientinfo) (1)
 - [Coe](#coe) (4)
 - [CoreDump](#coredump) (3)
-- [Diagnostics](#diagnostics) (8)
+- [Diagnostics](#diagnostics) (9)
 - [Doctor](#doctor) (1)
 - [EditorNavigation](#editornavigation) (2)
 - [EtherCat](#ethercat) (6)
+- [EventClasses](#eventclasses) (4)
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
 - [Hmi](#hmi) (8)
@@ -55,6 +56,7 @@
 - [TcUnit](#tcunit) (1)
 - [VariantManagement](#variantmanagement) (2)
 - [VisibleEditor](#visibleeditor) (2)
+- [XaeDialogs](#xaedialogs) (2)
 
 ## ActiveProject
 
@@ -111,9 +113,13 @@ Write a value to a live PLC symbol via ADS on a running TwinCAT PLC or UMR. Refu
 
 ### `twincat_get_error_list`
 
-Error List: read-only snapshot of the XAE Error List window (the 'Fehlerliste' tool window) — severity, description, file, line per entry. Does NOT trigger a build and does NOT clear anything — unlike twincat_clear_error_list, whose cleared-count was previously the only way to learn how many entries existed. Identical entries (same level, text, file and line) are listed once with a '(2× in the Error List)' note; the first line gives both the total and the distinct count. The Error List also shows runtime EventLogger events, sometimes twice; for alarm diagnosis use twincat_read_event_logger, which is authoritative. Requires XAE running with a solution open.
+Error List: read-only snapshot of the XAE Error List window (the 'Fehlerliste' tool window) — severity, description, file, line per entry. Does NOT trigger a build and does NOT clear anything — unlike twincat_clear_error_list, whose cleared-count was previously the only way to learn how many entries existed. Identical entries (same level, text, file and line) are listed once with a '(2× in the Error List)' note; the first line gives both the total and the distinct count. The Error List also shows runtime EventLogger events, sometimes twice; for alarm diagnosis use twincat_read_event_logger, which is authoritative. minLevel keeps only errors ('error') or errors and warnings ('warning'); limit/offset page through a long list (the last line then gives total, has_more and next_offset). Requires XAE running with a solution open.
 
-_No parameters._
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `minLevel` | `string?` | `null` | 'error', 'warning' or 'message' (default: everything). |
+| `limit` | `int` | `0` | Most (distinct) entries to return; 0 (default) returns all. |
+| `offset` | `int` | `0` | Entries to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_clear_error_list`
 
@@ -232,12 +238,14 @@ _No parameters._
 
 ### `twincat_read_coe_dictionary`
 
-Read the CoE offline dictionary for an EtherCAT slave from its ESI file. Returns each object (index, name, access, objectType) and its sub-indexes (subindex, name, dataType, bitSize, defaultValue, defaultText, access, isSetting). Enum-typed sub-indexes include a human-readable defaultText, e.g. 'IIR level 1 (2)'. Read-only; no activated configuration or live controller required. Result: one-line summary + indented JSON (objectCount, objects[]).
+Read the CoE offline dictionary for an EtherCAT slave from its ESI file. Returns each object (index, name, access, objectType) and its sub-indexes (subindex, name, dataType, bitSize, defaultValue, defaultText, access, isSetting). Enum-typed sub-indexes include a human-readable defaultText, e.g. 'IIR level 1 (2)'. Read-only; no activated configuration or live controller required. Result: one-line summary + indented JSON { treePath, slaveType, fallbackNote, total, offset, returned, has_more, next_offset, objects[] }: total counts the objects that pass indexFilter, paged with limit/offset (call again with offset=next_offset while has_more is true).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the EtherCAT slave under TIID, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^-1AI5 (EL3174)'. Get a valid path via twincat_get_fieldbus_topology first. |
 | `indexFilter` | `string?` | `null` | Optional index filter: single index (e.g. '800D') or hex range (e.g. '8000-80FF'). Omit to return all objects. |
+| `limit` | `int?` | `null` | CoE objects per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Objects to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_read_coe_startup`
 
@@ -358,6 +366,14 @@ Read-only diagnostic: dump the TwinCAT NC (TINC/Motion) tree — for every node 
 
 _No parameters._
 
+### `ptc_test_hold_xae_dialog`
+
+TEST-ONLY hook for the live suite: opens the XAE's Options dialog (Tools > Options) inside a COM call that returns only once the dialog is closed, so the call is held by an XAE dialog — it answers [Blocked] after a few seconds while the dialog stays open. Close the dialog with twincat_xae_dialog_answer ('Abbrechen'/'Cancel'). confirm must be 'open'. Only registered when the host is started with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `confirm` | `string` | `""` | Must be 'open': guards against an accidental call. |
+
 ### `twincat_ibn_arm`
 
 TEST SUPPORT ONLY — never registered for released clients; in production IBN Live is armed only by a human in the host window (Approvals view). Open a time-boxed IBN control window (auto-expiry, ≤120 s, renewable). Loads the actuator allowlist and starts the heartbeat that writes the test PRG's bEnable bit — without an active arm window every twincat_ibn_propose is refused, and without the heartbeat the PRG falls back to its home position. Returns JSON { armed, armToken, expiresUtc, ttlSeconds, gvlPath, allowlist }. Arming does NOT move anything. Only registered when the host is started with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.
@@ -435,12 +451,13 @@ Add an EtherCAT box/terminal — or a whole subtree/topology — under a parent 
 
 ### `twincat_list_ethercat_box_catalog`
 
-List installable EtherCAT box/terminal types and their vInfo strings for twincat_add_ethercat_box by scanning the local ESI files (<TwinCAT>\3.1\Config\Io\EtherCAT\**\*.xml) — offline, no XAE, no open solution, no hardware. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017), ESI Type (order code), name (English preferred), productCode, revisionNo, vendor and source file. A bare type such as EL1008 is also accepted by twincat_add_ethercat_box (TwinCAT then picks the latest installed revision). Malformed ESI files are skipped and counted. The first scan of the full directory can take several seconds; results are cached per process until an ESI file changes. Result body is a one-line summary followed by indented JSON.
+List installable EtherCAT box/terminal types and their vInfo strings for twincat_add_ethercat_box by scanning the local ESI files (<TwinCAT>\3.1\Config\Io\EtherCAT\**\*.xml) — offline, no XAE, no open solution, no hardware. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017), ESI Type (order code), name (English preferred), productCode, revisionNo, vendor and source file. A bare type such as EL1008 is also accepted by twincat_add_ethercat_box (TwinCAT then picks the latest installed revision). Malformed ESI files are skipped and counted. The first scan of the full directory can take several seconds; results are cached per process until an ESI file changes. Result body is a one-line summary followed by indented JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }. Paged with limit/offset: total counts every match, call again with offset=next_offset while has_more is true.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `filter` | `string?` | `null` | Case-insensitive substring of the ESI Type/vInfo, e.g. 'EL1008', 'EK11' or 'AX52'. Strongly recommended — without it the first maxResults of several thousand types are returned. |
-| `maxResults` | `int` | `EsiCatalogScanner.DefaultMaxResults` | Maximum number of devices returned (default 100, capped at 1000). The summary/JSON report the total match count and whether the list was truncated. |
+| `filter` | `string?` | `null` | Case-insensitive substring of the ESI Type/vInfo, e.g. 'EL1008', 'EK11' or 'AX52'. Strongly recommended — without it the first page of several thousand types is returned. |
+| `limit` | `int?` | `null` | Devices per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Devices to skip, for the next page (next_offset of the previous call). Default 0. |
 | `latestRevisionOnly` | `bool` | `true` | true (default): only the newest revision per product/variant. false: every revision found in the ESI files. |
 
 ### `twincat_remove_ethercat_box`
@@ -466,15 +483,56 @@ Set/override an EtherCAT box's upstream PreviousPort (A/B/C/D) and save. Require
 | `treePath` | `string` |  | Caret-separated tree path of the box, e.g. 'TIID^Device 1 (EtherCAT)^Box 2 (EK1122)^Box 3 (EK1100)'. |
 | `port` | `string` |  | Upstream port letter to select: A, B, C or D. |
 
+## EventClasses
+
+### `twincat_event_class_create`
+
+Create an EventLogger event class in the TwinCAT type system (ITcTypeSystem.CreateType) and save it in the .tsproj (PersistentType, kept although nothing references it). The PLC reaches each event as TC_EVENTS.<class>.<event> (TcEventEntry) at once. The type system generates the GUID. Refused with [Error] before anything changes: a class name or event name that is no IEC identifier, no events, an id outside 0..4294967295, an id or name used twice, an unknown severity, a class of that name that already exists. The result shows the class as read back. A PLC library carries the class only after twincat_plc_add_global_data_type on its PLC project.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string` |  | Name of the event class (IEC identifier), e.g. 'MyLibEvents'. |
+| `events` | `EventClassEventInput[]` |  | The events: [{id, name, severity, text}], at least one. severity: Verbose, Info (default), Warning, Error, Critical; text: the display text, {0} {1} … take the event's arguments (default: the name). |
+| `displayText` | `string?` | `null` | Display text of the class. Default: its name. |
+
+### `twincat_event_class_read`
+
+Read the EventLogger event classes of the type system as JSON. Without name: every event class of the project (name, GUID, display text, origin: project (.tsproj) or TMC file, event count, PLC projects that pin it via ExternalTypes.tmc); built-in TwinCAT classes only with includeBuiltIn. With name: that class with all its events (id, name, severity, text) and, per pinning PLC project, whether its ExternalTypes.tmc copy is up to date.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string?` | `null` | Name of one event class. Omit for the list. |
+| `includeBuiltIn` | `bool` | `false` | List the built-in TwinCAT event classes too (TcSystemEventClass …). Default false. |
+
+### `twincat_event_class_update`
+
+Change an event class of the project (one kept in the .tsproj): its display text and/or its complete event list. The GUID stays; the class is replaced in the type system (DeleteType + CreateType), so the PLC's TC_EVENTS follows at once, and the project is saved. Events are matched by id: details this tool does not manage (cause/remedy, description) stay with an id that is kept; ids missing from the new list are removed. When PLC projects pin the class (ExternalTypes.tmc), the type system drops that pin on the update; it is written again with the new content while the solution is saved, closed and reopened. Refused with [Error] before anything changes: invalid arguments as in twincat_event_class_create, an unknown or built-in class, a class from a TMC file (change it there: a second definition with the same GUID is what makes the XAE report "A different data type … with same GUID exists already"). Logs out of the PLC first.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string` |  | Name of the event class to change. |
+| `events` | `EventClassEventInput[]?` | `null` | The complete new event list [{id, name, severity, text}] (replaces the old one). Omit to keep the events. |
+| `displayText` | `string?` | `null` | New display text of the class. Omit to keep it. |
+
+### `twincat_plc_add_global_data_type`
+
+"Add Global Data Type": pins a data type of the project's type system (STRUCT, ENUM, ALIAS or an event class — the types kept in the .tsproj) into a PLC project, so a library saved from it carries the type (externaltypes.auxiliary); for an event class, projects using the library get TC_EVENTS.<class>. Every project data type it uses (struct members, enum and alias base types, nested) is taken along so ExternalTypes.tmc is self-contained; built-in types are not copied, and a type from a library, a TMC file or a PLC is not either (the result warns). Writes what the XAE command writes: the types into ExternalTypes.tmc next to the .plcproj and its <None Include="ExternalTypes.tmc"> entry into the .plcproj. The XAE has no automation call for it, so the solution is saved, closed, the files written and the solution reopened; the result shows, for every pinned type, its ExternalTypes.tmc node read back from the tree. A pin that is out of date is refreshed; when all are up to date nothing changes. Refused with [Error] before anything changes: an unknown type, a built-in one or one that is not the project's (library, TMC file, a PLC's own DUT), an unknown PLC project, several PLC projects without plcProjectName, and a collision: the PLC project already has a DUT, POU or interface of the name of a type to pin, or its ExternalTypes.tmc holds another type of that name or GUID. Logs out of the PLC first.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `typeName` | `string` |  | Name of the data type or event class in the type system, e.g. 'ST_AxisData' or 'MyLibEvents'. |
+| `plcProjectName` | `string?` | `null` | The PLC by its name under PLC or its .plcproj name. Optional when the solution has exactly one PLC project. |
+
 ## EventLogger
 
 ### `twincat_read_event_logger`
 
-Read the TwinCAT 3 RUNTIME EventLogger (logged events + currently active alarms) via the EventLogger ADS proxy. This is NOT the Visual Studio Error List (use twincat_clear_error_list for that) — it is the runtime event/alarm log: message text, severity, source, timestamps, alarm/confirmation state. Returns JSON { success, loggedCount, activeAlarmCount, message, events[], activeAlarms[] } or an [Error] string. Requires the TwinCAT runtime reachable on the target.
+Read the TwinCAT 3 RUNTIME EventLogger (logged events + currently active alarms) via the EventLogger ADS proxy. This is NOT the Visual Studio Error List (use twincat_clear_error_list for that) — it is the runtime event/alarm log: message text, severity, source, timestamps, alarm/confirmation state. Returns JSON { success, loggedCount, activeAlarmCount, message, total, offset, returned, has_more, next_offset, events[], activeAlarms[] } or an [Error] string. events are the logged events, newest first, paged with limit/offset (call again with offset=next_offset while has_more is true); total is null while the logger holds more events than were read. At most the newest 10000 logged events are searched. activeAlarms is always complete. loggedCount = events read from the logger for this page. Requires the TwinCAT runtime reachable on the target.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `maxEvents` | `uint` | `0` | Max number of logged events to return. 0 or omitted = 100. |
+| `limit` | `int?` | `null` | Logged events per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Logged events to skip, newest first, for the next page (next_offset of the previous call). Default 0. |
 | `minSeverity` | `string?` | `null` | Optional minimum severity filter: Verbose \| Info \| Warning \| Error \| Critical. Omit for all severities. |
 | `amsNetId` | `string?` | `null` | Optional AMS NetId of the target runtime. Omit/empty = local runtime (single-XAE constraint: local only). |
 
@@ -532,7 +590,7 @@ Details of one TwinCAT HMI project: project config (ActiveTheme, Locale, ScaleMo
 
 ### `twincat_hmi_list_mapped_symbols`
 
-List the symbols mapped in a TwinCAT HMI project's engineering server, as the HMI Automation Interface reports them (compare with the offline extraction of stage 33). Per symbol: mappedName (e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'), domain (e.g. ADS), type, dataTypeDisplayName, readOnly, hidden. Filterable by domain and name prefix. CAUTION (verified live): this list is a cached view — a map/unmap done after the project was loaded is NOT reflected, even with refresh=true. For the live state of one symbol use twincat_hmi_read_symbols (SYMBOL_NOT_MAPPED = not mapped). Read-only. Result: one-line summary + indented JSON { hmiProject, total, count, symbols[] }.
+List the symbols mapped in a TwinCAT HMI project's engineering server, as the HMI Automation Interface reports them (compare with the offline extraction of stage 33). Per symbol: mappedName (e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'), domain (e.g. ADS), type, dataTypeDisplayName, readOnly, hidden. Filterable by domain and name prefix. CAUTION (verified live): this list is a cached view — a map/unmap done after the project was loaded is NOT reflected, even with refresh=true. For the live state of one symbol use twincat_hmi_read_symbols (SYMBOL_NOT_MAPPED = not mapped). Read-only. Result: one-line summary + indented JSON { hmiProject, mappedCount, total, offset, returned, has_more, next_offset, symbols[] }: mappedCount = every mapped symbol, total = those that pass the filters, paged with limit/offset (call again with offset=next_offset while has_more is true).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -541,6 +599,8 @@ List the symbols mapped in a TwinCAT HMI project's engineering server, as the HM
 | `namePrefix` | `string?` | `null` | Only symbols whose mapped name starts with this, e.g. 'ADS.PLC1.GVL_HMI.'. Case-insensitive. |
 | `includeHidden` | `bool` | `false` | Include symbols flagged hidden. Default false. |
 | `refresh` | `bool` | `false` | Ask the server to refresh its symbol list before answering. Default false. |
+| `limit` | `int?` | `null` | Symbols per page: default 500, at most 5000 (0 = 5000). |
+| `offset` | `int` | `0` | Symbols to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_hmi_read_symbols`
 
@@ -1137,14 +1197,15 @@ Read the current parameters of an axis. Read-only. Requires XAE running with a s
 
 ### `twincat_list_ads_symbols`
 
-Read-only browse of the ONLINE symbol table of a running PLC / UMR via ADS (no values -- use twincat_read_ads_variables_batch for those). Returns JSON { success, count, truncated, symbols: [{ path, type, size, isPersistent, readOnly, comment }], amsNetId, adsPort } or [Error]. isPersistent is the runtime's IsPersistent flag (VAR_GLOBAL PERSISTENT); RETAIN variables are NOT flagged over ADS. Default amsNetId = the local AMS router's NetId, port 851.
+Read-only browse of the ONLINE symbol table of a running PLC / UMR via ADS (no values -- use twincat_read_ads_variables_batch for those). Returns JSON { success, total, offset, returned, has_more, next_offset, symbols: [{ path, type, size, isPersistent, readOnly, comment }], amsNetId, adsPort } or [Error]. Paged with limit/offset: call again with offset=next_offset while has_more is true. total is null when the walk stopped after 100000 symbols (narrow root or maxDepth). isPersistent is the runtime's IsPersistent flag (VAR_GLOBAL PERSISTENT); RETAIN variables are NOT flagged over ADS. Default amsNetId = the local AMS router's NetId, port 851.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `root` | `string?` | `null` | Symbol to list the children of, e.g. 'GVL_Recipe'. Omit for the top level. |
 | `maxDepth` | `int?` | `null` | How many levels below root to list. Default 1. |
 | `persistentOnly` | `bool` | `false` | Only symbols the runtime flags as persistent. Default false. |
-| `limit` | `int?` | `null` | Maximum entries returned (default 500, max 5000). |
+| `limit` | `int?` | `null` | Symbols per page: default 500, at most 5000 (0 = 5000). |
+| `offset` | `int` | `0` | Symbols to skip, for the next page (next_offset of the previous call). Default 0. |
 | `amsNetId` | `string?` | `null` | Optional AMS Net ID. Omit for the local TwinCAT runtime. |
 | `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
 
@@ -1164,7 +1225,7 @@ Capture the remanent data of a running PLC into a snapshot file (format ptc-pers
 
 ### `twincat_persistent_snapshot_compare`
 
-Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, equalCount, differenceCount, differences[{ path, snapshotPath, type, snapshot, live }], onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] } (lists capped by limit). equal is true when every leaf of the snapshot matches. onlyInSnapshot = orphans with no counterpart on the PLC after pathMap; onlyOnPlc = remanent leaves the snapshot does not have (information only, it does not make equal false). Types are decided by the PLC as it is now (integer widths, REAL/LREAL, STRING/WSTRING are compatible; anything else is a type mismatch).
+Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, equalCount, differenceCount, onlyInSnapshotCount, onlyOnPlcCount, typeMismatchCount, total, offset, returned, has_more, next_offset, differences[{ path, snapshotPath, type, snapshot, live }], onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] }. limit/offset page the four
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1174,7 +1235,8 @@ Compare a snapshot file leaf by leaf with the running PLC (or with another snaps
 | `tmcPath` | `string?` | `null` | Absolute path of the PLC .tmc used to re-select the live remanent set. Omit to find it. |
 | `amsNetId` | `string?` | `null` | Optional AMS Net ID. Omit for the local TwinCAT runtime. |
 | `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
-| `limit` | `int?` | `null` | Cap per result list (default 200). |
+| `limit` | `int?` | `null` | Items per list and page: default 200, at most 5000 (0 = 5000). |
+| `offset` | `int` | `0` | Items to skip in every list, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_persistent_snapshot_restore`
 
@@ -1309,13 +1371,15 @@ Switch .tmc/.tpy type-file generation of the PLC project on or off (ConsumeXml P
 
 ### `twincat_plc_list`
 
-List PLC elements. Without arguments: every POU, INTERFACE, DUT, GVL and FOLDER of the open PLC project. kind filters by element kind; parentPath restricts to the subtree below a tree path. Under a POU, an INTERFACE or a PROPERTY, parentPath lists its MEMBERs (METHOD, ACTION, PROPERTY, Get/Set), including members inside folders under a POU; kind=MEMBER requires such a parentPath. recursive=false lists only the direct children. One line per element: kind/subtype, tree path, language.
+List PLC elements. Without arguments: every POU, INTERFACE, DUT, GVL and FOLDER of the open PLC project. kind filters by element kind; parentPath restricts to the subtree below a tree path. Under a POU, an INTERFACE or a PROPERTY, parentPath lists its MEMBERs (METHOD, ACTION, PROPERTY, Get/Set), including members inside folders under a POU; kind=MEMBER requires such a parentPath. recursive=false lists only the direct children. One line per element: kind/subtype, tree path, language. limit/offset page through a large project: the last line then gives total, has_more and next_offset.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `kind` | `string?` | `null` | Optional element kind filter, e.g. POU, DUT, GVL, MEMBER. |
 | `parentPath` | `string?` | `null` | Optional caret-separated tree path; only elements below it are listed. Required for kind=MEMBER. |
 | `recursive` | `bool` | `true` | False lists only the direct children of parentPath. Default true. |
+| `limit` | `int` | `0` | Most elements to return; 0 (default) returns all. |
+| `offset` | `int` | `0` | Elements to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_plc_create`
 
@@ -1335,14 +1399,15 @@ Create a PLC element under parentPath. kind + subtype pick the element: POU/PROG
 
 ### `twincat_plc_read`
 
-Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation (with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] such as "'<path>' is a GVL, not a DUT". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the XAE editor (video mode), best-effort, behind the user's work unless bringToFront=true.
+Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation (with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] such as "'<path>' is a GVL, not a DUT". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the XAE editor (video mode), best-effort, behind the user's work unless bringToFront=true. paths reads several elements of the same kind in one call instead of path: each under a '=== <path> ===' line, a failing one as its [Error] while the others are still read; the first line counts read and failed.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `path` | `string` |  | Caret-separated tree path of the element to read. |
-| `kind` | `string` |  | Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER. |
-| `openInEditor` | `bool` | `false` | When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false. |
+| `path` | `string?` | `null` | Caret-separated tree path of the element to read. Give either path or paths. |
+| `kind` | `string` | `""` | Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER. |
+| `openInEditor` | `bool` | `false` | When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false. Not with paths. |
 | `bringToFront` | `bool` | `false` |  |
+| `paths` | `string[]?` | `null` | Several caret-separated tree paths of the same kind, read one after the other (at most 50). Instead of path. |
 
 ### `twincat_plc_write`
 
@@ -1485,7 +1550,7 @@ Create a PLC instance (I/O image only, no PLC source) from a .tmc module class f
 
 ### `twincat_plc_search`
 
-Search the declarations and implementations of every POU, METHOD, PROPERTY (Get/Set), ACTION, TRANSITION, INTERFACE, DUT and GVL of the open PLC project(s) — instead of reading every element. The text is the one twincat_plc_read returns (unsaved editor changes included). Matching is case-insensitive by default (ST is); regex=true takes a .NET regular expression (^ and $ per line), wholeWord=true skips hits inside longer identifiers. Each hit: element kind and tree path, section, line:column (the line numbers of twincat_plc_read), the element's revision (pass it to twincat_plc_replace_text / twincat_plc_write as expectedRevision) and an excerpt with the hit lines marked '>'. Graphical implementations (SFC, FBD, LD, CFC) are XML and not searched; they are listed as skipped, their declarations are searched. Paged: limit (default 100) and offset; the summary says the next offset.
+Search the declarations and implementations of every POU, METHOD, PROPERTY (Get/Set), ACTION, TRANSITION, INTERFACE, DUT and GVL of the open PLC project(s) — instead of reading every element. The text is the one twincat_plc_read returns (unsaved editor changes included). Matching is case-insensitive by default (ST is); regex=true takes a .NET regular expression (^ and $ per line), wholeWord=true skips hits inside longer identifiers. Each hit: element kind and tree path, section, line:column (the line numbers of twincat_plc_read), the element's revision (pass it to twincat_plc_replace_text / twincat_plc_write as expectedRevision) and an excerpt with the hit lines marked '>'. Graphical implementations (SFC, FBD, LD, CFC) are XML and not searched; they are listed as skipped, their declarations are searched. Paged with limit/offset: the last line gives total, has_more and next_offset.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1497,8 +1562,8 @@ Search the declarations and implementations of every POU, METHOD, PROPERTY (Get/
 | `pathPrefix` | `string?` | `null` | Optional caret-separated tree path: only this element and the elements below it, e.g. a folder or a POU with its members. |
 | `kind` | `string?` | `null` | Optional element kind filter: POU, INTERFACE, DUT, GVL or MEMBER. |
 | `contextLines` | `int` | `1` | Lines of context before and after each hit, 0–10. Default 1. |
-| `limit` | `int` | `100` | Hits per page, 1–1000. Default 100. |
-| `offset` | `int` | `0` | Hits to skip (paging). Default 0. |
+| `limit` | `int?` | `null` | Hits per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Hits to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_plc_replace_text`
 
@@ -1756,7 +1821,7 @@ READ-ONLY list of the PLC library repositories of the XAE (ITcPlcLibraryManager.
 
 ### `twincat_get_status`
 
-Get TwinCAT XAE environment status: IDE connectivity, the active project and PLC, and the TwinCAT system service state.
+Get TwinCAT XAE environment status: IDE connectivity, the active project and PLC, the TwinCAT system service state and the access policy in force (read / engineer / runtime, blocked and allowed NetIds; set only in the window or by environment variables, never by a tool).
 
 _No parameters._
 
@@ -2015,15 +2080,15 @@ EXPERIMENTAL — convert a saved TwinCAT Scope recording (.svdx) into an export 
 
 ### `twincat_plc_static_analysis`
 
-Run the PLC Static Analysis (TE1200: SA rules, naming conventions, metrics) on the open PLC project and return the findings compactly — level, rule, file, line, message — so a generate-check-correct loop needs one call. checkAll=true (default) also checks objects no task reaches. The results are read from the SARIF export (TwinCAT >= 3.1.4026.20, written to %LOCALAPPDATA%\ptc-xae-mcp\static-analysis, outside the project); an XAE that cannot export SARIF is answered from the Error List's SA entries and the result says why. settingsFile loads a .csa rule set first. Without a TE1200 license TwinCAT runs only its free subset of rules. The analysis compiles like a build; it saves nothing. Counts and the most frequent rules always cover every finding; the listed findings are filtered by minLevel (default warning) and paged with limit/offset.
+Run the PLC Static Analysis (TE1200: SA rules, naming conventions, metrics) on the open PLC project and return the findings compactly — level, rule, file, line, message — so a generate-check-correct loop needs one call. checkAll=true (default) also checks objects no task reaches. The results are read from the SARIF export (TwinCAT >= 3.1.4026.20, written to %LOCALAPPDATA%\ptc-xae-mcp\static-analysis, outside the project); an XAE that cannot export SARIF is answered from the Error List's SA entries and the result says why. settingsFile loads a .csa rule set first. Without a TE1200 license TwinCAT runs only its free subset of rules. The analysis compiles like a build; it saves nothing. Counts and the most frequent rules always cover every finding; the listed findings are filtered by minLevel (default warning) and paged with limit/offset (the last line gives total, has_more and next_offset).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `checkAll` | `bool` | `true` | True (default): check all objects, also code no task calls. False: only the objects in use. |
 | `settingsFile` | `string?` | `null` | Optional .csa static-analysis settings file to load before the run. |
 | `minLevel` | `string` | `"warning"` | Lowest level listed: error, warning (default) or note. |
-| `limit` | `int` | `100` | Findings per page, 1–1000. Default 100. |
-| `offset` | `int` | `0` | Findings to skip (paging). Default 0. |
+| `limit` | `int?` | `null` | Findings per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Findings to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ## TcUnit
 
@@ -2074,3 +2139,20 @@ Counterpart to twincat_open_object: tidy up a live demo. For a PLC source object
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the node to close, same as passed to twincat_open_object. |
+
+## XaeDialogs
+
+### `twincat_xae_dialogs`
+
+List the dialogs the XAE has open: id, title, texts, buttons, whether it blocks the XAE, and a class — 'known-safe', 'unknown', or 'known-destructive' (confirms a target-system, delete, safety or license action; a person answers those in the XAE). Use it when a call reports that the XAE is busy or blocked by a dialog. When several block, answer the one whose buttons are enabled first. Win32 and UI Automation only (also WPF prompts), no COM: answers while another call holds the XAE, changes nothing.
+
+_No parameters._
+
+### `twincat_xae_dialog_answer`
+
+Press a button of an open XAE dialog listed by twincat_xae_dialogs (id and the button's caption, as listed). Refused for a known-destructive dialog and for a destructive button (activate, restart, download, login, delete, overwrite, …) on any dialog: a person answers those in the XAE. Reports whether the dialog closed and whether another one followed. Win32 and UI Automation only, no COM: works while another call is blocked by the dialog.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `id` | `string` |  | The dialog's id from twincat_xae_dialogs, e.g. '0x1A2B3C'. |
+| `button` | `string` |  | The caption of the button to press, as listed (e.g. 'Ja', 'Neu laden', 'OK'). |

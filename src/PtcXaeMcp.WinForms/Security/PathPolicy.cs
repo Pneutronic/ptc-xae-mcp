@@ -29,6 +29,15 @@ internal static class PathPolicy
         if (!TryGetFullPath(path, out string full, out reason))
             return false;
 
+        // The access policy lives in the allowed %LOCALAPPDATA%\ptc-xae-mcp; no tool may read or write it.
+        if (string.Equals(Path.GetFileName(full), Mcp.AccessPolicy.FileName, StringComparison.OrdinalIgnoreCase)
+            && TryGetFullPath(Path.GetDirectoryName(Mcp.AccessPolicy.DefaultPath), out string policyDir, out _)
+            && IsUnderOrEqual(full, policyDir))
+        {
+            reason = $"'{full}' is the access policy; it is set in the ptc-xae-mcp window, never by a tool.";
+            return false;
+        }
+
         foreach (string root in AllowedRoots(solutionDirectory))
         {
             if (TryGetFullPath(root, out string fullRoot, out _) && IsUnderOrEqual(full, fullRoot))

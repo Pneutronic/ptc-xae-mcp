@@ -221,6 +221,9 @@ internal static class XaeDialogs
 
     public static bool IsOpen(IntPtr hwnd) => IsWindow(hwnd) && IsWindowVisible(hwnd);
 
+    /// <summary>True when <paramref name="hwnd"/> accepts input; a modal dialog disables its owner.</summary>
+    public static bool IsEnabled(IntPtr hwnd) => hwnd != IntPtr.Zero && IsWindowEnabled(hwnd);
+
     /// <summary>Polls until <paramref name="hwnd"/> is gone or hidden.</summary>
     public static bool WaitClosed(IntPtr hwnd, TimeSpan timeout)
     {

@@ -26,9 +26,11 @@ internal static class SessionGuards
             var multi = session.MultiXaeBlockReason();
             if (multi is not null) return multi;
             if (!session.IsConnected)
-                return McpErrors.EnsureError(session.DescribeUnreachable());
+                return McpErrors.WithNext(session.DescribeUnreachable(),
+                    "twincat_open_project(slnPath) starts or attaches the XAE; twincat_doctor checks the setup.");
             if (!session.HasOpenSolution())
-                return "[Error] No solution is currently open.";
+                return McpErrors.WithNext("No solution is currently open.",
+                    "twincat_open_project(slnPath) opens one; twincat_get_active_project shows what the XAE has.");
             return null;
         }
         catch (Exception ex) when (ComCall.IsBusy(ex))
@@ -103,6 +105,6 @@ internal static class SessionGuards
         try { node = session.ProbePlcNode(treePath); }
         catch (Exception ex) when (ComCall.IsBusy(ex)) { return McpErrors.EnsureError(ComCall.Describe(ex)); }
         catch (Exception ex) { return McpErrors.EnsureError(ex.Message); }
-        return node.Exists ? null : $"[Error] {label} not found: {treePath}";
+        return node.Exists ? null : McpErrors.WithNext($"{label} not found: {treePath}", PlcKindResolver.NotFoundHint);
     }
 }

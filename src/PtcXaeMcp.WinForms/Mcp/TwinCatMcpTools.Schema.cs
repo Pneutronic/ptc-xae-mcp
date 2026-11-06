@@ -6,9 +6,12 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_get_status", ReadOnly = true)]
-    [Description("Get TwinCAT XAE environment status: IDE connectivity, the active project and PLC, and the TwinCAT system service state.")]
+    [Description("Get TwinCAT XAE environment status: IDE connectivity, the active project and PLC, the TwinCAT system service state " +
+                 "and the access policy in force (read / engineer / runtime, blocked and allowed NetIds; set only in the window or by " +
+                 "environment variables, never by a tool).")]
     public string GetStatus(CancellationToken cancellationToken = default) =>
-        bridge.Activity.Trace("twincat_get_status", null, host.GetStatus, cancellationToken);
+        bridge.Activity.Trace("twincat_get_status", null,
+            () => host.GetStatus() + $"\nAccess policy: {bridge.Policy.Current.Summary()}", cancellationToken);
 
     [McpServerTool(Name = "twincat_get_log", ReadOnly = true)]
     [Description("Get the log output visible in the Pneutronic XAE MCP window. The log grows for the whole host session, " +

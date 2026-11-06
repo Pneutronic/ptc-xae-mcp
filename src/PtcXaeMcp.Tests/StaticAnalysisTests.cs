@@ -92,7 +92,8 @@ public class StaticAnalysisTests
                 "  [warning] SA0033 Plc\\POUs\\FB_Motor.TcPOU L12:5 — Unused variable 'nX'\n" +
                 "  [error] SA0035 Plc/POUs/MAIN.TcPOU L3 — Unused output 'bDone'\n" +
                 "  [warning] SA0101 — Name too long\n" +
-                "Showing 1–3 of 3 (minLevel warning).");
+                "Showing 1–3 of 3 (minLevel warning).\n" +
+                "Page: offset 0, returned 3 of 3; has_more false");
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
     }
@@ -104,9 +105,12 @@ public class StaticAnalysisTests
         try
         {
             var c = new StaticAnalysisCoordinator(fake, dir);
-            c.Run(minLevel: "error").Should().EndWith("  [error] SA0035 Plc/POUs/MAIN.TcPOU L3 — Unused output 'bDone'\nShowing 1–1 of 1 (minLevel error).");
-            c.Run(minLevel: "note", limit: 2).Should().EndWith("Showing 1–2 of 4 (minLevel note); more with offset=2.");
-            c.Run(minLevel: "note", limit: 2, offset: 2).Should().Contain("Unused variable 'nY'");
+            c.Run(minLevel: "error").Should().EndWith("  [error] SA0035 Plc/POUs/MAIN.TcPOU L3 — Unused output 'bDone'\nShowing 1–1 of 1 (minLevel error).\n" +
+                                                     "Page: offset 0, returned 1 of 1; has_more false");
+            c.Run(minLevel: "note", limit: 2).Should().EndWith("Showing 1–2 of 4 (minLevel note).\nPage: offset 0, returned 2 of 4; has_more true, next_offset 2");
+            c.Run(minLevel: "note", limit: 2, offset: 2).Should().Contain("Unused variable 'nY'")
+                .And.EndWith("Page: offset 2, returned 2 of 4; has_more false");
+            c.Run(minLevel: "note", limit: 0).Should().EndWith("Page: offset 0, returned 4 of 4; has_more false");
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
     }
@@ -136,7 +140,8 @@ public class StaticAnalysisTests
                 "(no SARIF: ExportToSarif is not offered by this XAE (needs TwinCAT 3.1.4026.20)).\n" +
                 "Rules: SA0033 ×1\n" +
                 "  [warning] SA0033 L12 — Unused variable 'nX'\n" +
-                "Showing 1–1 of 1 (minLevel warning).");
+                "Showing 1–1 of 1 (minLevel warning).\n" +
+                "Page: offset 0, returned 1 of 1; has_more false");
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
     }
@@ -162,8 +167,8 @@ public class StaticAnalysisTests
         var (fake, dir) = OpenFake();
         var c = new StaticAnalysisCoordinator(fake, dir);
         c.Run(minLevel: "info").Should().Be("[Error] Unknown minLevel 'info'. Expected error, warning or note.");
-        c.Run(limit: 0).Should().Be("[Error] limit must be between 1 and 1000.");
-        c.Run(offset: -1).Should().Be("[Error] offset must not be negative.");
+        c.Run(limit: -1).Should().StartWith("[Error] limit must be 0 or more (got -1)");
+        c.Run(offset: -1).Should().Be("[Error] offset must be 0 or more (got -1). Nothing was read.");
 
         fake.RunStaticAnalysisThrows = new InvalidOperationException("RunStaticAnalysis failed");
         c.Run().Should().Be("[Error] The static analysis could not run: RunStaticAnalysis failed");

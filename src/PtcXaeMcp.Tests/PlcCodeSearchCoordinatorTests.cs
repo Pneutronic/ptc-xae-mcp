@@ -78,6 +78,7 @@ public class PlcCodeSearchCoordinatorTests
             (Gvl, "declaration", 2));
         r.Summary.Should().Be("Found 4 matches in 4 elements (8 elements searched, 1 skipped). Showing 1–4.");
         r.HasMore.Should().BeFalse();
+        r.Page!.Total.Should().Be(4);
     }
 
     [Fact]
@@ -130,11 +131,23 @@ public class PlcCodeSearchCoordinatorTests
         page.Matches.Should().HaveCount(3);
         page.HasMore.Should().BeTrue();
         page.NextOffset.Should().Be(3);
-        page.Summary.Should().Be("Found 4 matches in 4 elements (8 elements searched, 1 skipped). Showing 1–3; more with offset=3.");
+        page.Summary.Should().Be("Found 4 matches in 4 elements (8 elements searched, 1 skipped). Showing 1–3.");
+        page.Page!.Footer().Should().Be("Page: offset 0, returned 3 of 4; has_more true, next_offset 3");
 
         var rest = c.Search("nSetpoint", limit: 3, offset: 3);
         rest.Matches.Select(m => m.Path).Should().Equal(Gvl);
         rest.HasMore.Should().BeFalse();
+        rest.Page!.Footer().Should().Be("Page: offset 3, returned 1 of 4; has_more false");
+    }
+
+    [Fact]
+    public void Search_LimitZeroOrAboveTheMaximum_GivesTheMaximum()
+    {
+        var c = Coord(OpenFake());
+        c.Search("nSetpoint", limit: 0).Matches.Should().HaveCount(4);
+        c.Search("nSetpoint", limit: 50_000).Matches.Should().HaveCount(4);
+        PlcObjectCoordinator.SearchPage.Resolve(50_000).Should().Be(1000);
+        c.Search("nothing-like-this").Page!.Footer().Should().Be("Page: offset 0, returned 0 of 0; has_more false");
     }
 
     [Fact]
@@ -144,8 +157,8 @@ public class PlcCodeSearchCoordinatorTests
         c.Search(" ").Summary.Should().Be("[Error] pattern is required.");
         c.Search("x", scope: "body").Summary.Should().Be("[Error] Unknown scope 'body'. Expected declaration, implementation or both.");
         c.Search("x", kind: "FOLDER").Summary.Should().Be("[Error] kind FOLDER has no text to search. Expected POU, INTERFACE, DUT, GVL or MEMBER.");
-        c.Search("x", limit: 0).Summary.Should().Be("[Error] limit must be between 1 and 1000.");
-        c.Search("x", offset: -1).Summary.Should().Be("[Error] offset must not be negative.");
+        c.Search("x", limit: -1).Summary.Should().StartWith("[Error] limit must be 0 or more (got -1)");
+        c.Search("x", offset: -1).Summary.Should().Be("[Error] offset must be 0 or more (got -1). Nothing was read.");
         c.Search("x", contextLines: 11).Summary.Should().Be("[Error] contextLines must be between 0 and 10.");
         c.Search("(", regex: true).Summary.Should().StartWith("[Error] pattern is not a valid regular expression:");
     }

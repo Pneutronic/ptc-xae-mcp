@@ -65,8 +65,12 @@ internal sealed partial class FakeTwinCatSession
     public AdsSymbolListResult ListAdsSymbols(string? root, int maxDepth, bool persistentOnly, int limit, string? amsNetId, int adsPort)
     {
         CallLog.Add($"ListAdsSymbols(root={root ?? "<null>"}, depth={maxDepth}, persistentOnly={persistentOnly}, limit={limit})");
-        return new(true, [], false, amsNetId ?? "1.2.3.4.1.1", adsPort, "OK");
+        var matching = AdsSymbols.Where(s => !persistentOnly || s.IsPersistent).ToList();
+        return new(true, matching.Take(limit).ToList(), matching.Count > limit, amsNetId ?? "1.2.3.4.1.1", adsPort, "OK");
     }
+
+    /// <summary>The online symbol table ListAdsSymbols walks (flat, in table order).</summary>
+    public List<AdsSymbolEntry> AdsSymbols { get; } = new();
 
     public AdsRunStateResult GetAdsRunState(string? amsNetId, int adsPort)
         => new(true, PlcRunState, amsNetId ?? "1.2.3.4.1.1", adsPort, "OK");

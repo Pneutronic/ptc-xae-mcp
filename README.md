@@ -183,7 +183,36 @@ Or run `claude mcp add --transport http ptc-xae http://localhost:5010/`; the win
 The exe must already be running (see "Run" above) — the client connects to
 the existing HTTP server rather than launching it. `GET http://localhost:5010/health`
 gives a quick liveness check (version, uptime, connected-session count, log
-paths) without going through the MCP handshake.
+paths, access policy, tool profile) without going through the MCP handshake.
+
+### Which tools a client sees
+
+Every tool belongs to one toolset: `meta`, `project`, `build`, `plc`, `ads`, `runtime`, `license`, `io`, `hmi`,
+`scope`, `nc`, `safety`, `ibn`. A client sees the toolsets of its **tool profile**:
+
+| Profile | Toolsets | Chosen for |
+|---|---|---|
+| `all` | every toolset | Claude clients and any client not listed below |
+| `core` | `meta`, `project`, `build`, `plc`, `ads`, `runtime` | clients whose name contains Cursor, Visual Studio Code, VS Code, Copilot or Windsurf |
+
+*Settings… → Tool profile* or `PTC_XAE_MCP_TOOLSETS` (`all`, `core`, or a list such as `core,hmi`) sets one profile
+for every client. The profile only decides what is listed; `twincat_get_client_info` shows the one in force.
+
+### Prompts and resources
+
+Besides tools the server offers **prompts** — step-by-step workflows you pick in the client (in Claude Code as
+`/mcp__ptc-xae__plc-change` etc.): `plc-change`, `commission-ethercat`, `diagnose-runtime`, `run-tcunit`,
+`scope-measure`, `doctor` — and **resources** you pull into the chat without a tool call (in Claude Code with
+`@ptc-xae:`): `ptc-xae://status`, `ptc-xae://plc/elements`, `ptc-xae://plc/element/{path}` (URI-encoded tree path),
+`ptc-xae://build/errors`, `ptc-xae://toolsets`.
+
+### When the XAE shows a dialog
+
+A dialog the XAE opens blocks its automation. `twincat_xae_dialogs` lists the open dialogs with their buttons;
+`twincat_xae_dialog_answer` presses one. Dialogs that confirm an activation, restart, download, login, delete,
+safety or license action are listed but never answered by a tool — a person answers them in the XAE. A call that a
+dialog holds for more than 3 s answers `[Blocked]` with the dialog instead of hanging; the XAE call goes on, and the
+next call starts once it has returned (`PTC_XAE_MCP_DIALOG_WATCH=off` switches this off).
 
 ## Applying an IO schema (`twincat_apply_schema`)
 
@@ -212,6 +241,21 @@ reachable only from the machine it runs on, by whatever process/user can
 already reach that port — it is **not** a network service and has no
 authentication model beyond that token. Full threat model and details:
 [SECURITY.md](SECURITY.md).
+
+**Access policy.** What the connected clients may do is set outside the tools — in *Settings…* (saved to
+`%LOCALAPPDATA%\ptc-xae-mcp\policy.json`) or with environment variables; when both are set, the stricter wins:
+
+| Setting | Values | Environment variable |
+|---|---|---|
+| Access level | `read` (only tools that change nothing), `engineer` (also the project: PLC code, IO, mapping, libraries, build, save), `runtime` (also target systems: activate, login, PLC start/stop, ADS writes, routes, system mode, User Mode Runtime) | `PTC_XAE_MCP_ACCESS` |
+| Blocked NetIds | no runtime action on these systems; reading stays allowed | `PTC_XAE_MCP_BLOCKED_NETIDS` (`;`-separated) |
+| Allowed NetIds | runtime actions only on these systems | `PTC_XAE_MCP_ALLOWED_NETIDS` |
+
+`local` in a list means this PC and its User Mode Runtimes. Without any setting everything is allowed, as before.
+A refused call returns `[Error]` and does nothing; tools above the level are left out of the tool list. Emergency
+stops (`twincat_stop`, `twincat_shutdown`, `twincat_force_close_xae`, the IBN abort/disarm/release) always work. No
+tool can read the policy file or change the policy; `twincat_get_status` shows it, and the window title names a
+restricted level (`READ ONLY`, `ENGINEER`).
 
 **No telemetry.** The server makes no network connections of its own: no
 usage statistics, no license check, nothing is sent to Pneutronic or anyone

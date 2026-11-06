@@ -109,8 +109,31 @@ public class CoeIntegrationTests : IAsyncLifetime
         int jsonStart = text.IndexOf('{');
         Assert.True(jsonStart >= 0, $"No JSON in response: {text}");
         using var doc = JsonDocument.Parse(text[jsonStart..]);
-        Assert.True(doc.RootElement.GetProperty("objectCount").GetInt32() > 0);
+        int total = doc.RootElement.GetProperty("total").GetInt32();
+        Assert.True(total > 0);
         Assert.True(doc.RootElement.GetProperty("objects").GetArrayLength() > 0);
+        Assert.Equal(doc.RootElement.GetProperty("objects").GetArrayLength(), doc.RootElement.GetProperty("returned").GetInt32());
+
+        // Paging through the dictionary two objects at a time visits every object of the full read once.
+        var all = await _client.CallToolAsync("twincat_read_coe_dictionary",
+            new Dictionary<string, object?> { ["treePath"] = slavePath, ["limit"] = 0 });
+        string allText = GetText(all);
+        using var allDoc = JsonDocument.Parse(allText[allText.IndexOf('{')..]);
+        var expected = allDoc.RootElement.GetProperty("objects").EnumerateArray().Select(o => o.GetProperty("index").GetString()).ToList();
+        Assert.Equal(total, expected.Count);
+
+        var seen = new List<string?>();
+        int? offset = 0;
+        while (offset is { } o && seen.Count <= total)
+        {
+            var page = await _client.CallToolAsync("twincat_read_coe_dictionary",
+                new Dictionary<string, object?> { ["treePath"] = slavePath, ["limit"] = 25, ["offset"] = o });
+            string pageText = GetText(page);
+            using var pageDoc = JsonDocument.Parse(pageText[pageText.IndexOf('{')..]);
+            seen.AddRange(pageDoc.RootElement.GetProperty("objects").EnumerateArray().Select(x => x.GetProperty("index").GetString()));
+            offset = pageDoc.RootElement.GetProperty("has_more").GetBoolean() ? pageDoc.RootElement.GetProperty("next_offset").GetInt32() : null;
+        }
+        Assert.Equal(expected, seen);
     }
 
     [Trait("Description", "CoE-Dictionary EL3174 lesen → Objekt 800D mit Input Type und Enum-Text.")]
@@ -184,7 +207,7 @@ public class CoeIntegrationTests : IAsyncLifetime
         int allJsonStart = allText.IndexOf('{');
         if (allJsonStart < 0) return;
         using var allDoc = JsonDocument.Parse(allText[allJsonStart..]);
-        int totalCount = allDoc.RootElement.GetProperty("objectCount").GetInt32();
+        int totalCount = allDoc.RootElement.GetProperty("total").GetInt32();
 
         // Now filtered to comm objects only (0x1000-0x1FFF)
         var filtered = await _client.CallToolAsync("twincat_read_coe_dictionary",
@@ -195,7 +218,7 @@ public class CoeIntegrationTests : IAsyncLifetime
         int filtJsonStart = filtText.IndexOf('{');
         if (filtJsonStart < 0) return;
         using var filtDoc = JsonDocument.Parse(filtText[filtJsonStart..]);
-        int filtCount = filtDoc.RootElement.GetProperty("objectCount").GetInt32();
+        int filtCount = filtDoc.RootElement.GetProperty("total").GetInt32();
 
         // Filtered count must be ≤ total and all returned objects must be in range
         Assert.True(filtCount <= totalCount);

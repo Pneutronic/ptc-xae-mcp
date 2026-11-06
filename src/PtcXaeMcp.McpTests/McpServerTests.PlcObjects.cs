@@ -21,6 +21,32 @@ public partial class McpServerTests
     }
 
     [SkippableFact]
+    public async Task PlcObjects_List_NegativeLimit_IsRefusedBeforeAnythingIsRead()
+    {
+        SkipIfNotReachable();
+
+        var text = GetText(await CallToolAsync("twincat_plc_list", new Dictionary<string, object?> { ["limit"] = -1 }));
+        Assert.StartsWith("[Error] limit must be 0", text);
+    }
+
+    [SkippableFact]
+    public async Task PlcObjects_Read_PathAndPaths_IsRefused()
+    {
+        SkipIfNotReachable();
+
+        var both = GetText(await CallToolAsync("twincat_plc_read", new Dictionary<string, object?>
+        {
+            ["path"] = "TIPC^P^P Project^POUs^MAIN",
+            ["paths"] = new[] { "TIPC^P^P Project^POUs^MAIN" },
+            ["kind"] = "POU",
+        }));
+        Assert.StartsWith("[Error] Give either path", both);
+
+        var neither = GetText(await CallToolAsync("twincat_plc_read", new Dictionary<string, object?> { ["kind"] = "POU" }));
+        Assert.StartsWith("[Error] Give either path", neither);
+    }
+
+    [SkippableFact]
     public async Task PlcObjects_List_MemberWithoutParent_ReturnsError()
     {
         SkipIfNotReachable();

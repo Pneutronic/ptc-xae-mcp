@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -98,6 +99,69 @@ public class PlcCodeIntegrationTests : IAsyncLifetime
         // The default fixture has MAIN; for overridden POU paths, just assert at
         // least one POU line is present in the output.
         Assert.Matches(@"\bPOU/\S+\s+TIPC\^", text);
+    }
+
+    [Trait("Description", "plc_list mit limit=2 seitenweise durchblättern → dieselben Zeilen wie ohne limit, letzte Seite has_more false.")]
+    [SkippableFact(Timeout = 240_000)]
+    public async Task PlcList_Paged_VisitsEveryElementOnce()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+
+        static List<string> Lines(string text) =>
+            text.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.StartsWith("  ", StringComparison.Ordinal)).ToList();
+
+        var full = Lines(GetText(await _client!.CallToolAsync("twincat_plc_list")));
+        Assert.True(full.Count > 2, $"the fixture lists only {full.Count} elements");
+
+        var paged = new List<string>();
+        int? offset = 0;
+        for (int guard = 0; offset is { } o && guard < 100; guard++)
+        {
+            var text = GetText(await _client!.CallToolAsync("twincat_plc_list",
+                new Dictionary<string, object?> { ["limit"] = 2, ["offset"] = o }));
+            paged.AddRange(Lines(text));
+            var footer = Regex.Match(text, @"Page: offset \d+, returned \d+ of (\d+); has_more (true|false)(, next_offset (\d+))?");
+            Assert.True(footer.Success, $"no paging line: {text}");
+            Assert.Equal(full.Count, int.Parse(footer.Groups[1].Value, CultureInfo.InvariantCulture));
+            offset = footer.Groups[4].Success ? int.Parse(footer.Groups[4].Value, CultureInfo.InvariantCulture) : null;
+        }
+        Assert.Equal(full, paged);
+    }
+
+    [Trait("Description", "plc_read mit paths (MAIN + ein falscher Pfad) → MAIN gelesen, der falsche als [Error] mit Next-Hinweis, Kopfzeile 1 von 2.")]
+    [SkippableFact(Timeout = 240_000)]
+    public async Task PlcRead_Paths_ReadsTheGoodOnes_AndReportsTheBadOne()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+
+        string missing = FixtureLayout.PousFolder + "^DoesNotExist";
+        var text = GetText(await _client!.CallToolAsync("twincat_plc_read", new Dictionary<string, object?>
+        {
+            ["paths"] = new[] { _pouPath, missing },
+            ["kind"] = "POU",
+        }));
+
+        Assert.StartsWith("Read 1 of 2 elements (1 failed).", text);
+        Assert.Contains($"=== {_pouPath} ===", text);
+        Assert.Contains("--- Implementation ---", text);
+        Assert.Contains($"=== {missing} ===\n[Error] PLC tree path not found", text.Replace("\r\n", "\n", StringComparison.Ordinal));
+        Assert.Contains("Next: twincat_plc_list", text);
+    }
+
+    [Trait("Description", "Resource ptc-xae://plc/element/<MAIN, URI-kodiert> lesen → derselbe Text und dieselbe Revision wie plc_read.")]
+    [SkippableFact(Timeout = 240_000)]
+    public async Task ElementResource_ReturnsWhatPlcReadReturns()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+
+        string viaTool = await ReadAsync(_pouPath, "POU");
+        var resource = await _client!.ReadResourceAsync("ptc-xae://plc/element/" + Uri.EscapeDataString(_pouPath));
+        string viaResource = string.Join("\n", resource.Contents.OfType<TextResourceContents>().Select(c => c.Text));
+
+        Assert.Equal(viaTool, viaResource);
     }
 
     // ── Scenario 2: plc_read returns declaration + implementation ─────────────

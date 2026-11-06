@@ -83,9 +83,29 @@ public partial class Form1
     private void ShowSettingsDialog()
     {
         var settings = ThemeManager.Settings;
+        var access = _bridge is { } b
+            ? new McpAccessSettings(b.Surface.WindowProfile, b.Surface.EnvironmentProfile, b.Policy.Window, b.Policy.Environment)
+            : null;
         using var dialog = new SettingsDialog(McpBridge.Port, ThemeManager.Current == ThemeMode.Dark,
-            settings.RememberWindowPosition, _diagnosticsEnabled, settings.CheckForUpdates, UpdateCheckLocked);
+            settings.RememberWindowPosition, _diagnosticsEnabled, settings.CheckForUpdates, UpdateCheckLocked, access);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        if (_bridge is { } bridge)
+        {
+            settings.ToolProfile = dialog.ToolProfile;
+            if (!string.Equals(dialog.ToolProfile, bridge.Surface.WindowProfile, StringComparison.Ordinal))
+                bridge.Surface.SetWindowProfile(dialog.ToolProfile);
+            var policy = dialog.AccessPolicy;
+            if (policy.ToJson() != bridge.Policy.Window.ToJson())
+            {
+                try { bridge.Policy.SetWindowPolicy(policy); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    MessageBox.Show(this, $"The access policy could not be saved to {bridge.Policy.FilePath}:\n{ex.Message}\n\nThe previous policy stays in force.",
+                        "Access policy", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+        }
 
         settings.RememberWindowPosition = dialog.RememberWindowPosition;
         if (!UpdateCheckLocked)

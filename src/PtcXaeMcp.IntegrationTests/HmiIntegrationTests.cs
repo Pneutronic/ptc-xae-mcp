@@ -70,7 +70,9 @@ public class HmiIntegrationTests(HmiFixture fx)
             Assert.StartsWith("ADS.PLC1.", s.GetProperty("mappedName").GetString()));
         // The neutral fixture (#163) is a fresh starter project: it maps no ADS symbol, and
         // mapping one needs a reachable PLC (stage B). Only a source with mappings can show more.
-        if (json.GetProperty("count").GetInt32() == 0)
+        Assert.Equal(json.GetProperty("symbols").GetArrayLength(), json.GetProperty("returned").GetInt32());
+        Assert.True(json.GetProperty("mappedCount").GetInt32() >= json.GetProperty("total").GetInt32(), text);
+        if (json.GetProperty("total").GetInt32() == 0)
             throw new SkipException("The HMI fixture maps no ADS.PLC1.* symbol (the neutral fixture is a fresh " +
                                     $"starter project); set {HmiFixture.SourceEnvVar} to a neutral HMI project with ADS mappings.");
     }

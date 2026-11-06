@@ -197,7 +197,7 @@ public sealed class PlcMoveCoordinatorTests : IDisposable
         var t = new Tree();
         t.Fake.SolutionOpen = false;
 
-        Coord(t).Move(Fb, "POU", Target).Should().Be("[Error] No solution is currently open.");
+        Coord(t).Move(Fb, "POU", Target).Should().StartWith("[Error] No solution is currently open.\nNext: ");
         AssertNothingHappened(t.Fake);
     }
 

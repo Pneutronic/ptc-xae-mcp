@@ -1,4 +1,5 @@
 using System.Text.Json;
+using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Security;
 
 namespace PtcXaeMcp.WinForms.TwinCat;
@@ -20,21 +21,31 @@ internal sealed class PersistentSnapshotCoordinator(
 
     // ---- list ------------------------------------------------------------------------
 
-    public string ListSymbols(string? root, int? maxDepth, bool persistentOnly, int? limit, string? amsNetId, int? adsPort)
+    /// <summary>Symbols per page of twincat_list_ads_symbols.</summary>
+    internal static readonly McpLimit SymbolPage = new(500, 5000);
+
+    /// <summary>The symbol walk stops after this many entries; the total is then not known.</summary>
+    internal const int SymbolWalkCap = 100_000;
+
+    /// <summary>Compared leaves per page and list of twincat_persistent_snapshot_compare.</summary>
+    internal static readonly McpLimit ComparePage = new(ReportCap, 5000);
+
+    public string ListSymbols(string? root, int? maxDepth, bool persistentOnly, int? limit, string? amsNetId, int? adsPort,
+        int offset = 0)
     {
+        if (McpPaging.Validate(limit, offset) is { } invalid) return invalid;
         int port = adsPort ?? DefaultAdsPort;
         var r = session.ListAdsSymbols(string.IsNullOrWhiteSpace(root) ? null : root.Trim(),
-            Math.Clamp(maxDepth ?? 1, 0, 16), persistentOnly, Math.Clamp(limit ?? 500, 1, 5000), amsNetId, port);
+            Math.Clamp(maxDepth ?? 1, 0, 16), persistentOnly, SymbolWalkCap, amsNetId, port);
         if (!r.Success) return AdsVariableCoordinator.FailedAt(r.Message, r.AmsNetId, r.AdsPort);
-        return JsonSerializer.Serialize(new
+        var page = McpPaging.ApplyPartial(r.Symbols, SymbolPage.Resolve(limit), offset, complete: !r.Truncated);
+        return page.Serialize(new
         {
             success = true,
-            count = r.Symbols.Count,
-            truncated = r.Truncated,
-            symbols = r.Symbols,
+            symbols = page.Items,
             amsNetId = r.AmsNetId,
             adsPort = r.AdsPort,
-        }, JsonOpts);
+        }, JsonOpts, "symbols");
     }
 
     // ---- selection ---------------------------------------------------------------------
@@ -258,8 +269,9 @@ internal sealed class PersistentSnapshotCoordinator(
     // ---- compare -------------------------------------------------------------------------
 
     public string Compare(string? snapshotPath, string? otherPath, string? pathMapJson, string? tmcPath,
-        string? amsNetId, int? adsPort, int? limit)
+        string? amsNetId, int? adsPort, int? limit, int offset = 0)
     {
+        if (McpPaging.Validate(limit, offset) is { } invalid) return invalid;
         int port = adsPort ?? DefaultAdsPort;
         if (!SnapshotPathMap.TryParse(pathMapJson, out var map, out string mapError)) return "[Error] " + mapError;
         var (snap, error) = Load(snapshotPath, "snapshotPath");
@@ -294,24 +306,28 @@ internal sealed class PersistentSnapshotCoordinator(
         }
 
         var diff = SnapshotDiff.Compare(snap.Values, live, map);
-        int cap = Math.Clamp(limit ?? ReportCap, 1, 5000);
-        return JsonSerializer.Serialize(new
+        // One window over all four leaf lists: page k holds items [offset, offset+limit) of each list, total is the
+        // longest list, so has_more/next_offset run until every list is through. Each list keeps its own count.
+        int longest = new[] { diff.Differences.Count, diff.OnlyInSnapshot.Count, diff.OnlyOnPlc.Count, diff.TypeMismatches.Count }.Max();
+        var page = McpPaging.Info(longest, ComparePage.Resolve(limit), offset);
+        return page.Serialize(new
         {
             success = true,
             equal = diff.Equal,
             against,
             equalCount = diff.EqualCount,
             differenceCount = diff.Differences.Count,
-            differences = diff.Differences.Take(cap).Select(d => new { path = d.Path, snapshotPath = d.SnapshotPath, type = d.Type, snapshot = d.Snapshot, live = d.Live }),
-            onlyInSnapshot = diff.OnlyInSnapshot.Take(cap),
             onlyInSnapshotCount = diff.OnlyInSnapshot.Count,
-            onlyOnPlc = diff.OnlyOnPlc.Take(cap),
             onlyOnPlcCount = diff.OnlyOnPlc.Count,
-            typeMismatches = diff.TypeMismatches.Take(cap),
+            typeMismatchCount = diff.TypeMismatches.Count,
+            differences = McpPaging.Slice(diff.Differences, page).Select(d => new { path = d.Path, snapshotPath = d.SnapshotPath, type = d.Type, snapshot = d.Snapshot, live = d.Live }),
+            onlyInSnapshot = McpPaging.Slice(diff.OnlyInSnapshot, page),
+            onlyOnPlc = McpPaging.Slice(diff.OnlyOnPlc, page),
+            typeMismatches = McpPaging.Slice(diff.TypeMismatches, page),
             conflicts = diff.Conflicts,
             warnings,
             amsNetId = netId,
-        }, JsonOpts);
+        }, JsonOpts, "differences");
     }
 
     // ---- restore -------------------------------------------------------------------------

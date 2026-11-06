@@ -54,7 +54,9 @@ internal sealed partial class TwinCatMcpTools
                  "live): this list is a cached view — a map/unmap done after the project was loaded is NOT reflected, " +
                  "even with refresh=true. For the live state of one symbol use twincat_hmi_read_symbols " +
                  "(SYMBOL_NOT_MAPPED = not mapped). Read-only. " +
-                 "Result: one-line summary + indented JSON { hmiProject, total, count, symbols[] }.")]
+                 "Result: one-line summary + indented JSON { hmiProject, mappedCount, total, offset, returned, has_more, " +
+                 "next_offset, symbols[] }: mappedCount = every mapped symbol, total = those that pass the filters, " +
+                 "paged with limit/offset (call again with offset=next_offset while has_more is true).")]
     public string HmiListMappedSymbols(
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description("Only symbols of this server domain, e.g. 'ADS'. Case-insensitive. Omit for all.")]
@@ -65,11 +67,15 @@ internal sealed partial class TwinCatMcpTools
         bool includeHidden = false,
         [Description("Ask the server to refresh its symbol list before answering. Default false.")]
         bool refresh = false,
+        [Description("Symbols per page: default 500, at most 5000 (0 = 5000).")]
+        int? limit = null,
+        [Description("Symbols to skip, for the next page (next_offset of the previous call). Default 0.")]
+        int offset = 0,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_hmi_list_mapped_symbols", new { hmiProject, domain, namePrefix, includeHidden, refresh }, () =>
-            bridge.Dispatcher.Run(() =>
+        => bridge.Activity.Trace("twincat_hmi_list_mapped_symbols", new { hmiProject, domain, namePrefix, includeHidden, refresh, limit, offset }, () =>
+            Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session)
-                    .ListMappedSymbols(hmiProject, domain, namePrefix, includeHidden, refresh))), cancellationToken);
+                    .ListMappedSymbols(hmiProject, domain, namePrefix, includeHidden, refresh, limit, offset))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_read_symbols", ReadOnly = true)]
     [Description("Read symbol values THROUGH the HMI engineering server (what the HMI would display), e.g. " +

@@ -83,9 +83,14 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
         return (summary, JsonSerializer.Serialize(info, JsonOpts));
     }
 
+    /// <summary>Mapped symbols per page: default 500, at most 5000.</summary>
+    internal static readonly Mcp.McpLimit MappedSymbolPage = new(500, 5000);
+
     public (string Summary, string Json) ListMappedSymbols(
-        string? hmiProject, string? domain, string? namePrefix, bool includeHidden, bool refresh)
+        string? hmiProject, string? domain, string? namePrefix, bool includeHidden, bool refresh,
+        int? limit = null, int offset = 0)
     {
+        if (Mcp.McpPaging.Validate(limit, offset) is { } invalid) return (invalid, "{}");
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return (error, "{}");
 
@@ -109,10 +114,14 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
         if (wantedDomain is not null) filters.Add($"domain={wantedDomain}");
         if (prefix is not null) filters.Add($"prefix={prefix}");
         if (!includeHidden) filters.Add("hidden excluded");
+        var page = Mcp.McpPaging.Apply(symbols, limit, offset, MappedSymbolPage);
+        string shown = page.Returned == symbols.Count ? ""
+            : page.Returned == 0 ? $" None from offset {page.Offset}."
+            : $" Showing {page.Offset + 1}–{page.Offset + page.Returned}{(page.HasMore ? $", next_offset {page.NextOffset}" : "")}.";
         string summary = $"{symbols.Count} mapped symbol(s) in HMI project '{project.Name}' " +
-                         $"({all.Count} total; {string.Join(", ", filters.DefaultIfEmpty("no filter"))}).";
-        string json = JsonSerializer.Serialize(
-            new { hmiProject = project.Name, total = all.Count, count = symbols.Count, symbols }, JsonOpts);
+                         $"({all.Count} mapped in all; {string.Join(", ", filters.DefaultIfEmpty("no filter"))}).{shown}";
+        string json = page.Serialize(
+            new { hmiProject = project.Name, mappedCount = all.Count, symbols = page.Items }, JsonOpts, "symbols");
         return (summary, json);
     }
 

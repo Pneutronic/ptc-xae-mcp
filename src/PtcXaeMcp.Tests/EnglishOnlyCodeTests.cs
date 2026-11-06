@@ -45,6 +45,8 @@ public sealed class EnglishOnlyCodeTests
             "matches the VS 'Go To Line' dialog's own (German-locale) caption/controls.",
         ["TwinCat/XaeDialogs.cs"] =
             "matches XAE's own dialog titles/button text for detection/dismissal.",
+        ["TwinCat/XaeDialogClassifier.cs"] =
+            "classifies XAE's own German dialog texts and button captions ('löschen', 'außerhalb', 'überschreiben').",
         ["TwinCat/ErrorListClearCommand.cs"] =
             "the VS command-bar command id string ('OtherContextMenus.ErrorList.Löschen') is XAE's own name for the command, not translatable prose.",
         ["TwinCat/BuildTypes.cs"] =

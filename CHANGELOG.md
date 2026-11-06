@@ -44,6 +44,13 @@ pull-request numbers refer to those.
   path URI-encoded), `ptc-xae://build/errors`, `ptc-xae://toolsets`. Each read goes through the matching tool, so
   the access policy, the single-operation lock and the activity log apply.
 
+- `twincat_xae_dialogs` (read-only) lists the dialogs the XAE has open — id, title, texts, buttons, whether it
+  blocks the XAE — and classifies each as `known-safe`, `unknown` or `known-destructive` (confirms an activation,
+  restart, download, login, delete, safety or license action). `twincat_xae_dialog_answer(id, button)` presses a
+  button and reports whether the dialog closed and whether another followed; it refuses a known-destructive dialog
+  and a destructive button on any dialog — a person answers those in the XAE. Both are pure Win32 and answer while
+  another call is blocked by the dialog (verified live with the XAE's reload prompt for a file changed on disk).
+
 ### Changed
 - The most frequent errors name the next step on a second line `Next: …`: no XAE, no solution open, a PLC path that
   does not exist (with how to find the real, localized path).

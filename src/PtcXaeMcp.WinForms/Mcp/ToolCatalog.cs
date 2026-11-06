@@ -41,7 +41,7 @@ internal static class ToolCatalog
         (Toolset.Meta,
         [
             "ptc_test_marker", "twincat_get_status", "twincat_get_log", "twincat_stop", "twincat_shutdown",
-            "twincat_get_client_info", "twincat_doctor",
+            "twincat_get_client_info", "twincat_doctor", "twincat_xae_dialogs", "twincat_xae_dialog_answer",
         ]),
         (Toolset.Project,
         [

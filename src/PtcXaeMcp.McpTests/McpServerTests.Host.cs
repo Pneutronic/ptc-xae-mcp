@@ -125,6 +125,25 @@ public partial class McpServerTests
         Assert.Contains("Access policy:", text);
     }
 
+    // ── XAE dialogs ────────────────────────────────────────────────────────────
+
+    [SkippableFact]
+    public async Task XaeDialogs_ListsOrSaysNone_AndAnUnknownIdIsRefused()
+    {
+        SkipIfNotReachable();
+
+        var list = GetText(await CallToolAsync("twincat_xae_dialogs"));
+        Assert.False(McpErrorsLike(list), list);
+        Assert.True(list.StartsWith("No XAE dialog is open.", StringComparison.Ordinal)
+                    || list.Contains("XAE dialog(s) open", StringComparison.Ordinal), list);
+
+        var answer = GetText(await CallToolAsync("twincat_xae_dialog_answer",
+            new Dictionary<string, object?> { ["id"] = "0x0", ["button"] = "OK" }));
+        Assert.StartsWith("[Error] No open XAE dialog has the id '0x0'", answer);
+    }
+
+    private static bool McpErrorsLike(string text) => text.StartsWith("[Error]", StringComparison.Ordinal);
+
     // ── prompts and resources ──────────────────────────────────────────────────
 
     [SkippableFact]

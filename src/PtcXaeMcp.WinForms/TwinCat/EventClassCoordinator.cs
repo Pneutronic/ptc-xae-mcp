@@ -204,7 +204,16 @@ internal sealed class EventClassCoordinator(ITwinCatSession session)
         lines.Add(Save("The PLC's TC_EVENTS follows at once"));
 
         if (pinned.Count > 0)
-            lines.AddRange(Repin(updated, readBack, pinned.Select(p => p.Info).ToList(), "the update dropped the pin"));
+        {
+            // The save after DeleteType rewrites ExternalTypes.tmc without the class; the other pins of the file are written
+            // back as they were, in case the XAE dropped them too.
+            var type = GlobalDataTypeXml.Parse(readBack, updated.Name)!;
+            var plans = pinned.Select(p => new PinPlan(p.Info, [type],
+                GlobalDataTypeXml.DataTypesInTmc(p.Info.ExternalTypesXml)
+                    .Where(k => !GlobalDataTypeXml.SameType(k, type) && !string.Equals(k.Name, type.Name, StringComparison.OrdinalIgnoreCase))
+                    .ToList())).ToList();
+            lines.AddRange(Repin(plans, type, "the update dropped the pin"));
+        }
         return string.Join(Environment.NewLine, lines);
     }
 
@@ -219,22 +228,31 @@ internal sealed class EventClassCoordinator(ITwinCatSession session)
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return error;
 
-        List<Known> classes;
+        List<TypeSystemType> types;
         IReadOnlyList<PlcExternalTypesInfo> plcs;
         try
         {
-            classes = ReadClasses();
-            plcs = session.ReadPlcExternalTypes();
+            types = session.ReadTypeSystemXml().Select(x => GlobalDataTypeXml.Parse(x)).OfType<TypeSystemType>().ToList();
+            plcs = session.ReadPlcExternalTypes(withPlcObjects: true);
         }
         catch (Exception ex) { return McpErrors.EnsureError(ComCall.Describe(ex)); }
 
-        var found = classes.FirstOrDefault(c => string.Equals(c.Info.Name, typeName, StringComparison.OrdinalIgnoreCase));
+        // Several types may carry the name (a library's, a PLC's own DUT); the project's own one counts first.
+        var found = types.Where(t => string.Equals(t.Name, typeName, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(t => t.Persistent ? 0 : t.BuiltIn ? 1 : 2).FirstOrDefault();
         if (found is null)
-            return $"[Error] No event class '{typeName}' in the type system. This tool pins event classes only (other global data " +
-                   $"types are not supported yet). Event classes of the project: {Join(classes.Where(c => !c.Info.BuiltIn).Select(c => c.Info.Name))}. " +
-                   "Nothing was changed.";
-        if (found.Info.BuiltIn)
-            return $"[Error] '{found.Info.Name}' is a built-in TwinCAT event class; every project has it, a library need not carry it. Nothing was changed.";
+            return $"[Error] No data type '{typeName}' in the type system. Data types of the project (kept in the .tsproj): " +
+                   $"{Join(ProjectTypes(types))}. Nothing was changed.";
+        if (found.BuiltIn)
+            return $"[Error] '{found.Name}' is a built-in TwinCAT {found.Kind}; every project has it, a library need not carry it. Nothing was changed.";
+        if (!found.Persistent)
+            return $"[Error] '{found.Name}' ({found.Kind}) comes from {found.Origin}, not from the project's type system. Only the " +
+                   "project's own data types (kept in the .tsproj, PersistentType) are pinned; a library type comes with its library, " +
+                   $"a DUT with its PLC project. Data types of the project: {Join(ProjectTypes(types))}. Nothing was changed.";
+        if (found.Kind == GlobalDataTypeXml.KindFunctionBlock)
+            return $"[Error] '{found.Name}' is a function block, not a data type. Nothing was changed.";
+
+        var closure = GlobalDataTypeClosure.Resolve(found, types);
 
         if (plcs.Count == 0)
             return "[Error] No PLC project with a .plcproj in the solution (a referenced stand-alone PLC project is pinned in its own solution). Nothing was changed.";
@@ -255,18 +273,78 @@ internal sealed class EventClassCoordinator(ITwinCatSession session)
             plc = match;
         }
 
-        var state = PinStates(found.Info, [plc]).FirstOrDefault();
-        if (state is not null && state.UpToDate && state.Info.PinnedNodes.Any(n => EventClassXml.PinNodeIsClass(n, found.Info.Name)))
-            return $"Event class '{found.Info.Name}' {found.Info.Guid} is already pinned in PLC '{plc.PlcName}' and up to date " +
-                   $"({state.Path}). Nothing was changed.";
+        var collisions = Collisions(closure, plc);
+        if (collisions.Count > 0)
+            return $"[Error] {Capitalize(found.Label)} cannot be pinned into PLC '{plc.PlcName}': " + string.Join("; ", collisions) +
+                   ". Two definitions of one name or GUID are what makes the XAE report \"A different data type … with same GUID " +
+                   "exists already\" or a duplicate type. Rename or remove the other one first. Nothing was changed.";
+
+        if (closure.Types.All(t => PinUpToDate(t, plc)))
+            return $"{Capitalize(found.Label)} is already pinned in PLC '{plc.PlcName}' and up to date ({plc.ExternalTypesPath})" +
+                   (closure.Types.Count > 1 ? $", with its dependencies {Join(closure.Dependencies.Select(d => d.Label))}" : "") +
+                   ". Nothing was changed.";
 
         error = SessionGuards.EnsureOfflineForWrite(session);
         if (error is not null) return error;
 
         var lines = new List<string>();
-        lines.AddRange(Repin(found.Info, found.Xml, [plc], null));
+        lines.AddRange(Repin([new PinPlan(plc, closure.Types, [])], found, null));
+        if (closure.Types.Count > 1)
+            lines.Add($"Dependencies taken along: {Join(closure.Dependencies.Select(d => d.Label))}.");
+        foreach (var s in closure.Skipped)
+            lines.Add($"[Warn] '{s.Reference.Name}' (used by '{s.UsedBy}') is not taken along: {s.Why}. A project that uses the pinned " +
+                      "type from a library needs it from there too.");
         return string.Join(Environment.NewLine, lines);
     }
+
+    private static IEnumerable<string> ProjectTypes(IEnumerable<TypeSystemType> types) =>
+        types.Where(t => t.Persistent && !t.BuiltIn).Select(t => $"{t.Name} ({t.Kind})")
+            .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
+
+    // What the PLC project already has under a name or GUID of a type to pin: a DUT/POU/interface, or a different pinned type.
+    internal static List<string> Collisions(GlobalDataTypeClosure closure, PlcExternalTypesInfo plc)
+    {
+        var lines = new List<string>();
+        var pinned = GlobalDataTypeXml.DataTypesInTmc(plc.ExternalTypesXml);
+        foreach (var t in closure.Types)
+        {
+            foreach (var o in plc.PlcObjects ?? [])
+                if (string.Equals(o.Name, t.Name, StringComparison.OrdinalIgnoreCase)
+                    || (t.IsEventClass && string.Equals(o.Name, "ST_" + t.Name, StringComparison.OrdinalIgnoreCase)))
+                    lines.Add($"the PLC project has a {o.Kind} '{o.Name}' ({o.Path}) of the same name as {t.Label}");
+            foreach (var p in pinned)
+            {
+                bool sameName = string.Equals(p.Name, t.Name, StringComparison.OrdinalIgnoreCase);
+                bool sameGuid = p.Guid.Length > 0 && string.Equals(p.Guid, t.Guid, StringComparison.OrdinalIgnoreCase);
+                if (sameName && !sameGuid && !(p.Guid.Length == 0 && GlobalDataTypeXml.SameDefinition(p.DataTypeXml, t.DataTypeXml)))
+                    lines.Add($"its ExternalTypes.tmc already holds a different {p.Kind} '{p.Name}' " +
+                              $"{(p.Guid.Length == 0 ? "without GUID" : p.Guid)} — {t.Label} has the same name");
+                else if (sameGuid && !sameName)
+                    lines.Add($"its ExternalTypes.tmc already holds {p.Label} with the GUID of {t.Label}");
+            }
+        }
+        return lines;
+    }
+
+    // Pinned (file + tree node) with the definition the type system has now.
+    private static bool PinUpToDate(TypeSystemType type, PlcExternalTypesInfo plc)
+    {
+        var inFile = GlobalDataTypeXml.DataTypesInTmc(plc.ExternalTypesXml).FirstOrDefault(p =>
+            GlobalDataTypeXml.SameType(p, type) && string.Equals(p.Name, type.Name, StringComparison.OrdinalIgnoreCase));
+        return inFile is not null
+               && plc.PinnedNodes.Any(n => GlobalDataTypeXml.PinNodeIs(n, type))
+               && SameDefinition(type, inFile);
+    }
+
+    private static bool SameDefinition(TypeSystemType a, TypeSystemType b)
+    {
+        if (a.IsEventClass && b.IsEventClass
+            && EventClassXml.Parse(a.DataTypeXml) is { } ea && EventClassXml.Parse(b.DataTypeXml) is { } eb)
+            return SameContent(ea, eb);
+        return GlobalDataTypeXml.SameDefinition(a.DataTypeXml, b.DataTypeXml);
+    }
+
+    private static string Capitalize(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
 
     // ---- shared ---------------------------------------------------------------------------------
 
@@ -294,26 +372,32 @@ internal sealed class EventClassCoordinator(ITwinCatSession session)
         }
     }
 
-    // Writes the class into ExternalTypes.tmc (+ the .plcproj item) of each PLC while the solution is closed, then checks the tree.
-    private List<string> Repin(EventClassInfo info, string exportXml, IReadOnlyList<PlcExternalTypesInfo> plcs, string? why)
+    /// <summary>What one PLC's ExternalTypes.tmc gets: <c>Types</c> (dependencies first) and <c>Kept</c>, pins it had that are written back unchanged.</summary>
+    private sealed record PinPlan(PlcExternalTypesInfo Plc, IReadOnlyList<TypeSystemType> Types, IReadOnlyList<TypeSystemType> Kept);
+
+    // Writes the types into ExternalTypes.tmc (+ the .plcproj item) of each PLC while the solution is closed, then reads
+    // every pinned type back: its node under ExternalTypes.tmc in the tree and its DataType in the file.
+    private List<string> Repin(IReadOnlyList<PinPlan> plans, TypeSystemType target, string? why)
     {
         var lines = new List<string>();
-        string dataType = EventClassXml.DataTypeElement(exportXml) ?? exportXml;
         var edits = new List<SolutionFileEdit>();
-        foreach (var plc in plcs)
+        foreach (var plan in plans)
         {
-            edits.Add(new SolutionFileEdit(plc.ExternalTypesPath, current => EventClassXml.UpsertIntoTmc(current, dataType)));
-            edits.Add(new SolutionFileEdit(plc.PlcprojPath, current => current is null
-                ? throw new InvalidOperationException($"{plc.PlcprojPath} does not exist.")
+            var dataTypes = plan.Kept.Concat(plan.Types).Select(t => t.DataTypeXml).ToList();
+            edits.Add(new SolutionFileEdit(plan.Plc.ExternalTypesPath,
+                current => dataTypes.Aggregate(current, (text, dataType) => EventClassXml.UpsertIntoTmc(text, dataType))!));
+            edits.Add(new SolutionFileEdit(plan.Plc.PlcprojPath, current => current is null
+                ? throw new InvalidOperationException($"{plan.Plc.PlcprojPath} does not exist.")
                 : EventClassXml.EnsureExternalTypesItem(current)));
         }
 
-        string names = Join(plcs.Select(p => $"'{p.PlcName}'"));
+        string names = Join(plans.Select(p => $"'{p.Plc.PlcName}'"));
+        string because = why is null ? "" : $" ({why})";
         try { session.EditFilesWithSolutionClosed(edits); }
         catch (Exception ex)
         {
             lines.Add(McpErrors.EnsureError(ComCall.Describe(ex)) +
-                      $" Pinning '{info.Name}' into PLC {names} did not complete{(why is null ? "" : $" ({why})")}: check ExternalTypes.tmc " +
+                      $" Pinning '{target.Name}' into PLC {names} did not complete{because}: check ExternalTypes.tmc " +
                       "next to the .plcproj and the solution state (twincat_get_active_project), or pin it again with twincat_plc_add_global_data_type.");
             return lines;
         }
@@ -326,26 +410,40 @@ internal sealed class EventClassCoordinator(ITwinCatSession session)
             return lines;
         }
 
-        foreach (var plc in plcs)
+        foreach (var plan in plans)
         {
+            var plc = plan.Plc;
             var now = after.FirstOrDefault(a => string.Equals(a.PlcprojPath, plc.PlcprojPath, StringComparison.OrdinalIgnoreCase));
-            string? node = now?.PinnedNodes.FirstOrDefault(n => EventClassXml.PinNodeIsClass(n, info.Name));
-            var inFile = EventClassXml.EventClassesInTmc(now?.ExternalTypesXml)
-                .FirstOrDefault(c => string.Equals(c.Name, info.Name, StringComparison.OrdinalIgnoreCase));
-            if (node is null || inFile is null)
+            var inFileNow = GlobalDataTypeXml.DataTypesInTmc(now?.ExternalTypesXml);
+            var missingKept = new List<string>();
+            foreach (var type in plan.Types.Reverse().Concat(plan.Kept))
             {
-                lines.Add($"[Error] PLC '{plc.PlcName}': ExternalTypes.tmc was written, but after the reopen " +
-                          (node is null ? "the XAE shows no ExternalTypes.tmc node for the class" : "the file no longer holds the class") +
-                          $" ({plc.ExternalTypesPath}). Check the PLC project in the XAE.");
-                continue;
+                bool kept = plan.Kept.Contains(type);
+                string? node = now?.PinnedNodes.FirstOrDefault(n => GlobalDataTypeXml.PinNodeIs(n, type));
+                var inFile = inFileNow.FirstOrDefault(p => string.Equals(p.Name, type.Name, StringComparison.OrdinalIgnoreCase));
+                if (node is null || inFile is null)
+                {
+                    if (kept) { missingKept.Add(type.Label); continue; }
+                    lines.Add($"[Error] PLC '{plc.PlcName}': ExternalTypes.tmc was written, but after the reopen " +
+                              (node is null ? $"the XAE shows no ExternalTypes.tmc node for {type.Label}" : $"the file no longer holds {type.Label}") +
+                              $" ({plc.ExternalTypesPath}). Check the PLC project in the XAE.");
+                    continue;
+                }
+                if (kept) continue;
+                string content = SameDefinition(type, inFile) ? "." : " — [Warn] but its content differs from the type system.";
+                lines.Add(ReferenceEquals(type, target) || type.Name == target.Name
+                    ? $"Pinned {type.Kind} '{type.Name}' {type.Guid} into PLC '{plc.PlcName}' (\"Add Global Data Type\"): " +
+                      $"{plc.ExternalTypesPath} and its .plcproj entry; the tree shows ExternalTypes.tmc^{node}{content}"
+                    : $"Pinned its dependency {type.Label} into PLC '{plc.PlcName}' too; the tree shows ExternalTypes.tmc^{node}{content}");
             }
-            lines.Add($"Pinned event class '{info.Name}' {info.Guid} into PLC '{plc.PlcName}' (\"Add Global Data Type\"): " +
-                      $"{plc.ExternalTypesPath} and its .plcproj entry; the tree shows ExternalTypes.tmc^{node}" +
-                      (SameContent(info, inFile) ? "." : " — [Warn] but its content differs from the type system."));
+            if (missingKept.Count > 0)
+                lines.Add($"[Error] PLC '{plc.PlcName}': {Join(missingKept)} were pinned before and were written back, but after the reopen " +
+                          "the tree or the file does not show them. Pin them again with twincat_plc_add_global_data_type.");
         }
-        lines.Add($"The solution was saved, closed and reopened for this{(why is null ? "" : $" ({why})")}. " +
-                  "A library saved from that PLC project carries the class (externaltypes.auxiliary), so projects using the library get TC_EVENTS." +
-                  $"{info.Name}.");
+        lines.Add($"The solution was saved, closed and reopened for this{because}. " +
+                  (target.IsEventClass
+                      ? $"A library saved from that PLC project carries the class (externaltypes.auxiliary), so projects using the library get TC_EVENTS.{target.Name}."
+                      : "A library saved from that PLC project carries the pinned types (externaltypes.auxiliary)."));
         return lines;
     }
 

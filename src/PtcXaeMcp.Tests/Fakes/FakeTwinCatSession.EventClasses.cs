@@ -64,18 +64,35 @@ internal sealed partial class FakeTwinCatSession
         TypeSystem.Last(x => EventClassXml.Parse(x)?.Name == name || x.Contains($">{name}</Name>", StringComparison.Ordinal)) +
         "</DataTypes>";
 
-    public IReadOnlyList<PlcExternalTypesInfo> ReadPlcExternalTypes()
+    /// <summary>The DUTs/POUs/interfaces per PLC name (what ReadPlcExternalTypes(withPlcObjects: true) reports).</summary>
+    public List<(string Plc, PlcTypeObject Object)> PlcTypeObjects { get; } = new();
+
+    /// <summary>Types the reopened XAE shows no node for (simulates a pinned type it did not take).</summary>
+    public HashSet<string> ReopenHidesNodes { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyList<string> ReadTypeSystemXml()
     {
-        CallLog.Add("ReadPlcExternalTypes()");
+        CallLog.Add("ReadTypeSystemXml()");
+        return TypeSystem.Select(x => "<?xml version=\"1.0\"?><DataTypes>" + x + "</DataTypes>").ToList();
+    }
+
+    public IReadOnlyList<PlcExternalTypesInfo> ReadPlcExternalTypes(bool withPlcObjects = false)
+    {
+        CallLog.Add(withPlcObjects ? "ReadPlcExternalTypes(objects)" : "ReadPlcExternalTypes()");
         return EventPlcs.Select(p =>
         {
             string tmcPath = Path.Combine(Path.GetDirectoryName(p.PlcprojPath)!, EventClassXml.ExternalTypesFile);
             string? tmc = Files.GetValueOrDefault(tmcPath);
             bool inProject = Files.TryGetValue(p.PlcprojPath, out var proj) && proj.Contains("ExternalTypes.tmc", StringComparison.Ordinal);
+            // The XAE names the node Global.<type>; an event class becomes the struct ST_<class>.
             var nodes = inProject && !ReopenShowsNoPins
-                ? EventClassXml.EventClassesInTmc(tmc).Select(c => "Global.ST_" + c.Name).ToList()
+                ? GlobalDataTypeXml.DataTypesInTmc(tmc).Where(t => !ReopenHidesNodes.Contains(t.Name))
+                    .Select(t => "Global." + (t.IsEventClass ? "ST_" : "") + t.Name).ToList()
                 : new List<string>();
-            return new PlcExternalTypesInfo(p.PlcName, p.PlcprojPath, nodes, tmc);
+            var objects = withPlcObjects
+                ? PlcTypeObjects.Where(o => o.Plc == p.PlcName).Select(o => o.Object).ToList()
+                : null;
+            return new PlcExternalTypesInfo(p.PlcName, p.PlcprojPath, nodes, tmc, objects);
         }).ToList();
     }
 

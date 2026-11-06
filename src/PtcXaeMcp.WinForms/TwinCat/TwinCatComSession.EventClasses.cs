@@ -95,7 +95,19 @@ internal sealed partial class TwinCatComSession
         return ComBusyRetry.Run(() => ReadBackType(name), OpenTimeout);
     }
 
-    public IReadOnlyList<PlcExternalTypesInfo> ReadPlcExternalTypes() => ComBusyRetry.Run<IReadOnlyList<PlcExternalTypesInfo>>(() =>
+    public IReadOnlyList<string> ReadTypeSystemXml() => ComBusyRetry.Run<IReadOnlyList<string>>(() =>
+    {
+        object typeSystem = RequireTypeSystem();
+        var found = new List<string>();
+        foreach (object type in TypesOf(typeSystem))
+        {
+            string xml = ExportXml(type);
+            if (xml.Length > 0) found.Add(xml);
+        }
+        return found;
+    }, OpenTimeout);
+
+    public IReadOnlyList<PlcExternalTypesInfo> ReadPlcExternalTypes(bool withPlcObjects = false) => ComBusyRetry.Run<IReadOnlyList<PlcExternalTypesInfo>>(() =>
     {
         dynamic dte = GetActiveTcDte();
         object sysMan = RequireSystemManager(dte);
@@ -118,10 +130,35 @@ internal sealed partial class TwinCatComSession
             string plcproj = System.Net.WebUtility.HtmlDecode(match.Groups[1].Value.Trim());
             string tmcPath = Path.Combine(Path.GetDirectoryName(plcproj) ?? string.Empty, EventClassXml.ExternalTypesFile);
             string? tmc = File.Exists(tmcPath) ? File.ReadAllText(tmcPath) : null;
-            result.Add(new PlcExternalTypesInfo(project.Name, plcproj, pinned, tmc));
+            List<PlcTypeObject>? objects = null;
+            if (withPlcObjects)
+            {
+                objects = new List<PlcTypeObject>();
+                CollectPlcTypeObjects(project.Nested, objects, depth: 0);
+            }
+            result.Add(new PlcExternalTypesInfo(project.Name, plcproj, pinned, tmc, objects));
         }
         return result;
     }, OpenTimeout);
+
+    // DUTs, POUs and interfaces below the PLC project node, through its folders (their names are PLC types).
+    private static void CollectPlcTypeObjects(object parent, List<PlcTypeObject> sink, int depth)
+    {
+        if (depth > 12) return;
+        foreach (object child in Children(parent))
+        {
+            int itemType = ItemTypeOf(child);
+            string? kind = PlcCodeClassification.PouKindOf(itemType);
+            if (kind is PouKind.Dut or PouKind.Pou or PouKind.Interface)
+            {
+                string name = NameOf(child);
+                string path = ComCall.ReadProp(() => (string?)((dynamic)child).PathName ?? name, name);
+                sink.Add(new PlcTypeObject(name, kind, path));
+            }
+            else if (kind == PouKind.Folder)
+                CollectPlcTypeObjects(child, sink, depth + 1);
+        }
+    }
 
     /// <summary>
     /// Save + close the solution, rewrite the files, reopen and wait until the PLC projects are back. The reopen runs even

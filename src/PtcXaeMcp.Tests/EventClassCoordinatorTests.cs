@@ -318,7 +318,7 @@ public sealed class EventClassCoordinatorTests
     public void AddGlobalDataType_Refusals()
     {
         var fake = WithClass();
-        Coordinator(fake).AddGlobalDataType("Nope", null).Should().StartWith("[Error] No event class 'Nope'").And.Contain("event classes only");
+        Coordinator(fake).AddGlobalDataType("Nope", null).Should().StartWith("[Error] No data type 'Nope'").And.Contain("MyEvents (event class)");
         Coordinator(fake).AddGlobalDataType("TcSystemEventClass", null).Should().StartWith("[Error] 'TcSystemEventClass' is a built-in");
         Coordinator(fake).AddGlobalDataType("MyEvents", "Other").Should().StartWith("[Error] PLC project 'Other' not found");
         Coordinator(fake).AddGlobalDataType("1bad", null).Should().StartWith("[Error] typeName");

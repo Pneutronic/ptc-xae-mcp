@@ -25,13 +25,18 @@ internal sealed record EventClassInfo(
 /// <summary>
 /// One PLC project and its pinned global data types ("Add Global Data Type"): the .plcproj path from the PLC node, the
 /// children of its <c>ExternalTypes.tmc</c> node (ItemType 651, e.g. <c>Global.ST_MyEvents</c>) and the text of
-/// <c>ExternalTypes.tmc</c> next to the .plcproj (null when the file does not exist).
+/// <c>ExternalTypes.tmc</c> next to the .plcproj (null when the file does not exist). <c>PlcObjects</c>: the DUTs, POUs and
+/// interfaces of the PLC project (their names are types of the PLC), only when they were asked for.
 /// </summary>
 internal sealed record PlcExternalTypesInfo(
-    string PlcName, string PlcprojPath, IReadOnlyList<string> PinnedNodes, string? ExternalTypesXml)
+    string PlcName, string PlcprojPath, IReadOnlyList<string> PinnedNodes, string? ExternalTypesXml,
+    IReadOnlyList<PlcTypeObject>? PlcObjects = null)
 {
     public string ExternalTypesPath => Path.Combine(Path.GetDirectoryName(PlcprojPath) ?? string.Empty, EventClassXml.ExternalTypesFile);
 }
+
+/// <summary>A DUT, POU or INTERFACE of a PLC project: its name, kind and tree path.</summary>
+internal sealed record PlcTypeObject(string Name, string Kind, string Path);
 
 /// <summary>A file the session rewrites while the solution is closed: <c>Transform</c> gets the current text (null = no file).</summary>
 internal sealed record SolutionFileEdit(string Path, Func<string?, string> Transform);

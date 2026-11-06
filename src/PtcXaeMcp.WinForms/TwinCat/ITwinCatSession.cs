@@ -792,8 +792,14 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     string ReplaceTypeSystemType(string guid, string name, string dataTypeXml, string previousXml);
 
-    /// <summary>Every PLC project with its .plcproj, the pins under its ExternalTypes.tmc node and that file's text.</summary>
-    IReadOnlyList<PlcExternalTypesInfo> ReadPlcExternalTypes();
+    /// <summary>ExportXml(false) of every type of the type system (built-in, library, PLC and project types).</summary>
+    IReadOnlyList<string> ReadTypeSystemXml();
+
+    /// <summary>
+    /// Every PLC project with its .plcproj, the pins under its ExternalTypes.tmc node and that file's text; with
+    /// <paramref name="withPlcObjects"/> also its DUTs, POUs and interfaces (a walk of the PLC tree).
+    /// </summary>
+    IReadOnlyList<PlcExternalTypesInfo> ReadPlcExternalTypes(bool withPlcObjects = false);
 
     /// <summary>
     /// Saves and closes the solution, applies <paramref name="edits"/> to the files, reopens it (also after a failed edit)

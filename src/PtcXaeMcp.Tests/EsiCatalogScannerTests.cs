@@ -268,35 +268,61 @@ public sealed class EsiCatalogScannerTests : IDisposable
     }
 
     [Fact]
-    public void ListCatalog_MaxResults_TruncatesAndReportsTotal()
+    public void ListCatalog_Limit_PagesAndReportsTotal()
     {
         WriteBeckhoffSample();
 
-        string result = EsiCatalogScanner.ListCatalog(null, maxResults: 2, latestRevisionOnly: false, esiDirectory: _dir);
+        string result = EsiCatalogScanner.ListCatalog(null, limit: 2, latestRevisionOnly: false, esiDirectory: _dir);
         var root = Json(result);
 
-        Assert.Equal(6, root.GetProperty("totalMatches").GetInt32());
+        Assert.Equal(6, root.GetProperty("total").GetInt32());
+        Assert.Equal(0, root.GetProperty("offset").GetInt32());
         Assert.Equal(2, root.GetProperty("returned").GetInt32());
-        Assert.True(root.GetProperty("truncated").GetBoolean());
+        Assert.True(root.GetProperty("has_more").GetBoolean());
+        Assert.Equal(2, root.GetProperty("next_offset").GetInt32());
         Assert.Equal(2, root.GetProperty("devices").GetArrayLength());
-        Assert.Contains("returning the first 2", result.Split('\n')[0]);
+        Assert.False(root.TryGetProperty("truncated", out _));
+        Assert.False(root.TryGetProperty("totalMatches", out _));
+        Assert.Contains("returning 1–2 (next_offset 2)", result.Split('\n')[0]);
         Assert.Contains("Pass a filter", result.Split('\n')[0]);
     }
 
     [Fact]
-    public void ListCatalog_MaxResultsAboveCap_IsClamped()
+    public void ListCatalog_PagingThroughAll_VisitsEveryDeviceOnce()
     {
         WriteBeckhoffSample();
+        var everything = Json(EsiCatalogScanner.ListCatalog(null, latestRevisionOnly: false, esiDirectory: _dir))
+            .GetProperty("devices").EnumerateArray().Select(d => d.GetProperty("vInfo").GetString()).ToList();
 
-        string result = EsiCatalogScanner.ListCatalog("EL", maxResults: 50_000, esiDirectory: _dir);
-
-        Assert.Contains($"capped at {EsiCatalogScanner.MaxResultsCap}", result.Split('\n')[0]);
-        Assert.False(Json(result).GetProperty("truncated").GetBoolean());
+        var seen = new List<string?>();
+        int? offset = 0;
+        while (offset is { } o)
+        {
+            var root = Json(EsiCatalogScanner.ListCatalog(null, limit: 4, offset: o, latestRevisionOnly: false, esiDirectory: _dir));
+            seen.AddRange(root.GetProperty("devices").EnumerateArray().Select(d => d.GetProperty("vInfo").GetString()));
+            offset = root.GetProperty("next_offset").ValueKind == JsonValueKind.Null ? null : root.GetProperty("next_offset").GetInt32();
+        }
+        Assert.Equal(6, everything.Count);
+        Assert.Equal(everything, seen);
     }
 
     [Fact]
-    public void ListCatalog_MaxResultsBelowOne_IsError()
-        => Assert.StartsWith("[Error]", EsiCatalogScanner.ListCatalog("EL", maxResults: 0, esiDirectory: _dir));
+    public void ListCatalog_LimitAboveMaximum_IsCutToTheMaximum()
+    {
+        WriteBeckhoffSample();
+
+        var root = Json(EsiCatalogScanner.ListCatalog("EL", limit: 50_000, esiDirectory: _dir));
+
+        Assert.False(root.GetProperty("has_more").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("next_offset").ValueKind);
+        Assert.Equal(1000, EsiCatalogScanner.Page.Resolve(50_000));
+        Assert.Equal(1000, EsiCatalogScanner.Page.Resolve(0));
+        Assert.Equal(100, EsiCatalogScanner.Page.Resolve(null));
+    }
+
+    [Fact]
+    public void ListCatalog_NegativeLimit_IsError()
+        => Assert.StartsWith("[Error] limit must be 0 or more", EsiCatalogScanner.ListCatalog("EL", limit: -1, esiDirectory: _dir));
 
     [Fact]
     public void ListCatalog_MissingDirectory_IsError()

@@ -175,6 +175,78 @@ public sealed class PersistentSnapshotCoordinatorTests : IDisposable
         _sut.Compare(null, null, null, null, null, null, null).Should().Contain("snapshotPath is required");
     }
 
+    [Fact]
+    public void Compare_pages_every_list_with_the_same_window()
+    {
+        string snap = SaveRoots();
+        _plc.PlcLeaves["GVL.stRecipe.nCount"] = Leaf("INT", "9");
+        _plc.PlcLeaves["GVL.stRecipe.rSpeed"] = Leaf("LREAL", "1.5");
+        _plc.PlcLeaves.Remove("GVL.stRecipe.sName");
+
+        var first = Parse(_sut.Compare(snap, null, null, null, null, null, 1));
+        first.GetProperty("differenceCount").GetInt32().Should().Be(2);
+        first.GetProperty("onlyInSnapshotCount").GetInt32().Should().Be(1);
+        first.GetProperty("typeMismatchCount").GetInt32().Should().Be(0);
+        first.GetProperty("total").GetInt32().Should().Be(2);
+        first.GetProperty("returned").GetInt32().Should().Be(1);
+        first.GetProperty("has_more").GetBoolean().Should().BeTrue();
+        first.GetProperty("next_offset").GetInt32().Should().Be(1);
+        first.GetProperty("differences").GetArrayLength().Should().Be(1);
+        first.GetProperty("onlyInSnapshot").GetArrayLength().Should().Be(1);
+
+        var second = Parse(_sut.Compare(snap, null, null, null, null, null, 1, offset: 1));
+        second.GetProperty("differences").GetArrayLength().Should().Be(1);
+        second.GetProperty("differences")[0].GetProperty("path").GetString()
+            .Should().NotBe(first.GetProperty("differences")[0].GetProperty("path").GetString());
+        second.GetProperty("onlyInSnapshot").GetArrayLength().Should().Be(0);
+        second.GetProperty("has_more").GetBoolean().Should().BeFalse();
+        second.GetProperty("next_offset").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public void Compare_refuses_a_negative_offset_before_reading_anything()
+    {
+        _sut.Compare(SaveRoots(), null, null, null, null, null, null, offset: -2).Should().StartWith("[Error] offset must be 0 or more");
+    }
+
+    // ---- list ads symbols -------------------------------------------------------------
+
+    [Fact]
+    public void ListSymbols_pages_the_walk_and_reports_the_total()
+    {
+        for (int i = 0; i < 7; i++)
+            _plc.AdsSymbols.Add(new AdsSymbolEntry($"GVL.n{i}", "INT", 2, i % 2 == 0, false, null));
+
+        var page = Parse(_sut.ListSymbols(null, null, false, 3, null, null, offset: 3));
+        page.GetProperty("total").GetInt32().Should().Be(7);
+        page.GetProperty("offset").GetInt32().Should().Be(3);
+        page.GetProperty("returned").GetInt32().Should().Be(3);
+        page.GetProperty("has_more").GetBoolean().Should().BeTrue();
+        page.GetProperty("next_offset").GetInt32().Should().Be(6);
+        page.GetProperty("symbols").EnumerateArray().Select(s => s.GetProperty("path").GetString())
+            .Should().Equal("GVL.n3", "GVL.n4", "GVL.n5");
+        page.TryGetProperty("truncated", out _).Should().BeFalse();
+        page.TryGetProperty("count", out _).Should().BeFalse();
+        _plc.CallLog.Should().Contain(c => c.Contains($"limit={PersistentSnapshotCoordinator.SymbolWalkCap})", StringComparison.Ordinal));
+
+        var persistent = Parse(_sut.ListSymbols(null, null, true, null, null, null));
+        persistent.GetProperty("total").GetInt32().Should().Be(4);
+        persistent.GetProperty("has_more").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public void ListSymbols_a_walk_cut_at_the_ceiling_has_no_total()
+    {
+        for (int i = 0; i < PersistentSnapshotCoordinator.SymbolWalkCap + 1; i++)
+            _plc.AdsSymbols.Add(new AdsSymbolEntry($"GVL.a[{i}]", "INT", 2, false, false, null));
+
+        var page = Parse(_sut.ListSymbols(null, null, false, null, null, null));
+        page.GetProperty("total").ValueKind.Should().Be(JsonValueKind.Null);
+        page.GetProperty("returned").GetInt32().Should().Be(500);
+        page.GetProperty("has_more").GetBoolean().Should().BeTrue();
+        page.GetProperty("next_offset").GetInt32().Should().Be(500);
+    }
+
     // ---- restore ---------------------------------------------------------------------
 
     private string DriftPlc()

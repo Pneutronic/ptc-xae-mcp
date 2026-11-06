@@ -12,7 +12,9 @@ internal sealed partial class TwinCatMcpTools
                  "(subindex, name, dataType, bitSize, defaultValue, defaultText, access, isSetting). " +
                  "Enum-typed sub-indexes include a human-readable defaultText, e.g. 'IIR level 1 (2)'. " +
                  "Read-only; no activated configuration or live controller required. " +
-                 "Result: one-line summary + indented JSON (objectCount, objects[]).")]
+                 "Result: one-line summary + indented JSON { treePath, slaveType, fallbackNote, total, offset, " +
+                 "returned, has_more, next_offset, objects[] }: total counts the objects that pass indexFilter, " +
+                 "paged with limit/offset (call again with offset=next_offset while has_more is true).")]
     public string ReadCoeDictionary(
         [Description("Caret-separated tree path of the EtherCAT slave under TIID, " +
                      "e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^-1AI5 (EL3174)'. " +
@@ -21,12 +23,16 @@ internal sealed partial class TwinCatMcpTools
         [Description("Optional index filter: single index (e.g. '800D') or hex range (e.g. '8000-80FF'). " +
                      "Omit to return all objects.")]
         string? indexFilter = null,
+        [Description("CoE objects per page: default 100, at most 1000 (0 = 1000).")]
+        int? limit = null,
+        [Description("Objects to skip, for the next page (next_offset of the previous call). Default 0.")]
+        int offset = 0,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_read_coe_dictionary", new { treePath, indexFilter }, () =>
-            bridge.Dispatcher.Run(() =>
+        => bridge.Activity.Trace("twincat_read_coe_dictionary", new { treePath, indexFilter, limit, offset }, () =>
+            Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
             {
                 var (summary, json) = new CoeCoordinator(bridge.Dispatcher.Session)
-                    .ReadDictionary(treePath, indexFilter);
+                    .ReadDictionary(treePath, indexFilter, limit, offset);
                 if (McpErrors.IsError(summary))
                     return summary;
                 return summary + Environment.NewLine + json;

@@ -46,11 +46,8 @@ internal sealed record EsiCatalogScan(
 /// </summary>
 internal static class EsiCatalogScanner
 {
-    /// <summary>Default for the tool's <c>maxResults</c>.</summary>
-    public const int DefaultMaxResults = 100;
-
-    /// <summary>Hard cap for the tool's <c>maxResults</c> so the result stays small.</summary>
-    public const int MaxResultsCap = 1000;
+    /// <summary>Devices per page of the tool: default 100, at most 1000 so the result stays small.</summary>
+    public static readonly Mcp.McpLimit Page = new(100, 1000);
 
     /// <summary>At most this many per-file warnings are kept/reported.</summary>
     public const int MaxWarnings = 20;
@@ -110,15 +107,13 @@ internal static class EsiCatalogScanner
     /// </summary>
     public static string ListCatalog(
         string? filter,
-        int maxResults = DefaultMaxResults,
+        int? limit = null,
+        int offset = 0,
         bool latestRevisionOnly = true,
         string? esiDirectory = null,
         CancellationToken cancellationToken = default)
     {
-        if (maxResults < 1)
-            return $"[Error] maxResults must be at least 1 (got {maxResults}).";
-        bool capped = maxResults > MaxResultsCap;
-        int limit = Math.Min(maxResults, MaxResultsCap);
+        if (Mcp.McpPaging.Validate(limit, offset) is { } invalid) return invalid;
 
         string? dir = esiDirectory ?? ResolveEsiDirectory();
         if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
@@ -128,23 +123,20 @@ internal static class EsiCatalogScanner
         EsiCatalogScan scan = Scan(dir, cancellationToken);
         string trimmedFilter = (filter ?? string.Empty).Trim();
         IReadOnlyList<EsiCatalogDevice> matches = Query(scan.Devices, trimmedFilter, latestRevisionOnly);
-        var returned = matches.Take(limit).ToList();
+        var page = Mcp.McpPaging.Apply(matches, limit, offset, Page);
 
         var payload = new
         {
             esiDirectory = scan.Directory,
             filter = trimmedFilter,
             latestRevisionOnly,
-            totalMatches = matches.Count,
-            returned = returned.Count,
-            truncated = matches.Count > returned.Count,
             filesScanned = scan.FilesScanned,
             filesSkipped = scan.FilesSkipped,
             nonEsiFiles = scan.NonEsiFiles,
             devicesIndexed = scan.Devices.Count,
             cached = scan.FromCache,
             warnings = scan.Warnings,
-            devices = returned.Select(d => new
+            devices = page.Items.Select(d => new
             {
                 vInfo = d.VInfo,
                 type = d.Type,
@@ -162,17 +154,19 @@ internal static class EsiCatalogScanner
         if (trimmedFilter.Length > 0)
             summary.Append(CultureInfo.InvariantCulture, $" matching '{trimmedFilter}'");
         summary.Append(latestRevisionOnly ? " (latest revision only)" : " (all revisions)");
-        if (matches.Count > returned.Count)
-            summary.Append(CultureInfo.InvariantCulture, $", returning the first {returned.Count}");
-        if (capped)
-            summary.Append(CultureInfo.InvariantCulture, $" (maxResults capped at {MaxResultsCap})");
+        if (page.Returned == 0 && matches.Count > 0)
+            summary.Append(CultureInfo.InvariantCulture, $", none from offset {page.Offset}");
+        else if (page.Returned < matches.Count)
+            summary.Append(CultureInfo.InvariantCulture, $", returning {page.Offset + 1}–{page.Offset + page.Returned}");
+        if (page.HasMore)
+            summary.Append(CultureInfo.InvariantCulture, $" (next_offset {page.NextOffset})");
         summary.Append(CultureInfo.InvariantCulture,
             $"; scanned {scan.FilesScanned} ESI file(s), skipped {scan.FilesSkipped} malformed");
         summary.Append(scan.FromCache ? " (cached)." : ".");
         if (trimmedFilter.Length == 0)
             summary.Append(" Pass a filter (e.g. 'EL1008' or 'EK11') to narrow the list.");
 
-        return summary + Environment.NewLine + JsonSerializer.Serialize(payload, JsonOpts);
+        return summary + Environment.NewLine + page.Serialize(payload, JsonOpts, "devices");
     }
 
     /// <summary>

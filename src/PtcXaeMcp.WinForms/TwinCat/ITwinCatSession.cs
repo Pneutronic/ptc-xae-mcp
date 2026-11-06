@@ -780,7 +780,8 @@ internal interface ITwinCatSession : IDisposable
     /// <summary>Write leaves with sum commands (halve-and-retry on a refused batch), then read EVERY leaf back.</summary>
     SnapshotWriteResult WriteSnapshotLeaves(IReadOnlyList<SnapshotLeafWrite> writes, string? amsNetId, int adsPort);
 
-    /// <summary>Read-only browse of the online symbol table (no values).</summary>
+    /// <summary>Read-only browse of the online symbol table (no values). <paramref name="limit"/> is the walk ceiling:
+    /// at most that many entries, <c>Truncated</c> when the table holds more; the caller pages the result.</summary>
     AdsSymbolListResult ListAdsSymbols(string? root, int maxDepth, bool persistentOnly, int limit, string? amsNetId, int adsPort);
 
     /// <summary>ADS state of the PLC runtime ("Run", "Stop", …), shown prominently in the restore popup.</summary>

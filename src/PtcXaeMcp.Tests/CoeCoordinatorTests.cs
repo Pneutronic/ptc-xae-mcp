@@ -106,10 +106,46 @@ public class CoeCoordinatorTests
         Assert.Contains("CoE object", summary);
 
         using var doc = JsonDocument.Parse(json);
-        Assert.Equal(2, doc.RootElement.GetProperty("objectCount").GetInt32());
+        Assert.Equal(2, doc.RootElement.GetProperty("total").GetInt32());
+        Assert.False(doc.RootElement.TryGetProperty("objectCount", out _));
+        Assert.False(doc.RootElement.GetProperty("has_more").GetBoolean());
+        Assert.Equal("EL3174", doc.RootElement.GetProperty("slaveType").GetString());
         var objs = doc.RootElement.GetProperty("objects");
         Assert.Equal(2, objs.GetArrayLength());
         Assert.Equal("800D", objs[1].GetProperty("index").GetString());
+        Assert.Equal("Input Type", objs[1].GetProperty("subIndexes")[1].GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public void ReadDictionary_LimitAndOffset_PageTheObjects()
+    {
+        var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = true };
+        fake.CoeDictionaryByPath[Path] = SampleDict();
+
+        var (first, firstJson) = new CoeCoordinator(fake).ReadDictionary(Path, null, limit: 1);
+        var (_, secondJson) = new CoeCoordinator(fake).ReadDictionary(Path, null, limit: 1, offset: 1);
+
+        Assert.Contains("2 CoE object(s)", first);
+        Assert.Contains("Showing 1–1, next_offset 1.", first);
+        using var a = JsonDocument.Parse(firstJson);
+        using var b = JsonDocument.Parse(secondJson);
+        Assert.Equal("1000", a.RootElement.GetProperty("objects")[0].GetProperty("index").GetString());
+        Assert.True(a.RootElement.GetProperty("has_more").GetBoolean());
+        Assert.Equal(1, a.RootElement.GetProperty("next_offset").GetInt32());
+        Assert.Equal("800D", b.RootElement.GetProperty("objects")[0].GetProperty("index").GetString());
+        Assert.False(b.RootElement.GetProperty("has_more").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, b.RootElement.GetProperty("next_offset").ValueKind);
+    }
+
+    [Fact]
+    public void ReadDictionary_NegativeOffset_IsRefusedBeforeAnythingIsRead()
+    {
+        var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = true };
+        var (summary, json) = new CoeCoordinator(fake).ReadDictionary(Path, null, offset: -1);
+
+        Assert.StartsWith("[Error] offset must be 0 or more", summary);
+        Assert.Equal("{}", json);
+        Assert.DoesNotContain("ReadCoeDictionary", string.Join(",", fake.CallLog));
     }
 
     [Fact]

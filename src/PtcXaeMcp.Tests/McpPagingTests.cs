@@ -69,6 +69,97 @@ public class McpPagingTests
         Assert.Contains(name, McpPaging.Validate(limit, offset));
 
     [Fact]
+    public void AnOmittedLimit_IsFine() => Assert.Null(McpPaging.Validate(null, 0));
+
+    [Theory]
+    [InlineData(null, 100)]   // omitted: the tool's default
+    [InlineData(0, 1000)]     // 0: as many as the tool returns
+    [InlineData(7, 7)]
+    [InlineData(1000, 1000)]
+    [InlineData(5000, 1000)]  // above the maximum: cut to it
+    public void ABoundedLimit_Resolves(int? limit, int expected) =>
+        Assert.Equal(expected, new McpLimit(100, 1000).Resolve(limit));
+
+    [Theory]
+    [InlineData(null, 0)]
+    [InlineData(0, 0)]
+    [InlineData(5000, 5000)]
+    public void AnUnboundedLimit_KeepsEverythingByDefault(int? limit, int expected) =>
+        Assert.Equal(expected, McpLimit.Unbounded.Resolve(limit));
+
+    [Fact]
+    public void ABoundedApply_PagesEvenWithoutALimit()
+    {
+        var page = McpPaging.Apply(Ten, null, 0, new McpLimit(4, 6));
+        Assert.Equal([1, 2, 3, 4], page.Items);
+        Assert.True(page.Paged);
+        Assert.Equal(4, page.NextOffset);
+        Assert.Equal(6, McpPaging.Apply(Ten, 99, 0, new McpLimit(4, 6)).Returned);
+    }
+
+    [Fact]
+    public void APartialSource_HasNoTotal_AndLeadsOn()
+    {
+        var page = McpPaging.ApplyPartial(Ten, 4, 4, complete: false);
+        Assert.Equal([5, 6, 7, 8], page.Items);
+        Assert.Null(page.Total);
+        Assert.True(page.HasMore);
+        Assert.Equal(8, page.NextOffset);
+        Assert.Equal("Page: offset 4, returned 4 (total not known); has_more true, next_offset 8", page.Footer());
+
+        // Even the last items read lead on: the source holds more than was read.
+        var last = McpPaging.ApplyPartial(Ten, 4, 8, complete: false);
+        Assert.True(last.HasMore);
+        Assert.Equal(10, last.NextOffset);
+        // An empty page never points at itself.
+        var empty = McpPaging.ApplyPartial(Ten, 4, 10, complete: false);
+        Assert.False(empty.HasMore);
+        Assert.Null(empty.NextOffset);
+    }
+
+    [Fact]
+    public void ACompleteSource_IsAnOrdinaryPage()
+    {
+        var page = McpPaging.ApplyPartial(Ten, 4, 8, complete: true);
+        Assert.Equal(10, page.Total);
+        Assert.False(page.HasMore);
+        Assert.Equal("Page: offset 8, returned 2 of 10; has_more false", page.Footer());
+    }
+
+    [Fact]
+    public void OneWindow_OverSeveralLists()
+    {
+        int[] longList = [1, 2, 3, 4, 5], shortList = [10, 20];
+        var page = McpPaging.Info(longList.Length, 2, 2);
+        Assert.Equal([3, 4], McpPaging.Slice(longList, page));
+        Assert.Empty(McpPaging.Slice(shortList, page));
+        Assert.True(page.HasMore);
+        Assert.Equal(4, page.NextOffset);
+        Assert.Equal(5, page.Total);
+    }
+
+    [Fact]
+    public void Serialize_PutsThePageFieldsBeforeTheList()
+    {
+        var page = McpPaging.Apply(Ten, 3, 3);
+        string json = page.Serialize(new { success = true, items = page.Items, tail = "x" },
+            new System.Text.Json.JsonSerializerOptions(), "items");
+
+        Assert.Equal("""{"success":true,"total":10,"offset":3,"returned":3,"has_more":true,"next_offset":6,"items":[4,5,6],"tail":"x"}""", json);
+    }
+
+    [Fact]
+    public void Serialize_WritesNullForAnUnknownTotalAndTheLastPage()
+    {
+        var page = McpPaging.ApplyPartial(Ten, 20, 0, complete: false) with { HasMore = false, NextOffset = null };
+        string json = page.Serialize(new { items = page.Items }, new System.Text.Json.JsonSerializerOptions());
+
+        Assert.EndsWith("""
+            "total":null,"offset":0,"returned":10,"has_more":false,"next_offset":null}
+            """, json);
+    }
+
+    [Fact]
     public void WithNext_AddsOneNextLine()
     {
         string text = McpErrors.WithNext("Thing not found", "look elsewhere");

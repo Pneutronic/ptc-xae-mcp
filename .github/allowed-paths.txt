@@ -58,6 +58,8 @@ src/**/*.sds
 src/**/*.sal
 src/**/*.splcproj
 src/**/*.diagram
+# MCP prompt texts, embedded into the exe (McpPrompts)
+src/PtcXaeMcp.WinForms/Mcp/Prompts/*.md
 
 # Test fixtures (TwinCAT and TwinCAT HMI projects and their generators)
 tests/Fixtures/*.py

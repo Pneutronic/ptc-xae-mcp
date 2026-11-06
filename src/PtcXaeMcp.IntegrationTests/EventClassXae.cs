@@ -1,0 +1,51 @@
+using System.Collections;
+using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+
+namespace PtcXaeMcp.IntegrationTests;
+
+/// <summary>
+/// Removes an event class from the running XAE's type system for test cleanup — no MCP tool deletes one. DeleteType takes
+/// the GUID record by value, which only the dual interface passes (through its vtable).
+/// </summary>
+internal static class EventClassXae
+{
+    [ComImport, Guid("fd56539d-c78a-4a22-9a69-1a7ba9e59e19"), InterfaceType(ComInterfaceType.InterfaceIsDual)]
+    private interface ITcTypeSystemVtable
+    {
+        [DispId(-4)] object NewEnum { [return: MarshalAs(UnmanagedType.IUnknown)] get; }
+        [DispId(1)] int TypeCount { get; }
+        [DispId(2)] [return: MarshalAs(UnmanagedType.IDispatch)] object TypeAt(int n);
+        [DispId(3)] [return: MarshalAs(UnmanagedType.IDispatch)] object LookupType(Guid guid);
+        [DispId(4)] [return: MarshalAs(UnmanagedType.IDispatch)] object CreateType([MarshalAs(UnmanagedType.BStr)] string xml);
+        [DispId(5)] void DeleteType(Guid guid);
+    }
+
+    /// <summary>Deletes the type <paramref name="name"/> from the type system of the open solution; returns what happened. Does not save.</summary>
+    public static string DeleteType(string name)
+    {
+        dynamic dte = XaeDte.TryGet() ?? throw new InvalidOperationException("No running XAE (TcXaeShell.DTE) in the ROT.");
+        return XaeDte.Retry(() =>
+        {
+            dynamic projects = dte.Solution.Projects;
+            for (int i = 1; i <= (int)projects.Count; i++)
+            {
+                dynamic project = projects.Item(i);
+                object? sysMan = null;
+                try { sysMan = project.Object; } catch (COMException) { }
+                if (sysMan is null) continue;
+                object typeSystem;
+                try { typeSystem = ((dynamic)sysMan).GetTypeSystem(); } catch (COMException) { continue; }
+                foreach (object? type in (IEnumerable)typeSystem)
+                {
+                    if (type is null || !string.Equals((string)((dynamic)type).Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+                    var guid = Regex.Match((string)((dynamic)type).ExportXml(false), "GUID=\"\\{([^\"]+)\\}\"");
+                    if (!guid.Success) return $"type '{name}' has no readable GUID";
+                    ((ITcTypeSystemVtable)typeSystem).DeleteType(Guid.Parse(guid.Groups[1].Value));
+                    return $"deleted type '{name}' {{{guid.Groups[1].Value}}}";
+                }
+            }
+            return $"type '{name}' not found";
+        });
+    }
+}

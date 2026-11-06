@@ -70,7 +70,8 @@ internal static class ToolCatalog
             "twincat_set_library_parameter", "twincat_library_signatures", "twincat_save_as_library",
             "twincat_goto_line", "twincat_show_step", "twincat_locate_step", "twincat_read_init_symbols",
             "twincat_write_init_symbol", "twincat_read_retain_config", "twincat_get_type_file_generation",
-            "twincat_set_type_file_generation",
+            "twincat_set_type_file_generation", "twincat_event_class_create", "twincat_event_class_read",
+            "twincat_event_class_update", "twincat_plc_add_global_data_type",
         ]),
         (Toolset.Ads,
         [

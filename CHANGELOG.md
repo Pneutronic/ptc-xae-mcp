@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-06
+
 ### Breaking
 - **One paging convention for every list tool.** Parameters `limit` and `offset` (default 0). `limit` omitted = the
   tool's default page, `limit=0` = as many as the tool returns (its maximum), a larger `limit` is cut to the maximum;
@@ -44,10 +46,20 @@ pull-request numbers refer to those.
   switches this off (every call then waits for the XAE as before).
 - `ptc_test_hold_xae_dialog` (only with `--diagnostics`): a test hook for the live suite that opens Tools > Options
   inside a COM call, so a call held by an XAE dialog can be tested.
-
-## [3.1.0] - 2026-11-06
-
-### Added
+- **EventLogger event classes** (#29). `twincat_event_class_create` creates an event class (name, display text, events
+  with id, name, severity and text) in the TwinCAT type system and keeps it in the .tsproj (`PersistentType`, so it
+  survives save and reopen although nothing references it); the PLC reaches its events as `TC_EVENTS.<class>.<event>`
+  at once. `twincat_event_class_read` lists the event classes of the project (built-in ones on request) or shows one
+  with its events and the PLC projects that pin it. `twincat_event_class_update` changes the display text and/or the
+  complete event list with the GUID kept (DeleteType + CreateType, so the PLC follows at once); a class from a TMC
+  file is refused, because a second definition with the same GUID is what makes the XAE report "A different data
+  type … with same GUID exists already".
+- `twincat_plc_add_global_data_type` (#29): "Add Global Data Type" for an event class into a PLC project, so a library
+  saved from it carries the class (`externaltypes.auxiliary`) and its users get `TC_EVENTS.<class>`. It writes what
+  the XAE command writes — the class into `ExternalTypes.tmc` next to the .plcproj and the .plcproj entry — while the
+  solution is saved, closed and reopened (the XAE has no automation call for it), and reads the `ExternalTypes.tmc`
+  node back from the tree. Updating a pinned class writes the pin again: the type system drops it on the update,
+  which left `ExternalTypes.tmc` empty.
 - **Tool profiles per client.** Every tool belongs to one toolset (`meta`, `project`, `build`, `plc`, `ads`,
   `runtime`, `license`, `io`, `hmi`, `scope`, `nc`, `safety`, `ibn`). A client sees the toolsets of its profile:
   `all`, or `core` (`meta`, `project`, `build`, `plc`, `ads`, `runtime`, about half the tools) for clients that cope

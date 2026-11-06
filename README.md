@@ -210,7 +210,9 @@ Besides tools the server offers **prompts** — step-by-step workflows you pick 
 
 A dialog the XAE opens blocks its automation. `twincat_xae_dialogs` lists the open dialogs with their buttons;
 `twincat_xae_dialog_answer` presses one. Dialogs that confirm an activation, restart, download, login, delete,
-safety or license action are listed but never answered by a tool — a person answers them in the XAE.
+safety or license action are listed but never answered by a tool — a person answers them in the XAE. A call that a
+dialog holds for more than 3 s answers `[Blocked]` with the dialog instead of hanging; the XAE call goes on, and the
+next call starts once it has returned (`PTC_XAE_MCP_DIALOG_WATCH=off` switches this off).
 
 ## Applying an IO schema (`twincat_apply_schema`)
 

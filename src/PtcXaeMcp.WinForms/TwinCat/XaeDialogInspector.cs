@@ -14,9 +14,10 @@ internal sealed record XaeDialogView(
     IReadOnlyList<(string Caption, bool Enabled)> Buttons);
 
 /// <summary>
-/// Lists the open dialogs of the XAE and presses a button of one — Win32 only, no COM and no single-operation lock,
-/// so it works exactly when a COM call hangs on a dialog. A destructive dialog (<see cref="XaeDialogClassifier"/>) is
-/// listed but never answered, and no destructive button is pressed on any dialog.
+/// Lists the open dialogs of the XAE and presses a button of one — Win32 and UI Automation only (WPF dialogs such
+/// as the shell's "save changes?" prompt have no child windows), no COM and no single-operation lock, so it works
+/// exactly when a COM call hangs on a dialog. A destructive dialog (<see cref="XaeDialogClassifier"/>) is listed but
+/// never answered, and no destructive button is pressed on any dialog.
 /// </summary>
 internal static class XaeDialogInspector
 {
@@ -25,25 +26,34 @@ internal static class XaeDialogInspector
 
     /// <summary>The dialogs of every running TcXaeShell (not its main window), the blocking ones first.</summary>
     public static IReadOnlyList<XaeDialogView> List() =>
-        View(XaeDialogs.Snapshot(XaeWindowScope.For(IntPtr.Zero)), XaeDialogs.IsEnabled);
+        View(PromptWindowReader.Snapshot(XaeWindowScope.For(IntPtr.Zero)), XaeDialogs.IsEnabled);
 
-    /// <summary>Pure part of <see cref="List"/>: <paramref name="ownerEnabled"/> tells a modal (owner disabled) apart.</summary>
-    internal static IReadOnlyList<XaeDialogView> View(IEnumerable<XaeDialog> windows, Func<IntPtr, bool> ownerEnabled) =>
+    /// <summary>
+    /// Pure part of <see cref="List"/>: <paramref name="isEnabled"/> tells a modal (owner disabled) apart, and a dialog
+    /// that is itself disabled because another one is open on top of it (its buttons cannot be pressed then).
+    /// </summary>
+    internal static IReadOnlyList<XaeDialogView> View(IEnumerable<PromptWindow> windows, Func<IntPtr, bool> isEnabled) =>
         windows
             // A dialog has an owner or is a message box; an ownerless window is an XAE main window.
-            .Where(d => d.Owner != IntPtr.Zero || d.IsMessageBox)
-            .Select(d =>
+            .Where(w => w.Owner != IntPtr.Zero || IsMessageBox(w))
+            .Select(w =>
             {
-                var texts = d.Controls.Where(c => !c.IsButton && !c.IsEdit)
-                    .Select(c => OneLine(c.Text)).Where(t => t.Length > 0).Distinct().Take(MaxTexts).ToList();
-                var buttons = d.Controls.Where(c => c.IsButton && c.Caption.Length > 0)
-                    .Select(c => (c.Caption, c.Enabled)).ToList();
-                bool blocking = d.Owner != IntPtr.Zero ? !ownerEnabled(d.Owner) : d.IsMessageBox;
-                return new XaeDialogView(IdOf(d.Hwnd), d.Title.Trim(), d.ClassName, blocking,
-                    XaeDialogClassifier.Classify(d.Title, texts), texts, buttons);
+                var captions = w.Buttons.Select(b => b.Caption).Where(c => c.Length > 0).ToList();
+                // WPF repeats every button caption as an inner text ("_Speichern"); those are not texts of the dialog.
+                var texts = w.Texts.Select(OneLine)
+                    .Where(t => t.Length > 0 && !captions.Contains(new PromptButton(t).Caption, StringComparer.OrdinalIgnoreCase))
+                    .Distinct().Take(MaxTexts).ToList();
+                bool blocking = w.Owner != IntPtr.Zero ? !isEnabled(w.Owner) : IsMessageBox(w);
+                bool windowEnabled = isEnabled(w.Hwnd);
+                var buttons = w.Buttons.Where(b => b.Caption.Length > 0)
+                    .Select(b => (b.Caption, windowEnabled && (b.Hwnd == IntPtr.Zero || isEnabled(b.Hwnd)))).ToList();
+                return new XaeDialogView(IdOf(w.Hwnd), w.Title.Trim(), w.ClassName, blocking,
+                    XaeDialogClassifier.Classify(w.Title, texts), texts, buttons);
             })
             .OrderByDescending(v => v.Blocking)
             .ToList();
+
+    private static bool IsMessageBox(PromptWindow w) => string.Equals(w.ClassName, "#32770", StringComparison.Ordinal);
 
     internal static string IdOf(IntPtr hwnd) => "0x" + hwnd.ToInt64().ToString("X", CultureInfo.InvariantCulture);
 
@@ -65,6 +75,8 @@ internal static class XaeDialogInspector
         }
         if (dialogs.Any(d => d.Class == XaeDialogClass.KnownDestructive))
             sb.AppendLine("A known-destructive dialog confirms a target-system, delete, safety or license action: a person answers it in the XAE.");
+        if (dialogs.Count(d => d.Blocking) > 1)
+            sb.AppendLine("Several dialogs block: answer the one on top first — a dialog whose buttons are all disabled waits for another.");
         return sb.ToString().TrimEnd();
     }
 
@@ -74,9 +86,9 @@ internal static class XaeDialogInspector
         if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(button))
             return "[Error] id and button are required (see twincat_xae_dialogs).";
 
-        var snapshot = XaeDialogs.Snapshot(XaeWindowScope.For(IntPtr.Zero));
-        var views = View(snapshot, XaeDialogs.IsEnabled);
-        var view = views.FirstOrDefault(v => string.Equals(v.Id, id.Trim(), StringComparison.OrdinalIgnoreCase));
+        var windows = PromptWindowReader.Snapshot(XaeWindowScope.For(IntPtr.Zero));
+        var view = View(windows, XaeDialogs.IsEnabled)
+            .FirstOrDefault(v => string.Equals(v.Id, id.Trim(), StringComparison.OrdinalIgnoreCase));
         if (view is null)
             return McpErrors.WithNext($"No open XAE dialog has the id '{id}'. Nothing was pressed.",
                 "twincat_xae_dialogs lists the open dialogs with their ids.");
@@ -84,22 +96,31 @@ internal static class XaeDialogInspector
         string? refused = Refusal(view, button);
         if (refused is not null) return refused;
 
-        var dialog = snapshot.First(d => string.Equals(IdOf(d.Hwnd), view.Id, StringComparison.Ordinal));
-        var plan = XaeDialogs.PlanClick(dialog, 0, button.Trim());
-        if (!plan.UsesButton)
+        var window = windows.First(w => string.Equals(IdOf(w.Hwnd), view.Id, StringComparison.Ordinal));
+        string wanted = new PromptButton(button.Trim()).Caption;
+        var target = window.Buttons.FirstOrDefault(b => string.Equals(b.Caption, wanted, StringComparison.OrdinalIgnoreCase));
+        if (target is null)
             return $"[Error] The dialog '{view.Title}' has no button '{button}'. Its buttons: " +
                    $"{string.Join(", ", view.Buttons.Select(b => $"'{b.Caption}'"))}. Nothing was pressed.";
+        if (!XaeDialogs.IsEnabled(window.Hwnd) || (target.Hwnd != IntPtr.Zero && !XaeDialogs.IsEnabled(target.Hwnd)))
+            return McpErrors.WithNext($"'{target.Caption}' on '{view.Title}' is disabled: the dialog waits for another one on top of it. Nothing was pressed.",
+                "twincat_xae_dialogs; answer the dialog whose buttons are enabled first.");
 
-        XaeDialogs.Click(plan.Button);
-        bool closed = XaeDialogs.WaitClosed(dialog.Hwnd, CloseTimeout);
+        try { PromptWindowReader.Press(window, target); }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Windows.Automation.ElementNotAvailableException)
+        {
+            return $"[Error] Could not press '{target.Caption}' on '{view.Title}': {ex.Message}";
+        }
+
+        bool closed = XaeDialogs.WaitClosed(window.Hwnd, CloseTimeout);
         if (!closed)
-            return $"Pressed '{button.Trim()}' on '{view.Title}', but the dialog is still open after " +
+            return $"Pressed '{target.Caption}' on '{view.Title}', but the dialog is still open after " +
                    $"{CloseTimeout.TotalSeconds:F0} s. Check twincat_xae_dialogs; it may ask something else now.";
 
         var next = List().Where(d => d.Blocking).ToList();
         return next.Count == 0
-            ? $"Pressed '{button.Trim()}' on '{view.Title}'; the dialog closed and no other XAE dialog blocks."
-            : $"Pressed '{button.Trim()}' on '{view.Title}'; the dialog closed, but another one is open now:\n{Describe(next)}";
+            ? $"Pressed '{target.Caption}' on '{view.Title}'; the dialog closed and no other XAE dialog blocks."
+            : $"Pressed '{target.Caption}' on '{view.Title}'; the dialog closed, but another one is open now:\n{Describe(next)}";
     }
 
     /// <summary>Why a tool may not press <paramref name="button"/> on <paramref name="view"/>, or null. Pure — unit-tested.</summary>

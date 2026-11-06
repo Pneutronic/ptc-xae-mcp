@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-06
+
 ### Added
 - **Tool profiles per client.** Every tool belongs to one toolset (`meta`, `project`, `build`, `plc`, `ads`,
   `runtime`, `license`, `io`, `hmi`, `scope`, `nc`, `safety`, `ibn`). A client sees the toolsets of its profile:
@@ -504,7 +506,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.1.0
 [3.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.0.0
 [2.6.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.1
 [2.6.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.0

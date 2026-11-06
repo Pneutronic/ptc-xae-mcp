@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-200 tools, generated from the source attributes — one section per
+202 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -55,6 +55,7 @@
 - [TcUnit](#tcunit) (1)
 - [VariantManagement](#variantmanagement) (2)
 - [VisibleEditor](#visibleeditor) (2)
+- [XaeDialogs](#xaedialogs) (2)
 
 ## ActiveProject
 
@@ -111,9 +112,13 @@ Write a value to a live PLC symbol via ADS on a running TwinCAT PLC or UMR. Refu
 
 ### `twincat_get_error_list`
 
-Error List: read-only snapshot of the XAE Error List window (the 'Fehlerliste' tool window) — severity, description, file, line per entry. Does NOT trigger a build and does NOT clear anything — unlike twincat_clear_error_list, whose cleared-count was previously the only way to learn how many entries existed. Identical entries (same level, text, file and line) are listed once with a '(2× in the Error List)' note; the first line gives both the total and the distinct count. The Error List also shows runtime EventLogger events, sometimes twice; for alarm diagnosis use twincat_read_event_logger, which is authoritative. Requires XAE running with a solution open.
+Error List: read-only snapshot of the XAE Error List window (the 'Fehlerliste' tool window) — severity, description, file, line per entry. Does NOT trigger a build and does NOT clear anything — unlike twincat_clear_error_list, whose cleared-count was previously the only way to learn how many entries existed. Identical entries (same level, text, file and line) are listed once with a '(2× in the Error List)' note; the first line gives both the total and the distinct count. The Error List also shows runtime EventLogger events, sometimes twice; for alarm diagnosis use twincat_read_event_logger, which is authoritative. minLevel keeps only errors ('error') or errors and warnings ('warning'); limit/offset page through a long list (the last line then gives total, has_more and next_offset). Requires XAE running with a solution open.
 
-_No parameters._
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `minLevel` | `string?` | `null` | 'error', 'warning' or 'message' (default: everything). |
+| `limit` | `int` | `0` | Most (distinct) entries to return; 0 (default) returns all. |
+| `offset` | `int` | `0` | Entries to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_clear_error_list`
 
@@ -1309,13 +1314,15 @@ Switch .tmc/.tpy type-file generation of the PLC project on or off (ConsumeXml P
 
 ### `twincat_plc_list`
 
-List PLC elements. Without arguments: every POU, INTERFACE, DUT, GVL and FOLDER of the open PLC project. kind filters by element kind; parentPath restricts to the subtree below a tree path. Under a POU, an INTERFACE or a PROPERTY, parentPath lists its MEMBERs (METHOD, ACTION, PROPERTY, Get/Set), including members inside folders under a POU; kind=MEMBER requires such a parentPath. recursive=false lists only the direct children. One line per element: kind/subtype, tree path, language.
+List PLC elements. Without arguments: every POU, INTERFACE, DUT, GVL and FOLDER of the open PLC project. kind filters by element kind; parentPath restricts to the subtree below a tree path. Under a POU, an INTERFACE or a PROPERTY, parentPath lists its MEMBERs (METHOD, ACTION, PROPERTY, Get/Set), including members inside folders under a POU; kind=MEMBER requires such a parentPath. recursive=false lists only the direct children. One line per element: kind/subtype, tree path, language. limit/offset page through a large project: the last line then gives total, has_more and next_offset.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `kind` | `string?` | `null` | Optional element kind filter, e.g. POU, DUT, GVL, MEMBER. |
 | `parentPath` | `string?` | `null` | Optional caret-separated tree path; only elements below it are listed. Required for kind=MEMBER. |
 | `recursive` | `bool` | `true` | False lists only the direct children of parentPath. Default true. |
+| `limit` | `int` | `0` | Most elements to return; 0 (default) returns all. |
+| `offset` | `int` | `0` | Elements to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_plc_create`
 
@@ -1335,14 +1342,15 @@ Create a PLC element under parentPath. kind + subtype pick the element: POU/PROG
 
 ### `twincat_plc_read`
 
-Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation (with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] such as "'<path>' is a GVL, not a DUT". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the XAE editor (video mode), best-effort, behind the user's work unless bringToFront=true.
+Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation (with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] such as "'<path>' is a GVL, not a DUT". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the XAE editor (video mode), best-effort, behind the user's work unless bringToFront=true. paths reads several elements of the same kind in one call instead of path: each under a '=== <path> ===' line, a failing one as its [Error] while the others are still read; the first line counts read and failed.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `path` | `string` |  | Caret-separated tree path of the element to read. |
-| `kind` | `string` |  | Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER. |
-| `openInEditor` | `bool` | `false` | When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false. |
+| `path` | `string?` | `null` | Caret-separated tree path of the element to read. Give either path or paths. |
+| `kind` | `string` | `""` | Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER. |
+| `openInEditor` | `bool` | `false` | When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false. Not with paths. |
 | `bringToFront` | `bool` | `false` |  |
+| `paths` | `string[]?` | `null` | Several caret-separated tree paths of the same kind, read one after the other (at most 50). Instead of path. |
 
 ### `twincat_plc_write`
 
@@ -1756,7 +1764,7 @@ READ-ONLY list of the PLC library repositories of the XAE (ITcPlcLibraryManager.
 
 ### `twincat_get_status`
 
-Get TwinCAT XAE environment status: IDE connectivity, the active project and PLC, and the TwinCAT system service state.
+Get TwinCAT XAE environment status: IDE connectivity, the active project and PLC, the TwinCAT system service state and the access policy in force (read / engineer / runtime, blocked and allowed NetIds; set only in the window or by environment variables, never by a tool).
 
 _No parameters._
 
@@ -2074,3 +2082,20 @@ Counterpart to twincat_open_object: tidy up a live demo. For a PLC source object
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the node to close, same as passed to twincat_open_object. |
+
+## XaeDialogs
+
+### `twincat_xae_dialogs`
+
+List the dialogs the XAE has open: id, title, texts, buttons, whether it blocks the XAE, and a class — 'known-safe', 'unknown', or 'known-destructive' (confirms a target-system, delete, safety or license action; a person answers those in the XAE). Use it when a call reports that the XAE is busy or blocked by a dialog. Pure Win32: answers while another call holds the XAE, changes nothing.
+
+_No parameters._
+
+### `twincat_xae_dialog_answer`
+
+Press a button of an open XAE dialog listed by twincat_xae_dialogs (id and the button's caption, as listed). Refused for a known-destructive dialog and for a destructive button (activate, restart, download, login, delete, overwrite, …) on any dialog: a person answers those in the XAE. Reports whether the dialog closed and whether another one followed. Pure Win32: works while another call is blocked by the dialog.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `id` | `string` |  | The dialog's id from twincat_xae_dialogs, e.g. '0x1A2B3C'. |
+| `button` | `string` |  | The caption of the button to press, as listed (e.g. 'Ja', 'Neu laden', 'OK'). |

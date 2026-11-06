@@ -54,12 +54,18 @@ pull-request numbers refer to those.
   complete event list with the GUID kept (DeleteType + CreateType, so the PLC follows at once); a class from a TMC
   file is refused, because a second definition with the same GUID is what makes the XAE report "A different data
   type … with same GUID exists already".
-- `twincat_plc_add_global_data_type` (#29): "Add Global Data Type" for an event class into a PLC project, so a library
-  saved from it carries the class (`externaltypes.auxiliary`) and its users get `TC_EVENTS.<class>`. It writes what
-  the XAE command writes — the class into `ExternalTypes.tmc` next to the .plcproj and the .plcproj entry — while the
-  solution is saved, closed and reopened (the XAE has no automation call for it), and reads the `ExternalTypes.tmc`
-  node back from the tree. Updating a pinned class writes the pin again: the type system drops it on the update,
-  which left `ExternalTypes.tmc` empty.
+- `twincat_plc_add_global_data_type` (#29): "Add Global Data Type" for a data type of the project's type system — a
+  STRUCT, ENUM, ALIAS or an event class kept in the .tsproj — into a PLC project, so a library saved from it carries
+  the type (`externaltypes.auxiliary`); for an event class its users get `TC_EVENTS.<class>`. Every project data type
+  it uses (struct members, enum and alias base types, nested) is taken along, so `ExternalTypes.tmc` is
+  self-contained; built-in types are not copied, and a type from a library, a TMC file or a PLC is named in a warning
+  instead. It writes what the XAE command writes — the types into `ExternalTypes.tmc` next to the .plcproj and the
+  .plcproj entry — while the solution is saved, closed and reopened (the XAE has no automation call for it), and
+  reads the `ExternalTypes.tmc` node of every pinned type back from the tree. Refused before anything changes: a
+  built-in, library, TMC or PLC type, and a collision — the PLC project already has a DUT, POU or interface of the
+  name of a type to pin, or `ExternalTypes.tmc` holds another type of that name or GUID. Pinning unchanged types again
+  changes nothing. Updating a pinned event class writes the pin again: the type system drops it on the update, which
+  left `ExternalTypes.tmc` empty; the other pins of the file are written back with it.
 - **Tool profiles per client.** Every tool belongs to one toolset (`meta`, `project`, `build`, `plc`, `ads`,
   `runtime`, `license`, `io`, `hmi`, `scope`, `nc`, `safety`, `ibn`). A client sees the toolsets of its profile:
   `all`, or `core` (`meta`, `project`, `build`, `plc`, `ads`, `runtime`, about half the tools) for clients that cope

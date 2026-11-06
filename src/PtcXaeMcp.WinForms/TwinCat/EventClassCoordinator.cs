@@ -12,7 +12,13 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 /// </summary>
 internal sealed class EventClassCoordinator(ITwinCatSession session)
 {
-    private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    // Relaxed escaping: event texts are often German; "ü" reads better than "ü".
+    private static readonly JsonSerializerOptions Json = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     private sealed record Known(EventClassInfo Info, string Xml);
 

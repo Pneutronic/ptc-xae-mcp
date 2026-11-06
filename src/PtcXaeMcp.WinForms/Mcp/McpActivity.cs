@@ -38,6 +38,22 @@ public sealed class McpActivity
 
     private int _runStarted;
 
+    private static readonly AsyncLocal<string?> s_currentTool = new();
+
+    /// <summary>The tool whose traced body runs on this logical call path, or null outside a traced call.</summary>
+    internal static string? CurrentToolName => s_currentTool.Value;
+
+    /// <summary>
+    /// Records the result of a call that already answered [Blocked], once the XAE call really returned
+    /// (<see cref="McpDispatcher.LateResult"/>): one more entry, "&lt;tool&gt; (late result)", so it is never lost.
+    /// </summary>
+    public void RecordLateResult(string toolName, string result, TimeSpan duration)
+    {
+        var entry = new McpActivityEntry(DateTimeOffset.UtcNow - duration, toolName + " (late result)", string.Empty,
+            McpActivityEntry.Truncate(result), duration, !McpErrors.IsError(result));
+        Record(entry);
+    }
+
     /// <summary>
     /// The access policy's decision for a call (tool name, traced arguments): a refusal, or null plus an optional
     /// warning appended to the result. Set by <see cref="McpBridge"/>; null lets every call through (unit tests).
@@ -135,6 +151,8 @@ public sealed class McpActivity
 
         try
         {
+            // The dispatcher names the tool in a [Blocked] answer and in the late result of the call.
+            s_currentTool.Value = toolName;
             var result = await body();
             if (serviceBefore.State == TwinCat.SystemServiceState.Running)
                 result += TwinCat.TwinCatSystemService.StoppedDuring(serviceBefore);
@@ -147,6 +165,15 @@ public sealed class McpActivity
                 startedUtc, toolName, McpActivityEntry.Truncate(Describe(arguments)),
                 McpActivityEntry.Truncate(result), sw.Elapsed, ok));
             return result!;
+        }
+        catch (XaeCallDetachedException ex)
+        {
+            // An XAE dialog holds the call: the [Blocked] text is the answer, unchanged (no [Error] prefix). The call
+            // keeps running; its late result is recorded by RecordLateResult.
+            sw.Stop();
+            Record(McpActivityEntry.Failure(
+                toolName, Describe(arguments), ex.Message, startedUtc, sw.Elapsed));
+            return ex.Message;
         }
         catch (OperationCanceledException)
         {

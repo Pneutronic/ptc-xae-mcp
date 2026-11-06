@@ -15,7 +15,13 @@ internal sealed partial class TwinCatMcpTools
     public string XaeDialogsList(CancellationToken cancellationToken = default)
         // Dispatcher and gate bypass: the dialog it shows is what a running call waits for.
         => bridge.Activity.Trace("twincat_xae_dialogs", null,
-            () => XaeDialogInspector.Describe(XaeDialogInspector.List()), cancellationToken, bypassGate: true);
+            () => XaeDialogInspector.Describe(XaeDialogInspector.List()) + WaitingCall(bridge.Dispatcher.Detached, DateTime.UtcNow),
+            cancellationToken, bypassGate: true);
+
+    /// <summary>The line naming the call a dialog holds after its [Blocked] answer; empty when none. Pure — unit-tested.</summary>
+    internal static string WaitingCall(DetachedCall? call, DateTime nowUtc) => call is null ? "" :
+        $"\nWaiting for a dialog: {call.Tool} (answered [Blocked] {Math.Max(0, (int)(nowUtc - call.SinceUtc).TotalSeconds)} s ago for " +
+        $"'{call.Dialog.Title}', id {call.Dialog.Id}). It returns once the dialog is answered; until then no other call starts.";
 
     [McpServerTool(Name = "twincat_xae_dialog_answer", ReadOnly = false, Destructive = false)]
     [Description("Press a button of an open XAE dialog listed by twincat_xae_dialogs (id and the button's caption, as listed). " +

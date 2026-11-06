@@ -164,7 +164,7 @@ public class EventClassIntegrationTests : IAsyncLifetime
             if (classCreated)
             {
                 try { Console.WriteLine($"[event_class] cleanup: {EventClassXae.DeleteType(cls)}"); }
-                catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
+                catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or MissingMemberException)
                 {
                     Console.WriteLine($"[event_class] cleanup failed: {ex.Message}");
                 }

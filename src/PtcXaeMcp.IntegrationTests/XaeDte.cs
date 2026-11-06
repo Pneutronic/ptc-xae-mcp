@@ -45,6 +45,13 @@ internal static class XaeDte
             {
                 Thread.Sleep(250);
             }
+            // A busy XAE seen by the dynamic binder: "Could not get dispatch ID for Name (error: 0x8001010A)".
+            catch (MissingMemberException ex) when ((ex.Message.Contains("0x8001010A", StringComparison.OrdinalIgnoreCase)
+                                                     || ex.Message.Contains("0x80010001", StringComparison.OrdinalIgnoreCase))
+                                                    && DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(250);
+            }
         }
     }
 

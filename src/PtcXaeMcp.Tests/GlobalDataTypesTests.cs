@@ -8,7 +8,7 @@ namespace PtcXaeMcp.Tests;
 /// </summary>
 public sealed class GlobalDataTypesTests
 {
-    internal const string IntGuid = "{18071995-0000-0000-0000-000000000004}";
+    internal const string IntGuid = "{18071995-0000-0000-0000-000000000006}";
     internal const string UdintGuid = "{18071995-0000-0000-0000-000000000008}";
     internal const string EnumGuid = "{00000000-0000-0000-0000-0000000000E1}";
     internal const string InnerGuid = "{00000000-0000-0000-0000-0000000000A1}";

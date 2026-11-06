@@ -21,6 +21,51 @@ internal static class EventClassXae
         [DispId(5)] void DeleteType(Guid guid);
     }
 
+    /// <summary>
+    /// ITcTypeSystem.CreateType(<paramref name="dataTypeXml"/>) in the open solution — how a STRUCT/ENUM/ALIAS gets into the
+    /// type system for the pin test (no MCP tool creates one). Returns the GUID of <paramref name="name"/> read back. Does not save.
+    /// </summary>
+    public static string CreateType(string name, string dataTypeXml)
+    {
+        dynamic dte = XaeDte.TryGet() ?? throw new InvalidOperationException("No running XAE (TcXaeShell.DTE) in the ROT.");
+        XaeDte.Retry(() =>
+        {
+            object typeSystem = TypeSystemOf(dte);
+            _ = ((dynamic)typeSystem).CreateType(dataTypeXml);
+            return true;
+        });
+        return GuidOf(name) ?? throw new InvalidOperationException($"CreateType did not leave a type '{name}' with a GUID.");
+    }
+
+    /// <summary>The GUID ("{…}") of the type <paramref name="name"/> in the open solution's type system; null when there is none.</summary>
+    public static string? GuidOf(string name)
+    {
+        dynamic dte = XaeDte.TryGet() ?? throw new InvalidOperationException("No running XAE (TcXaeShell.DTE) in the ROT.");
+        return XaeDte.Retry(() =>
+        {
+            foreach (object? type in (IEnumerable)TypeSystemOf(dte))
+            {
+                if (type is null || !string.Equals((string)((dynamic)type).Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+                var guid = Regex.Match((string)((dynamic)type).ExportXml(false), "GUID=\"(\\{[^\"]+\\})\"");
+                if (guid.Success) return guid.Groups[1].Value;
+            }
+            return (string?)null;
+        });
+    }
+
+    private static object TypeSystemOf(dynamic dte)
+    {
+        dynamic projects = dte.Solution.Projects;
+        for (int i = 1; i <= (int)projects.Count; i++)
+        {
+            object? sysMan = null;
+            try { sysMan = projects.Item(i).Object; } catch (COMException) { }
+            if (sysMan is null) continue;
+            try { return ((dynamic)sysMan).GetTypeSystem(); } catch (COMException) { }
+        }
+        throw new InvalidOperationException("The open solution has no TwinCAT project with a type system.");
+    }
+
     /// <summary>Deletes the type <paramref name="name"/> from the type system of the open solution; returns what happened. Does not save.</summary>
     public static string DeleteType(string name)
     {

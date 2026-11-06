@@ -60,9 +60,17 @@ internal sealed class McpDispatcher : IDisposable
     public ITwinCatSession Session { get; }
 
     public McpDispatcher(ITwinCatSession session)
-        : this(session, XaeCallBlockWatch.ForXae, XaeCallBlockWatch.DefaultPoll, XaeCallBlockWatch.CurrentQuestion)
+        : this(session, WatchEnabled(Environment.GetEnvironmentVariable(WatchEnvVar)) ? XaeCallBlockWatch.ForXae : null,
+               XaeCallBlockWatch.DefaultPoll, XaeCallBlockWatch.CurrentQuestion)
     {
     }
+
+    /// <summary>Set to <c>off</c> (or <c>0</c>/<c>false</c>) to run every body inline as before: no [Blocked] answer.</summary>
+    public const string WatchEnvVar = "PTC_XAE_MCP_DIALOG_WATCH";
+
+    /// <summary>The watch is on unless the variable says off. Pure — unit-tested.</summary>
+    internal static bool WatchEnabled(string? value) =>
+        value?.Trim().ToLowerInvariant() is not ("off" or "0" or "false" or "no");
 
     /// <param name="session">The COM session the tools share.</param>
     /// <param name="watch">A fresh watch per call; null runs every body inline (no [Blocked] answer).</param>

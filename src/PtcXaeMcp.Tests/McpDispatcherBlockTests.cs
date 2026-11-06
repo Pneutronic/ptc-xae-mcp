@@ -226,6 +226,30 @@ public sealed class McpDispatcherBlockTests : IDisposable
         Assert.True(lateEntry.Success);
     }
 
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("", true)]
+    [InlineData("on", true)]
+    [InlineData("off", false)]
+    [InlineData(" OFF ", false)]
+    [InlineData("0", false)]
+    [InlineData("false", false)]
+    public void TheWatch_CanBeSwitchedOffByEnvironment(string? value, bool enabled) =>
+        Assert.Equal(enabled, McpDispatcher.WatchEnabled(value));
+
+    [Fact]
+    public async Task WithoutAWatch_ABodyRunsInline_EvenOffTheGuiThread()
+    {
+        var d = new McpDispatcher(new FakeTwinCatSession(), watch: null, TimeSpan.FromMilliseconds(20));
+        int caller = -1, body = -2;
+        await Task.Factory.StartNew(() =>
+        {
+            caller = Environment.CurrentManagedThreadId;
+            d.Run(() => { body = Environment.CurrentManagedThreadId; return "ok"; });
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Assert.Equal(caller, body);
+    }
+
     [Fact]
     public void HeldText_And_WaitingCall_NameToolDialogAndAge()
     {

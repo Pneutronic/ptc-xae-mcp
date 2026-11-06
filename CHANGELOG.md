@@ -61,6 +61,13 @@ pull-request numbers refer to those.
 - `twincat_plc_read`: `path` and `kind` are no longer marked required in the schema (because of `paths`); a call
   without either path is refused as before.
 
+### Fixed
+- A failed `twincat_goto_line` / `twincat_show_step` no longer leaves the XAE modal. When the Go-To dialog did not
+  lead to a confirmed cursor, the XAE could re-open the dialog after the verdict, and keys that reached the editor
+  could open "Variable deklarieren"; both stayed open and blocked every later call (seen in a live run). For a few
+  seconds after a failure every Go-To dialog is now cancelled and any other non-destructive dialog that blocks the
+  XAE is closed with its Cancel button; the result names what was cancelled.
+
 ## [3.0.0] - 2026-11-06
 
 ### Breaking

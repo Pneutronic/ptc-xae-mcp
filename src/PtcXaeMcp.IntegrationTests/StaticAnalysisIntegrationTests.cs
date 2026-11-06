@@ -69,6 +69,9 @@ public class StaticAnalysisIntegrationTests : IAsyncLifetime
         Assert.StartsWith("Static analysis (check all objects): ", text);
         Assert.True(text.Contains("read from SARIF ", StringComparison.OrdinalIgnoreCase)
                     || text.Contains("the Error List (no SARIF: ", StringComparison.Ordinal), text);
+        // With findings, the listing ends with the page footer of the paging convention.
+        if (!text.Contains("no findings — clean", StringComparison.Ordinal))
+            Assert.StartsWith("Page: offset 0, returned ", text.TrimEnd().Split('\n')[^1]);
 
         Assert.Equal(before, ProjectFiles(fixtureDir));
     }

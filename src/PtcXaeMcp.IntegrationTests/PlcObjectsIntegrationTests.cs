@@ -861,6 +861,12 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
 
             string scoped = await OkAsync("twincat_plc_search", ("pattern", token), ("wholeWord", true), ("pathPrefix", path));
             Assert.Equal(SearchHit.Matches(all).Select(m => m.Value), SearchHit.Matches(scoped).Select(m => m.Value));
+
+            // The paging convention: the last line is the page footer; a second page continues where the first stopped.
+            Assert.EndsWith("Page: offset 0, returned 5 of 5; has_more false", all.TrimEnd());
+            string second = await OkAsync("twincat_plc_search", ("pattern", token), ("wholeWord", true), ("limit", 2), ("offset", 2));
+            Assert.EndsWith("Page: offset 2, returned 2 of 5; has_more true, next_offset 4", second.TrimEnd());
+            Assert.Equal(SearchHit.Matches(all).Select(m => m.Value).Skip(2).Take(2), SearchHit.Matches(second).Select(m => m.Value));
         }
         finally
         {

@@ -42,6 +42,7 @@ public partial class McpServerTests
         var text = GetText(result);
         Assert.False(string.IsNullOrWhiteSpace(text), "twincat_get_status returned empty response");
         Assert.False(result.IsError == true, $"Tool returned error: {text}");
+        Assert.Contains("Access policy: access ", text);
     }
 
     // ── Test 3 ─────────────────────────────────────────────────────────────────
@@ -120,6 +121,43 @@ public partial class McpServerTests
         Assert.DoesNotContain("MCP protocol: (unknown)", text);
         // Trust-boundary disclaimer must travel with the response.
         Assert.Contains("self-reported", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Tool profile:", text);
+        Assert.Contains("Access policy:", text);
+    }
+
+    // ── tool profiles: a client whose name says Cursor sees the core toolsets only ──
+
+    [SkippableFact]
+    public async Task ToolProfile_ACursorClient_SeesCoreOnly_AndCannotCallAHiddenTool()
+    {
+        SkipIfNotReachable();
+
+        var transport = new HttpClientTransport(new HttpClientTransportOptions
+        {
+            Endpoint = new Uri(ServerUrl),
+            ConnectionTimeout = TimeSpan.FromSeconds(5)
+        });
+        await using var cursor = await McpClient.CreateAsync(
+            transport,
+            new McpClientOptions { ClientInfo = new Implementation { Name = "cursor-mcptests", Version = "1.0" } },
+            cancellationToken: new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+
+        string info = GetText(await cursor.CallToolAsync("twincat_get_client_info"));
+        Skip.IfNot(info.Contains("Tool profile: core (client 'cursor-mcptests')", StringComparison.Ordinal),
+            $"The host overrides the tool profile (window or PTC_XAE_MCP_TOOLSETS): {info}");
+
+        var names = (await cursor.ListToolsAsync()).Select(t => t.Name).ToHashSet();
+        Assert.Contains("twincat_plc_read", names);
+        Assert.Contains("twincat_get_status", names);
+        Assert.DoesNotContain(names, n => n.StartsWith("twincat_hmi_", StringComparison.Ordinal));
+        Assert.DoesNotContain("twincat_create_scope_project", names);
+
+        var hidden = await cursor.CallToolAsync("twincat_hmi_list_projects");
+        Assert.True(hidden.IsError == true);
+        Assert.Contains("toolset 'hmi'", GetText(hidden));
+
+        var all = (await _client!.ListToolsAsync()).Select(t => t.Name).ToHashSet();
+        Assert.True(all.Count > names.Count, $"default client {all.Count} tools, cursor {names.Count}");
     }
 
     // ── Test 58 — mcp-activity-log: trace wrapper is transparent on success ────

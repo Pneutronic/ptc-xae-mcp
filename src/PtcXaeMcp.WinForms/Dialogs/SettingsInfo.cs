@@ -42,6 +42,12 @@ internal static class SettingsInfo
                 $"{Env(McpBridge.ReportsMirrorEnvVar)}=1"),
             new("Auto-confirm HMI writes (TEMP fixtures)", OnOff(getEnv(HmiAutoConfirmPolicy.EnvVar)?.Trim() == "1"),
                 $"{Env(HmiAutoConfirmPolicy.EnvVar)}=1"),
+            new("Tool profile override", Raw(Mcp.ToolProfiles.EnvVar, "(none: the choice above)"),
+                Env(Mcp.ToolProfiles.EnvVar) + " (all, core or toolsets like plc,hmi)"),
+            new("Access level (environment)", Raw(Mcp.AccessPolicy.LevelEnvVar, "(none)"),
+                Env(Mcp.AccessPolicy.LevelEnvVar) + " (read, engineer, runtime; the stricter of this and the choice above applies)"),
+            new("Blocked NetIds (environment)", Raw(Mcp.AccessPolicy.BlockedEnvVar, "(none)"), Env(Mcp.AccessPolicy.BlockedEnvVar)),
+            new("Allowed NetIds (environment)", Raw(Mcp.AccessPolicy.AllowedEnvVar, "(none)"), Env(Mcp.AccessPolicy.AllowedEnvVar)),
         };
         if (updateCheckState is not null)
             rows.Add(new("Update check at start", updateCheckState,

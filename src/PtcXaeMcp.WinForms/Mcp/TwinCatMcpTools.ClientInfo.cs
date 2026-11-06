@@ -51,7 +51,9 @@ internal sealed partial class TwinCatMcpTools
                     $"Client (this session): {resolved.ClientName} {resolved.ClientVersion}\n" +
                     $"MCP protocol: {resolved.NegotiatedProtocolVersion}\n" +
                     $"Session id: {resolved.SessionId}\n" +
-                    "Note: clientInfo is self-reported and unauthenticated.";
+                    $"Tool profile: {bridge.Surface.ProfileFor(resolved.ClientName).Describe()}\n" +
+                    $"Access policy: {bridge.Policy.Current.Summary()}\n" +
+                    "Note: clientInfo is self-reported and unauthenticated; it only picks which tools are listed, never what is allowed.";
             }
 
             var fallback = bridge.Sessions.MostRecent();

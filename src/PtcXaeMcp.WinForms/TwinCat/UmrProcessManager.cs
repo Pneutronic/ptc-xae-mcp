@@ -121,6 +121,27 @@ internal sealed class UmrProcessManager : IDisposable
     /// Returns the full instance directory for <paramref name="name"/>, searching
     /// all <see cref="RuntimesRoots"/> in order.
     /// </summary>
+    /// <summary>
+    /// The AMS NetIds of every registered instance (fixed in Start.bat, else from TcRegistry.xml), for the
+    /// access policy's <c>local</c>. An instance whose NetId cannot be read is left out. Never throws.
+    /// </summary>
+    public IReadOnlyList<string> InstanceNetIds()
+    {
+        var ids = new List<string>();
+        try
+        {
+            foreach (var name in EnumerateInstances())
+            {
+                string dir = FindInstanceDir(name);
+                string? id = TryReadFile(Path.Combine(dir, "Start.bat")) is { } bat ? ParseStartBatNetId(bat) : null;
+                id ??= TryReadFile(Path.Combine(dir, "3.1", "TcRegistry.xml")) is { } reg ? ParseRegistryNetId(reg) : null;
+                if (id is not null) ids.Add(id);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException) { }
+        return ids;
+    }
+
     private static string FindInstanceDir(string name)
     {
         foreach (var root in RuntimesRoots)

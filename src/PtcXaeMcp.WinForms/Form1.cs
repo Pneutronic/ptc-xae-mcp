@@ -38,7 +38,8 @@ public partial class Form1 : Form
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? Icon;
         // The installed version must be visible at a glance (window title + header).
         string version = McpBridge.DisplayVersion(McpBridge.ThisAssemblyVersion());
-        Text = $"{ProductInfo.DisplayName} {version}";
+        _baseTitle = $"{ProductInfo.DisplayName} {version}";
+        Text = _baseTitle;
         _lblProductName.Text = $"{ProductInfo.DisplayName} {version}";
         // The logo itself is set per theme in ApplyTheme (light grey lettering on dark).
 
@@ -97,13 +98,31 @@ public partial class Form1 : Form
     /// </summary>
     internal void AttachMcp(McpBridge bridge)
     {
+        _bridge = bridge;
         _diagnosticsEnabled = bridge.DiagnosticsEnabled;
+        bridge.Policy.Changed += () => BeginInvokeSafe(ShowAccessLevel);
+        ShowAccessLevel();
         _activityView.Attach(bridge.Activity, bridge.DiagnosticsEnabled, action => BeginInvokeSafe(action));
         bridge.StatusChanged += SetMcpStatus;
         bridge.Sessions.Changed += () => SetMcpClients(bridge.Sessions.Snapshot());
         bridge.Faulted += message => BeginInvokeSafe(() =>
             MessageBox.Show(message, "MCP Error", MessageBoxButtons.OK, MessageBoxIcon.Warning));
         bridge.ShutdownRequested += () => BeginInvokeSafe(Close);
+    }
+
+    private string _baseTitle;
+    private McpBridge? _bridge;
+
+    /// <summary>A restricted access policy is named in the window title, so nobody misses it.</summary>
+    private void ShowAccessLevel()
+    {
+        var level = _bridge?.Policy.Current.Level ?? Mcp.AccessLevel.Runtime;
+        Text = level switch
+        {
+            Mcp.AccessLevel.Read => $"{_baseTitle} — READ ONLY",
+            Mcp.AccessLevel.Engineer => $"{_baseTitle} — ENGINEER (no runtime actions)",
+            _ => _baseTitle,
+        };
     }
 
     private void OnHostApplyRunStateChanged(bool running, string status) =>

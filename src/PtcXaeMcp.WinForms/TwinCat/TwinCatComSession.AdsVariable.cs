@@ -667,6 +667,8 @@ internal sealed partial class TwinCatComSession
 
     // ---- helpers -------------------------------------------------------------
 
+    public string? ProjectTargetNetId() => ProjectTargetNetIdOrNull();
+
     // The given NetId, "project" (the open solution's own target), or the local
     // AMS router's NetId (issue #202). The decision is AdsTargetNetId.Resolve,
     // outside #if TWINCAT so it is unit-tested.

@@ -12,6 +12,12 @@ internal interface ITwinCatSession : IDisposable
 
     bool HasOpenSolution();
     string? ActiveSolutionPath();
+
+    /// <summary>
+    /// The open solution's target NetId from its .tsproj: "" for a Local target, null when there is no solution or
+    /// it cannot be read. For the access policy's NetId rules.
+    /// </summary>
+    string? ProjectTargetNetId() => null;
     TwinCatEnvironmentStatus Probe();
 
     /// <param name="hostOverride">Attach to / launch exactly this XAE host instead of the one the project's

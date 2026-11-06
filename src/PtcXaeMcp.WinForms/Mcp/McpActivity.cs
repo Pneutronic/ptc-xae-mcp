@@ -17,6 +17,12 @@ namespace PtcXaeMcp.WinForms.Mcp;
 /// must never alter what a tool returns.
 /// </para>
 /// </summary>
+/// <summary>The access policy's answer for one call: <see cref="Denied"/> refuses it, <see cref="Warning"/> is appended.</summary>
+public sealed record AccessDecision(string? Denied, string? Warning)
+{
+    public static readonly AccessDecision Allowed = new(null, null);
+}
+
 public sealed class McpActivity
 {
     public McpActivityLog Log { get; }
@@ -31,6 +37,12 @@ public sealed class McpActivity
     public McpCurrentTest CurrentTest { get; } = new();
 
     private int _runStarted;
+
+    /// <summary>
+    /// The access policy's decision for a call (tool name, traced arguments): a refusal, or null plus an optional
+    /// warning appended to the result. Set by <see cref="McpBridge"/>; null lets every call through (unit tests).
+    /// </summary>
+    public Func<string, object?, AccessDecision>? AccessGate { get; set; }
 
     public McpActivity(McpActivityLog? log = null, McpActivityJsonLog? jsonLog = null)
     {
@@ -112,11 +124,22 @@ public sealed class McpActivity
             return blocked;
         }
 
+        var access = Decide(toolName, arguments);
+        if (access.Denied is not null)
+        {
+            sw.Stop();
+            Record(McpActivityEntry.Failure(
+                toolName, Describe(arguments), access.Denied, startedUtc, sw.Elapsed));
+            return access.Denied;
+        }
+
         try
         {
             var result = await body();
             if (serviceBefore.State == TwinCat.SystemServiceState.Running)
                 result += TwinCat.TwinCatSystemService.StoppedDuring(serviceBefore);
+            if (access.Warning is not null)
+                result += "\n" + access.Warning;
             sw.Stop();
             // Tool bodies return "[Error] ..." as a normal string on failure.
             bool ok = !McpErrors.IsError(result);
@@ -174,6 +197,20 @@ public sealed class McpActivity
         => TraceAsync(toolName, arguments, () => Task.FromResult(body()),
                       cancellationToken, bypassGate)
            .GetAwaiter().GetResult();
+
+    // A gate that fails refuses the call: an access policy that cannot be evaluated must not let everything through.
+    private AccessDecision Decide(string toolName, object? arguments)
+    {
+        if (AccessGate is not { } gate) return AccessDecision.Allowed;
+        try
+        {
+            return gate(toolName, arguments);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return new AccessDecision($"[Error] The access policy could not be checked for {toolName}: {ex.Message}. Nothing was done.", null);
+        }
+    }
 
     private void Record(McpActivityEntry entry)
     {

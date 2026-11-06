@@ -25,6 +25,10 @@ internal sealed class UiSettings
     /// <summary>Opt-in: ask github.com for the latest release at start (<c>checkForUpdates</c>, default off).</summary>
     public bool CheckForUpdates { get; set; }
 
+    /// <summary>The tool profile chosen in the window (<c>toolProfile</c>): <c>auto</c> (by client, default),
+    /// <c>all</c>, <c>core</c> or a toolset list.</summary>
+    public string ToolProfile { get; set; } = Mcp.ToolProfiles.Automatic;
+
     public static UiSettings Parse(string? json)
     {
         var s = new UiSettings();
@@ -45,6 +49,10 @@ internal sealed class UiSettings
             if (root.TryGetProperty("checkForUpdates", out var u)
                 && u.ValueKind is JsonValueKind.True or JsonValueKind.False)
                 s.CheckForUpdates = u.GetBoolean();
+
+            if (root.TryGetProperty("toolProfile", out var p) && p.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(p.GetString()))
+                s.ToolProfile = p.GetString()!.Trim();
 
             if (root.TryGetProperty("window", out var w) && w.ValueKind == JsonValueKind.Object
                 && TryInt(w, "x", out int x) && TryInt(w, "y", out int y)
@@ -75,6 +83,7 @@ internal sealed class UiSettings
             ["theme"] = DarkTheme ? "dark" : "light",
             ["rememberWindowPosition"] = RememberWindowPosition,
             ["checkForUpdates"] = CheckForUpdates,
+            ["toolProfile"] = ToolProfile,
         };
         if (Window is { } w)
             root["window"] = new JsonObject

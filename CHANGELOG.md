@@ -10,6 +10,26 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- **Tool profiles per client.** Every tool belongs to one toolset (`meta`, `project`, `build`, `plc`, `ads`,
+  `runtime`, `license`, `io`, `hmi`, `scope`, `nc`, `safety`, `ibn`). A client sees the toolsets of its profile:
+  `all`, or `core` (`meta`, `project`, `build`, `plc`, `ads`, `runtime`, about half the tools) for clients that cope
+  badly with many tools. The profile is chosen by the client's self-reported name (Claude: `all`; Cursor, VS Code,
+  Copilot, Windsurf: `core`; any other client: `all`), unless the window (Settings → Tool profile) or
+  `PTC_XAE_MCP_TOOLSETS` (`all`, `core` or a list such as `plc,hmi`) sets one for every client. A call to a hidden
+  tool is refused with `[Error]` naming its toolset. `twincat_get_client_info` and `/health` show the profile in force.
+- **Access policy.** An access level — `read` (only tools that change nothing), `engineer` (also the project:
+  PLC code, IO tree, mapping, libraries, build, save) or `runtime` (also target systems: activate, login, PLC
+  start/stop, ADS writes, routes, target, system mode, User Mode Runtime, trial licenses) — plus blocked NetIds (no
+  runtime action on them, reading stays allowed) and allowed NetIds (runtime actions only on them; `local` = this PC
+  and its User Mode Runtimes). Set in the window (Settings, saved to `%LOCALAPPDATA%\ptc-xae-mcp\policy.json`) or
+  with `PTC_XAE_MCP_ACCESS`, `PTC_XAE_MCP_BLOCKED_NETIDS`, `PTC_XAE_MCP_ALLOWED_NETIDS`; when both are set the
+  stricter wins. No tool can change it, and the file tools cannot reach `policy.json`. It is checked before every
+  tool call, also from the tool console; tools above the level are left out of the tool list, and connected clients
+  are told to reload it when the window changes the policy. Emergency stops (`twincat_stop`, `twincat_shutdown`,
+  `twincat_force_close_xae`, the IBN abort/disarm/release) are never blocked. Without any setting nothing changes
+  (`runtime`, no lists). A restricted level is named in the window title; `twincat_get_status` shows the policy.
+
 ## [3.0.0] - 2026-11-06
 
 ### Breaking

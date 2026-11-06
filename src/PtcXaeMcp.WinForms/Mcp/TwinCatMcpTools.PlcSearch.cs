@@ -17,7 +17,7 @@ internal sealed partial class TwinCatMcpTools
                  "wholeWord=true skips hits inside longer identifiers. Each hit: element kind and tree path, section, line:column (the line numbers of " +
                  "twincat_plc_read), the element's revision (pass it to twincat_plc_replace_text / twincat_plc_write as expectedRevision) and an " +
                  "excerpt with the hit lines marked '>'. Graphical implementations (SFC, FBD, LD, CFC) are XML and not searched; they are listed as " +
-                 "skipped, their declarations are searched. Paged: limit (default 100) and offset; the summary says the next offset.")]
+                 "skipped, their declarations are searched. Paged with limit/offset: the last line gives total, has_more and next_offset.")]
     public string PlcSearch(
         [Description("Text to find; a regular expression when regex=true.")] string pattern,
         [Description("True: pattern is a .NET regular expression. Default false (literal text).")] bool regex = false,
@@ -27,12 +27,12 @@ internal sealed partial class TwinCatMcpTools
         [Description("Optional caret-separated tree path: only this element and the elements below it, e.g. a folder or a POU with its members.")] string? pathPrefix = null,
         [Description("Optional element kind filter: POU, INTERFACE, DUT, GVL or MEMBER.")] string? kind = null,
         [Description("Lines of context before and after each hit, 0–10. Default 1.")] int contextLines = 1,
-        [Description("Hits per page, 1–1000. Default 100.")] int limit = 100,
-        [Description("Hits to skip (paging). Default 0.")] int offset = 0,
+        [Description("Hits per page: default 100, at most 1000 (0 = 1000).")] int? limit = null,
+        [Description("Hits to skip, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_search",
             new { pattern, regex, caseSensitive, wholeWord, scope, pathPrefix, kind, contextLines, limit, offset }, () =>
-            bridge.Dispatcher.Run(() =>
+            Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
             {
                 var r = new PlcObjectCoordinator(bridge.Dispatcher.Session)
                     .Search(pattern, regex, caseSensitive, wholeWord, scope, pathPrefix, kind, contextLines, limit, offset);
@@ -52,6 +52,7 @@ internal sealed partial class TwinCatMcpTools
                     sb.AppendLine("Skipped:");
                     foreach (var s in r.Skipped) sb.AppendLine(CultureInfo.InvariantCulture, $"  {s.Path}: {s.Reason}");
                 }
+                if (r.Page is not null) sb.AppendLine(r.Page.Footer());
                 return sb.ToString().TrimEnd();
             }), cancellationToken);
 

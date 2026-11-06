@@ -9,18 +9,18 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 // this run's result. When the XAE writes no SARIF, the Error List's SA entries are reported and the reason is named.
 internal sealed class StaticAnalysisCoordinator(ITwinCatSession session, string? reportDirectory = null)
 {
-    internal const int MaxLimit = 1000;
+    /// <summary>Findings per page: default 100, at most 1000.</summary>
+    internal static readonly Mcp.McpLimit Page = new(100, 1000);
     private static readonly string[] Levels = ["error", "warning", "note"];
 
     internal static string DefaultDirectory => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ptc-xae-mcp", "static-analysis");
 
-    public string Run(bool checkAll = true, string? settingsFile = null, string minLevel = "warning", int limit = 100, int offset = 0)
+    public string Run(bool checkAll = true, string? settingsFile = null, string minLevel = "warning", int? limit = null, int offset = 0)
     {
         string level = (minLevel ?? "").Trim().ToLowerInvariant();
         if (!Levels.Contains(level)) return $"[Error] Unknown minLevel '{minLevel}'. Expected error, warning or note.";
-        if (limit < 1 || limit > MaxLimit) return $"[Error] limit must be between 1 and {MaxLimit}.";
-        if (offset < 0) return "[Error] offset must not be negative.";
+        if (Mcp.McpPaging.Validate(limit, offset) is { } invalid) return invalid;
 
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return error;
@@ -76,18 +76,14 @@ internal sealed class StaticAnalysisCoordinator(ITwinCatSession session, string?
 
         int rank = Array.IndexOf(Levels, level);
         var shown = findings.Where(f => Array.IndexOf(Levels, f.Level) <= rank).ToList();
-        var page = shown.Skip(offset).Take(limit).ToList();
-        foreach (var f in page)
+        var page = Mcp.McpPaging.Apply(shown, limit, offset, Page);
+        foreach (var f in page.Items)
             sb.Append(CultureInfo.InvariantCulture, $"\n  [{f.Level}] {f.RuleId}{Location(f)} — {f.Message}");
 
         if (shown.Count == 0) sb.Append(CultureInfo.InvariantCulture, $"\nNo findings at minLevel {level}.");
-        else if (page.Count == 0) sb.Append(CultureInfo.InvariantCulture, $"\noffset {offset} is past the last of {shown.Count} findings (minLevel {level}).");
-        else
-        {
-            bool more = offset + page.Count < shown.Count;
-            sb.Append(CultureInfo.InvariantCulture, $"\nShowing {offset + 1}–{offset + page.Count} of {shown.Count} (minLevel {level})");
-            sb.Append(more ? $"; more with offset={offset + page.Count}." : ".");
-        }
+        else if (page.Returned == 0) sb.Append(CultureInfo.InvariantCulture, $"\noffset {offset} is past the last of {shown.Count} findings (minLevel {level}).");
+        else sb.Append(CultureInfo.InvariantCulture, $"\nShowing {page.Offset + 1}–{page.Offset + page.Returned} of {shown.Count} (minLevel {level}).");
+        sb.Append('\n').Append(page.Footer());
         return sb.ToString();
     }
 

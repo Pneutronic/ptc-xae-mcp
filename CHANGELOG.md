@@ -10,6 +10,22 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- **EventLogger event classes** (#29). `twincat_event_class_create` creates an event class (name, display text, events
+  with id, name, severity and text) in the TwinCAT type system and keeps it in the .tsproj (`PersistentType`, so it
+  survives save and reopen although nothing references it); the PLC reaches its events as `TC_EVENTS.<class>.<event>`
+  at once. `twincat_event_class_read` lists the event classes of the project (built-in ones on request) or shows one
+  with its events and the PLC projects that pin it. `twincat_event_class_update` changes the display text and/or the
+  complete event list with the GUID kept (DeleteType + CreateType, so the PLC follows at once); a class from a TMC
+  file is refused, because a second definition with the same GUID is what makes the XAE report "A different data
+  type … with same GUID exists already".
+- `twincat_plc_add_global_data_type` (#29): "Add Global Data Type" for an event class into a PLC project, so a library
+  saved from it carries the class (`externaltypes.auxiliary`) and its users get `TC_EVENTS.<class>`. It writes what
+  the XAE command writes — the class into `ExternalTypes.tmc` next to the .plcproj and the .plcproj entry — while the
+  solution is saved, closed and reopened (the XAE has no automation call for it), and reads the `ExternalTypes.tmc`
+  node back from the tree. Updating a pinned class writes the pin again: the type system drops it on the update,
+  which left `ExternalTypes.tmc` empty.
+
 ## [3.1.0] - 2026-11-06
 
 ### Added

@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-202 tools, generated from the source attributes — one section per
+206 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -20,6 +20,7 @@
 - [Doctor](#doctor) (1)
 - [EditorNavigation](#editornavigation) (2)
 - [EtherCat](#ethercat) (6)
+- [EventClasses](#eventclasses) (4)
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
 - [Hmi](#hmi) (8)
@@ -470,6 +471,46 @@ Set/override an EtherCAT box's upstream PreviousPort (A/B/C/D) and save. Require
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the box, e.g. 'TIID^Device 1 (EtherCAT)^Box 2 (EK1122)^Box 3 (EK1100)'. |
 | `port` | `string` |  | Upstream port letter to select: A, B, C or D. |
+
+## EventClasses
+
+### `twincat_event_class_create`
+
+Create an EventLogger event class in the TwinCAT type system (ITcTypeSystem.CreateType) and save it in the .tsproj (PersistentType, kept although nothing references it). The PLC reaches each event as TC_EVENTS.<class>.<event> (TcEventEntry) at once. The type system generates the GUID. Refused with [Error] before anything changes: a class name or event name that is no IEC identifier, no events, an id outside 0..4294967295, an id or name used twice, an unknown severity, a class of that name that already exists. The result shows the class as read back. A PLC library carries the class only after twincat_plc_add_global_data_type on its PLC project.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string` |  | Name of the event class (IEC identifier), e.g. 'MyLibEvents'. |
+| `events` | `EventClassEventInput[]` |  | The events: [{id, name, severity, text}], at least one. severity: Verbose, Info (default), Warning, Error, Critical; text: the display text, {0} {1} … take the event's arguments (default: the name). |
+| `displayText` | `string?` | `null` | Display text of the class. Default: its name. |
+
+### `twincat_event_class_read`
+
+Read the EventLogger event classes of the type system as JSON. Without name: every event class of the project (name, GUID, display text, origin: project (.tsproj) or TMC file, event count, PLC projects that pin it via ExternalTypes.tmc); built-in TwinCAT classes only with includeBuiltIn. With name: that class with all its events (id, name, severity, text) and, per pinning PLC project, whether its ExternalTypes.tmc copy is up to date.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string?` | `null` | Name of one event class. Omit for the list. |
+| `includeBuiltIn` | `bool` | `false` | List the built-in TwinCAT event classes too (TcSystemEventClass …). Default false. |
+
+### `twincat_event_class_update`
+
+Change an event class of the project (one kept in the .tsproj): its display text and/or its complete event list. The GUID stays; the class is replaced in the type system (DeleteType + CreateType), so the PLC's TC_EVENTS follows at once, and the project is saved. Events are matched by id: details this tool does not manage (cause/remedy, description) stay with an id that is kept; ids missing from the new list are removed. When PLC projects pin the class (ExternalTypes.tmc), the type system drops that pin on the update; it is written again with the new content while the solution is saved, closed and reopened. Refused with [Error] before anything changes: invalid arguments as in twincat_event_class_create, an unknown or built-in class, a class from a TMC file (change it there: a second definition with the same GUID is what makes the XAE report "A different data type … with same GUID exists already"). Logs out of the PLC first.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string` |  | Name of the event class to change. |
+| `events` | `EventClassEventInput[]?` | `null` | The complete new event list [{id, name, severity, text}] (replaces the old one). Omit to keep the events. |
+| `displayText` | `string?` | `null` | New display text of the class. Omit to keep it. |
+
+### `twincat_plc_add_global_data_type`
+
+"Add Global Data Type" for an event class of the type system into a PLC project, so a library saved from it carries the class (externaltypes.auxiliary) and projects using the library get TC_EVENTS.<class>. Writes what the XAE command writes: the class into ExternalTypes.tmc next to the .plcproj and its <None Include="ExternalTypes.tmc"> entry into the .plcproj. The XAE has no automation call for it, so the solution is saved, closed, the files written and the solution reopened; the result shows the ExternalTypes.tmc node read back from the tree. An existing pin that is out of date is refreshed; an up-to-date one is left alone. Event classes only. Refused with [Error] before anything changes: an unknown or built-in class, an unknown PLC project, several PLC projects without plcProjectName. Logs out of the PLC first.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `typeName` | `string` |  | Name of the event class in the type system, e.g. 'MyLibEvents'. |
+| `plcProjectName` | `string?` | `null` | The PLC by its name under PLC or its .plcproj name. Optional when the solution has exactly one PLC project. |
 
 ## EventLogger
 

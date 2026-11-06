@@ -116,6 +116,7 @@ public partial class McpServerTests : IAsyncLifetime
         "twincat_hmi_list_tmc_files", "twincat_hmi_list_ads_runtimes", "twincat_hmi_list_plc_tmc_candidates",
         "twincat_hmi_list_internal_symbols",
         "twincat_read_init_symbols", "twincat_read_retain_config", "twincat_get_type_file_generation",
+        "twincat_event_class_read",
     };
 
     /// <summary>

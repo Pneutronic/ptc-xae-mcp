@@ -78,6 +78,9 @@ public class MutatingCallGuardTests
     [InlineData("twincat_save_as_library")]
     [InlineData("twincat_plc_task_create")]
     [InlineData("twincat_plc_project_info")]
+    [InlineData("twincat_event_class_create")]
+    [InlineData("twincat_event_class_update")]
+    [InlineData("twincat_plc_add_global_data_type")]
     public void MutatingTools_AreNotOnTheNonMutatingList(string tool)
     {
         McpServerTests.NonMutatingTools.Should().NotContain(tool);

@@ -32,6 +32,19 @@ pull-request numbers refer to those.
 
   Not paged: `twincat_get_log` (`maxChars`) and `twincat_read_scope_file` (`maxPoints`, decimation).
 
+### Added
+- **A call held by an XAE dialog no longer hangs.** While a tool runs, the server looks every 0.5 s for an XAE dialog
+  that blocks the XAE and asks something (a button other than Cancel; progress and wait windows do not count). When
+  one stays for 3 s, the call answers `[Blocked] XAE dialog '<title>' (id …, <class>; buttons: …)` and names what to do:
+  `twincat_xae_dialog_answer` or the XAE, and only a person for a known-destructive dialog. The XAE call itself keeps
+  running; until it returns no other call starts, and each one is refused with `[Error]` naming the dialog and the next
+  step (`twincat_xae_dialogs` and `twincat_xae_dialog_answer` still work). When the XAE call returns, its result is
+  written to the activity log as `<tool> (late result)` and the next call can run. `twincat_xae_dialogs` names the call
+  that waits for a dialog. Calls from the window's own buttons behave as before. `PTC_XAE_MCP_DIALOG_WATCH=off`
+  switches this off (every call then waits for the XAE as before).
+- `ptc_test_hold_xae_dialog` (only with `--diagnostics`): a test hook for the live suite that opens Tools > Options
+  inside a COM call, so a call held by an XAE dialog can be tested.
+
 ## [3.1.0] - 2026-11-06
 
 ### Added

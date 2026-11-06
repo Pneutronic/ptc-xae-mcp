@@ -65,7 +65,7 @@ internal sealed class GuiComDispatchRunner
     public async Task<GuiComOutcome<T>> RunAsync<T>(Func<T> action)
     {
         if (!_dispatcher.TryAcquire())
-            return GuiComOutcome<T>.Failure($"[Error] {McpDispatcher.Busy().Message}");
+            return GuiComOutcome<T>.Failure($"[Error] {_dispatcher.BusyNow().Message}");
 
         try
         {

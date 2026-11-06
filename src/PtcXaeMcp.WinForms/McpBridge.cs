@@ -82,6 +82,8 @@ internal sealed class McpBridge : IDisposable
         Activity.AccessGate = AccessGate.Create(() => Policy.Current,
             () => _host.Dispatcher.Session.ProjectTargetNetId(), () => _host.UmrManager.InstanceNetIds());
         Policy.Changed += Surface.NotifyToolListChanged;
+        // A call that answered [Blocked] reports its real result here once the XAE returns it.
+        _host.Dispatcher.LateResult = Activity.RecordLateResult;
         HostLog.Shared.Info($"Access policy: {Policy.Current.Summary()}.");
     }
 

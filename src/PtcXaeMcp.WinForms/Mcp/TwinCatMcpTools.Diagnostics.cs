@@ -200,6 +200,22 @@ internal sealed class TwinCatMcpToolsDiagnostics(McpBridge bridge)
         => bridge.Activity.Trace("twincat_dump_nc_tree", null, () =>
             bridge.Dispatcher.Run(() => bridge.Dispatcher.Session.DumpTincTree()), cancellationToken);
 
+    // ---- ptc_test_hold_xae_dialog (test support) --------------------------------
+
+    [McpServerTool(Name = "ptc_test_hold_xae_dialog", ReadOnly = false, Destructive = false)]
+    [Description("TEST-ONLY hook for the live suite: opens the XAE's Options dialog (Tools > Options) inside a COM call " +
+                 "that returns only once the dialog is closed, so the call is held by an XAE dialog — it answers [Blocked] " +
+                 "after a few seconds while the dialog stays open. Close the dialog with twincat_xae_dialog_answer " +
+                 "('Abbrechen'/'Cancel'). confirm must be 'open'. Only registered when the host is started with " +
+                 "--diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.")]
+    public string HoldXaeDialog(
+        [Description("Must be 'open': guards against an accidental call.")] string confirm = "",
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("ptc_test_hold_xae_dialog", new { confirm }, () =>
+            !string.Equals(confirm, "open", StringComparison.Ordinal)
+                ? "[Error] confirm must be 'open'; nothing was opened."
+                : bridge.Dispatcher.Run(() => bridge.Dispatcher.Session.OpenOptionsDialogAndWait()), cancellationToken);
+
     // ---- twincat_ibn_arm (test support) ----------------------------------------
 
     // Decision 2026-10-19 (issue #272): IBN Live is armed only by a human in the host window

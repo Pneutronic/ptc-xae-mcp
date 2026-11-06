@@ -10,7 +10,7 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 /// retry scopes do not multiply their budgets), and <see cref="ComCall.IsBusy"/> treats it
 /// as busy, so every busy-aware <c>catch … when (ComCall.NotBusy(ex))</c> lets it through.
 /// </summary>
-internal sealed class XaeBlockedException : InvalidOperationException
+internal class XaeBlockedException : InvalidOperationException
 {
     /// <summary>Title (plus text for message boxes) of the blocking XAE window, when one was found.</summary>
     public string? Dialog { get; }

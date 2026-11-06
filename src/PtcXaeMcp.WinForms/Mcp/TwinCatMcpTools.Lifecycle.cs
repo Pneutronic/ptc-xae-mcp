@@ -35,6 +35,10 @@ internal sealed partial class TwinCatMcpTools
             {
                 return McpErrors.Cancelled("open project cancelled");
             }
+            catch (XaeCallDetachedException)
+            {
+                throw; // the [Blocked] answer, returned unchanged by the trace
+            }
             catch (Exception ex)
             {
                 return $"[Error] {ex.Message}";

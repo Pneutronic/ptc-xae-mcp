@@ -125,6 +125,46 @@ public partial class McpServerTests
         Assert.Contains("Access policy:", text);
     }
 
+    // ── prompts and resources ──────────────────────────────────────────────────
+
+    [SkippableFact]
+    public async Task Prompts_AreListed_AndRenderTheirArguments()
+    {
+        SkipIfNotReachable();
+
+        var names = (await _client!.ListPromptsAsync()).Select(p => p.Name).ToHashSet();
+        Assert.Contains("plc-change", names);
+        Assert.Contains("diagnose-runtime", names);
+        Assert.Contains("doctor", names);
+
+        var prompt = await _client!.GetPromptAsync("plc-change",
+            new Dictionary<string, object?> { ["task"] = "rename nCount to nCounter" });
+        string text = string.Join("\n", prompt.Messages.Select(m => (m.Content as TextContentBlock)?.Text));
+        Assert.Contains("rename nCount to nCounter", text);
+        Assert.Contains("twincat_plc_replace_text", text);
+    }
+
+    [SkippableFact]
+    public async Task Resources_StatusAndToolsets_AreReadable()
+    {
+        SkipIfNotReachable();
+
+        var uris = (await _client!.ListResourcesAsync()).Select(r => r.Uri).ToHashSet();
+        Assert.Contains("ptc-xae://status", uris);
+        Assert.Contains("ptc-xae://toolsets", uris);
+        var templates = (await _client!.ListResourceTemplatesAsync()).Select(t => t.UriTemplate).ToHashSet();
+        Assert.Contains("ptc-xae://plc/element/{path}", templates);
+
+        string status = string.Join("\n", (await _client!.ReadResourceAsync("ptc-xae://status")).Contents
+            .OfType<TextResourceContents>().Select(c => c.Text));
+        Assert.Contains("Access policy:", status);
+        Assert.Contains("Tool profile:", status);
+
+        string toolsets = string.Join("\n", (await _client!.ReadResourceAsync("ptc-xae://toolsets")).Contents
+            .OfType<TextResourceContents>().Select(c => c.Text));
+        Assert.Contains("plc (shown", toolsets);
+    }
+
     // ── tool profiles: a client whose name says Cursor sees the core toolsets only ──
 
     [SkippableFact]

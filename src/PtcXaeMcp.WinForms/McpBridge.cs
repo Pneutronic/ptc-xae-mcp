@@ -173,8 +173,12 @@ internal sealed class McpBridge : IDisposable
                     // diagnostic tool to populate the registry (issue #71).
                     opts.SessionMigrationHandler = new McpSessionTracker(Sessions))
                 .WithTools<TwinCatMcpTools>()
+                // Workflow prompts and context resources; every resource read goes through the matching tool.
+                .WithPrompts<McpPrompts>()
+                .WithResources<McpResources>()
                 .WithRequestFilters(filters =>
                 {
+                    filters.AddListPromptsFilter(next => McpPrompts.ListFilter(Surface, next));
                     // An argument a tool does not declare is refused before the tool runs (it used to be dropped silently).
                     filters.AddCallToolFilter(Mcp.UnknownArguments.Filter);
                     // The tool profile of the client and the access policy decide which tools a session sees.

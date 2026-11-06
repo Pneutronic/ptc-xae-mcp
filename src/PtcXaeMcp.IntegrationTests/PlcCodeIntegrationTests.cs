@@ -150,6 +150,20 @@ public class PlcCodeIntegrationTests : IAsyncLifetime
         Assert.Contains("Next: twincat_plc_list", text);
     }
 
+    [Trait("Description", "Resource ptc-xae://plc/element/<MAIN, URI-kodiert> lesen → derselbe Text und dieselbe Revision wie plc_read.")]
+    [SkippableFact(Timeout = 240_000)]
+    public async Task ElementResource_ReturnsWhatPlcReadReturns()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+
+        string viaTool = await ReadAsync(_pouPath, "POU");
+        var resource = await _client!.ReadResourceAsync("ptc-xae://plc/element/" + Uri.EscapeDataString(_pouPath));
+        string viaResource = string.Join("\n", resource.Contents.OfType<TextResourceContents>().Select(c => c.Text));
+
+        Assert.Equal(viaTool, viaResource);
+    }
+
     // ── Scenario 2: plc_read returns declaration + implementation ─────────────
 
     [Trait("Description", "Bekannten POU per plc_read lesen → Kopfzeile mit Revision, \"--- Declaration ---\" und \"--- Implementation ---\" mit POU-Schlüsselwort.")]

@@ -35,6 +35,15 @@ pull-request numbers refer to those.
 - `twincat_plc_read(paths)`: reads up to 50 elements of one kind in a single call, each under a `=== <path> ===`
   line; an element that cannot be read is reported as its `[Error]` while the others are still read.
 
+- **MCP prompts**: step-by-step workflows a user picks in the client (in Claude Code as a slash command):
+  `plc-change` (find, read, change with revision, build with `expectSymbols`, check), `commission-ethercat`,
+  `diagnose-runtime` (reads only), `run-tcunit`, `scope-measure`, `doctor`. A prompt about a toolset the client's
+  profile hides is not listed.
+- **MCP resources** to pull context into the chat without a tool call (in Claude Code with `@`):
+  `ptc-xae://status`, `ptc-xae://plc/elements`, `ptc-xae://plc/element/{path}` (one element's text and revision,
+  path URI-encoded), `ptc-xae://build/errors`, `ptc-xae://toolsets`. Each read goes through the matching tool, so
+  the access policy, the single-operation lock and the activity log apply.
+
 ### Changed
 - The most frequent errors name the next step on a second line `Next: …`: no XAE, no solution open, a PLC path that
   does not exist (with how to find the real, localized path).

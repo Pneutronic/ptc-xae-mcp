@@ -22,6 +22,16 @@ internal sealed partial class FakeTwinCatSession
         return FakeBuildPlcResult;
     }
 
+    public BuildResult FakeCheckAllObjectsResult { get; set; } =
+        new BuildResult(true, 0, Array.Empty<BuildError>());
+
+    public BuildResult CheckAllPlcObjects(string? plcProjectName, bool bringToFront)
+    {
+        CallLog.Add($"CheckAllPlcObjects({plcProjectName ?? "<null>"}{(bringToFront ? ", bringToFront" : "")})");
+        if (BuildThrows is not null) throw BuildThrows;
+        return FakeCheckAllObjectsResult;
+    }
+
     /// <summary>Runs inside <see cref="BuildSolution"/> before it returns (e.g. to block like a modal would).</summary>
     public Action? BuildSolutionHook { get; set; }
 
@@ -82,6 +92,19 @@ internal sealed partial class FakeTwinCatSession
         CallLog.Add("GetErrorList()");
         if (GetErrorListThrows is not null) throw GetErrorListThrows;
         return FakeErrorList;
+    }
+
+    /// <summary>SARIF text RunStaticAnalysis writes to the given path; null = the XAE wrote no SARIF.</summary>
+    public string? StaticAnalysisSarif { get; set; }
+    public string? StaticAnalysisSarifNote { get; set; }
+    public Exception? RunStaticAnalysisThrows { get; set; }
+
+    public StaticAnalysisRun RunStaticAnalysis(bool checkAll, string? settingsFile, string sarifPath)
+    {
+        CallLog.Add($"RunStaticAnalysis(checkAll={checkAll}, settings={settingsFile ?? "<none>"}, sarif={sarifPath})");
+        if (RunStaticAnalysisThrows is not null) throw RunStaticAnalysisThrows;
+        if (StaticAnalysisSarif is not null) File.WriteAllText(sarifPath, StaticAnalysisSarif);
+        return new StaticAnalysisRun(StaticAnalysisSarif is not null, StaticAnalysisSarifNote, "PLC project");
     }
 
     // ---- build-recovery ----

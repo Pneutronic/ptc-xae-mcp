@@ -38,12 +38,14 @@ public class MutatingCallGuardTests
     [InlineData("twincat_build_solution")]
     [InlineData("twincat_close_project")]
     [InlineData("twincat_save_project")]
-    [InlineData("twincat_delete_plc_object")]
     [InlineData("twincat_plc_create")]
     [InlineData("twincat_plc_write")]
     [InlineData("twincat_plc_delete")]
     [InlineData("twincat_plc_rename")]
+    [InlineData("twincat_plc_move")]
     [InlineData("twincat_plc_edit_entries")]
+    [InlineData("twincat_plc_replace_text")]
+    [InlineData("twincat_plc_static_analysis")]
     [InlineData("twincat_plc_project_create")]
     [InlineData("twincat_plc_instance_from_tmc")]
     [InlineData("twincat_solution_open_archive")]
@@ -73,6 +75,9 @@ public class MutatingCallGuardTests
     [InlineData("twincat_hmi_add_internal_symbol")]
     [InlineData("twincat_hmi_remove_internal_symbol")]
     [InlineData("twincat_hmi_map_offline_symbol")]
+    [InlineData("twincat_save_as_library")]
+    [InlineData("twincat_plc_task_create")]
+    [InlineData("twincat_plc_project_info")]
     public void MutatingTools_AreNotOnTheNonMutatingList(string tool)
     {
         McpServerTests.NonMutatingTools.Should().NotContain(tool);

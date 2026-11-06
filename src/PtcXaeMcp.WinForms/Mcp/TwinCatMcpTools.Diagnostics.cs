@@ -14,8 +14,7 @@ namespace PtcXaeMcp.WinForms;
 /// test marker (<c>ptc_test_marker</c>), demo/showcase editor navigation (<c>twincat_show_step</c>),
 /// research spikes against the TwinCAT Safety project (<c>twincat_safety_recon</c>,
 /// <c>twincat_safety_probe_create_alias</c>), an NC-tree research dump (<c>twincat_dump_nc_tree</c>),
-/// the deprecated PLC-object-open/close aliases kept only for back-compat
-/// (<c>twincat_open_plc_object</c>/<c>twincat_close_plc_object</c>), and the IBN Live arm
+/// and the IBN Live arm
 /// tool the live suite needs (<c>twincat_ibn_arm</c>; production arming happens only in the
 /// host window, issue #272).
 /// <para>
@@ -109,7 +108,7 @@ internal sealed class TwinCatMcpToolsDiagnostics(McpBridge bridge)
         "and the cursor confirmation. Only registered when the host is started with " +
         "--diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.")]
     public string ShowStep(
-        [Description("Caret-separated tree path of the POU to search, as used by twincat_read_pou.")] string treePath,
+        [Description("Caret-separated tree path of the POU to search, as used by twincat_plc_read.")] string treePath,
         [Description("Numeric step value to locate and show (as read live via ADS).")] int step,
         [Description("Name of the CASE selector variable. Defaults to 'Step' when omitted.")] string? stepVariable = null,
         [Description(TwinCatMcpTools.BringToFrontHelp)] bool bringToFront = false,
@@ -200,42 +199,6 @@ internal sealed class TwinCatMcpToolsDiagnostics(McpBridge bridge)
     public string DumpNcTree(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_dump_nc_tree", null, () =>
             bridge.Dispatcher.Run(() => bridge.Dispatcher.Session.DumpTincTree()), cancellationToken);
-
-    // ---- deprecated aliases: twincat_open_plc_object / twincat_close_plc_object ----
-    // Kept so existing MCP clients that call twincat_open_plc_object /
-    // twincat_close_plc_object do not break. They DELEGATE to the generalized
-    // OpenObject / CloseObject (which for a PLC path produce byte-identical output).
-    // Prefer twincat_open_object / twincat_close_object in new callers.
-
-    [McpServerTool(Name = "twincat_open_plc_object", ReadOnly = true)]
-    [Description(
-        "DEPRECATED — use twincat_open_object (this is a thin alias kept for back-compat). " +
-        "Opens a PLC source object (POU/GVL/DUT/INTERFACE) in the VISIBLE TwinCAT XAE editor and " +
-        "focuses it. Delegates to twincat_open_object, which also handles system-manager nodes. Only " +
-        "registered when the host is started with --diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.")]
-    public string OpenPlcObject(
-        [Description("Caret-separated tree path of the PLC source object to open (POU/GVL/DUT/INTERFACE).")] string treePath,
-        [Description(TwinCatMcpTools.BringToFrontHelp)] bool bringToFront = false,
-        CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_open_plc_object", new { treePath, bringToFront }, () =>
-            bridge.Dispatcher.Run(() =>
-            {
-                var (summary, _) = new PlcCodeCoordinator(bridge.Dispatcher.Session).OpenObject(treePath, bringToFront);
-                return summary;
-            }), cancellationToken);
-
-    [McpServerTool(Name = "twincat_close_plc_object", ReadOnly = false, Destructive = false)]
-    [Description(
-        "DEPRECATED — use twincat_close_object (this is a thin alias kept for back-compat). " +
-        "Closes the VISIBLE TwinCAT XAE editor tab for a PLC source object (saves first). " +
-        "Delegates to twincat_close_object. Only registered when the host is started with " +
-        "--diagnostics / PTC_XAE_MCP_DIAGNOSTICS=1.")]
-    public string ClosePlcObject(
-        [Description("Caret-separated tree path of the PLC source object to close, same as passed to twincat_open_plc_object.")] string treePath,
-        CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_close_plc_object", new { treePath }, () =>
-            bridge.Dispatcher.Run(() =>
-                new PlcCodeCoordinator(bridge.Dispatcher.Session).CloseObject(treePath)), cancellationToken);
 
     // ---- twincat_ibn_arm (test support) ----------------------------------------
 

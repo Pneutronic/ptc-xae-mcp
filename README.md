@@ -126,8 +126,7 @@ second, non-production tool group — research/demo/test-support tools such as
 `ptc_test_marker`, `twincat_show_step`, `twincat_safety_recon`,
 `twincat_safety_probe_create_alias`, `twincat_dump_nc_tree`, `twincat_scope_probe`, `twincat_ibn_arm`
 (IBN Live arming for the test suite — released clients cannot arm; a human arms in the
-*Approvals* view) and the deprecated `twincat_open_plc_object`/`twincat_close_plc_object`
-aliases. A released MCP client never needs this flag; the live integration suite host sets it.
+*Approvals* view). A released MCP client never needs this flag; the live integration suite host sets it.
 **Never run a host connected to a real machine with `--diagnostics`.**
 
 ## The host window

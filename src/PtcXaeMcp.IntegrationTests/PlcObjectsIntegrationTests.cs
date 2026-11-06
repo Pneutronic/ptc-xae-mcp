@@ -8,8 +8,8 @@ namespace PtcXaeMcp.IntegrationTests;
 /// feature/plc-objects, live: the generic twincat_plc_* verbs against the neutral fixture
 /// (<see cref="FixtureLayout"/>). Elements the tests create carry a time-stamped name and are deleted in a
 /// finally block; the fixture's own elements are only read, or written back unchanged.
-/// <para>The legacy tools stay covered by <see cref="PlcCodeIntegrationTests"/> and
-/// <see cref="PouMembersIntegrationTests"/> (they now end in a <c>[Deprecated]</c> notice).</para>
+/// <para>The code-editing scenarios of <see cref="PlcCodeIntegrationTests"/> and the member scenarios of
+/// <see cref="PouMembersIntegrationTests"/> run through the same verbs.</para>
 /// </summary>
 [Collection("Stage XAE")]
 [Trait("Stage", "XAE")]
@@ -285,25 +285,6 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
         Assert.Contains("--- Declaration ---", pou);
         Assert.Contains("--- Implementation ---", pou);
         Assert.Contains("CASE Step OF", pou);
-    }
-
-    [Trait("Description", "Legacy-Tool read_pou liefert den Deprecated-Hinweis in der Kopfzeile; der Quelltext ab '--- Implementation ---' bleibt unverändert (nur lesend).")]
-    [SkippableFact(Timeout = 300_000)]
-    public async Task LegacyReadPou_CarriesTheNoticeOnTheFirstLine_NotInTheSource()
-    {
-        SkipIfNotReady();
-        await OpenFixtureAsync();
-
-        string legacy = await OkAsync("twincat_read_pou", ("treePath", FixtureLayout.StepChainPouPath));
-        string current = await OkAsync("twincat_plc_read", ("path", FixtureLayout.StepChainPouPath), ("kind", "POU"));
-
-        string firstLine = legacy.Split('\n')[0];
-        Assert.Contains("[Deprecated] use twincat_plc_read", firstLine);
-        Assert.DoesNotContain("[Deprecated]", legacy[legacy.IndexOf("--- Declaration ---", StringComparison.Ordinal)..]);
-        Assert.Equal(Normalise(ImplementationOf(current)), Normalise(ImplementationOf(legacy)));
-
-        string list = await OkAsync("twincat_list_pous");
-        Assert.Contains("[Deprecated] use twincat_plc_list", list);
     }
 
     // ── lifecycle per element ─────────────────────────────────────────────────
@@ -769,5 +750,110 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
         const string impl = "--- Implementation ---";
         int i = read.IndexOf(impl, StringComparison.Ordinal);
         return i < 0 ? string.Empty : read[(i + impl.Length)..];
+    }
+
+    // ── search / replace_text ─────────────────────────────────────────────────
+
+    private static readonly Regex SearchHit = new(
+        @"^\S+ (?<path>\S.*?) — (?<section>declaration|implementation) L(?<line>\d+):(?<col>\d+) \(Revision: (?<rev>[0-9a-f]{16})\)\r?$",
+        RegexOptions.Multiline);
+
+    [Trait("Description", "plc_search findet ein Token in Deklaration und Implementierung eines neuen FB mit den Zeilen, die plc_read zeigt — projektweit und mit pathPrefix gleich.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task Search_FindsEveryUse_WithTheLinesPlcReadShows()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+
+        string stamp = Stamp();
+        string name = $"FB_Search_{stamp}";
+        string token = $"nSearch{stamp}";
+        string path = $"{FixtureLayout.PousFolder}^{name}";
+        try
+        {
+            await OkAsync("twincat_plc_create", ("kind", "POU"), ("subtype", "FUNCTION_BLOCK"),
+                ("parentPath", FixtureLayout.PousFolder), ("name", name),
+                ("declaration", $"FUNCTION_BLOCK {name}\nVAR\n\t{token} : INT;\nEND_VAR"));
+            await OkAsync("twincat_plc_write", ("path", path), ("kind", "POU"),
+                ("implementation", $"{token} := {token} + 1;\nIF {token} > 10 THEN\n\t{token} := 0;\nEND_IF"));
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            string all = await OkAsync("twincat_plc_search", ("pattern", token), ("wholeWord", true));
+            sw.Stop();
+            Console.WriteLine($"[plc_search] whole fixture: {sw.ElapsedMilliseconds} ms — {all.Split('\n')[0]}");
+
+            var hits = SearchHit.Matches(all).Select(m => (Path: m.Groups["path"].Value, Section: m.Groups["section"].Value,
+                Line: int.Parse(m.Groups["line"].Value, System.Globalization.CultureInfo.InvariantCulture))).ToList();
+            Assert.Equal(
+                new[]
+                {
+                    (path, "declaration", 3), (path, "implementation", 1), (path, "implementation", 1),
+                    (path, "implementation", 2), (path, "implementation", 3),
+                },
+                hits.Select(h => (h.Path, h.Section, h.Line)));
+
+            // Every reported line is the line plc_read shows.
+            string read = await OkAsync("twincat_plc_read", ("path", path), ("kind", "POU"));
+            string[] declLines = Normalise(DeclarationOf(read)).Split('\n');
+            string[] implLines = Normalise(ImplementationOf(read)).Split('\n');
+            foreach (var h in hits)
+                Assert.Contains(token, (h.Section == "declaration" ? declLines : implLines)[h.Line - 1]);
+
+            string scoped = await OkAsync("twincat_plc_search", ("pattern", token), ("wholeWord", true), ("pathPrefix", path));
+            Assert.Equal(SearchHit.Matches(all).Select(m => m.Value), SearchHit.Matches(scoped).Select(m => m.Value));
+        }
+        finally
+        {
+            await TryDeleteAsync(path, "POU");
+        }
+    }
+
+    [Trait("Description", "plc_replace_text ersetzt genau eine Stelle (Rest byte-gleich), verweigert mehrdeutigen Text und veraltete Revision vor dem Logout; edit_entries verweigert veraltete Revision.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task ReplaceText_ChangesExactlyOnePlace_AndRefusesStaleOrAmbiguousEdits()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+
+        string name = $"FB_Replace_{Stamp()}";
+        string path = $"{FixtureLayout.PousFolder}^{name}";
+        try
+        {
+            await OkAsync("twincat_plc_create", ("kind", "POU"), ("subtype", "FUNCTION_BLOCK"),
+                ("parentPath", FixtureLayout.PousFolder), ("name", name),
+                ("declaration", $"FUNCTION_BLOCK {name}\nVAR\n\tnCount : INT;\nEND_VAR"));
+            await OkAsync("twincat_plc_write", ("path", path), ("kind", "POU"),
+                ("implementation", "nCount := nCount + 1;\nIF nCount > 10 THEN\n\tnCount := 0;\nEND_IF"));
+
+            string before = await OkAsync("twincat_plc_read", ("path", path), ("kind", "POU"));
+            string revision = RevisionOf(before);
+
+            string ambiguous = await CallAsync("twincat_plc_replace_text", ("path", path), ("kind", "POU"),
+                ("section", "implementation"), ("oldText", "nCount"), ("newText", "nValue"));
+            Assert.StartsWith("[Error] oldText occurs", ambiguous);
+
+            string stale = await CallAsync("twincat_plc_replace_text", ("path", path), ("kind", "POU"),
+                ("section", "implementation"), ("oldText", "> 10"), ("newText", "> 20"), ("expectedRevision", "0000000000000000"));
+            Assert.StartsWith($"[Error] '{path}' changed since it was read", stale);
+
+            string replaced = await OkAsync("twincat_plc_replace_text", ("path", path), ("kind", "POU"),
+                ("section", "implementation"), ("oldText", "> 10"), ("newText", "> 20"), ("expectedRevision", revision));
+            Assert.Contains("line 2 (verified by read-back)", replaced);
+            Assert.Contains("> L2: IF nCount > 20 THEN", replaced);
+
+            string after = await OkAsync("twincat_plc_read", ("path", path), ("kind", "POU"));
+            Assert.Equal(Normalise(ImplementationOf(before)).Replace("> 10", "> 20", StringComparison.Ordinal), Normalise(ImplementationOf(after)));
+            Assert.Equal(Normalise(DeclarationOf(before)), Normalise(DeclarationOf(after)));
+            Assert.Equal(RevisionOf(replaced), RevisionOf(after));
+
+            string staleEntries = await CallAsync("twincat_plc_edit_entries", ("path", path), ("kind", "POU"), ("op", "add"),
+                ("name", "bNever"), ("section", "VAR"), ("type", "BOOL"), ("expectedRevision", revision));
+            Assert.StartsWith($"[Error] '{path}' changed since it was read", staleEntries);
+            Assert.DoesNotContain("bNever", await OkAsync("twincat_plc_read", ("path", path), ("kind", "POU")));
+        }
+        finally
+        {
+            await TryDeleteAsync(path, "POU");
+        }
     }
 }

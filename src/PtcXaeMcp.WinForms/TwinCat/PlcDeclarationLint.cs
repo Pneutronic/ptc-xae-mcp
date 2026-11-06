@@ -8,7 +8,7 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 // (C0149, "not identical to object name" family) only surfaces later in a
 // CONSUMING project that tries to implement the interface or call the type.
 // METHOD/PROPERTY/ACTION are structural members with their own tree node
-// (added via twincat_add_pou_member) — never text inside the parent's own
+// (added via twincat_plc_create, kind=MEMBER) — never text inside the parent's own
 // declaration. This is not a general ST linter; it does not parse the
 // language, it only refuses the one shape that is unambiguously wrong here.
 internal static class PlcDeclarationLint
@@ -37,7 +37,7 @@ internal static class PlcDeclarationLint
 
                 return $"[Error] declaration contains an embedded '{kw}' header line " +
                     $"('{line.TrimEnd()}'). {kw} is a structural member with its own tree node — " +
-                    "add it via twincat_add_pou_member, never as text inside the POU/INTERFACE's " +
+                    "add it via twincat_plc_create (kind=MEMBER), never as text inside the POU/INTERFACE's " +
                     "own declaration. Writing it here is accepted silently and only fails later, " +
                     "in a project that consumes this type (C0149-family compiler error).";
             }

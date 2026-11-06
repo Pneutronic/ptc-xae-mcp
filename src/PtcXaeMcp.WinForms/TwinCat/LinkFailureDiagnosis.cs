@@ -93,7 +93,7 @@ internal static class LinkFailureDiagnosis
                 if (missing.Count == 0) break;
                 return $"LinkVariables failed (TSM_E_ITEMNOTFOUND): " +
                        string.Join(" ", missing.Select(e => $"'{e.Path}' does not resolve to a tree item.")) +
-                       " Get valid paths from twincat_get_fieldbus_topology (TIID^...) and twincat_list_pous (TIPC^...).";
+                       " Get valid paths from twincat_get_fieldbus_topology (TIID^...) and twincat_plc_list (TIPC^...).";
             }
             case InvalidItemType:
             {

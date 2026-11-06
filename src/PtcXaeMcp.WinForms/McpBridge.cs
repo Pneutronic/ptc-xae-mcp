@@ -152,7 +152,9 @@ internal sealed class McpBridge : IDisposable
                     // initialize handshake) instead of relying on a single
                     // diagnostic tool to populate the registry (issue #71).
                     opts.SessionMigrationHandler = new McpSessionTracker(Sessions))
-                .WithTools<TwinCatMcpTools>();
+                .WithTools<TwinCatMcpTools>()
+                // An argument a tool does not declare is refused before the tool runs (it used to be dropped silently).
+                .WithRequestFilters(filters => filters.AddCallToolFilter(Mcp.UnknownArguments.Filter));
 
             // Diagnostics/research/test-support tools (ptc_test_marker, twincat_show_step,
             // twincat_safety_recon, twincat_safety_probe_create_alias, twincat_dump_nc_tree,

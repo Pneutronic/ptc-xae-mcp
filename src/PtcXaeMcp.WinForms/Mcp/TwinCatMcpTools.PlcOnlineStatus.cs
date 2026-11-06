@@ -14,7 +14,7 @@ internal sealed partial class TwinCatMcpTools
     [McpServerTool(Name = "twincat_get_plc_online_state", ReadOnly = true)]
     [Description(
         "Check whether the TwinCAT XAE IDE is currently Online (logged in to a running " +
-        "PLC runtime). When Online, code edits (twincat_write_pou_body etc.) are blocked " +
+        "PLC runtime). When Online, code edits (twincat_plc_write etc.) are blocked " +
         "by the IDE. Use this as a guard before attempting code edits. " +
         "Returns JSON { isOnline: bool|null, message: string }. " +
         "isOnline=true → XAE is Online, edits blocked. " +

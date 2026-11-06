@@ -3,284 +3,9 @@ using ModelContextProtocol.Protocol;
 
 namespace PtcXaeMcp.McpTests;
 
-/// <summary>PLC code tools: POU/GVL read/write, members, delete/rename, PLCopen, editor open/close.</summary>
+/// <summary>PLCopen interchange and editor open/close. The twincat_plc_* verbs are covered in McpServerTests.PlcObjects.</summary>
 public partial class McpServerTests
 {
-    // ── Test 19 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T19_ListPous_RunsAndReturnsString()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_list_pous");
-
-        var text = GetText(result);
-        bool ok = text.StartsWith("Found", StringComparison.OrdinalIgnoreCase)
-            || text.StartsWith("No POUs", StringComparison.OrdinalIgnoreCase)
-            || text.StartsWith("[Error]", StringComparison.Ordinal);
-        Assert.True(ok, $"Unexpected response: {text}");
-        if (result.IsError == true)
-        {
-            Assert.StartsWith("[Error]", text, StringComparison.Ordinal);
-            Assert.True(text.Length > 10, $"Error response must not be empty: '{text}'");
-        }
-    }
-
-    // ── Test 20 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T20_ReadPou_EmptyPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_read_pou",
-            new Dictionary<string, object?> { ["treePath"] = "" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("treePath", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── Test 21 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T21_ReadPou_UnknownPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_read_pou",
-            new Dictionary<string, object?> { ["treePath"] = "TIPC^Nope^DoesNotExist" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-    }
-
-    // ── Test 22 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T22_ReadGvl_EmptyPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_read_gvl",
-            new Dictionary<string, object?> { ["treePath"] = "" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("treePath", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── Test 23 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T23_ReadGvl_UnknownPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_read_gvl",
-            new Dictionary<string, object?> { ["treePath"] = "TIPC^Nope^DoesNotExist" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-    }
-
-    // ── Test 24 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T24_WritePouBody_EmptyPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_write_pou_body",
-            new Dictionary<string, object?>
-            {
-                ["treePath"] = "",
-                ["implementation"] = ";",
-            });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("treePath", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── Test 25 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T25_WritePouBody_BothSectionsNull_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_write_pou_body",
-            new Dictionary<string, object?>
-            {
-                ["treePath"] = "TIPC^PLC^PLC Projekt^POUs^Nope",
-                // declaration and implementation both omitted → both null
-            });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("At least one", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── Test 26 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T26_WritePouBody_UnknownPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_write_pou_body",
-            new Dictionary<string, object?>
-            {
-                ["treePath"] = "TIPC^Nope^DoesNotExist",
-                ["implementation"] = ";",
-            });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-    }
-
-    // ── Test 27 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T27_CreatePou_EmptyParent_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_create_pou",
-            new Dictionary<string, object?>
-            {
-                ["parentPath"] = "",
-                ["name"] = "FB_X",
-                ["pouType"] = "FUNCTION_BLOCK",
-            });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("parentPath", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── Test 28 ────────────────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task T28_CreatePou_UnknownType_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_create_pou",
-            new Dictionary<string, object?>
-            {
-                ["parentPath"] = "TIPC^PLC^PLC Projekt^POUs",
-                ["name"] = "FB_X",
-                ["pouType"] = "INTERFACE",
-            });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("Unknown pouType", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── Test 43 — pou-handling: list_pou_members empty path ────────────────────
-
-    [SkippableFact]
-    public async Task T43_ListPouMembers_EmptyPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_list_pou_members",
-            new Dictionary<string, object?> { ["pouPath"] = "" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("pouPath", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── Test 44 — add_pou_member unknown kind ──────────────────────────────────
-
-    [SkippableFact]
-    public async Task T44_AddPouMember_UnknownKind_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_add_pou_member",
-            new Dictionary<string, object?>
-            {
-                ["pouPath"] = "TIPC^PLC^PLC Projekt^POUs^FB_Nope",
-                ["kind"] = "WIDGET",
-                ["name"] = "X",
-            });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("WIDGET", text);
-    }
-
-    // ── Test 45 — read_pou_member empty path ───────────────────────────────────
-
-    [SkippableFact]
-    public async Task T45_ReadPouMember_EmptyPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_read_pou_member",
-            new Dictionary<string, object?> { ["memberPath"] = "" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("memberPath", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── Test 46 — write_pou_member needs a section ─────────────────────────────
-
-    [SkippableFact]
-    public async Task T46_WritePouMember_NoSections_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_write_pou_member",
-            new Dictionary<string, object?>
-            {
-                ["memberPath"] = "TIPC^PLC^PLC Projekt^POUs^FB_Nope^Calc",
-            });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-    }
-
-    // ── Test 47 — delete_plc_object empty path ─────────────────────────────────
-
-    [SkippableFact]
-    public async Task T47_DeletePlcObject_EmptyPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_delete_plc_object",
-            new Dictionary<string, object?> { ["treePath"] = "" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-    }
-
-    // ── Test 48 — rename_plc_object empty newName ──────────────────────────────
-
-    [SkippableFact]
-    public async Task T48_RenamePlcObject_EmptyNewName_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_rename_plc_object",
-            new Dictionary<string, object?>
-            {
-                ["treePath"] = "TIPC^PLC^PLC Projekt^POUs^FB_Nope",
-                ["newName"] = "",
-            });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("newName", text, StringComparison.OrdinalIgnoreCase);
-    }
-
     // ── Test 49 — plcopen_export missing selector ──────────────────────────────
 
     [SkippableFact]
@@ -325,70 +50,35 @@ public partial class McpServerTests
         Assert.Contains("clobber", text);
     }
 
-    // ── Test 51 — live smoke: list_pou_members runs end-to-end ─────────────────
-    // Per the feedback_mcp_smoke_test_pattern memory: one live [Fact] that drives
-    // the tool through the running server against whatever project is open.
+    // ── Removed in 3.0.0 ────────────────────────────────────────────────────────
 
-    [SkippableFact]
-    public async Task T51_ListPouMembers_LiveSmoke_ReturnsString()
+    [SkippableTheory]
+    [InlineData("twincat_list_pous")]
+    [InlineData("twincat_read_pou")]
+    [InlineData("twincat_read_gvl")]
+    [InlineData("twincat_write_pou_body")]
+    [InlineData("twincat_write_gvl")]
+    [InlineData("twincat_create_pou")]
+    [InlineData("twincat_create_dut")]
+    [InlineData("twincat_create_gvl")]
+    [InlineData("twincat_create_interface")]
+    [InlineData("twincat_list_pou_members")]
+    [InlineData("twincat_add_pou_member")]
+    [InlineData("twincat_read_pou_member")]
+    [InlineData("twincat_write_pou_member")]
+    [InlineData("twincat_delete_plc_object")]
+    [InlineData("twincat_rename_plc_object")]
+    [InlineData("twincat_open_plc_object")]
+    [InlineData("twincat_close_plc_object")]
+    public async Task RemovedTools_AreNotListed(string tool)
     {
         SkipIfNotReachable();
 
-        // Unknown path → must come back as a clean [Error], never empty / hang.
-        var result = await CallToolAsync("twincat_list_pou_members",
-            new Dictionary<string, object?>
-            {
-                ["pouPath"] = "TIPC^PLC^PLC Projekt^POUs^FB_DoesNotExist_Smoke",
-            });
-
-        var text = GetText(result);
-        bool ok = text.StartsWith("[Error]", StringComparison.Ordinal)
-            || text.StartsWith("Found", StringComparison.OrdinalIgnoreCase)
-            || text.Contains("no METHOD/ACTION/PROPERTY", StringComparison.OrdinalIgnoreCase);
-        Assert.True(ok, $"Unexpected response: {text}");
-        Assert.True(text.Length > 5, $"Response swallowed: '{text}'");
+        var names = (await _client!.ListToolsAsync()).Select(t => t.Name).ToHashSet();
+        Assert.DoesNotContain(tool, names);
     }
 
-    // ── visible-for-video ───────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task Vfv_OpenPlcObject_IsListed()
-    {
-        SkipIfNotReachable();
-
-        var tools = await _client!.ListToolsAsync();
-        Assert.Contains("twincat_open_plc_object", tools.Select(t => t.Name).ToHashSet());
-    }
-
-    [SkippableFact]
-    public async Task Vfv_OpenPlcObject_EmptyPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        var result = await CallToolAsync("twincat_open_plc_object",
-            new Dictionary<string, object?> { ["treePath"] = "" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.Contains("treePath", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [SkippableFact]
-    public async Task Vfv_OpenPlcObject_UnknownPath_ReturnsError()
-    {
-        SkipIfNotReachable();
-
-        // No solution / unresolved path must come back as a clean structured
-        // [Error], never an empty string or a transport fault.
-        var result = await CallToolAsync("twincat_open_plc_object",
-            new Dictionary<string, object?> { ["treePath"] = "TIPC^Nope^DoesNotExist" });
-
-        var text = GetText(result);
-        Assert.StartsWith("[Error]", text);
-        Assert.True(text.Length > 8, $"Error must be structured: '{text}'");
-    }
-
-    // ── open-object (generalization of the visible-for-video tools) ─────────────
+    // ── open-object ─────────────────────────────────────────────────────────────
 
     [SkippableFact]
     public async Task OpenObject_AndCloseObject_AreListed()
@@ -398,9 +88,6 @@ public partial class McpServerTests
         var names = (await _client!.ListToolsAsync()).Select(t => t.Name).ToHashSet();
         Assert.Contains("twincat_open_object", names);
         Assert.Contains("twincat_close_object", names);
-        // Deprecated aliases stay listed for back-compat.
-        Assert.Contains("twincat_open_plc_object", names);
-        Assert.Contains("twincat_close_plc_object", names);
     }
 
     [SkippableFact]

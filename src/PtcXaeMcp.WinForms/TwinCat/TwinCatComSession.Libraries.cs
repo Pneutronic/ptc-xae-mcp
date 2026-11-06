@@ -283,6 +283,41 @@ internal sealed partial class TwinCatComSession
         }, OpenTimeout);
     }
 
+    // ITcPlcIECProject6.SaveAsLibrary2(bstrLibraryPath, bEncrypt, bInstall) (TCatSysManagerLib 3.4, Infosys
+    // tc3_automationinterface/21841064715) — same node as SaveAsLibrary; the extension selects .library or
+    // .compiled-library. It throws ArgumentException for an existing file, another extension or bEncrypt without
+    // software protection. Late-bound like SaveAsLibrary: an XAE whose IDispatch does not offer it is reported as
+    // NotSupportedException, not as a failed save.
+    public string SaveAsLibrary2(string outputPath, bool encrypt, bool install)
+    {
+        return ComBusyRetry.Run(() =>
+        {
+            dynamic dte = GetActiveTcDte();
+            dynamic? plcProj = FindPlcSourceProjectNode(dte)
+                ?? throw new InvalidOperationException(
+                    "No PLC source-project node found under TIPC — open a solution first.");
+            dynamic iecProj = plcProj!;
+            try { iecProj.SaveAsLibrary2(outputPath, encrypt, install); }
+            catch (Exception ex) when (ComCall.NotBusy(ex) && IsMissingDispatchMember(ex))
+            {
+                throw new NotSupportedException(
+                    "ITcPlcIECProject6.SaveAsLibrary2 is not offered by this XAE, so it cannot save a .compiled-library " +
+                    "(needs a TwinCAT XAE whose automation interface has ITcPlcIECProject6, TCatSysManagerLib 3.4 or newer). " +
+                    "Save as .library instead, or update the XAE.", ex);
+            }
+            catch (Exception ex) when (ComCall.NotBusy(ex))
+            {
+                throw new InvalidOperationException(
+                    $"ITcPlcIECProject6.SaveAsLibrary2('{outputPath}', encrypt={encrypt}, install={install}) failed: {Innermost(ex)}", ex);
+            }
+            string kind = outputPath.EndsWith(".compiled-library", StringComparison.OrdinalIgnoreCase) ? "compiled library" : "library";
+            string how = encrypt ? $"encrypted {kind}" : kind;
+            return install
+                ? $"Saved and installed {how}: {outputPath}"
+                : $"Saved {how}: {outputPath}";
+        }, OpenTimeout);
+    }
+
     public IReadOnlyList<LibraryParameter> ListLibraryParameters(string placeholder) =>
         ComBusyRetry.Run<IReadOnlyList<LibraryParameter>>(() =>
         {

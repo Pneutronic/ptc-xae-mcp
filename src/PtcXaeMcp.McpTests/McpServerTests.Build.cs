@@ -17,8 +17,21 @@ public partial class McpServerTests
         var names = tools.Select(t => t.Name).ToHashSet();
 
         Assert.Contains("twincat_build_plc", names);
+        Assert.Contains("twincat_plc_check_all_objects", names);
         Assert.Contains("twincat_build_solution", names);
         Assert.Contains("twincat_activate_config", names);
+    }
+
+    [SkippableFact]
+    public async Task T40b_PlcCheckAllObjects_NoProjectOpen_ReturnsErrorOrAVerdict()
+    {
+        SkipIfNotReachable();
+
+        var text = GetText(await CallToolAsync("twincat_plc_check_all_objects", new Dictionary<string, object?>()));
+
+        bool ok = text.StartsWith("[Error]", StringComparison.Ordinal)
+            || text.Contains("Check all objects", StringComparison.Ordinal);
+        Assert.True(ok, $"Unexpected response: {text}");
     }
 
     [SkippableFact]

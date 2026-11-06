@@ -107,17 +107,18 @@ public sealed class ReadBackLibraryTests : IDisposable
     }
 
     [Fact]
-    public void SaveAsLibrary_StaleFile_IsError()
+    public void SaveAsLibrary_OldFileReplacedButNotRewritten_IsError()
     {
+        // overwrite deletes the old file first, so a save that writes nothing cannot pass off the old file as its own.
         var fake = OpenFake();
         fake.NoOpMutations.Add(nameof(FakeTwinCatSession.SaveAsLibrary));
         string path = Path.Combine(_dir, "MyLib.library");
         File.WriteAllText(path, "old");
         File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddHours(-1));
 
-        string summary = new LibraryCoordinator(fake).SaveAsLibrary(path, install: false);
+        string summary = new LibraryCoordinator(fake).SaveAsLibrary(path, install: false, overwrite: true);
 
-        summary.Should().StartWith("[Error] Save as library did not land").And.Contain("old file");
+        summary.Should().StartWith("[Error] Save as library did not land").And.Contain("does not exist");
     }
 
     [Fact]

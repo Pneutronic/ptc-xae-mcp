@@ -78,6 +78,10 @@ internal static class PathPolicy
         return false;
     }
 
+    /// <summary>The roots file-path parameters may lie under, for display (twincat_doctor).</summary>
+    internal static IReadOnlyList<string> AllowedRootsFor(string? solutionDirectory) =>
+        AllowedRoots(solutionDirectory).OfType<string>().Where(r => r.Length > 0).ToList();
+
     private static IEnumerable<string?> AllowedRoots(string? solutionDirectory)
     {
         yield return solutionDirectory;

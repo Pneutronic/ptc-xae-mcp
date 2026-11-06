@@ -48,6 +48,21 @@ internal interface ITwinCatSession : IDisposable
     /// a manual GUI step, interrupting every library-iteration cycle.
     /// </summary>
     string SaveAsLibrary(string outputPath, bool install);
+    /// <summary>
+    /// ITcPlcIECProject6.SaveAsLibrary2(path, bEncrypt, bInstall) on the same node as <see cref="SaveAsLibrary"/>:
+    /// the extension of <paramref name="outputPath"/> selects the format (.library or .compiled-library). Throws
+    /// <see cref="NotSupportedException"/> when the XAE does not offer the method on IDispatch.
+    /// </summary>
+    string SaveAsLibrary2(string outputPath, bool encrypt, bool install);
+    /// <summary>ProduceXml(false) of the PLC project item (the nested project, TIPC^&lt;plc&gt;^&lt;plc&gt; Project).</summary>
+    string ReadPlcProjectXml(string? plcProjectName);
+    /// <summary>ConsumeXml on the PLC project item; the XAE's XmlAutomationException comes back as the exception.</summary>
+    void ConsumePlcProjectXml(string? plcProjectName, string xml);
+    /// <summary>
+    /// The type signatures of every resolved library of the PLC project as XML
+    /// (ITcPlcLibraryManager2.ProduceAllLibrarySignatures). Changes nothing.
+    /// </summary>
+    LibrarySignatureExport ProduceLibrarySignatures(string? plcProjectName = null);
     IReadOnlyList<LibraryParameter> ListLibraryParameters(string placeholder);
     IReadOnlyList<LibraryParameter> SetLibraryParameter(string placeholder, string listName, string key, string value);
     string DumpTipcTree();
@@ -269,6 +284,17 @@ internal interface ITwinCatSession : IDisposable
     PlcRenameResult RenamePlcObject(string treePath, string newName, bool updateReferences = false);
     string PlcOpenExport(string filePath, string selector);
     string PlcOpenImport(string filePath, int conflictMode);
+    /// <summary>
+    /// PlcOpenExport on the PLC project node at <paramref name="plcProjectPath"/> (not the first PLC project, as
+    /// <see cref="PlcOpenExport"/>). <paramref name="selector"/> is the dotted path of a top-level object relative to
+    /// that project ("POUs.Target.FB_Foo"); a member cannot be exported on its own. An existing file is replaced.
+    /// </summary>
+    void PlcOpenExportFrom(string plcProjectPath, string filePath, string selector);
+    /// <summary>
+    /// PlcOpenImport(file, 0 = no conflict handling, "", true) on the PLC project node at <paramref name="plcProjectPath"/>.
+    /// The objects land where the file's project structure puts them; folder nodes do not offer the import.
+    /// </summary>
+    void PlcOpenImportInto(string plcProjectPath, string filePath);
 
     void LinkVariables(string v1, string v2, int offs1 = 0, int offs2 = 0, int size = 0);
     void UnlinkVariables(string v1, string v2 = "");
@@ -276,6 +302,13 @@ internal interface ITwinCatSession : IDisposable
     void SetDeviceDisabled(string treePath, bool disabled);
 
     BuildResult BuildPlc(string? plcProjectName);
+    /// <summary>
+    /// "Check all objects" of a PLC project: compiles every object, also the ones no task reaches. Clears the
+    /// Error List first and runs ITcPlcIECProject2.CheckAllObjects; only an XAE without that call falls back to
+    /// the XAE command, which selects the PLC project in the Solution Explorer and so needs
+    /// <paramref name="bringToFront"/>. <see cref="BuildResult.Note"/> says which way ran.
+    /// </summary>
+    BuildResult CheckAllPlcObjects(string? plcProjectName, bool bringToFront);
     BuildResult BuildSolution();
     /// <summary>
     /// ActivateConfiguration(), and with <paramref name="autoConfirmRestart"/> StartRestartTwinCAT(). Issue #195:
@@ -348,6 +381,13 @@ internal interface ITwinCatSession : IDisposable
     /// current error count was the side effect of ClearErrorList's return value.
     /// </summary>
     IReadOnlyList<BuildError> GetErrorList();
+
+    /// <summary>
+    /// PLC Static Analysis on the PLC project: optionally loads a .csa settings file, runs the analysis
+    /// (all objects or only the ones in use) and exports the results as SARIF to <paramref name="sarifPath"/>
+    /// where the XAE can. Saves nothing.
+    /// </summary>
+    StaticAnalysisRun RunStaticAnalysis(bool checkAll, string? settingsFile, string sarifPath);
 
     // ---- ethercat-device-descriptions ----
     /// <summary>Raises the XAE command "Reload Device Descriptions" (by GUID/ID) so newly placed ESI files become known.</summary>
@@ -696,6 +736,36 @@ internal interface ITwinCatSession : IDisposable
 
     /// <summary><c>ConsumeXml(xml)</c> on <paramref name="treePath"/>. The XAE ignores unknown content silently — callers read back.</summary>
     void ConsumeTreeItemXml(string treePath, string xml);
+
+    // ---- plc-task ----
+    /// <summary>Every real-time task under TIRT with its cycle time and priority as read from the item.</summary>
+    IReadOnlyList<RealtimeTaskInfo> ListRealtimeTasks();
+
+    /// <summary>
+    /// The PLC project <paramref name="plcProjectName"/> (its name under TIPC or its project name; null = the only one,
+    /// several are refused as ambiguous) with its PLC task references (ItemType 621) and its PROGRAM POUs.
+    /// </summary>
+    PlcTaskContext ReadPlcTaskContext(string? plcProjectName);
+
+    /// <summary><c>LookupTreeItem("TIRT").CreateChild(name, 1)</c> — a real-time task without image. Returns its tree path as read back.</summary>
+    string CreateRealtimeTask(string name);
+
+    /// <summary>
+    /// Sets ITcTaskModule.CycleTime (100 ns units) and .Priority on <paramref name="taskPath"/> (ConsumeXml TaskDef when the
+    /// properties are not on IDispatch) and returns the values read back from a fresh lookup. The setters may succeed although
+    /// the XAE adjusted the value — callers compare.
+    /// </summary>
+    RealtimeTaskInfo SetRealtimeTaskTiming(string taskPath, uint cycleTime100ns, int priority);
+
+    /// <summary>CreateChild(name, 621) under the PLC project node <paramref name="projectPath"/>: a PLC task reference. Returns its path.</summary>
+    string CreatePlcTaskReference(string projectPath, string name);
+
+    /// <summary>
+    /// ITcPlcTaskReference.LinkedTask = <paramref name="linkedTask"/> (e.g. "TIRT^FastTask") on the task reference, and the
+    /// value read back from a fresh lookup.
+    /// </summary>
+    PlcTaskReferenceInfo SetPlcTaskLink(string taskReferencePath, string linkedTask);
+
     // ---- persistent-snapshot ----
     /// <summary>Flatten each requested path into leaves and read them with sum commands over ONE connection / symbol load.
     /// Paths that do not exist come back in <c>Missing</c>, unreadable or unsupported leaves in <c>Skipped</c>.</summary>

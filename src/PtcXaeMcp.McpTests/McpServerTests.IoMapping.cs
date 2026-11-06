@@ -28,11 +28,23 @@ public partial class McpServerTests
         SkipIfNotReachable();
 
         var result = await CallToolAsync("twincat_link_variables",
-            new Dictionary<string, object?> { ["v1"] = "", ["v2"] = "TIID^Device 1^Ch1" });
+            new Dictionary<string, object?> { ["variable1TreePath"] = "", ["variable2TreePath"] = "TIID^Device 1^Ch1" });
 
         var text = GetText(result);
         Assert.StartsWith("[Error]", text);
-        Assert.Contains("v1", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("variable1TreePath", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [SkippableFact]
+    public async Task LinkVariables_TheRemovedAliasV1_IsRefusedAsUnknown()
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_link_variables",
+            new Dictionary<string, object?> { ["variable1TreePath"] = "a", ["variable2TreePath"] = "b", ["v1"] = "a" });
+
+        var text = GetText(result);
+        Assert.StartsWith("[Error] twincat_link_variables has no parameter 'v1'", text);
     }
 
     [SkippableFact]
@@ -41,11 +53,11 @@ public partial class McpServerTests
         SkipIfNotReachable();
 
         var result = await CallToolAsync("twincat_link_variables",
-            new Dictionary<string, object?> { ["v1"] = "TIPC^PLC^MAIN.bVar", ["v2"] = "" });
+            new Dictionary<string, object?> { ["variable1TreePath"] = "TIPC^PLC^MAIN.bVar", ["variable2TreePath"] = "" });
 
         var text = GetText(result);
         Assert.StartsWith("[Error]", text);
-        Assert.Contains("v2", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("variable2TreePath", text, StringComparison.OrdinalIgnoreCase);
     }
 
     [SkippableFact]
@@ -54,11 +66,11 @@ public partial class McpServerTests
         SkipIfNotReachable();
 
         var result = await CallToolAsync("twincat_unlink_variables",
-            new Dictionary<string, object?> { ["v1"] = "" });
+            new Dictionary<string, object?> { ["variable1TreePath"] = "" });
 
         var text = GetText(result);
         Assert.StartsWith("[Error]", text);
-        Assert.Contains("v1", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("variable1TreePath", text, StringComparison.OrdinalIgnoreCase);
     }
 
     [SkippableFact]

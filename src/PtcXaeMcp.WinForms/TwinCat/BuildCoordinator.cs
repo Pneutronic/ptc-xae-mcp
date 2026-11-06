@@ -173,6 +173,14 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
             return (FormatRebuildResult(r), r.Log);
         });
 
+    /// <summary>"Check all objects" of a PLC project, with the same preflights as a build.</summary>
+    public string CheckAllObjects(string? plcProjectName, bool ignoreStaleFiles = false, bool bringToFront = false) =>
+        Combine(CheckedBuild(plcProjectName, allProjects: false, ignoreStaleFiles, expectSymbols: null, () =>
+        {
+            var r = session.CheckAllPlcObjects(plcProjectName, bringToFront);
+            return (FormatCheckAllObjectsResult(r), r.Log);
+        }));
+
     /// <summary>
     /// The preflights every build runs before it compiles: stale PLC files (refuses unless ignored — the
     /// build's own File.SaveAll would otherwise write the XAE's old state over the change) and library
@@ -513,6 +521,23 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
             sb.AppendLine(CultureInfo.InvariantCulture, $"Reason: {result.FailureReason}");
 
         AppendBuildTruth(sb, result.CompilerSummary, result.Artifact);
+        AppendErrorListEntries(sb, result.Errors);
+        return sb.ToString().TrimEnd();
+    }
+
+    internal static string FormatCheckAllObjectsResult(BuildResult result)
+    {
+        var sb = new StringBuilder();
+        if (result.Success)
+            sb.AppendLine("Check all objects: no errors — every object of the PLC project compiles, also those no task calls.");
+        else
+            sb.AppendLine("[Error] Check all objects failed.");
+        if (!result.Success && result.FailureReason is not null)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Reason: {result.FailureReason}");
+        if (result.CompilerSummary is not null)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Compiler: {result.CompilerSummary}");
+        if (result.Note is not null)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Check: {result.Note}");
         AppendErrorListEntries(sb, result.Errors);
         return sb.ToString().TrimEnd();
     }

@@ -17,7 +17,7 @@ public class IoMappingCoordinatorTests
         var result = new IoMappingCoordinator(fake).LinkVariables(v1, v2);
 
         Assert.StartsWith("[Error]", result);
-        Assert.Contains("v1", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("variable1TreePath", result, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("LinkVariables", string.Join(",", fake.CallLog));
     }
 
@@ -31,7 +31,7 @@ public class IoMappingCoordinatorTests
         var result = new IoMappingCoordinator(fake).LinkVariables(v1, v2);
 
         Assert.StartsWith("[Error]", result);
-        Assert.Contains("v2", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("variable2TreePath", result, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("LinkVariables", string.Join(",", fake.CallLog));
     }
 
@@ -99,7 +99,7 @@ public class IoMappingCoordinatorTests
         var result = new IoMappingCoordinator(fake).UnlinkVariables(v1);
 
         Assert.StartsWith("[Error]", result);
-        Assert.Contains("v1", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("variable1TreePath", result, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("UnlinkVariables", string.Join(",", fake.CallLog));
     }
 

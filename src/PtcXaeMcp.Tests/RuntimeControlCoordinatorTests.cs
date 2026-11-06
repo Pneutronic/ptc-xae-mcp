@@ -71,7 +71,7 @@ public class RuntimeControlCoordinatorTests
         var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = true };
         var result = new RuntimeControlCoordinator(fake).AddRoute("", "1.2.3.4", null, null, null, true);
         Assert.StartsWith("[Error]", result);
-        Assert.Contains("netId", result);
+        Assert.Contains("amsNetId", result);
     }
 
     [Fact]

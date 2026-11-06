@@ -196,7 +196,7 @@ internal sealed partial class TwinCatComSession
                     throw new InvalidOperationException(PartialCreate.Describe(
                         $"{propLabel} '{name}'", propPath, $"{missing} accessor", ex.Message,
                         (createdAccessors.Count > 0 ? $"Created accessors: {string.Join("/", createdAccessors)}. " : "") +
-                        $"Add the missing accessor with twincat_add_pou_member (kind={missing.Split('/')[0].ToUpperInvariant()}, " +
+                        $"Add the missing accessor with twincat_plc_create (kind=MEMBER, subtype={missing.Split('/')[0].ToUpperInvariant()}, " +
                         $"pouPath '{propPath}')."), ex);
                 }
                 // list_pou_members walks from the POU and recurses into the
@@ -403,7 +403,7 @@ internal sealed partial class TwinCatComSession
         string methodPath = parentPath + "^" + name;
         string NotFixed(string why) =>
             $"METHOD '{name}' created at {methodPath}, header NOT fixed: {why} " +
-            $"Fix the header manually (twincat_write_pou_member) to '{MethodHeader.Want(name, ret)}'.";
+            $"Fix the header manually (twincat_plc_write, kind=MEMBER) to '{MethodHeader.Want(name, ret)}'.";
 
         string decl;
         try { decl = (string)methodNode.DeclarationText ?? string.Empty; }
@@ -597,7 +597,7 @@ internal sealed partial class TwinCatComSession
         if (resolvedPath is not null && !string.Equals(resolvedPath, treePath, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
                 $"Refusing to delete '{treePath}': the path resolved to a different node ('{resolvedPath}'). " +
-                "Pass the exact tree path from twincat_list_pous / twincat_list_pou_members.");
+                "Pass the exact tree path from twincat_plc_list.");
 
         int caret = treePath.LastIndexOf('^');
         if (caret <= 0)

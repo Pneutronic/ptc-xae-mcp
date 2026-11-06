@@ -15,5 +15,5 @@ internal static class ReadBackNode
     public static string NotReResolved(string path) =>
         $"the write was sent, but '{path}' could not be re-resolved for the read-back, so it is not verified " +
         "(the read-back never falls back to the node the write went through). Read it back with " +
-        "twincat_read_pou / twincat_read_pou_member before relying on it.";
+        "twincat_plc_read before relying on it.";
 }

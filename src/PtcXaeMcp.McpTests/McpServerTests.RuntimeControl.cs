@@ -53,7 +53,7 @@ public partial class McpServerTests
         try
         {
             var set = GetText(await CallToolAsync("twincat_set_target",
-                new Dictionary<string, object?> { ["netId"] = remoteNetId }));
+                new Dictionary<string, object?> { ["amsNetId"] =remoteNetId }));
             SkipIfXaeNotRunning(set);
             Assert.DoesNotContain("[Error]", set);
 
@@ -80,7 +80,7 @@ public partial class McpServerTests
         {
             // Leave the session pointed at the local system for the rest of the suite.
             await CallToolAsync("twincat_set_target",
-                new Dictionary<string, object?> { ["netId"] = "127.0.0.1.1.1" });
+                new Dictionary<string, object?> { ["amsNetId"] ="127.0.0.1.1.1" });
         }
     }
 
@@ -91,7 +91,7 @@ public partial class McpServerTests
     {
         SkipIfNotReachable();
         var result = await CallToolAsync("twincat_add_route",
-            new Dictionary<string, object?> { ["netId"] = "" });
+            new Dictionary<string, object?> { ["amsNetId"] ="" });
         var text = GetText(result);
         Assert.StartsWith("[Error]", text);
     }
@@ -103,7 +103,7 @@ public partial class McpServerTests
     {
         SkipIfNotReachable();
         var result = await CallToolAsync("twincat_set_target",
-            new Dictionary<string, object?> { ["netId"] = "" });
+            new Dictionary<string, object?> { ["amsNetId"] ="" });
         var text = GetText(result);
         Assert.StartsWith("[Error]", text);
     }

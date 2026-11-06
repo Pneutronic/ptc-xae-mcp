@@ -6,6 +6,47 @@ namespace PtcXaeMcp.McpTests;
 /// <summary>Library references: list, check, add/remove/set version.</summary>
 public partial class McpServerTests
 {
+    [SkippableFact]
+    public async Task PlcProjectInfo_ABadVersion_IsRefusedBeforeAnything()
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_plc_project_info",
+            new Dictionary<string, object?> { ["version"] = "1.0" });
+
+        Assert.StartsWith("[Error] version '1.0' is not a library version", GetText(result));
+    }
+
+    [SkippableFact]
+    public async Task LibrarySignatures_IsListedReadOnly_AndRefusesAnOutputPathOutsideTheAllowedRoots()
+    {
+        SkipIfNotReachable();
+
+        var tools = await _client!.ListToolsAsync();
+        var tool = tools.Single(t => t.Name == "twincat_library_signatures");
+        Assert.True(tool.ProtocolTool.Annotations?.ReadOnlyHint);
+
+        var result = await CallToolAsync("twincat_library_signatures",
+            new Dictionary<string, object?> { ["outputPath"] = @"C:\Windows\System32\ptc-libsig.xml" });
+        var text = GetText(result);
+        Assert.StartsWith("[Error]", text);
+        Assert.Contains("outputPath", text);
+    }
+
+    [SkippableFact]
+    public async Task SaveAsLibrary_UnknownExtension_IsAToolError()
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_save_as_library",
+            new Dictionary<string, object?> { ["outputPath"] = Path.Combine(Path.GetTempPath(), "ptc-save-as-lib.zip") });
+        var text = GetText(result);
+
+        Assert.DoesNotContain("An error occurred invoking", text);
+        Assert.StartsWith("[Error] outputPath must end in .library", text);
+        Assert.Contains(".compiled-library", text);
+    }
+
     // ── Test 13 ────────────────────────────────────────────────────────────────
 
     [SkippableFact]

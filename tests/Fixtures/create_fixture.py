@@ -346,35 +346,31 @@ def main():
     async def content(call):
         await call("twincat_open_project", slnPath=sln.replace("\\", "/"), closeCurrentFirst=True)
         dut, gvl, pou = f"{root}^DUTs", f"{root}^GVLs", f"{root}^POUs"
-        await call("twincat_create_dut", parentPath=dut, name="E_FixtureMode", dutType="ENUM", declaration=DUT_ENUM)
-        await call("twincat_create_dut", parentPath=dut, name="ST_FixtureRecord", dutType="STRUCT", declaration=DUT_STRUCT)
-        await call("twincat_create_dut", parentPath=dut, name="T_FixtureName", dutType="ALIAS", declaration=DUT_ALIAS)
-        await call("twincat_create_dut", parentPath=dut, name="ST_PersistentInner", dutType="STRUCT", declaration=DUT_PERSISTENT_INNER)
-        await call("twincat_create_dut", parentPath=dut, name="ST_PersistentRecipe", dutType="STRUCT", declaration=DUT_PERSISTENT_RECIPE)
-        await call("twincat_create_pou", parentPath=pou, name="FB_PersistentCell", pouType="FUNCTION_BLOCK")
-        await call("twincat_write_pou_body", treePath=f"{pou}^FB_PersistentCell", declaration=FB_PERSISTENT_CELL_DECL, implementation=FB_PERSISTENT_CELL_IMPL)
-        await call("twincat_create_gvl", parentPath=gvl, name="GVL_Fixture", declaration=GVL)
-        await call("twincat_create_gvl", parentPath=gvl, name="GVL_Persistent", declaration=GVL_PERSISTENT)
-        await call("twincat_create_gvl", parentPath=gvl, name="GVL_IBN_Probe", declaration=GVL_IBN_PROBE)
-        await call("twincat_create_gvl", parentPath=gvl, name="GVL_InstanceSettings", declaration=GVL_INSTANCE_SETTINGS)
-        await call("twincat_create_interface", parentPath=pou, name="I_FixtureDevice")
-        await call("twincat_add_pou_member", pouPath=f"{pou}^I_FixtureDevice", kind="METHOD", name="Reset", returnType="BOOL")
-        await call("twincat_create_pou", parentPath=pou, name="FB_StepChain", pouType="FUNCTION_BLOCK")
-        await call("twincat_write_pou_body", treePath=f"{pou}^FB_StepChain", declaration=FB_DECL, implementation=FB_IMPL)
-        # FB whose members live in a sub-folder (fix/pou-members-in-folders). There is no MCP
-        # tool for folders, so the folder is created via COM (CreateChild nSubType 601 under a
-        # FB, TC >= 4024.14); the members then go into the folder via add_pou_member.
-        await call("twincat_create_pou", parentPath=pou, name="FB_FolderMembers", pouType="FUNCTION_BLOCK")
+        await call("twincat_plc_create", kind="DUT", subtype="ENUM", parentPath=dut, name="E_FixtureMode", declaration=DUT_ENUM)
+        await call("twincat_plc_create", kind="DUT", subtype="STRUCT", parentPath=dut, name="ST_FixtureRecord", declaration=DUT_STRUCT)
+        await call("twincat_plc_create", kind="DUT", subtype="ALIAS", parentPath=dut, name="T_FixtureName", declaration=DUT_ALIAS)
+        await call("twincat_plc_create", kind="DUT", subtype="STRUCT", parentPath=dut, name="ST_PersistentInner", declaration=DUT_PERSISTENT_INNER)
+        await call("twincat_plc_create", kind="DUT", subtype="STRUCT", parentPath=dut, name="ST_PersistentRecipe", declaration=DUT_PERSISTENT_RECIPE)
+        await call("twincat_plc_create", kind="POU", subtype="FUNCTION_BLOCK", parentPath=pou, name="FB_PersistentCell")
+        await call("twincat_plc_write", path=f"{pou}^FB_PersistentCell", kind="POU", declaration=FB_PERSISTENT_CELL_DECL, implementation=FB_PERSISTENT_CELL_IMPL)
+        await call("twincat_plc_create", kind="GVL", parentPath=gvl, name="GVL_Fixture", declaration=GVL)
+        await call("twincat_plc_create", kind="GVL", parentPath=gvl, name="GVL_Persistent", declaration=GVL_PERSISTENT)
+        await call("twincat_plc_create", kind="GVL", parentPath=gvl, name="GVL_IBN_Probe", declaration=GVL_IBN_PROBE)
+        await call("twincat_plc_create", kind="GVL", parentPath=gvl, name="GVL_InstanceSettings", declaration=GVL_INSTANCE_SETTINGS)
+        await call("twincat_plc_create", kind="INTERFACE", parentPath=pou, name="I_FixtureDevice")
+        await call("twincat_plc_create", kind="MEMBER", subtype="METHOD", parentPath=f"{pou}^I_FixtureDevice", name="Reset", returnType="BOOL")
+        await call("twincat_plc_create", kind="POU", subtype="FUNCTION_BLOCK", parentPath=pou, name="FB_StepChain")
+        await call("twincat_plc_write", path=f"{pou}^FB_StepChain", kind="POU", declaration=FB_DECL, implementation=FB_IMPL)
+        # FB whose members live in a sub-folder (fix/pou-members-in-folders); the members then go into the folder.
+        await call("twincat_plc_create", kind="POU", subtype="FUNCTION_BLOCK", parentPath=pou, name="FB_FolderMembers")
         fb_path = f"{pou}^FB_FolderMembers"
-        live_sysman = com_retry(lambda: dte.Solution.Projects.Item(1).Object)
-        fb_node = com_retry(lambda: live_sysman.LookupTreeItem(fb_path))
-        com_retry(lambda: fb_node.CreateChild("Members", 601, "", None))
+        await call("twincat_plc_create", kind="FOLDER", parentPath=fb_path, name="Members")
         members = f"{fb_path}^Members"
-        await call("twincat_add_pou_member", pouPath=members, kind="PROPERTY", name="Enabled", returnType="BOOL")
-        await call("twincat_add_pou_member", pouPath=members, kind="METHOD", name="Reset", returnType="BOOL")
-        await call("twincat_create_pou", parentPath=pou, name="PRG_IntegrationScratch", pouType="PROGRAM")
-        await call("twincat_write_pou_body", treePath=f"{pou}^PRG_IntegrationScratch", declaration=SCRATCH_DECL, implementation=SCRATCH_IMPL)
-        await call("twincat_write_pou_body", treePath=f"{pou}^MAIN", declaration=MAIN_DECL, implementation=MAIN_IMPL)
+        await call("twincat_plc_create", kind="MEMBER", subtype="PROPERTY", parentPath=members, name="Enabled", returnType="BOOL")
+        await call("twincat_plc_create", kind="MEMBER", subtype="METHOD", parentPath=members, name="Reset", returnType="BOOL")
+        await call("twincat_plc_create", kind="POU", subtype="PROGRAM", parentPath=pou, name="PRG_IntegrationScratch")
+        await call("twincat_plc_write", path=f"{pou}^PRG_IntegrationScratch", kind="POU", declaration=SCRATCH_DECL, implementation=SCRATCH_IMPL)
+        await call("twincat_plc_write", path=f"{pou}^MAIN", kind="POU", declaration=MAIN_DECL, implementation=MAIN_IMPL)
         await call("twincat_save_project")
         # Build BEFORE adding EtherCAT: it creates the PLC process image the link
         # below needs, and a master without a task link would pop a modal

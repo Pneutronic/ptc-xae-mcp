@@ -30,22 +30,18 @@ internal sealed partial class TwinCatMcpTools
                  "Call twincat_broadcast_search first to discover the target's netId and IP. " +
                  "Requires XAE running with a solution open.")]
     public string AddRoute(
-        [Description("AMS NetId of the remote target, e.g. '192.168.1.5.1.1'.")] string? amsNetId = null,
+        [Description("AMS NetId of the remote target, e.g. '192.168.1.5.1.1'.")] string amsNetId,
         [Description("IP address of the remote target. Either ipAddr or hostName must be provided.")] string? ipAddr = null,
         [Description("Hostname of the remote target. Either ipAddr or hostName must be provided.")] string? hostName = null,
         [Description("Username for system route authentication (not needed for project routes).")] string? userName = null,
         [Description("Password for system route authentication (not needed for project routes).")] string? password = null,
         [Description("True = project route (stored in .tsproj, no credentials required). " +
                      "False = persistent system route (requires userName/password). Default: true.")] bool projectRoute = true,
-        [Description("DEPRECATED alias for amsNetId, kept for one release so existing MCP clients that bind by this name keep working. Prefer amsNetId.")] string? netId = null,
         CancellationToken cancellationToken = default)
-    {
-        string netIdValue = ParamAliases.Coalesce(amsNetId, netId) ?? "";
-        return bridge.Activity.Trace("twincat_add_route", new { netId = netIdValue, ipAddr, hostName, projectRoute },
+        => bridge.Activity.Trace("twincat_add_route", new { amsNetId, ipAddr, hostName, projectRoute },
             () => bridge.Dispatcher.Run(() =>
                 new RuntimeControlCoordinator(bridge.Dispatcher.Session)
-                    .AddRoute(netIdValue, ipAddr, hostName, userName, password, projectRoute)), cancellationToken);
-    }
+                    .AddRoute(amsNetId ?? "", ipAddr, hostName, userName, password, projectRoute)), cancellationToken);
 
     [McpServerTool(Name = "twincat_set_target", ReadOnly = false, Destructive = true)]
     [Description("Set the project's target NetId and optionally target platform. " +
@@ -53,17 +49,13 @@ internal sealed partial class TwinCatMcpTools
                  "Known platforms: 'TwinCAT RT (x64)', 'TwinCAT RT (x86)', 'TwinCAT OS (x64)' (User Mode Runtime). " +
                  "Requires XAE running with a solution open.")]
     public string SetTarget(
-        [Description("AMS NetId of the target system, e.g. '192.168.1.5.1.1' or '127.0.0.1.1.1'.")] string? amsNetId = null,
+        [Description("AMS NetId of the target system, e.g. '192.168.1.5.1.1' or '127.0.0.1.1.1'.")] string amsNetId,
         [Description("Target platform string. Use 'TwinCAT OS (x64)' for User Mode Runtime. " +
                      "Omit to change only the NetId without touching the platform.")] string? platform = null,
-        [Description("DEPRECATED alias for amsNetId, kept for one release. Prefer amsNetId.")] string? netId = null,
         CancellationToken cancellationToken = default)
-    {
-        string netIdValue = ParamAliases.Coalesce(amsNetId, netId) ?? "";
-        return bridge.Activity.Trace("twincat_set_target", new { netId = netIdValue, platform }, () =>
+        => bridge.Activity.Trace("twincat_set_target", new { amsNetId, platform }, () =>
             bridge.Dispatcher.Run(() =>
-                new RuntimeControlCoordinator(bridge.Dispatcher.Session).SetTarget(netIdValue, platform)), cancellationToken);
-    }
+                new RuntimeControlCoordinator(bridge.Dispatcher.Session).SetTarget(amsNetId ?? "", platform)), cancellationToken);
 
     [McpServerTool(Name = "twincat_set_system_mode", ReadOnly = false, Destructive = true)]
     [Description("Switch a target's TwinCAT system to Config or Run over ADS — the XAE's 'Restart TwinCAT (Config Mode)' / " +

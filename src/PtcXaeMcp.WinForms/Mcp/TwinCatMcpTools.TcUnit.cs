@@ -1,4 +1,5 @@
 using ModelContextProtocol.Server;
+using PtcXaeMcp.WinForms.Security;
 using PtcXaeMcp.WinForms.TwinCat;
 using System.ComponentModel;
 
@@ -17,15 +18,22 @@ internal sealed partial class TwinCatMcpTools
                  "then warns with the PLC's OnlineChangeCnt. Returns JSON { success, verdict: passed | failed | no_tests | unknown, " +
                  "message, totals { suites, tests, passed, failed, duration }, onlineChangeCnt, suites [{ name, tests, failed, duration, " +
                  "cases [{ name, failed, skipped, message }] }], unreadableSymbols, amsNetId, adsPort }, or an [Error] when TcUnit is " +
-                 "not there or does not finish within timeoutSeconds.")]
+                 "not there or does not finish within timeoutSeconds. junitPath also writes the result as a JUnit XML file for a CI " +
+                 "server (the JSON then names it in junitFile); with includePassed=true the file lists every case.")]
     public string TcUnitResults(
         [Description("AMS NetId of the PLC. Default: the open project's target (what twincat_set_target set).")] string? amsNetId = null,
         [Description("ADS port of the PLC application. Default 851.")] int? adsPort = null,
         [Description("Seconds to wait for TcUnit to finish. Default 60, at most 600.")] int? timeoutSeconds = null,
         [Description("Also list the passed cases, and the cases of passed suites. Default false: only failed and skipped cases.")] bool includePassed = false,
+        [Description("Optional path of a JUnit XML file to write the results to, e.g. for a CI server.")] string? junitPath = null,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_tcunit_results", new { amsNetId, adsPort, timeoutSeconds, includePassed }, () =>
+        => bridge.Activity.Trace("twincat_tcunit_results", new { amsNetId, adsPort, timeoutSeconds, includePassed, junitPath }, () =>
             bridge.Dispatcher.Run(() =>
-                new TcUnitResultsCoordinator(bridge.Dispatcher.Session)
-                    .Collect(amsNetId, adsPort, timeoutSeconds, includePassed, cancellationToken)), cancellationToken);
+            {
+                var pathError = McpPathGuard.CheckOptionalFile(junitPath, bridge.Dispatcher.Session, "junitPath");
+                if (pathError is not null) return pathError;
+                string result = new TcUnitResultsCoordinator(bridge.Dispatcher.Session)
+                    .Collect(amsNetId, adsPort, timeoutSeconds, includePassed, cancellationToken);
+                return junitPath is null || McpErrors.IsError(result) ? result : TcUnitJUnit.WithJUnitFile(result, junitPath);
+            }), cancellationToken);
 }

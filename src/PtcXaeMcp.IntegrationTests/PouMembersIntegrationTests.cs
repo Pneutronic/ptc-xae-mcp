@@ -1,33 +1,34 @@
+using System.Text.RegularExpressions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
 namespace PtcXaeMcp.IntegrationTests;
 
 /// <summary>
-/// End-to-end coverage for feature/pou-handling against the live MCP server +
-/// XAE. Serialized assembly-wide (AssemblyInfo: DisableTestParallelization)
-/// against the single live XAE per PR #17.
+/// End-to-end coverage for POU members (METHOD / ACTION / PROPERTY / Get / Set), object rename/delete and
+/// PLCopen interchange against the live MCP server + XAE, through the twincat_plc_* verbs (members are
+/// kind=MEMBER). Serialized assembly-wide (AssemblyInfo: DisableTestParallelization) against the single
+/// live XAE per PR #17.
 ///
 /// <para><b>Safety rule (learned the hard way 2026-05-15).</b> These scenarios
 /// must NEVER read, write, or "restore" the fixture's real <c>MAIN</c> (or any
 /// pre-existing shared POU), and must never save the user's project. An
 /// earlier helper that round-tripped MAIN's declaration through formatted MCP
 /// text corrupted a real production project. Instead each scenario creates its
-/// OWN throwaway <c>PRG_PouSpec_{timestamp}</c> PROGRAM that instantiates the
-/// test FB and exercises its members, then deletes both the program and the FB
-/// in <c>finally</c>. The fixture's MAIN is never touched.</para>
+/// OWN throwaway <c>FB_PouSpec_{timestamp}</c> FB, wires it into the build-reachable
+/// scratch POU (<see cref="ScratchPou"/>) to exercise its members, then deletes it
+/// in <c>finally</c>. The fixture's MAIN is never touched beyond the scratch hook.</para>
 ///
 /// <para><b>Compilation-reachability.</b> TwinCAT drops an FB/member that
-/// nothing references. The throwaway PROGRAM references the FB, calls its
+/// nothing references. The scratch POU references the FB, calls its
 /// METHOD / ACTION and reads its PROPERTY, so a clean <c>twincat_build_plc</c>
 /// proves the members were actually compiled.</para>
 ///
-/// <para><b>METHOD (issue #19).</b> <c>twincat_add_pou_member kind=METHOD</c>
-/// works on a freshly <c>twincat_create_pou</c>'d FB. The earlier "Name
-/// mismatch"/C0243 was caused by reserved-word method names (CALC, ADD — IL
-/// operators); the name must be a valid, non-reserved IEC 61131-3 identifier.
-/// Scenario 1 below adds a real METHOD ("Compute"), gives it a body, calls it
-/// from the scratch POU and asserts a green build.</para>
+/// <para><b>METHOD (issue #19).</b> <c>twincat_plc_create kind=MEMBER subtype=METHOD</c>
+/// works on a freshly created FB. The earlier "Name mismatch"/C0243 was caused by
+/// reserved-word method names (CALC, ADD — IL operators); the name must be a valid,
+/// non-reserved IEC 61131-3 identifier. Scenario 1 below adds a real METHOD ("Compute"),
+/// gives it a body, calls it from the scratch POU and asserts a green build.</para>
 /// </summary>
 [Collection("Stage XAE")]
 [Trait("Stage", "XAE")]
@@ -74,7 +75,7 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
     // FB_FolderMembers keeps PROPERTY Enabled (Get/Set) and METHOD Reset in folder "Members".
     // Read-only: nothing is created, written or deleted.
 
-    [Trait("Description", "FB mit Members in einem Unterordner → list_pou_members zeigt PROPERTY inkl. Get/Set und METHOD aus dem Ordner (nur lesend).")]
+    [Trait("Description", "FB mit Members in einem Unterordner → plc_list(parentPath=FB) zeigt den Ordner, PROPERTY inkl. Get/Set und METHOD aus dem Ordner (nur lesend).")]
     [SkippableFact(Timeout = 240_000)]
     public async Task ListMembers_MembersInsideFolder_AreListed()
     {
@@ -83,21 +84,22 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
 
         string pou = FixtureLayout.FolderMembersPouPath;
         string folder = $"{pou}^{FixtureLayout.FolderMembersFolder}";
-        var list = GetText(await _client!.CallToolAsync("twincat_list_pou_members",
-            new Dictionary<string, object?> { ["pouPath"] = pou }));
+        var list = await ListMembersAsync(pou);
 
         Assert.DoesNotContain("[Error]", list);
-        Assert.Contains($"{folder}^Enabled", list);
-        Assert.Contains($"{folder}^Enabled^Get", list);
-        Assert.Contains($"{folder}^Enabled^Set", list);
-        Assert.Contains($"{folder}^Reset", list);
-        Assert.Contains("1 PROPERTY", list);
-        Assert.Contains("1 METHOD", list);
+        // One line per element: "  KIND/SUBTYPE  <path>" (members carry no language suffix).
+        Assert.Matches($@"(?m)\bFOLDER\s+{Regex.Escape(folder)}\s*$", list);
+        Assert.Matches($@"(?m)\bMEMBER/PROPERTY\s+{Regex.Escape(folder + "^Enabled")}\s*$", list);
+        Assert.Matches($@"(?m)\bMEMBER/GET\s+{Regex.Escape(folder + "^Enabled^Get")}\s*$", list);
+        Assert.Matches($@"(?m)\bMEMBER/SET\s+{Regex.Escape(folder + "^Enabled^Set")}\s*$", list);
+        Assert.Matches($@"(?m)\bMEMBER/METHOD\s+{Regex.Escape(folder + "^Reset")}\s*$", list);
+        Assert.Equal(1, CountLines(list, "MEMBER/PROPERTY"));
+        Assert.Equal(1, CountLines(list, "MEMBER/METHOD"));
     }
 
-    // ── Scenario 1: FB + ACTION + PROPERTY, wired into a throwaway PRG ─────────
+    // ── Scenario 1: FB + ACTION + PROPERTY + METHOD, wired into the scratch POU ─
 
-    [Trait("Description", "FB mit ACTION und PROPERTY anlegen, in Scratch-POU verdrahten → Build grün.")]
+    [Trait("Description", "FB mit ACTION, PROPERTY und METHOD per plc_create (kind=MEMBER) anlegen, METHOD per plc_write füllen, in Scratch-POU verdrahten → Build grün.")]
     [SkippableFact(Timeout = 600_000)]
     public async Task AddMembers_WiredIntoOwnProgram_BuildsClean()
     {
@@ -111,59 +113,52 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         await ScratchPou.EnsureAsync(_client!);
         try
         {
-            await CreateOk("twincat_create_pou", new()
+            await CreateOk(new()
             {
-                ["parentPath"] = DefaultParentPath, ["name"] = fb,
-                ["pouType"] = "FUNCTION_BLOCK",
+                ["kind"] = "POU", ["subtype"] = "FUNCTION_BLOCK", ["parentPath"] = DefaultParentPath, ["name"] = fb,
             }, "Created FUNCTION_BLOCK");
 
-            await CreateOk("twincat_add_pou_member", new()
+            await CreateOk(new()
             {
-                ["pouPath"] = fbPath, ["kind"] = "ACTION", ["name"] = "Reset",
+                ["kind"] = "MEMBER", ["subtype"] = "ACTION", ["parentPath"] = fbPath, ["name"] = "Reset",
             }, "Added ACTION");
 
-            await CreateOk("twincat_add_pou_member", new()
+            await CreateOk(new()
             {
-                ["pouPath"] = fbPath, ["kind"] = "PROPERTY",
+                ["kind"] = "MEMBER", ["subtype"] = "PROPERTY", ["parentPath"] = fbPath,
                 ["name"] = "Level", ["returnType"] = "INT",
             }, "Added PROPERTY");
 
-            // METHOD add (issue #19): works on a freshly create_pou'd FB with a
+            // METHOD add (issue #19): works on a freshly created FB with a
             // valid, non-reserved IEC 61131-3 name. "Compute" is fine; CALC/ADD
             // (IL operators) would be rejected by TC3 with "Name mismatch".
-            await CreateOk("twincat_add_pou_member", new()
+            await CreateOk(new()
             {
-                ["pouPath"] = fbPath, ["kind"] = "METHOD",
+                ["kind"] = "MEMBER", ["subtype"] = "METHOD", ["parentPath"] = fbPath,
                 ["name"] = "Compute", ["returnType"] = "INT",
             }, "Added METHOD");
 
             // Give the METHOD a real signature + body so the build exercises it
-            // (also proves write_pou_member round-trips a METHOD).
-            var wm = await _client!.CallToolAsync("twincat_write_pou_member",
-                new Dictionary<string, object?>
-                {
-                    ["memberPath"] = $"{fbPath}^Compute",
-                    ["declaration"] = "METHOD Compute : INT\r\nVAR_INPUT\r\n\ta : INT;\r\n\tb : INT;\r\nEND_VAR",
-                    ["implementation"] = "Compute := a + b;",
-                });
-            Assert.False(wm.IsError == true, $"write METHOD body failed: {GetText(wm)}");
+            // (also proves plc_write round-trips a METHOD).
+            await WriteOk($"{fbPath}^Compute", "MEMBER",
+                "METHOD Compute : INT\r\nVAR_INPUT\r\n\ta : INT;\r\n\tb : INT;\r\nEND_VAR",
+                "Compute := a + b;");
 
             // list surfaces the METHOD, the ACTION, the PROPERTY + Get/Set.
-            var list = GetText(await _client!.CallToolAsync("twincat_list_pou_members",
-                new Dictionary<string, object?> { ["pouPath"] = fbPath }));
-            Assert.Contains("METHOD", list);
-            Assert.Contains("ACTION", list);
-            Assert.Contains("PROPERTY", list);
-            Assert.Contains("GET", list);
-            Assert.Contains("SET", list);
+            var list = await ListMembersAsync(fbPath);
+            Assert.Matches($@"\bMEMBER/METHOD\s+{Regex.Escape(fbPath + "^Compute")}", list);
+            Assert.Matches($@"\bMEMBER/ACTION\s+{Regex.Escape(fbPath + "^Reset")}", list);
+            Assert.Matches($@"\bMEMBER/PROPERTY\s+{Regex.Escape(fbPath + "^Level")}", list);
+            Assert.Matches($@"\bMEMBER/GET\s+{Regex.Escape(fbPath + "^Level^Get")}", list);
+            Assert.Matches($@"\bMEMBER/SET\s+{Regex.Escape(fbPath + "^Level^Set")}", list);
 
             // The METHOD declaration must carry the requested INT return type —
             // the scalar-vInfo path would otherwise leave "... : 1".
-            var rm = GetText(await _client!.CallToolAsync("twincat_read_pou_member",
-                new Dictionary<string, object?> { ["memberPath"] = $"{fbPath}^Compute" }));
+            var rm = await ReadMemberOk($"{fbPath}^Compute", "METHOD");
             Assert.Contains("METHOD Compute : INT", rm);
-            await ReadOk($"{fbPath}^Reset");
-            await ReadOk($"{fbPath}^Level");
+            Assert.Contains("Compute := a + b;", rm);
+            await ReadMemberOk($"{fbPath}^Reset", "ACTION");
+            await ReadMemberOk($"{fbPath}^Level", "PROPERTY");
 
             // Wire the FB into the build-reachable scratch POU so its members
             // are actually compiled (an unreferenced FB is dropped by the
@@ -179,20 +174,20 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         finally
         {
             await ScratchPou.ResetAsync(_client!);
-            await DeleteQuiet(fbPath);
+            await DeleteQuiet(fbPath, "POU");
         }
     }
 
     // ── Scenario 1b: interface METHOD live gate (nSubType 610) + build green ───
-    // THE primary live gate for interface members. add_pou_member(kind=METHOD) on
+    // THE primary live gate for interface members. Creating a METHOD member on
     // an INTERFACE must use subtype 610 (vInfo[0]=return type), NOT the POU method
     // 609 — the latter fails with CreateChild "Kann nicht einfuegen". If 610 is
-    // wrong, the add surfaces a clean [Error] naming the rejected code. If right,
+    // wrong, the create surfaces a clean [Error] naming the rejected code. If right,
     // the method declaration round-trips and an FB that IMPLEMENTS the interface
     // (providing a matching method) compiles green — proving the interface method
     // is a real, implementable member.
 
-    [Trait("Description", "INTERFACE mit METHOD (Subtyp 610) anlegen, Deklaration round-trippen, FB IMPLEMENTS → Build grün.")]
+    [Trait("Description", "INTERFACE mit METHOD (Subtyp 610) per plc_create anlegen, Deklaration per plc_write/plc_read round-trippen, FB IMPLEMENTS → Build grün.")]
     [SkippableFact(Timeout = 600_000)]
     public async Task AddInterfaceMethod_ImplementedByFb_BuildsClean()
     {
@@ -213,66 +208,45 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         await ScratchPou.EnsureAsync(_client!);
         try
         {
-            await CreateOk("twincat_create_interface", new()
+            await CreateOk(new()
             {
-                ["parentPath"] = DefaultParentPath, ["name"] = itf,
+                ["kind"] = "INTERFACE", ["parentPath"] = DefaultParentPath, ["name"] = itf,
             }, "Created INTERFACE");
 
             // GATE: METHOD on an interface — subtype 610. A wrong subtype fails here.
-            await CreateOk("twincat_add_pou_member", new()
+            await CreateOk(new()
             {
-                ["pouPath"] = itfPath, ["kind"] = "METHOD",
+                ["kind"] = "MEMBER", ["subtype"] = "METHOD", ["parentPath"] = itfPath,
                 ["name"] = "SetCoil", ["returnType"] = "BOOL",
             }, "Added METHOD");
 
             // Declaration round-trips on the interface method (declaration-only).
-            var wmItf = await _client!.CallToolAsync("twincat_write_pou_member",
-                new Dictionary<string, object?>
-                {
-                    ["memberPath"] = $"{itfPath}^SetCoil",
-                    ["declaration"] = $"METHOD SetCoil : BOOL\r\n{methodVars}",
-                });
-            Assert.False(wmItf.IsError == true, $"write interface METHOD decl failed: {GetText(wmItf)}");
-            var rmItf = GetText(await _client!.CallToolAsync("twincat_read_pou_member",
-                new Dictionary<string, object?> { ["memberPath"] = $"{itfPath}^SetCoil" }));
+            await WriteOk($"{itfPath}^SetCoil", "MEMBER", $"METHOD SetCoil : BOOL\r\n{methodVars}", implementation: null);
+            var rmItf = await ReadMemberOk($"{itfPath}^SetCoil", "METHOD");
             Assert.Contains("METHOD SetCoil : BOOL", rmItf);
             Assert.Contains("Place", rmItf);
 
-            // list surfaces the interface + its method; read_pou shows it as an INTERFACE.
-            var members = GetText(await _client!.CallToolAsync("twincat_list_pou_members",
-                new Dictionary<string, object?> { ["pouPath"] = itfPath }));
-            Assert.Contains("METHOD", members);
-            Assert.Contains("SetCoil", members);
-            Assert.Contains(itfPath,
-                GetText(await _client!.CallToolAsync("twincat_list_pous")));
+            // list surfaces the interface method; the plain listing shows the interface itself.
+            var members = await ListMembersAsync(itfPath);
+            Assert.Matches($@"\bMEMBER/METHOD\s+{Regex.Escape(itfPath + "^SetCoil")}", members);
+            Assert.Matches($@"\bINTERFACE\s+{Regex.Escape(itfPath)}",
+                GetText(await _client!.CallToolAsync("twincat_plc_list",
+                    new Dictionary<string, object?> { ["kind"] = "INTERFACE" })));
 
             // FB IMPLEMENTS the interface and provides a matching SetCoil method.
-            await CreateOk("twincat_create_pou", new()
+            await CreateOk(new()
             {
-                ["parentPath"] = DefaultParentPath, ["name"] = fb,
-                ["pouType"] = "FUNCTION_BLOCK",
+                ["kind"] = "POU", ["subtype"] = "FUNCTION_BLOCK", ["parentPath"] = DefaultParentPath, ["name"] = fb,
             }, "Created FUNCTION_BLOCK");
-            var wfb = await _client!.CallToolAsync("twincat_write_pou_body",
-                new Dictionary<string, object?>
-                {
-                    ["treePath"] = fbPath,
-                    ["declaration"] = $"FUNCTION_BLOCK {fb} IMPLEMENTS {itf}",
-                    ["implementation"] = "",
-                });
-            Assert.False(wfb.IsError == true, $"write FB decl failed: {GetText(wfb)}");
-            await CreateOk("twincat_add_pou_member", new()
+            await WriteOk(fbPath, "POU", $"FUNCTION_BLOCK {fb} IMPLEMENTS {itf}", "");
+            await CreateOk(new()
             {
-                ["pouPath"] = fbPath, ["kind"] = "METHOD",
+                ["kind"] = "MEMBER", ["subtype"] = "METHOD", ["parentPath"] = fbPath,
                 ["name"] = "SetCoil", ["returnType"] = "BOOL",
             }, "Added METHOD");
-            var wm = await _client!.CallToolAsync("twincat_write_pou_member",
-                new Dictionary<string, object?>
-                {
-                    ["memberPath"] = $"{fbPath}^SetCoil",
-                    ["declaration"] = $"METHOD SetCoil : BOOL\r\n{methodVars}",
-                    ["implementation"] = "SetCoil := ToWorking AND NOT ToHome;",
-                });
-            Assert.False(wm.IsError == true, $"write FB METHOD body failed: {GetText(wm)}");
+            await WriteOk($"{fbPath}^SetCoil", "MEMBER",
+                $"METHOD SetCoil : BOOL\r\n{methodVars}",
+                "SetCoil := ToWorking AND NOT ToHome;");
 
             // Wire the FB (typed as the interface) into the build-reachable scratch POU.
             await ScratchPou.WriteAsync(_client!,
@@ -286,8 +260,8 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         finally
         {
             await ScratchPou.ResetAsync(_client!);
-            await DeleteQuiet(fbPath);
-            await DeleteQuiet(itfPath);
+            await DeleteQuiet(fbPath, "POU");
+            await DeleteQuiet(itfPath, "INTERFACE");
         }
     }
 
@@ -296,7 +270,7 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
     // PROPERTY subtype 612 and the accessor subtypes 654/655 (no build — the
     // method path is the must-have; this just proves the property subtypes land).
 
-    [Trait("Description", "INTERFACE mit PROPERTY (Subtyp 612 + GET 654/SET 655) anlegen → erscheint in list_pou_members.")]
+    [Trait("Description", "INTERFACE mit PROPERTY (Subtyp 612 + GET 654/SET 655) per plc_create anlegen → erscheint in plc_list(parentPath); ACTION auf INTERFACE → [Error].")]
     [SkippableFact(Timeout = 240_000)]
     public async Task AddInterfaceProperty_SurfacesGetAndSet()
     {
@@ -309,44 +283,43 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
 
         try
         {
-            await CreateOk("twincat_create_interface", new()
+            await CreateOk(new()
             {
-                ["parentPath"] = DefaultParentPath, ["name"] = itf,
+                ["kind"] = "INTERFACE", ["parentPath"] = DefaultParentPath, ["name"] = itf,
             }, "Created INTERFACE");
 
             // GATE: PROPERTY on an interface — subtype 612 with accessors 654/655.
-            await CreateOk("twincat_add_pou_member", new()
+            await CreateOk(new()
             {
-                ["pouPath"] = itfPath, ["kind"] = "PROPERTY",
+                ["kind"] = "MEMBER", ["subtype"] = "PROPERTY", ["parentPath"] = itfPath,
                 ["name"] = "Enabled", ["returnType"] = "BOOL",
             }, "Added PROPERTY");
 
-            var members = GetText(await _client!.CallToolAsync("twincat_list_pou_members",
-                new Dictionary<string, object?> { ["pouPath"] = itfPath }));
-            Assert.Contains("PROPERTY", members);
-            Assert.Contains("Enabled", members);
-            Assert.Contains("GET", members);
-            Assert.Contains("SET", members);
+            var members = await ListMembersAsync(itfPath);
+            Assert.Matches($@"\bMEMBER/PROPERTY\s+{Regex.Escape(itfPath + "^Enabled")}", members);
+            Assert.Matches($@"\bMEMBER/GET\s+{Regex.Escape(itfPath + "^Enabled^Get")}", members);
+            Assert.Matches($@"\bMEMBER/SET\s+{Regex.Escape(itfPath + "^Enabled^Set")}", members);
 
             // ACTION must be rejected on an interface with a clear, non-transport error.
-            var badAction = await _client!.CallToolAsync("twincat_add_pou_member",
+            var badAction = await _client!.CallToolAsync("twincat_plc_create",
                 new Dictionary<string, object?>
                 {
-                    ["pouPath"] = itfPath, ["kind"] = "ACTION", ["name"] = "DoWork",
+                    ["kind"] = "MEMBER", ["subtype"] = "ACTION", ["parentPath"] = itfPath, ["name"] = "DoWork",
                 });
             var badText = GetText(badAction);
             Assert.StartsWith("[Error]", badText);
             Assert.Contains("interface", badText, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain($"{itfPath}^DoWork", await ListMembersAsync(itfPath));
         }
         finally
         {
-            await DeleteQuiet(itfPath);
+            await DeleteQuiet(itfPath, "INTERFACE");
         }
     }
 
     // ── Scenario 2: rename action + FB, delete action; bad-then-good build ─────
 
-    [Trait("Description", "ACTION umbenennen + löschen + FB umbenennen → Build schlägt fehl, nach Korrektur wieder grün.")]
+    [Trait("Description", "ACTION per plc_rename umbenennen + per plc_delete löschen + FB umbenennen → Build schlägt fehl, nach Korrektur wieder grün.")]
     [SkippableFact(Timeout = 600_000)]
     public async Task RenameAndDelete_BadBuildThenFixed()
     {
@@ -357,24 +330,22 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         // widened the cross-run collision window that breeds TwinCAT _1 suffixes (#94).
         string stamp = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}";
         string fb = $"FB_PouSpec_{stamp}";
-        string prg = $"PRG_PouSpec_{stamp}";
         string fbPath = $"{DefaultParentPath}^{fb}";
 
         await ScratchPou.EnsureAsync(_client!);
         try
         {
-            await CreateOk("twincat_create_pou", new()
+            await CreateOk(new()
             {
-                ["parentPath"] = DefaultParentPath, ["name"] = fb,
-                ["pouType"] = "FUNCTION_BLOCK",
+                ["kind"] = "POU", ["subtype"] = "FUNCTION_BLOCK", ["parentPath"] = DefaultParentPath, ["name"] = fb,
             }, "Created FUNCTION_BLOCK");
-            await CreateOk("twincat_add_pou_member", new()
+            await CreateOk(new()
             {
-                ["pouPath"] = fbPath, ["kind"] = "ACTION", ["name"] = "DoWork",
+                ["kind"] = "MEMBER", ["subtype"] = "ACTION", ["parentPath"] = fbPath, ["name"] = "DoWork",
             }, "Added ACTION");
-            await CreateOk("twincat_add_pou_member", new()
+            await CreateOk(new()
             {
-                ["pouPath"] = fbPath, ["kind"] = "ACTION", ["name"] = "Clear",
+                ["kind"] = "MEMBER", ["subtype"] = "ACTION", ["parentPath"] = fbPath, ["name"] = "Clear",
             }, "Added ACTION");
 
             // Wire into the build-reachable scratch POU (not a dead PROGRAM).
@@ -387,28 +358,27 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
             Assert.Contains("Build succeeded", b0, StringComparison.OrdinalIgnoreCase);
 
             // Rename the first action and the FB; delete the second action.
-            var rm = await _client.CallToolAsync("twincat_rename_plc_object",
-                new Dictionary<string, object?>
-                {
-                    ["treePath"] = $"{fbPath}^DoWork", ["newName"] = "DoWork2",
-                });
             // String tools report failures as "[Error] ..." text, not IsError (issue #190: a refused
             // delete went unnoticed, and the later build check failed for the wrong reason).
-            Assert.False(rm.IsError == true, GetText(rm));
-            Assert.DoesNotContain("[Error]", GetText(rm), StringComparison.Ordinal);
+            var rm = await OkAsync("twincat_plc_rename", new Dictionary<string, object?>
+            {
+                ["path"] = $"{fbPath}^DoWork", ["kind"] = "MEMBER", ["newName"] = "DoWork2",
+            });
+            Assert.StartsWith("Renamed ", rm);
+            Assert.Contains($"{fbPath}^DoWork2", rm);
 
-            var del = await _client.CallToolAsync("twincat_delete_plc_object",
-                new Dictionary<string, object?> { ["treePath"] = $"{fbPath}^Clear" });
-            Assert.False(del.IsError == true, GetText(del));
-            Assert.DoesNotContain("[Error]", GetText(del), StringComparison.Ordinal);
+            var del = await OkAsync("twincat_plc_delete", new Dictionary<string, object?>
+            {
+                ["path"] = $"{fbPath}^Clear", ["kind"] = "MEMBER",
+            });
+            Assert.Contains("Deleted", del);
 
-            var rfb = await _client.CallToolAsync("twincat_rename_plc_object",
-                new Dictionary<string, object?>
-                {
-                    ["treePath"] = fbPath, ["newName"] = fb + "_R",
-                });
-            Assert.False(rfb.IsError == true, GetText(rfb));
-            Assert.DoesNotContain("[Error]", GetText(rfb), StringComparison.Ordinal);
+            var rfb = await OkAsync("twincat_plc_rename", new Dictionary<string, object?>
+            {
+                ["path"] = fbPath, ["kind"] = "POU", ["newName"] = fb + "_R",
+            });
+            Assert.StartsWith("Renamed ", rfb);
+            Assert.Contains($"{DefaultParentPath}^{fb}_R", rfb);
             fbPath = $"{DefaultParentPath}^{fb}_R";
 
             // BAD build: must fail because the scratch POU still calls the deleted Clear action (and,
@@ -438,7 +408,7 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
             var members = await ListMembersUntil(fbPath,
                 m => m.Contains("DoWork2", StringComparison.Ordinal)
                   && !m.Contains("Clear", StringComparison.Ordinal));
-            Assert.Contains("DoWork2", members);
+            Assert.Matches($@"\bMEMBER/ACTION\s+{Regex.Escape(fbPath + "^DoWork2")}", members);
             Assert.DoesNotContain("Clear", members);
         }
         finally
@@ -447,14 +417,14 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
             // Cover both the renamed form (fbPath == {fb}_R, the success path) and
             // the original (in case the rename never took, which would otherwise
             // orphan {fb} — issue #94). The suite-end sweep is the final backstop.
-            await DeleteQuiet(fbPath);
-            await DeleteQuiet($"{DefaultParentPath}^{fb}");
+            await DeleteQuiet(fbPath, "POU");
+            await DeleteQuiet($"{DefaultParentPath}^{fb}", "POU");
         }
     }
 
     // ── Scenario 3: plcopen export → delete → import → rebuild green ──────────
 
-    [Trait("Description", "FB exportieren (PLCopen XML), löschen, reimportieren → Build wieder grün.")]
+    [Trait("Description", "FB exportieren (PLCopen XML), per plc_delete löschen, reimportieren → Build wieder grün.")]
     [SkippableFact(Timeout = 600_000)]
     public async Task PlcOpenRoundTrip_ExportDeleteImport_BuildsClean()
     {
@@ -469,14 +439,13 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         await ScratchPou.EnsureAsync(_client!);
         try
         {
-            await CreateOk("twincat_create_pou", new()
+            await CreateOk(new()
             {
-                ["parentPath"] = DefaultParentPath, ["name"] = fb,
-                ["pouType"] = "FUNCTION_BLOCK",
+                ["kind"] = "POU", ["subtype"] = "FUNCTION_BLOCK", ["parentPath"] = DefaultParentPath, ["name"] = fb,
             }, "Created FUNCTION_BLOCK");
-            await CreateOk("twincat_add_pou_member", new()
+            await CreateOk(new()
             {
-                ["pouPath"] = fbPath, ["kind"] = "ACTION", ["name"] = "Tick",
+                ["kind"] = "MEMBER", ["subtype"] = "ACTION", ["parentPath"] = fbPath, ["name"] = "Tick",
             }, "Added ACTION");
 
             // Wire into the build-reachable scratch POU.
@@ -517,7 +486,7 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
             // the import runs — without this, the node lingers in the in-memory tree
             // and the import creates FB_PouSpec_<stamp>_1 instead of replacing it.
             await ScratchPou.ResetAsync(_client!);
-            await DeleteQuiet(fbPath);
+            await DeleteQuiet(fbPath, "POU");
             Assert.False(
                 GetText(await _client!.CallToolAsync("twincat_save_project",
                     new Dictionary<string, object?>())).StartsWith("[Error]", StringComparison.Ordinal),
@@ -548,8 +517,8 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         finally
         {
             await ScratchPou.ResetAsync(_client!);
-            await DeleteQuiet(fbPath);
-            await DeleteQuiet(fbPath + "_1");   // backstop: issue #98 _1 duplicate
+            await DeleteQuiet(fbPath, "POU");
+            await DeleteQuiet(fbPath + "_1", "POU");   // backstop: issue #98 _1 duplicate
             try { if (File.Exists(xml)) File.Delete(xml); } catch { }
         }
     }
@@ -571,46 +540,76 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         // used to run in Stage XAE; since issue #195 it runs in Stage XAR). A
         // runtime restart temporarily leaves the PLC tree in a
         // locked/transitional state where CreateChild fails. Wait here until
-        // twincat_list_pous returns real POUs, matching the same resilience
+        // twincat_plc_list returns real POUs, matching the same resilience
         // idiom used by PlcCodeIntegrationTests (issue #66 family).
         await PlcProjectReadiness.AwaitAsync(_client!);
     }
 
-    private async Task CreateOk(string tool, Dictionary<string, object?> args, string expect)
+    // A protocol-level failure ("An error occurred invoking ...") does not start with "[Error]"; it is
+    // mapped to one here so no scenario can mistake it for a tool answer.
+    private async Task<string> CallAsync(string tool, Dictionary<string, object?> args)
     {
-        var r = await _client!.CallToolAsync(tool, args);
-        var t = GetText(r);
-        Assert.False(r.IsError == true, $"{tool} error: {t}");
+        var result = await _client!.CallToolAsync(tool, args);
+        string text = GetText(result);
+        return result.IsError == true && !text.StartsWith("[Error]", StringComparison.Ordinal) ? "[Error] (protocol) " + text : text;
+    }
+
+    private async Task<string> OkAsync(string tool, Dictionary<string, object?> args)
+    {
+        string text = await CallAsync(tool, args);
+        Assert.False(text.StartsWith("[Error]", StringComparison.Ordinal), $"{tool} failed: {text}");
+        Assert.DoesNotContain("[Error]", text, StringComparison.Ordinal);
+        return text;
+    }
+
+    // twincat_plc_create with the expected phrase of its result ("Created FUNCTION_BLOCK", "Added METHOD", ...).
+    private async Task CreateOk(Dictionary<string, object?> args, string expect)
+    {
+        var t = await OkAsync("twincat_plc_create", args);
         Assert.Contains(expect, t, StringComparison.OrdinalIgnoreCase);
     }
 
-    // A member must be readable without error and come back in the standard
-    // envelope. The declaration/implementation *content* differs by kind (an
-    // ACTION has no declaration; a freshly-added member's body is empty), so
-    // we assert the read succeeds and is well-formed, not specific text.
-    private async Task ReadOk(string memberPath)
+    // Writes to one of OUR throwaway elements only (never MAIN); the result names the element and kind.
+    private async Task WriteOk(string path, string kind, string? declaration, string? implementation)
     {
-        var r = await _client!.CallToolAsync("twincat_read_pou_member",
-            new Dictionary<string, object?> { ["memberPath"] = memberPath });
-        var t = GetText(r);
-        Assert.False(r.IsError == true, $"read_pou_member error: {t}");
-        Assert.DoesNotContain("[Error]", t);
-        Assert.Contains("Read member", t);
-        Assert.Contains("--- Implementation ---", t);
+        var args = new Dictionary<string, object?> { ["path"] = path, ["kind"] = kind };
+        if (declaration is not null) args["declaration"] = declaration;
+        if (implementation is not null) args["implementation"] = implementation;
+        var t = await OkAsync("twincat_plc_write", args);
+        Assert.StartsWith($"Wrote {kind} '{path}'.", t);
     }
 
-    // Writes a body to one of OUR throwaway POUs only (never MAIN).
-    private async Task WriteBodyOk(string treePath, string decl, string impl)
+    // A member must be readable without error and come back in the standard envelope with the
+    // sections its subtype has: an ACTION only an implementation, a PROPERTY only a declaration,
+    // a METHOD both (an interface METHOD only its declaration). Returns the read text.
+    private async Task<string> ReadMemberOk(string memberPath, string subtype)
     {
-        var w = await _client!.CallToolAsync("twincat_write_pou_body",
-            new Dictionary<string, object?>
-            {
-                ["treePath"] = treePath,
-                ["declaration"] = decl,
-                ["implementation"] = impl,
-            });
-        Assert.False(w.IsError == true, $"write_pou_body error ({treePath}): {GetText(w)}");
+        var t = await OkAsync("twincat_plc_read",
+            new Dictionary<string, object?> { ["path"] = memberPath, ["kind"] = "MEMBER" });
+        Assert.StartsWith($"Read MEMBER/{subtype} '{memberPath}'", t);
+        Assert.Matches(@"Revision: [0-9a-f]{16}", t.Split('\n')[0]);
+        switch (subtype)
+        {
+            case "ACTION":
+                Assert.Contains("--- Implementation ---", t);
+                Assert.DoesNotContain("--- Declaration ---", t);
+                break;
+            case "PROPERTY":
+                Assert.Contains("--- Declaration ---", t);
+                Assert.DoesNotContain("--- Implementation ---", t);
+                break;
+            default:
+                Assert.Contains("--- Declaration ---", t);
+                break;
+        }
+        return t;
     }
+
+    private async Task<string> ListMembersAsync(string pouPath) =>
+        await OkAsync("twincat_plc_list", new Dictionary<string, object?> { ["parentPath"] = pouPath });
+
+    private static int CountLines(string listing, string kindToken) =>
+        Regex.Matches(listing, $@"^\s*{Regex.Escape(kindToken)}\s", RegexOptions.Multiline).Count;
 
     // Best-effort teardown delete that actually sticks (issue #94). It (1) persists
     // the delete with a Save All — an unsaved tree edit is lost when the next
@@ -619,28 +618,28 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
     // teardown can't fail an otherwise-passing test) — the suite-end
     // PouSpecCleanupFixture sweeps any survivor. A "not found" means the node is
     // already gone, which is the desired outcome, so it is treated as success.
-    private async Task DeleteQuiet(string treePath)
+    private async Task DeleteQuiet(string path, string kind)
     {
         try
         {
-            var t = GetText(await _client!.CallToolAsync("twincat_delete_plc_object",
-                new Dictionary<string, object?> { ["treePath"] = treePath }));
+            var t = GetText(await _client!.CallToolAsync("twincat_plc_delete",
+                new Dictionary<string, object?> { ["path"] = path, ["kind"] = kind }));
 
             await _client!.CallToolAsync("twincat_save_project",
                 new Dictionary<string, object?>());
 
             if (t.StartsWith("[Error]", StringComparison.Ordinal) &&
                 !t.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                Console.WriteLine($"  ⚠ teardown: delete '{treePath}' did not take: {t}");
+                Console.WriteLine($"  ⚠ teardown: delete '{path}' did not take: {t}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"  ⚠ teardown: delete '{treePath}' threw: {ex.Message}");
+            Console.WriteLine($"  ⚠ teardown: delete '{path}' threw: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Read <c>twincat_list_pou_members</c> with a bounded retry. The tree can
+    /// Read <c>twincat_plc_list(parentPath)</c> with a bounded retry. The tree can
     /// lag a just-completed rename+rebuild (issue #73, same suite-order family
     /// as #66): the renamed member is not yet reflected in the first listing.
     /// Polls until <paramref name="accept"/> holds or the budget is exhausted,
@@ -653,8 +652,8 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         string members = string.Empty;
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            members = GetText(await _client!.CallToolAsync("twincat_list_pou_members",
-                new Dictionary<string, object?> { ["pouPath"] = pouPath }));
+            members = GetText(await _client!.CallToolAsync("twincat_plc_list",
+                new Dictionary<string, object?> { ["parentPath"] = pouPath }));
             if (accept(members))
                 return members;
             if (attempt < maxAttempts)

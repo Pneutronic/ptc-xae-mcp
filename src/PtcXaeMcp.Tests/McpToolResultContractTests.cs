@@ -56,6 +56,9 @@ public sealed class McpToolResultContractTests
         ["twincat_force_close_xae"] =
             "recovery tool that kills the XAE process itself; must not serialize behind the very " +
             "dispatcher lock a hung operation may be holding.",
+        ["twincat_doctor"] =
+            "diagnosis like twincat_get_status: must answer while another call holds the lock; its few " +
+            "read-only COM calls run on a worker and are abandoned after 5 s.",
     };
 
     /// <summary>

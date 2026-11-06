@@ -22,7 +22,13 @@ internal sealed partial class FakeTwinCatSession : ITwinCatSession
 
     bool ITwinCatSession.IsConnected => IsConnected;
     public string DescribeUnreachable() => UnreachableText ?? "No TwinCAT XAE instance is running.";
-    public bool HasOpenSolution() => HasOpenSolutionThrows is null ? SolutionOpen : throw HasOpenSolutionThrows;
+    /// <summary>Runs inside <see cref="HasOpenSolution"/>, e.g. to simulate an XAE that does not answer.</summary>
+    public Action? HasOpenSolutionHook { get; set; }
+    public bool HasOpenSolution()
+    {
+        HasOpenSolutionHook?.Invoke();
+        return HasOpenSolutionThrows is null ? SolutionOpen : throw HasOpenSolutionThrows;
+    }
     public string? ActiveSolutionPath() => ActiveSlnPath;
 
     /// <summary>Simulates "no System Manager visible (yet)" — Probe throws like the COM probe.</summary>

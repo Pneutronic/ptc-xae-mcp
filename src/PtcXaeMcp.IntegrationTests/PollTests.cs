@@ -32,10 +32,10 @@ public sealed class PollTests
 
     [Trait("Description", "Offline: a PLC listing counts as ready only with a POU line and no not-ready marker.")]
     [Theory]
-    [InlineData("POU TIPC^Plc^Plc Project^POUs^MAIN", true)]
-    [InlineData("No POUs, GVLs, or DUTs found", false)]
+    [InlineData("Found 1 element (1 POU).\n  POU/PROGRAM              TIPC^Plc^Plc Project^POUs^MAIN [ST]", true)]
+    [InlineData("No matching PLC elements found.", false)]
     [InlineData("[Error] 0x8001010A busy", false)]
-    [InlineData("GVL TIPC^Plc^Plc Project^GVLs^GVL_Main", false)]
+    [InlineData("Found 1 element (1 GVL).\n  GVL/NORMAL               TIPC^Plc^Plc Project^GVLs^GVL_Main", false)]
     public void PlcProjectReadiness_IsReady(string listing, bool expected)
     {
         Assert.Equal(expected, PlcProjectReadiness.IsReady(listing));

@@ -8,17 +8,18 @@ namespace PtcXaeMcp.IntegrationTests;
 /// </summary>
 public class PouSpecLeftoversTests
 {
+    // Shape of twincat_plc_list: summary line, then "  {kind/subtype,-24} {path}{ [lang]}".
     private const string SampleListing =
-        "Found 6 POU/GVL/DUT items:\n" +
-        "  FOLDER TIPC^PLC^PLC Projekt^POUs^01_Application\n" +
-        "  POU    TIPC^PLC^PLC Projekt^POUs^MAIN [ST]\n" +
-        "  POU    TIPC^PLC^PLC Projekt^POUs^PRG_IntegrationScratch [ST]\n" +
-        "  POU    TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_20260522131534408 [ST]\n" +
-        "  POU    TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_20260522131534408_1 [ST]\n" +
-        "  POU    TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_20260522131600_R [ST]\n" +
-        "  POU    TIPC^PLC^PLC Projekt^POUs^PRG_PouSpec_20260522131600\n";   // no language suffix
+        "Found 7 elements (1 FOLDER, 6 POU).\n" +
+        "  FOLDER                   TIPC^PLC^PLC Projekt^POUs^01_Application\n" +
+        "  POU/PROGRAM              TIPC^PLC^PLC Projekt^POUs^MAIN [ST]\n" +
+        "  POU/PROGRAM              TIPC^PLC^PLC Projekt^POUs^PRG_IntegrationScratch [ST]\n" +
+        "  POU/FUNCTION_BLOCK       TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_20260522131534408 [ST]\n" +
+        "  POU/FUNCTION_BLOCK       TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_20260522131534408_1 [ST]\n" +
+        "  POU/FUNCTION_BLOCK       TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_20260522131600_R [ST]\n" +
+        "  POU/PROGRAM              TIPC^PLC^PLC Projekt^POUs^PRG_PouSpec_20260522131600\n";   // no language suffix
 
-    [Trait("Description", "Offline: list_pous-Parser findet nur FB_PouSpec_*/PRG_PouSpec_* (inkl. _R/_1), ignoriert MAIN/Scratch/Folder/Summary.")]
+    [Trait("Description", "Offline: plc_list-Parser findet nur FB_PouSpec_*/PRG_PouSpec_* (inkl. _R/_1), ignoriert MAIN/Scratch/Folder/Summary.")]
     [Fact]
     public void ParseLeftoverPaths_PicksOnlyPouSpecNodes_IncludingRenameAndDupVariants()
     {
@@ -38,7 +39,7 @@ public class PouSpecLeftoversTests
     public void ParseLeftoverPaths_PreservesSpacesInPath_AndStripsLanguageSuffix()
     {
         var paths = PouSpecLeftovers.ParseLeftoverPaths(
-            "  POU    TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_1 [ST]\n");
+            "  POU/FUNCTION_BLOCK       TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_1 [ST]\n");
 
         Assert.Equal("TIPC^PLC^PLC Projekt^POUs^FB_PouSpec_1", Assert.Single(paths));
     }
@@ -48,7 +49,7 @@ public class PouSpecLeftoversTests
     public void ParseLeftoverPaths_NeverMatchesPermanentScratchPou()
     {
         var paths = PouSpecLeftovers.ParseLeftoverPaths(
-            "  POU    TIPC^PLC^PLC Projekt^POUs^PRG_IntegrationScratch [ST]\n");
+            "  POU/PROGRAM              TIPC^PLC^PLC Projekt^POUs^PRG_IntegrationScratch [ST]\n");
 
         Assert.Empty(paths);
     }
@@ -57,7 +58,7 @@ public class PouSpecLeftoversTests
     [Theory]
     [InlineData("")]
     [InlineData("[Error] No project open.")]
-    [InlineData("Found 0 POU/GVL/DUT items:")]
+    [InlineData("No matching PLC elements found.")]
     public void ParseLeftoverPaths_ReturnsEmpty_ForNoItemsOrError(string listing)
         => Assert.Empty(PouSpecLeftovers.ParseLeftoverPaths(listing));
 }

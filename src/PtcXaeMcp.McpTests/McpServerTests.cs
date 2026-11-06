@@ -9,8 +9,7 @@ namespace PtcXaeMcp.McpTests;
 /// All tests are skipped automatically when the server is not reachable.
 /// Start ptc-xae-mcp.exe --diagnostics before running (some tests here call the
 /// diagnostics-only tool surface — ptc_test_marker, twincat_show_step,
-/// twincat_safety_recon, twincat_safety_probe_create_alias, twincat_dump_nc_tree,
-/// twincat_open_plc_object/twincat_close_plc_object — which a plain launch does not
+/// twincat_safety_recon, twincat_safety_probe_create_alias, twincat_dump_nc_tree — which a plain launch does not
 /// register; see issue #157 item 1).
 /// <para>
 /// The tests are split per feature into <c>McpServerTests.&lt;Feature&gt;.cs</c> partials; this file holds
@@ -95,22 +94,22 @@ public partial class McpServerTests : IAsyncLifetime
     /// </summary>
     internal static readonly IReadOnlySet<string> NonMutatingTools = new HashSet<string>(StringComparer.Ordinal)
     {
-        "twincat_get_status", "twincat_get_log", "twincat_stop", "twincat_get_client_info",
+        "twincat_get_status", "twincat_get_log", "twincat_stop", "twincat_get_client_info", "twincat_doctor",
         "twincat_get_active_project", "twincat_resolve_host", "ptc_test_marker",
         "twincat_validate_schema",
         "twincat_list_library_references", "twincat_list_installed_libraries", "twincat_check_libraries_installed",
+        "twincat_library_signatures",
         "twincat_ipc_read_inventory", "twincat_ethercat_read_identities", "twincat_list_library_repositories",
         "twincat_get_fieldbus_topology", "twincat_get_device_xml", "twincat_get_iolink_config",
         "twincat_read_ethercat_startup", "twincat_read_soe_parameter",
         "twincat_check_iodd_present",
-        "twincat_list_pous", "twincat_read_pou", "twincat_read_gvl", "twincat_list_pou_members",
-        "twincat_read_pou_member", "twincat_plcopen_export",
-        "twincat_plc_list", "twincat_plc_read", "twincat_plc_list_entries",
+        "twincat_plcopen_export",
+        "twincat_plc_list", "twincat_plc_read", "twincat_plc_list_entries", "twincat_plc_search",
         "twincat_get_scope_status", "twincat_list_scope_channels", "twincat_read_scope_acquisition",
         "twincat_broadcast_search", "twincat_read_event_logger", "twincat_get_license_info",
         "twincat_list_nc_tasks_axes", "twincat_read_axis_params", "twincat_read_ads_variable",
         "twincat_locate_step", "twincat_goto_line", "twincat_show_step",
-        "twincat_open_object", "twincat_close_object", "twincat_open_plc_object", "twincat_close_plc_object",
+        "twincat_open_object", "twincat_close_object",
         "twincat_hmi_list_projects", "twincat_hmi_get_project_info", "twincat_hmi_list_mapped_symbols",
         "twincat_hmi_read_symbols", "twincat_hmi_read_file",
         "twincat_hmi_list_tmc_files", "twincat_hmi_list_ads_runtimes", "twincat_hmi_list_plc_tmc_candidates",

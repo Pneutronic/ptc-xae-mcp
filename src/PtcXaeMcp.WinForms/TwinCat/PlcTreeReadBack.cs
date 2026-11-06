@@ -17,7 +17,7 @@ internal static class PlcTreeReadBack
         catch (Exception ex) { return Unreadable(operation, path, ex); }
         return after.Exists
             ? $"[Error] {operation} did not land: '{path}' still resolves after the change (independent re-lookup). " +
-              "Check the tree in the XAE (twincat_list_pous / twincat_list_pou_members)."
+              "Check the tree in the XAE (twincat_plc_list, with parentPath for members)."
             : null;
     }
 
@@ -30,7 +30,7 @@ internal static class PlcTreeReadBack
         return after.Exists
             ? null
             : $"[Error] {operation} did not land: '{path}' does not resolve after the change (independent re-lookup). " +
-              "Check the tree in the XAE (twincat_list_pous / twincat_list_pou_members).";
+              "Check the tree in the XAE (twincat_plc_list, with parentPath for members).";
     }
 
     // An unreadable read-back is "unknown", never "it worked".

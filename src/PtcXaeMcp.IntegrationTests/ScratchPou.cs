@@ -45,6 +45,10 @@ public static class ScratchPou
         return string.Join("\n", c.OfType<TextContentBlock>().Select(x => x.Text));
     }
 
+    // The tools report a refused write as "[Error] ..." text, not as a protocol error.
+    private static bool Failed(CallToolResult r) =>
+        r.IsError == true || Text(r).StartsWith("[Error]", StringComparison.Ordinal);
+
     private static string Section(string read, string startMarker, string? endMarker)
     {
         int s = read.IndexOf(startMarker, StringComparison.Ordinal);
@@ -71,7 +75,7 @@ public static class ScratchPou
          read.Contains("not fully loaded", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
-    /// <c>twincat_read_pou</c> with a bounded retry on the post-reopen
+    /// <c>twincat_plc_read(kind=POU)</c> with a bounded retry on the post-reopen
     /// editor-not-ready transient (issue #76). Returns the last response so a
     /// genuine error (or a never-settled editor) still surfaces to the caller.
     /// </summary>
@@ -81,8 +85,8 @@ public static class ScratchPou
         string read = string.Empty;
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            read = Text(await client.CallToolAsync("twincat_read_pou",
-                new Dictionary<string, object?> { ["treePath"] = treePath }));
+            read = Text(await client.CallToolAsync("twincat_plc_read",
+                new Dictionary<string, object?> { ["path"] = treePath, ["kind"] = "POU" }));
             if (!IsEditorNotReady(read))
                 return read;
             if (attempt < maxAttempts)
@@ -102,12 +106,13 @@ public static class ScratchPou
         var read = await ReadPouResilient(client, Path);
         if (read.StartsWith("[Error]", StringComparison.Ordinal))
         {
-            var create = await client.CallToolAsync("twincat_create_pou",
+            var create = await client.CallToolAsync("twincat_plc_create",
                 new Dictionary<string, object?>
                 {
-                    ["parentPath"] = ParentPath, ["name"] = Name, ["pouType"] = "PROGRAM",
+                    ["kind"] = "POU", ["subtype"] = "PROGRAM", ["parentPath"] = ParentPath, ["name"] = Name,
                 });
-            Assert.False(create.IsError == true, Text(create));
+            Assert.False(create.IsError == true || Text(create).StartsWith("[Error]", StringComparison.Ordinal),
+                Text(create));
         }
         await ResetAsync(client);
 
@@ -118,27 +123,29 @@ public static class ScratchPou
         if (!mainRead.Contains(HookTag, StringComparison.Ordinal))
         {
             var impl = Section(mainRead, "--- Implementation ---", null);
-            var w = await client.CallToolAsync("twincat_write_pou_body",
+            var w = await client.CallToolAsync("twincat_plc_write",
                 new Dictionary<string, object?>
                 {
-                    ["treePath"] = MainPath,
+                    ["path"] = MainPath,
+                    ["kind"] = "POU",
                     ["implementation"] = impl.TrimEnd() + "\r\n\r\n" + HookLine,
                 });
-            Assert.False(w.IsError == true, $"MAIN hook append failed: {Text(w)}");
+            Assert.False(Failed(w), $"MAIN hook append failed: {Text(w)}");
         }
     }
 
     /// <summary>Restore the scratch POU to its harmless safe body.</summary>
     public static async Task ResetAsync(McpClient client)
     {
-        var w = await client.CallToolAsync("twincat_write_pou_body",
+        var w = await client.CallToolAsync("twincat_plc_write",
             new Dictionary<string, object?>
             {
-                ["treePath"] = Path,
+                ["path"] = Path,
+                ["kind"] = "POU",
                 ["declaration"] = SafeDecl,
                 ["implementation"] = SafeImpl,
             });
-        Assert.False(w.IsError == true, $"scratch reset failed: {Text(w)}");
+        Assert.False(Failed(w), $"scratch reset failed: {Text(w)}");
     }
 
     /// <summary>
@@ -182,12 +189,12 @@ public static class ScratchPou
     /// <summary>Overwrite the scratch POU's declaration + implementation.</summary>
     public static async Task WriteAsync(McpClient client, string decl, string impl)
     {
-        var w = await client.CallToolAsync("twincat_write_pou_body",
+        var w = await client.CallToolAsync("twincat_plc_write",
             new Dictionary<string, object?>
             {
-                ["treePath"] = Path, ["declaration"] = decl, ["implementation"] = impl,
+                ["path"] = Path, ["kind"] = "POU", ["declaration"] = decl, ["implementation"] = impl,
             });
-        Assert.False(w.IsError == true, $"scratch write failed: {Text(w)}");
+        Assert.False(Failed(w), $"scratch write failed: {Text(w)}");
     }
 
     /// <summary>

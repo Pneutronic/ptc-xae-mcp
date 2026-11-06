@@ -157,6 +157,38 @@ public partial class McpServerTests
     }
 
     [SkippableFact]
+    public async Task PlcSearch_BadParameters_ReturnErrors()
+    {
+        SkipIfNotReachable();
+
+        var empty = GetText(await CallToolAsync("twincat_plc_search", new Dictionary<string, object?> { ["pattern"] = " " }));
+        Assert.Equal("[Error] pattern is required.", empty);
+
+        var scope = GetText(await CallToolAsync("twincat_plc_search",
+            new Dictionary<string, object?> { ["pattern"] = "x", ["scope"] = "body" }));
+        Assert.StartsWith("[Error] Unknown scope 'body'", scope);
+
+        var regex = GetText(await CallToolAsync("twincat_plc_search",
+            new Dictionary<string, object?> { ["pattern"] = "(", ["regex"] = true }));
+        Assert.StartsWith("[Error] pattern is not a valid regular expression", regex);
+    }
+
+    [SkippableFact]
+    public async Task PlcReplaceText_BadSection_ReturnsErrorBeforeTouchingTheProject()
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_plc_replace_text",
+            new Dictionary<string, object?>
+            {
+                ["path"] = "TIPC^Nope^DoesNotExist", ["kind"] = "POU", ["section"] = "body",
+                ["oldText"] = "a", ["newText"] = "b",
+            });
+
+        Assert.Equal("[Error] section must be declaration or implementation.", GetText(result));
+    }
+
+    [SkippableFact]
     public async Task PlcObjects_Rename_EmptyNewName_ReturnsError()
     {
         SkipIfNotReachable();
@@ -169,11 +201,26 @@ public partial class McpServerTests
         Assert.Contains("newName", text);
     }
 
-    // The XAE's "Automatisches Umbenennen über Refactoring" prompt is answered by the rename tools; the answer
+    [SkippableTheory]
+    [InlineData("BANANA", "TIPC^Nope^Target", "Unknown kind 'BANANA'")]
+    [InlineData("FOLDER", "TIPC^Nope^Target", "kind FOLDER cannot be moved")]
+    [InlineData("POU", "", "targetFolderPath is required")]
+    public async Task PlcMove_BadKindOrEmptyTarget_ReturnsErrorBeforeTouchingTheProject(string kind, string target, string expected)
+    {
+        SkipIfNotReachable();
+
+        var result = await CallToolAsync("twincat_plc_move",
+            new Dictionary<string, object?> { ["path"] = "TIPC^Nope^DoesNotExist", ["kind"] = kind, ["targetFolderPath"] = target });
+
+        var text = GetText(result);
+        Assert.StartsWith("[Error]", text);
+        Assert.Contains(expected, text);
+    }
+
+    // The XAE's "Automatisches Umbenennen über Refactoring" prompt is answered by the rename tool; the answer
     // is an explicit, optional boolean that defaults to "Nein" (false).
     [SkippableTheory]
     [InlineData("twincat_plc_rename")]
-    [InlineData("twincat_rename_plc_object")]
     public async Task RenameTools_HaveOptionalBooleanUpdateReferences(string tool)
     {
         SkipIfNotReachable();

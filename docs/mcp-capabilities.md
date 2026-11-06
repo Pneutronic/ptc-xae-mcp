@@ -237,12 +237,14 @@ _No parameters._
 
 ### `twincat_read_coe_dictionary`
 
-Read the CoE offline dictionary for an EtherCAT slave from its ESI file. Returns each object (index, name, access, objectType) and its sub-indexes (subindex, name, dataType, bitSize, defaultValue, defaultText, access, isSetting). Enum-typed sub-indexes include a human-readable defaultText, e.g. 'IIR level 1 (2)'. Read-only; no activated configuration or live controller required. Result: one-line summary + indented JSON (objectCount, objects[]).
+Read the CoE offline dictionary for an EtherCAT slave from its ESI file. Returns each object (index, name, access, objectType) and its sub-indexes (subindex, name, dataType, bitSize, defaultValue, defaultText, access, isSetting). Enum-typed sub-indexes include a human-readable defaultText, e.g. 'IIR level 1 (2)'. Read-only; no activated configuration or live controller required. Result: one-line summary + indented JSON { treePath, slaveType, fallbackNote, total, offset, returned, has_more, next_offset, objects[] }: total counts the objects that pass indexFilter, paged with limit/offset (call again with offset=next_offset while has_more is true).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the EtherCAT slave under TIID, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^-1AI5 (EL3174)'. Get a valid path via twincat_get_fieldbus_topology first. |
 | `indexFilter` | `string?` | `null` | Optional index filter: single index (e.g. '800D') or hex range (e.g. '8000-80FF'). Omit to return all objects. |
+| `limit` | `int?` | `null` | CoE objects per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Objects to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_read_coe_startup`
 
@@ -440,12 +442,13 @@ Add an EtherCAT box/terminal — or a whole subtree/topology — under a parent 
 
 ### `twincat_list_ethercat_box_catalog`
 
-List installable EtherCAT box/terminal types and their vInfo strings for twincat_add_ethercat_box by scanning the local ESI files (<TwinCAT>\3.1\Config\Io\EtherCAT\**\*.xml) — offline, no XAE, no open solution, no hardware. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017), ESI Type (order code), name (English preferred), productCode, revisionNo, vendor and source file. A bare type such as EL1008 is also accepted by twincat_add_ethercat_box (TwinCAT then picks the latest installed revision). Malformed ESI files are skipped and counted. The first scan of the full directory can take several seconds; results are cached per process until an ESI file changes. Result body is a one-line summary followed by indented JSON.
+List installable EtherCAT box/terminal types and their vInfo strings for twincat_add_ethercat_box by scanning the local ESI files (<TwinCAT>\3.1\Config\Io\EtherCAT\**\*.xml) — offline, no XAE, no open solution, no hardware. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017), ESI Type (order code), name (English preferred), productCode, revisionNo, vendor and source file. A bare type such as EL1008 is also accepted by twincat_add_ethercat_box (TwinCAT then picks the latest installed revision). Malformed ESI files are skipped and counted. The first scan of the full directory can take several seconds; results are cached per process until an ESI file changes. Result body is a one-line summary followed by indented JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }. Paged with limit/offset: total counts every match, call again with offset=next_offset while has_more is true.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `filter` | `string?` | `null` | Case-insensitive substring of the ESI Type/vInfo, e.g. 'EL1008', 'EK11' or 'AX52'. Strongly recommended — without it the first maxResults of several thousand types are returned. |
-| `maxResults` | `int` | `EsiCatalogScanner.DefaultMaxResults` | Maximum number of devices returned (default 100, capped at 1000). The summary/JSON report the total match count and whether the list was truncated. |
+| `filter` | `string?` | `null` | Case-insensitive substring of the ESI Type/vInfo, e.g. 'EL1008', 'EK11' or 'AX52'. Strongly recommended — without it the first page of several thousand types is returned. |
+| `limit` | `int?` | `null` | Devices per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Devices to skip, for the next page (next_offset of the previous call). Default 0. |
 | `latestRevisionOnly` | `bool` | `true` | true (default): only the newest revision per product/variant. false: every revision found in the ESI files. |
 
 ### `twincat_remove_ethercat_box`
@@ -475,11 +478,12 @@ Set/override an EtherCAT box's upstream PreviousPort (A/B/C/D) and save. Require
 
 ### `twincat_read_event_logger`
 
-Read the TwinCAT 3 RUNTIME EventLogger (logged events + currently active alarms) via the EventLogger ADS proxy. This is NOT the Visual Studio Error List (use twincat_clear_error_list for that) — it is the runtime event/alarm log: message text, severity, source, timestamps, alarm/confirmation state. Returns JSON { success, loggedCount, activeAlarmCount, message, events[], activeAlarms[] } or an [Error] string. Requires the TwinCAT runtime reachable on the target.
+Read the TwinCAT 3 RUNTIME EventLogger (logged events + currently active alarms) via the EventLogger ADS proxy. This is NOT the Visual Studio Error List (use twincat_clear_error_list for that) — it is the runtime event/alarm log: message text, severity, source, timestamps, alarm/confirmation state. Returns JSON { success, loggedCount, activeAlarmCount, message, total, offset, returned, has_more, next_offset, events[], activeAlarms[] } or an [Error] string. events are the logged events, newest first, paged with limit/offset (call again with offset=next_offset while has_more is true); total is null while the logger holds more events than were read. At most the newest 10000 logged events are searched. activeAlarms is always complete. loggedCount = events read from the logger for this page. Requires the TwinCAT runtime reachable on the target.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `maxEvents` | `uint` | `0` | Max number of logged events to return. 0 or omitted = 100. |
+| `limit` | `int?` | `null` | Logged events per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Logged events to skip, newest first, for the next page (next_offset of the previous call). Default 0. |
 | `minSeverity` | `string?` | `null` | Optional minimum severity filter: Verbose \| Info \| Warning \| Error \| Critical. Omit for all severities. |
 | `amsNetId` | `string?` | `null` | Optional AMS NetId of the target runtime. Omit/empty = local runtime (single-XAE constraint: local only). |
 
@@ -537,7 +541,7 @@ Details of one TwinCAT HMI project: project config (ActiveTheme, Locale, ScaleMo
 
 ### `twincat_hmi_list_mapped_symbols`
 
-List the symbols mapped in a TwinCAT HMI project's engineering server, as the HMI Automation Interface reports them (compare with the offline extraction of stage 33). Per symbol: mappedName (e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'), domain (e.g. ADS), type, dataTypeDisplayName, readOnly, hidden. Filterable by domain and name prefix. CAUTION (verified live): this list is a cached view — a map/unmap done after the project was loaded is NOT reflected, even with refresh=true. For the live state of one symbol use twincat_hmi_read_symbols (SYMBOL_NOT_MAPPED = not mapped). Read-only. Result: one-line summary + indented JSON { hmiProject, total, count, symbols[] }.
+List the symbols mapped in a TwinCAT HMI project's engineering server, as the HMI Automation Interface reports them (compare with the offline extraction of stage 33). Per symbol: mappedName (e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'), domain (e.g. ADS), type, dataTypeDisplayName, readOnly, hidden. Filterable by domain and name prefix. CAUTION (verified live): this list is a cached view — a map/unmap done after the project was loaded is NOT reflected, even with refresh=true. For the live state of one symbol use twincat_hmi_read_symbols (SYMBOL_NOT_MAPPED = not mapped). Read-only. Result: one-line summary + indented JSON { hmiProject, mappedCount, total, offset, returned, has_more, next_offset, symbols[] }: mappedCount = every mapped symbol, total = those that pass the filters, paged with limit/offset (call again with offset=next_offset while has_more is true).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -546,6 +550,8 @@ List the symbols mapped in a TwinCAT HMI project's engineering server, as the HM
 | `namePrefix` | `string?` | `null` | Only symbols whose mapped name starts with this, e.g. 'ADS.PLC1.GVL_HMI.'. Case-insensitive. |
 | `includeHidden` | `bool` | `false` | Include symbols flagged hidden. Default false. |
 | `refresh` | `bool` | `false` | Ask the server to refresh its symbol list before answering. Default false. |
+| `limit` | `int?` | `null` | Symbols per page: default 500, at most 5000 (0 = 5000). |
+| `offset` | `int` | `0` | Symbols to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_hmi_read_symbols`
 
@@ -1142,14 +1148,15 @@ Read the current parameters of an axis. Read-only. Requires XAE running with a s
 
 ### `twincat_list_ads_symbols`
 
-Read-only browse of the ONLINE symbol table of a running PLC / UMR via ADS (no values -- use twincat_read_ads_variables_batch for those). Returns JSON { success, count, truncated, symbols: [{ path, type, size, isPersistent, readOnly, comment }], amsNetId, adsPort } or [Error]. isPersistent is the runtime's IsPersistent flag (VAR_GLOBAL PERSISTENT); RETAIN variables are NOT flagged over ADS. Default amsNetId = the local AMS router's NetId, port 851.
+Read-only browse of the ONLINE symbol table of a running PLC / UMR via ADS (no values -- use twincat_read_ads_variables_batch for those). Returns JSON { success, total, offset, returned, has_more, next_offset, symbols: [{ path, type, size, isPersistent, readOnly, comment }], amsNetId, adsPort } or [Error]. Paged with limit/offset: call again with offset=next_offset while has_more is true. total is null when the walk stopped after 100000 symbols (narrow root or maxDepth). isPersistent is the runtime's IsPersistent flag (VAR_GLOBAL PERSISTENT); RETAIN variables are NOT flagged over ADS. Default amsNetId = the local AMS router's NetId, port 851.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `root` | `string?` | `null` | Symbol to list the children of, e.g. 'GVL_Recipe'. Omit for the top level. |
 | `maxDepth` | `int?` | `null` | How many levels below root to list. Default 1. |
 | `persistentOnly` | `bool` | `false` | Only symbols the runtime flags as persistent. Default false. |
-| `limit` | `int?` | `null` | Maximum entries returned (default 500, max 5000). |
+| `limit` | `int?` | `null` | Symbols per page: default 500, at most 5000 (0 = 5000). |
+| `offset` | `int` | `0` | Symbols to skip, for the next page (next_offset of the previous call). Default 0. |
 | `amsNetId` | `string?` | `null` | Optional AMS Net ID. Omit for the local TwinCAT runtime. |
 | `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
 
@@ -1169,7 +1176,7 @@ Capture the remanent data of a running PLC into a snapshot file (format ptc-pers
 
 ### `twincat_persistent_snapshot_compare`
 
-Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, equalCount, differenceCount, differences[{ path, snapshotPath, type, snapshot, live }], onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] } (lists capped by limit). equal is true when every leaf of the snapshot matches. onlyInSnapshot = orphans with no counterpart on the PLC after pathMap; onlyOnPlc = remanent leaves the snapshot does not have (information only, it does not make equal false). Types are decided by the PLC as it is now (integer widths, REAL/LREAL, STRING/WSTRING are compatible; anything else is a type mismatch).
+Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, equalCount, differenceCount, onlyInSnapshotCount, onlyOnPlcCount, typeMismatchCount, total, offset, returned, has_more, next_offset, differences[{ path, snapshotPath, type, snapshot, live }], onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] }. limit/offset page the four
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1179,7 +1186,8 @@ Compare a snapshot file leaf by leaf with the running PLC (or with another snaps
 | `tmcPath` | `string?` | `null` | Absolute path of the PLC .tmc used to re-select the live remanent set. Omit to find it. |
 | `amsNetId` | `string?` | `null` | Optional AMS Net ID. Omit for the local TwinCAT runtime. |
 | `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
-| `limit` | `int?` | `null` | Cap per result list (default 200). |
+| `limit` | `int?` | `null` | Items per list and page: default 200, at most 5000 (0 = 5000). |
+| `offset` | `int` | `0` | Items to skip in every list, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_persistent_snapshot_restore`
 
@@ -1493,7 +1501,7 @@ Create a PLC instance (I/O image only, no PLC source) from a .tmc module class f
 
 ### `twincat_plc_search`
 
-Search the declarations and implementations of every POU, METHOD, PROPERTY (Get/Set), ACTION, TRANSITION, INTERFACE, DUT and GVL of the open PLC project(s) — instead of reading every element. The text is the one twincat_plc_read returns (unsaved editor changes included). Matching is case-insensitive by default (ST is); regex=true takes a .NET regular expression (^ and $ per line), wholeWord=true skips hits inside longer identifiers. Each hit: element kind and tree path, section, line:column (the line numbers of twincat_plc_read), the element's revision (pass it to twincat_plc_replace_text / twincat_plc_write as expectedRevision) and an excerpt with the hit lines marked '>'. Graphical implementations (SFC, FBD, LD, CFC) are XML and not searched; they are listed as skipped, their declarations are searched. Paged: limit (default 100) and offset; the summary says the next offset.
+Search the declarations and implementations of every POU, METHOD, PROPERTY (Get/Set), ACTION, TRANSITION, INTERFACE, DUT and GVL of the open PLC project(s) — instead of reading every element. The text is the one twincat_plc_read returns (unsaved editor changes included). Matching is case-insensitive by default (ST is); regex=true takes a .NET regular expression (^ and $ per line), wholeWord=true skips hits inside longer identifiers. Each hit: element kind and tree path, section, line:column (the line numbers of twincat_plc_read), the element's revision (pass it to twincat_plc_replace_text / twincat_plc_write as expectedRevision) and an excerpt with the hit lines marked '>'. Graphical implementations (SFC, FBD, LD, CFC) are XML and not searched; they are listed as skipped, their declarations are searched. Paged with limit/offset: the last line gives total, has_more and next_offset.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1505,8 +1513,8 @@ Search the declarations and implementations of every POU, METHOD, PROPERTY (Get/
 | `pathPrefix` | `string?` | `null` | Optional caret-separated tree path: only this element and the elements below it, e.g. a folder or a POU with its members. |
 | `kind` | `string?` | `null` | Optional element kind filter: POU, INTERFACE, DUT, GVL or MEMBER. |
 | `contextLines` | `int` | `1` | Lines of context before and after each hit, 0–10. Default 1. |
-| `limit` | `int` | `100` | Hits per page, 1–1000. Default 100. |
-| `offset` | `int` | `0` | Hits to skip (paging). Default 0. |
+| `limit` | `int?` | `null` | Hits per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Hits to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ### `twincat_plc_replace_text`
 
@@ -2023,15 +2031,15 @@ EXPERIMENTAL — convert a saved TwinCAT Scope recording (.svdx) into an export 
 
 ### `twincat_plc_static_analysis`
 
-Run the PLC Static Analysis (TE1200: SA rules, naming conventions, metrics) on the open PLC project and return the findings compactly — level, rule, file, line, message — so a generate-check-correct loop needs one call. checkAll=true (default) also checks objects no task reaches. The results are read from the SARIF export (TwinCAT >= 3.1.4026.20, written to %LOCALAPPDATA%\ptc-xae-mcp\static-analysis, outside the project); an XAE that cannot export SARIF is answered from the Error List's SA entries and the result says why. settingsFile loads a .csa rule set first. Without a TE1200 license TwinCAT runs only its free subset of rules. The analysis compiles like a build; it saves nothing. Counts and the most frequent rules always cover every finding; the listed findings are filtered by minLevel (default warning) and paged with limit/offset.
+Run the PLC Static Analysis (TE1200: SA rules, naming conventions, metrics) on the open PLC project and return the findings compactly — level, rule, file, line, message — so a generate-check-correct loop needs one call. checkAll=true (default) also checks objects no task reaches. The results are read from the SARIF export (TwinCAT >= 3.1.4026.20, written to %LOCALAPPDATA%\ptc-xae-mcp\static-analysis, outside the project); an XAE that cannot export SARIF is answered from the Error List's SA entries and the result says why. settingsFile loads a .csa rule set first. Without a TE1200 license TwinCAT runs only its free subset of rules. The analysis compiles like a build; it saves nothing. Counts and the most frequent rules always cover every finding; the listed findings are filtered by minLevel (default warning) and paged with limit/offset (the last line gives total, has_more and next_offset).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `checkAll` | `bool` | `true` | True (default): check all objects, also code no task calls. False: only the objects in use. |
 | `settingsFile` | `string?` | `null` | Optional .csa static-analysis settings file to load before the run. |
 | `minLevel` | `string` | `"warning"` | Lowest level listed: error, warning (default) or note. |
-| `limit` | `int` | `100` | Findings per page, 1–1000. Default 100. |
-| `offset` | `int` | `0` | Findings to skip (paging). Default 0. |
+| `limit` | `int?` | `null` | Findings per page: default 100, at most 1000 (0 = 1000). |
+| `offset` | `int` | `0` | Findings to skip, for the next page (next_offset of the previous call). Default 0. |
 
 ## TcUnit
 

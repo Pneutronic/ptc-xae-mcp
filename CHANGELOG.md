@@ -10,6 +10,28 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Breaking
+- **One paging convention for every list tool.** Parameters `limit` and `offset` (default 0). `limit` omitted = the
+  tool's default page, `limit=0` = as many as the tool returns (its maximum), a larger `limit` is cut to the maximum;
+  a negative `limit` or `offset` is refused before anything is read. JSON results carry `total`, `offset`,
+  `returned`, `has_more` and `next_offset` (null on the last page) right before their item list; text results end
+  with the line `Page: offset 0, returned 100 of 340; has_more true, next_offset 100`. Call again with
+  `offset=next_offset` while `has_more` is true. The old parameter names are removed and refused by name with the
+  valid parameters listed.
+
+  | Tool | Old | New (default / maximum) |
+  |---|---|---|
+  | `twincat_list_ethercat_box_catalog` | `maxResults` (100, cap 1000); JSON `totalMatches`, `truncated` | `limit` (100 / 1000), `offset`; `total`, `has_more`, `next_offset` |
+  | `twincat_read_event_logger` | `maxEvents` (0 = 100, no cap) | `limit` (100 / 1000), `offset` on the logged events, newest first; `total` is null while the logger holds more than was read; at most the newest 10000 are searched; `activeAlarms` stays complete; `loggedCount` = events read for this page |
+  | `twincat_list_ads_symbols` | `limit` (500, cap 5000); JSON `count`, `truncated` | `limit` (500 / 5000), `offset`; `total` (null when the walk stopped at 100000 symbols) |
+  | `twincat_persistent_snapshot_compare` | `limit` = cap per list | `limit` (200 / 5000), `offset`: one window over `differences`, `onlyInSnapshot`, `onlyOnPlc`, `typeMismatches`; `total` = the longest list; per-list sizes in `differenceCount`, `onlyInSnapshotCount`, `onlyOnPlcCount` and the new `typeMismatchCount` |
+  | `twincat_hmi_list_mapped_symbols` | no paging; JSON `total` (all mapped), `count` (filtered) | `limit` (500 / 5000), `offset`; `total` = the filtered symbols, `mappedCount` = all mapped (was `total`); `count` removed |
+  | `twincat_read_coe_dictionary` | everything; JSON `objectCount` | `indexFilter` stays, plus `limit` (100 / 1000), `offset`; `objectCount` replaced by `total` |
+  | `twincat_plc_search`, `twincat_plc_static_analysis` | `limit` 1–1000 (0 refused), summary "Showing a–b; more with offset=n" | `limit` (100 / 1000; 0 = 1000), `offset`; the last line is the page footer |
+  | `twincat_plc_list`, `twincat_get_error_list` | `limit` (0 = all), footer only when paged | unchanged |
+
+  Not paged: `twincat_get_log` (`maxChars`) and `twincat_read_scope_file` (`maxPoints`, decimation).
+
 ## [3.1.0] - 2026-11-06
 
 ### Added

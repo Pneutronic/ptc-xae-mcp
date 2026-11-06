@@ -50,8 +50,10 @@ pull-request numbers refer to those.
   blocks the XAE — and classifies each as `known-safe`, `unknown` or `known-destructive` (confirms an activation,
   restart, download, login, delete, safety or license action). `twincat_xae_dialog_answer(id, button)` presses a
   button and reports whether the dialog closed and whether another followed; it refuses a known-destructive dialog
-  and a destructive button on any dialog — a person answers those in the XAE. Both are pure Win32 and answer while
-  another call is blocked by the dialog (verified live with the XAE's reload prompt for a file changed on disk).
+  and a destructive button on any dialog — a person answers those in the XAE. Both use Win32 and UI Automation (so
+  also the shell's WPF prompts such as "save changes?"), no COM, and answer while another call is blocked by the
+  dialog (verified live with the reload prompt for a file changed on disk and with a "save changes?" prompt stacked
+  on a Go To dialog).
 
 ### Changed
 - The most frequent errors name the next step on a second line `Next: …`: no XAE, no solution open, a PLC path that

@@ -116,6 +116,13 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     string SafetyLinkAliasDevice(string aliasDevicePath, string plcSymbolPath);
 
+    /// <summary>
+    /// Test support for the live suite: opens the XAE's Options dialog (Tools > Options) through
+    /// <c>DTE.ExecuteCommand</c>, a COM call that returns only once the dialog is closed — a harmless call held by an
+    /// XAE dialog. Only the diagnostics tool surface calls it.
+    /// </summary>
+    string OpenOptionsDialogAndWait() => throw new NotSupportedException("This session cannot open the XAE Options dialog.");
+
     // ---- nc-axes (Motion) ----
     string DumpTincTree();
     IReadOnlyList<NcTaskEntry> ListNcTasksAxes();

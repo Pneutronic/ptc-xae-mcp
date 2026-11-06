@@ -40,7 +40,7 @@ internal static class ToolCatalog
     private static readonly Dictionary<string, Toolset> Toolsets = Build(
         (Toolset.Meta,
         [
-            "ptc_test_marker", "twincat_get_status", "twincat_get_log", "twincat_stop", "twincat_shutdown",
+            "ptc_test_marker", "ptc_test_hold_xae_dialog", "twincat_get_status", "twincat_get_log", "twincat_stop", "twincat_shutdown",
             "twincat_get_client_info", "twincat_doctor", "twincat_xae_dialogs", "twincat_xae_dialog_answer",
         ]),
         (Toolset.Project,

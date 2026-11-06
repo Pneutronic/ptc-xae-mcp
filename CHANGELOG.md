@@ -19,6 +19,8 @@ pull-request numbers refer to those.
   step (`twincat_xae_dialogs` and `twincat_xae_dialog_answer` still work). When the XAE call returns, its result is
   written to the activity log as `<tool> (late result)` and the next call can run. `twincat_xae_dialogs` names the call
   that waits for a dialog. Calls from the window's own buttons behave as before.
+- `ptc_test_hold_xae_dialog` (only with `--diagnostics`): a test hook for the live suite that opens Tools > Options
+  inside a COM call, so a call held by an XAE dialog can be tested.
 
 ## [3.1.0] - 2026-11-06
 

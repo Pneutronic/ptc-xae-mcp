@@ -329,4 +329,27 @@ public partial class McpServerTests
         Assert.StartsWith("[Error]", text);
         Assert.Contains("phase", text, StringComparison.OrdinalIgnoreCase);
     }
+
+    // ── dialog watcher: the test hook that holds a call on an XAE dialog ──────────
+
+    [SkippableFact]
+    public async Task HoldXaeDialog_WithoutConfirm_OpensNothing()
+    {
+        SkipIfNotReachable();
+        var names = (await _client!.ListToolsAsync()).Select(t => t.Name).ToHashSet();
+        Skip.IfNot(names.Contains("ptc_test_hold_xae_dialog"), "host started without --diagnostics");
+
+        // Without confirm='open' the tool never reaches the XAE.
+        var text = GetText(await CallToolAsync("ptc_test_hold_xae_dialog", new Dictionary<string, object?>()));
+        Assert.Equal("[Error] confirm must be 'open'; nothing was opened.", text);
+    }
+
+    [SkippableFact]
+    public async Task XaeDialogs_AnswersAndNamesNoWaitingCall_WhenNoneIsHeld()
+    {
+        SkipIfNotReachable();
+        var text = GetText(await CallToolAsync("twincat_xae_dialogs"));
+        Assert.DoesNotContain("[Error]", text);
+        Assert.DoesNotContain("Waiting for a dialog", text);
+    }
 }

@@ -11,8 +11,8 @@ projects — through its COM Automation Interface. It runs as a small WinForms
 host application with an embedded local HTTP server; the GUI and the MCP
 tools drive the same underlying TwinCAT session.
 
-Typical uses: read and write PLC source (POUs, GVLs, DUTs), build a project
-and parse the compiler output, manage library references, drive online/login
+Typical uses: read and write PLC source (POUs, GVLs, DUTs) and PLC visualizations,
+build a project and parse the compiler output, manage library references, drive online/login
 and download, read ADS variables, inspect EtherCAT/fieldbus topology, and
 more — see [docs/mcp-capabilities.md](docs/mcp-capabilities.md) for the full,
 generated list of tools with their parameters.

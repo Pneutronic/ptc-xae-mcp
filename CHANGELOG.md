@@ -10,6 +10,32 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- **PLC visualizations (.TcVIS): read, create, change** — four tools in the PLC toolset; new tools, so the next release
+  is a minor version. The content of a visualization is not reachable through the Automation Interface, so the tools
+  read and write its file and let the XAE import it.
+  - `twincat_visu_list_element_types`: the element types and properties the tools understand (needs no XAE).
+  - `twincat_visu_read`: a visualization as JSON — interface (`VAR_IN_OUT`), extent, revision, whether the tools may
+    write it, and every element with id, type, position, size, text and text variable, colours, toggle-colour,
+    invisible, movement and rotation variables, tap variable, tooltip, a Frame's references and parameters. An element
+    the tools do not support appears with type and id as `supported: false`.
+  - `twincat_visu_apply`: create a visualization or replace its whole page from JSON (Rectangle, RoundedRectangle,
+    Ellipse, Line, Label, TextField, Button; `copyFrom` copies any element of the page, also a Frame or a Polygon).
+  - `twincat_visu_edit_elements`: add, update, remove or copy single elements and replace the interface; every other
+    element, also one the tools do not support, stays byte for byte as it was.
+  - Writing: `kind` (VISU) is checked against the node, the request and the file format are checked and the PLC
+    project must have a visualization manager (the XAE adds one silently when a visualization appears without one;
+    the tools refuse and name the `twincat_plc_create` call instead) — all before the automatic logout. Then the
+    editor is closed, the object deleted and the file imported under the same name (object id kept; writing the
+    project file in place raced the XAE's file watcher, and with the editor open it raised a blocking prompt), the
+    project file is read back, the previous file is kept under `%LOCALAPPDATA%\ptc-xae-mcp\visu` and imported again
+    when the XAE refuses the new one. `expectedRevision` refuses a write over a change made since the read.
+  - Verified on TwinCAT 3.1.4026.22: files from 3.1.4024 and 3.1.4026 (TcPlcObject format 1.1.0.1) are written,
+    others are only read. With a target visualization the PLC compiles the written pages without errors.
+  - Not supported yet: creating a Polygon or a Frame from scratch, scaling and internal rotation by variable, the
+    input action "toggle a variable", bars, tables, trends and images (they are read and kept as they are).
+- The neutral live-suite fixture has a visualization manager and a page `VISU_Fixture` (`create_fixture.py`).
+
 ## [3.1.0] - 2026-11-06
 
 ### Breaking

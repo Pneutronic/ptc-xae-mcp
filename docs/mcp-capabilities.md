@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-207 tools, generated from the source attributes — one section per
+211 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -56,6 +56,7 @@
 - [TcUnit](#tcunit) (1)
 - [VariantManagement](#variantmanagement) (2)
 - [VisibleEditor](#visibleeditor) (2)
+- [Visu](#visu) (4)
 - [XaeDialogs](#xaedialogs) (2)
 
 ## ActiveProject
@@ -2139,6 +2140,47 @@ Counterpart to twincat_open_object: tidy up a live demo. For a PLC source object
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `treePath` | `string` |  | Caret-separated tree path of the node to close, same as passed to twincat_open_object. |
+
+## Visu
+
+### `twincat_visu_list_element_types`
+
+List the PLC visualization element types and properties the visu tools read and write, as JSON: per type whether it can be created, its properties (name, kind integer/text/expression/color, meaning), and what is not supported. Needs no XAE.
+
+_No parameters._
+
+### `twincat_visu_read`
+
+Read a PLC visualization (.TcVIS) structured, as JSON: name, file, interface (the VAR_IN_OUT declaration), extent, revision, whether the tools may write the file, and every element with id, type, position, size, text and text variable, colours, toggle-colour/invisible/movement/rotation/tap variables, tooltip, a Frame's referenced visualizations and parameters, and its input actions. An element the tools do not support appears with type, id and supported=false and is never changed. Properties absent from an element use XAE's default. kind must be VISU.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `path` | `string` |  |  |
+| `kind` | `string` | `""` |  |
+
+### `twincat_visu_apply`
+
+Create a PLC visualization or replace its whole page from JSON: { "interface": "VAR_IN_OUT … END_VAR" (optional; kept when omitted), "elements": [ { "type": "Rectangle", "x": 10, "y": 10, "width": 120, "height": 40, "text": "Step %d", "textVariable": "MAIN.fb.nStep", "fillColor": "#C0FFC0" }, … ] }. Types: Rectangle, RoundedRectangle, Ellipse, Line, Label, TextField, Button (twincat_visu_list_element_types lists their properties); a new element needs x, y, width and height. { "copyFrom": <id>, … } copies an element of the page as it was (also a Frame or a Polygon, which cannot be created from scratch) and applies the other properties; a Frame copy takes "frameParameters": { "<parameter>": "<expression>" }. Every existing element is replaced. When the path does not exist, the visualization is created there (parent: a folder or the PLC project node). Element ids are assigned anew and listed in the result.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `path` | `string` |  | The last part is the visualization's name. |
+| `kind` | `string` | `""` |  |
+| `page` | `string?` | `null` | The page as JSON (see the tool description). Alternative to 'pageFile'. |
+| `pageFile` | `string?` | `null` | Path to a file holding the page JSON. Alternative to 'page'. |
+| `expectedRevision` | `string?` | `null` | Revision twincat_visu_read reported. When given, a different current revision refuses the write. |
+
+### `twincat_visu_edit_elements`
+
+Add, change or remove single elements of an existing PLC visualization; every other element (also one the tools do not support) stays as it is. operations is a JSON array run in order, ids as twincat_visu_read reports them: { "op": "add", "element": { "type": "Label", "x": 10, "y": 60, "width": 100, "height": 20, "text": "Ready" } }, { "op": "add", "element": { "copyFrom": 4, "x": 300, "frameParameters": { "fb": "MAIN.fbStation2" } } }, { "op": "update", "id": 3, "set": { "fillColor": "#FF0000", "invisibleVariable": "NOT MAIN.bShow" } } (null resets a property to XAE's default), { "op": "remove", "id": 5 }. interface optionally replaces the VAR_IN_OUT declaration. The whole request is validated before anything changes.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `path` | `string` |  |  |
+| `kind` | `string` | `""` |  |
+| `operations` | `string?` | `null` | JSON array of operations (see the tool description). May be empty when only interface is given. |
+| `@interface` | `string?` | `null` | Optional new interface declaration of the visualization, e.g. "VAR_IN_OUT\ \tfb : FB_Station;\ END_VAR". |
+| `expectedRevision` | `string?` | `null` | Revision twincat_visu_read reported. When given, a different current revision refuses the write. |
 
 ## XaeDialogs
 

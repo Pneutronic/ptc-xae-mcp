@@ -10,10 +10,12 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-11-12
+
 ### Added
-- **PLC visualizations (.TcVIS): read, create, change** — four tools in the PLC toolset; new tools, so the next release
-  is a minor version. The content of a visualization is not reachable through the Automation Interface, so the tools
-  read and write its file and let the XAE import it.
+- **PLC visualizations (.TcVIS): read, create, change** — four new tools in the PLC toolset. The content of a
+  visualization is not reachable through the Automation Interface, so the tools read and write its file and let the
+  XAE import it.
   - `twincat_visu_list_element_types`: the element types and properties the tools understand (needs no XAE).
   - `twincat_visu_read`: a visualization as JSON — interface (`VAR_IN_OUT`), extent, revision, whether the tools may
     write it, and every element with id, type, position, size, text and text variable, colours, toggle-colour,
@@ -617,7 +619,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.0
 [3.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.1.0
 [3.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.0.0
 [2.6.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v2.6.1

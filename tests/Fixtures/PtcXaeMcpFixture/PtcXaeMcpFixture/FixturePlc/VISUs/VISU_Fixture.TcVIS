@@ -1,0 +1,1098 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Visu Name="VISU_Fixture" Id="{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}">
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="VisualObject">
+          <n n="LastVisuLanguageModelEntry" />
+          <v n="UniqueIdGenerator">"25"</v>
+          <o n="VisualElemList" t="VisualElemList">
+            <l n="VisualElementList" t="VisualElemCollection" cet="GenericVisualElem">
+              <o>
+                <a n="ConfiguredComplexInputs" et="ComplexInput" />
+                <l n="Elements" t="ArrayList" />
+                <n n="VisualElementDescription" />
+                <o n="VisualElemMemberList" t="VisualElemMemberList">
+                  <l n="VisualElemMemberList" t="VisualElemMemberCollection" cet="VisualElemMember">
+                    <o>
+                      <v n="Id">564465120L</v>
+                      <v n="Value">"VISU_ST_RECTANGLE"</v>
+                    </o>
+                    <o>
+                      <v n="Id">1649127785L</v>
+                      <v n="Value">10</v>
+                    </o>
+                    <o>
+                      <v n="Id">357335551L</v>
+                      <v n="Value">10</v>
+                    </o>
+                    <o>
+                      <v n="Id">2422045748L</v>
+                      <v n="Value">300</v>
+                    </o>
+                    <o>
+                      <v n="Id">2134141914L</v>
+                      <v n="Value">30</v>
+                    </o>
+                    <o>
+                      <v n="Id">390574330L</v>
+                      <v n="Value">"Step %d"</v>
+                    </o>
+                    <o>
+                      <v n="Id">2477733581L</v>
+                      <v n="Value">"MAIN.fbStepChain.Step"</v>
+                    </o>
+                    <o>
+                      <v n="Id">2812299069L</v>
+                      <v n="Value">4292927712U</v>
+                    </o>
+                    <o>
+                      <v n="Id">493260384L</v>
+                      <v n="Value">4290838464U</v>
+                    </o>
+                    <o>
+                      <v n="Id">2880254039L</v>
+                      <v n="Value">"GVL_Fixture.bEnable"</v>
+                    </o>
+                    <o>
+                      <v n="Id">571893170L</v>
+                      <v n="Value">"step of fbStepChain"</v>
+                    </o>
+                    <o>
+                      <v n="Id">550940142L</v>
+                      <v n="Value">160</v>
+                    </o>
+                    <o>
+                      <v n="Id">1473355128L</v>
+                      <v n="Value">25</v>
+                    </o>
+                    <o>
+                      <v n="Id">494569607L</v>
+                      <v n="Value">4278190080U</v>
+                    </o>
+                    <o>
+                      <v n="Id">3719097617L</v>
+                      <v n="Value">0</v>
+                    </o>
+                    <o>
+                      <v n="Id">823443203L</v>
+                      <v n="Value">"0"</v>
+                    </o>
+                    <o>
+                      <v n="Id">3438453433L</v>
+                      <v n="Value">"708"</v>
+                    </o>
+                  </l>
+                </o>
+                <v n="VisualElementName">"Rectangle"</v>
+                <v n="VisualElementTypeName">"VisuFbElemSimple"</v>
+                <v n="VisualElementIsRectangle">true</v>
+                <v n="VisualElementIdentifier">"GenElemInst_3"</v>
+                <n n="VisualElementOfflinePaintCommands" />
+                <n n="VisualElementFrameInformation" />
+                <d n="VisualElementInputActions" t="Hashtable" />
+                <v n="VisualElementIdentification">{87101c63-b813-4e15-83f4-04be2d901c51}</v>
+                <v n="VisualElementOwningObjectGuid">{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}</v>
+                <a n="LMGuids" et="Guid" />
+                <d n="SubElements" t="Hashtable" />
+                <v n="VisualElementId">3</v>
+                <l n="UserManagementAccessRights" t="ArrayList" />
+                <v n="AnimationDuration">"0"</v>
+                <v n="BringToForeground">""</v>
+                <v n="ElementVersion" t="Byte">0</v>
+                <n n="TabOrder" />
+              </o>
+              <o>
+                <a n="ConfiguredComplexInputs" et="ComplexInput" />
+                <l n="Elements" t="ArrayList" />
+                <n n="VisualElementDescription" />
+                <o n="VisualElemMemberList" t="VisualElemMemberList">
+                  <l n="VisualElemMemberList" t="VisualElemMemberCollection" cet="VisualElemMember">
+                    <o>
+                      <v n="Id">1649127785L</v>
+                      <v n="Value">10</v>
+                    </o>
+                    <o>
+                      <v n="Id">357335551L</v>
+                      <v n="Value">50</v>
+                    </o>
+                    <o>
+                      <v n="Id">2422045748L</v>
+                      <v n="Value">140</v>
+                    </o>
+                    <o>
+                      <v n="Id">2134141914L</v>
+                      <v n="Value">20</v>
+                    </o>
+                    <o>
+                      <v n="Id">390574330L</v>
+                      <v n="Value">"Value"</v>
+                    </o>
+                    <o>
+                      <v n="Id">550940142L</v>
+                      <v n="Value">80</v>
+                    </o>
+                    <o>
+                      <v n="Id">1473355128L</v>
+                      <v n="Value">60</v>
+                    </o>
+                    <o>
+                      <v n="Id">2812299069L</v>
+                      <v n="Value">4294967295U</v>
+                    </o>
+                    <o>
+                      <v n="Id">494569607L</v>
+                      <v n="Value">4278190080U</v>
+                    </o>
+                    <o>
+                      <v n="Id">3719097617L</v>
+                      <v n="Value">0</v>
+                    </o>
+                    <o>
+                      <v n="Id">571893170L</v>
+                      <v n="Value">""</v>
+                    </o>
+                    <o>
+                      <v n="Id">823443203L</v>
+                      <v n="Value">"709"</v>
+                    </o>
+                  </l>
+                </o>
+                <v n="VisualElementName">"Label"</v>
+                <v n="VisualElementTypeName">"VisuFbLabel"</v>
+                <v n="VisualElementIsRectangle">true</v>
+                <v n="VisualElementIdentifier">"GenElemInst_4"</v>
+                <n n="VisualElementOfflinePaintCommands" />
+                <n n="VisualElementFrameInformation" />
+                <d n="VisualElementInputActions" t="Hashtable" />
+                <v n="VisualElementIdentification">{6f236b46-9dc6-480c-8442-32f1d8598665}</v>
+                <v n="VisualElementOwningObjectGuid">{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}</v>
+                <a n="LMGuids" et="Guid" />
+                <d n="SubElements" t="Hashtable" />
+                <v n="VisualElementId">4</v>
+                <l n="UserManagementAccessRights" t="ArrayList" />
+                <v n="AnimationDuration">"0"</v>
+                <v n="BringToForeground">""</v>
+                <v n="ElementVersion" t="Byte">0</v>
+                <n n="TabOrder" />
+              </o>
+              <o>
+                <a n="ConfiguredComplexInputs" et="ComplexInput" />
+                <l n="Elements" t="ArrayList" />
+                <n n="VisualElementDescription" />
+                <o n="VisualElemMemberList" t="VisualElemMemberList">
+                  <l n="VisualElemMemberList" t="VisualElemMemberCollection" cet="VisualElemMember">
+                    <o>
+                      <v n="Id">1649127785L</v>
+                      <v n="Value">160</v>
+                    </o>
+                    <o>
+                      <v n="Id">357335551L</v>
+                      <v n="Value">50</v>
+                    </o>
+                    <o>
+                      <v n="Id">2422045748L</v>
+                      <v n="Value">150</v>
+                    </o>
+                    <o>
+                      <v n="Id">2134141914L</v>
+                      <v n="Value">20</v>
+                    </o>
+                    <o>
+                      <v n="Id">390574330L</v>
+                      <v n="Value">"%.3f"</v>
+                    </o>
+                    <o>
+                      <v n="Id">2477733581L</v>
+                      <v n="Value">"GVL_Fixture.fValue"</v>
+                    </o>
+                    <o>
+                      <v n="Id">550940142L</v>
+                      <v n="Value">235</v>
+                    </o>
+                    <o>
+                      <v n="Id">1473355128L</v>
+                      <v n="Value">60</v>
+                    </o>
+                    <o>
+                      <v n="Id">2812299069L</v>
+                      <v n="Value">4294967295U</v>
+                    </o>
+                    <o>
+                      <v n="Id">494569607L</v>
+                      <v n="Value">4278190080U</v>
+                    </o>
+                    <o>
+                      <v n="Id">3719097617L</v>
+                      <v n="Value">0</v>
+                    </o>
+                    <o>
+                      <v n="Id">571893170L</v>
+                      <v n="Value">""</v>
+                    </o>
+                    <o>
+                      <v n="Id">823443203L</v>
+                      <v n="Value">"710"</v>
+                    </o>
+                  </l>
+                </o>
+                <v n="VisualElementName">"Textfield"</v>
+                <v n="VisualElementTypeName">"VisuFbElemTextfield"</v>
+                <v n="VisualElementIsRectangle">true</v>
+                <v n="VisualElementIdentifier">"GenElemInst_5"</v>
+                <n n="VisualElementOfflinePaintCommands" />
+                <n n="VisualElementFrameInformation" />
+                <d n="VisualElementInputActions" t="Hashtable" />
+                <v n="VisualElementIdentification">{42291962-babb-49d4-9140-9615b735d7e7}</v>
+                <v n="VisualElementOwningObjectGuid">{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}</v>
+                <a n="LMGuids" et="Guid" />
+                <d n="SubElements" t="Hashtable" />
+                <v n="VisualElementId">5</v>
+                <l n="UserManagementAccessRights" t="ArrayList" />
+                <v n="AnimationDuration">"0"</v>
+                <v n="BringToForeground">""</v>
+                <v n="ElementVersion" t="Byte">0</v>
+                <n n="TabOrder" />
+              </o>
+              <o>
+                <a n="ConfiguredComplexInputs" et="ComplexInput" />
+                <l n="Elements" t="ArrayList" />
+                <n n="VisualElementDescription" />
+                <o n="VisualElemMemberList" t="VisualElemMemberList">
+                  <l n="VisualElemMemberList" t="VisualElemMemberCollection" cet="VisualElemMember">
+                    <o>
+                      <v n="Id">1649127785L</v>
+                      <v n="Value">10</v>
+                    </o>
+                    <o>
+                      <v n="Id">357335551L</v>
+                      <v n="Value">80</v>
+                    </o>
+                    <o>
+                      <v n="Id">2422045748L</v>
+                      <v n="Value">300</v>
+                    </o>
+                    <o>
+                      <v n="Id">2134141914L</v>
+                      <v n="Value">0</v>
+                    </o>
+                    <o>
+                      <v n="Id">550940142L</v>
+                      <v n="Value">160</v>
+                    </o>
+                    <o>
+                      <v n="Id">1473355128L</v>
+                      <v n="Value">80</v>
+                    </o>
+                    <o>
+                      <v n="Id">1357360684L</v>
+                      <v n="Value">10</v>
+                    </o>
+                    <o>
+                      <v n="Id">444643082L</v>
+                      <v n="Value">80</v>
+                    </o>
+                    <o>
+                      <v n="Id">1837598620L</v>
+                      <v n="Value">310</v>
+                    </o>
+                    <o>
+                      <v n="Id">669032122L</v>
+                      <v n="Value">80</v>
+                    </o>
+                    <o>
+                      <v n="Id">2812299069L</v>
+                      <v n="Value">4294967295U</v>
+                    </o>
+                    <o>
+                      <v n="Id">494569607L</v>
+                      <v n="Value">4278190080U</v>
+                    </o>
+                    <o>
+                      <v n="Id">3553112287L</v>
+                      <v n="Value">0</v>
+                    </o>
+                    <o>
+                      <v n="Id">571893170L</v>
+                      <v n="Value">""</v>
+                    </o>
+                    <o>
+                      <v n="Id">1051212449L</v>
+                      <o n="Value" t="StructuredTypeNode">
+                        <v n="StructuredTypeNodeIsAnimation">false</v>
+                        <l n="TypeNodeChildren" t="ArrayList">
+                          <o t="DynamicArrayNode">
+                            <o n="DynamicArrayNodeCounterNode" t="BasicTypeNode">
+                              <v n="Flags">0L</v>
+                              <n n="BasicTypeNodeValue" />
+                              <v n="BasicTypeNodeAcceptsExpression">false</v>
+                              <n n="BasicTypeNodeFastAccess" />
+                              <a n="BasicTypeNodeEnumValues" et="String" />
+                              <n n="EnumValueDisplayTextIds" />
+                              <n n="EnumValueVisibilityAttributeValues" />
+                              <n n="EnumValueLibraryId" />
+                              <n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+                              <n n="EnumValueDisplayName" />
+                              <l n="TypeNodeChildren" t="ArrayList" />
+                              <o n="TypeNodeType" t="TypeNodeType">
+                                <v n="TypeClass" t="TypeClass">Int</v>
+                                <v n="QualifiedName">"INT"</v>
+                                <v n="Name">"INT"</v>
+                              </o>
+                              <v n="TypeNodeName">"iPointCount"</v>
+                              <o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+                                <v n="AttrFlags">1UL</v>
+                                <d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+                                  <v>Visible</v>
+                                  <v>False</v>
+                                </d>
+                                <v n="ConvDone">true</v>
+                              </o>
+                              <v n="TypeNodeId" t="Int16">9</v>
+                              <v n="TypeNodeIdLong">3905702663L</v>
+                              <v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+                              <n n="ElementId" />
+                              <n n="DisplayTextId" />
+                              <n n="DescriptionTextID" />
+                              <v n="DescriptionUseParent">false</v>
+                            </o>
+                            <n n="DynamicArrayNodeFastAccess" />
+                            <o n="ChildTemplate" t="StructuredTypeNode">
+                              <v n="StructuredTypeNodeIsAnimation">false</v>
+                              <l n="TypeNodeChildren" t="ArrayList" cet="BasicTypeNode">
+                                <o>
+                                  <v n="Flags">0L</v>
+                                  <n n="BasicTypeNodeValue" />
+                                  <v n="BasicTypeNodeAcceptsExpression">false</v>
+                                  <n n="BasicTypeNodeFastAccess" />
+                                  <a n="BasicTypeNodeEnumValues" et="String" />
+                                  <n n="EnumValueDisplayTextIds" />
+                                  <n n="EnumValueVisibilityAttributeValues" />
+                                  <n n="EnumValueLibraryId" />
+                                  <n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+                                  <n n="EnumValueDisplayName" />
+                                  <l n="TypeNodeChildren" t="ArrayList" />
+                                  <o n="TypeNodeType" t="TypeNodeType">
+                                    <v n="TypeClass" t="TypeClass">Int</v>
+                                    <v n="QualifiedName">"INT"</v>
+                                    <v n="Name">"INT"</v>
+                                  </o>
+                                  <v n="TypeNodeName">"iX"</v>
+                                  <o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+                                    <v n="AttrFlags">0UL</v>
+                                    <d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+                                      <v>DescriptionUseFromParent</v>
+                                      <v></v>
+                                      <v>DisplayTextId</v>
+                                      <v>TL_ElementProperties.XCoordinate</v>
+                                      <v>ieccodeconversion_generategetter</v>
+                                      <v></v>
+                                      <v>ieccodeconversion_generatesetter</v>
+                                      <v></v>
+                                      <v>''NORMAL__COMMENT</v>
+                                      <v> setter and getter for the single member: as we want to have access within the AP, we prefer single properties. See IVisuStructPoint2</v>
+                                      <v>PossibleRealCoordinates</v>
+                                      <v>rX</v>
+                                    </d>
+                                    <v n="ConvDone">false</v>
+                                  </o>
+                                  <v n="TypeNodeId" t="Int16">2</v>
+                                  <v n="TypeNodeIdLong">2727218658L</v>
+                                  <v n="LibraryId">"cmpvisuhandler, 3.5.19.0 (system)"</v>
+                                  <n n="ElementId" />
+                                  <v n="DisplayTextId">"TL_ElementProperties.XCoordinate"</v>
+                                  <n n="DescriptionTextID" />
+                                  <v n="DescriptionUseParent">true</v>
+                                </o>
+                                <o>
+                                  <v n="Flags">0L</v>
+                                  <n n="BasicTypeNodeValue" />
+                                  <v n="BasicTypeNodeAcceptsExpression">false</v>
+                                  <n n="BasicTypeNodeFastAccess" />
+                                  <a n="BasicTypeNodeEnumValues" et="String" />
+                                  <n n="EnumValueDisplayTextIds" />
+                                  <n n="EnumValueVisibilityAttributeValues" />
+                                  <n n="EnumValueLibraryId" />
+                                  <n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+                                  <n n="EnumValueDisplayName" />
+                                  <l n="TypeNodeChildren" t="ArrayList" />
+                                  <o n="TypeNodeType" t="TypeNodeType">
+                                    <v n="TypeClass" t="TypeClass">Int</v>
+                                    <v n="QualifiedName">"INT"</v>
+                                    <v n="Name">"INT"</v>
+                                  </o>
+                                  <v n="TypeNodeName">"iY"</v>
+                                  <o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+                                    <v n="AttrFlags">0UL</v>
+                                    <d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+                                      <v>DescriptionUseFromParent</v>
+                                      <v></v>
+                                      <v>DisplayTextId</v>
+                                      <v>TL_ElementProperties.YCoordinate</v>
+                                      <v>ieccodeconversion_generategetter</v>
+                                      <v></v>
+                                      <v>ieccodeconversion_generatesetter</v>
+                                      <v></v>
+                                      <v>''NORMAL__COMMENT</v>
+                                      <v> setter and getter for the single member: as we want to have access within the AP, we prefer single properties. See IVisuStructPoint2</v>
+                                      <v>PossibleRealCoordinates</v>
+                                      <v>rY</v>
+                                    </d>
+                                    <v n="ConvDone">false</v>
+                                  </o>
+                                  <v n="TypeNodeId" t="Int16">3</v>
+                                  <v n="TypeNodeIdLong">3582541172L</v>
+                                  <v n="LibraryId">"cmpvisuhandler, 3.5.19.0 (system)"</v>
+                                  <n n="ElementId" />
+                                  <v n="DisplayTextId">"TL_ElementProperties.YCoordinate"</v>
+                                  <n n="DescriptionTextID" />
+                                  <v n="DescriptionUseParent">true</v>
+                                </o>
+                              </l>
+                              <o n="TypeNodeType" t="TypeNodeType">
+                                <v n="TypeClass" t="TypeClass">Userdef</v>
+                                <v n="QualifiedName">"VisuStructPoint"</v>
+                                <v n="Name">"VisuStructPoint"</v>
+                              </o>
+                              <v n="TypeNodeName">""</v>
+                              <o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+                                <v n="AttrFlags">0UL</v>
+                                <d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+                                  <v>ieccodeconversion_createarrayfactorymethod</v>
+                                  <v></v>
+                                  <v>ieccodeconversion_createfactorymethod</v>
+                                  <v></v>
+                                  <v>ieccodeconversion_creategenericsetter</v>
+                                  <v></v>
+                                  <v>ieccodeconversion_generate_checksum</v>
+                                  <v></v>
+                                  <v>ieccodeconversion_implementexistinginterface</v>
+                                  <v>_3S.CoDeSys.VisuGenerated.IVisuStructPoint;_3S.CoDeSys.VisuGenerated.IVisuStructPoint2</v>
+                                  <v>m4export_hide</v>
+                                  <v></v>
+                                  <v>''NORMAL__COMMENT</v>
+                                  <v> This type is used also within the runtime system under the name RTS_Point, 
+ defined in SysGraphicBase.h
+ Structure can be used also from end users (Polygon dynamic array)</v>
+                                </d>
+                                <v n="ConvDone">true</v>
+                              </o>
+                              <v n="TypeNodeId" t="Int16">1</v>
+                              <v n="TypeNodeIdLong">3005012099L</v>
+                              <v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+                              <n n="ElementId" />
+                              <n n="DisplayTextId" />
+                              <n n="DescriptionTextID" />
+                              <v n="DescriptionUseParent">false</v>
+                            </o>
+                            <l n="TypeNodeChildren" t="ArrayList" />
+                            <o n="TypeNodeType" t="TypeNodeType">
+                              <v n="TypeClass" t="TypeClass">Userdef</v>
+                              <v n="QualifiedName">"VisuStructPoint"</v>
+                              <v n="Name">"VisuStructPoint"</v>
+                            </o>
+                            <v n="TypeNodeName">"pPoints"</v>
+                            <o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+                              <v n="AttrFlags">0UL</v>
+                              <d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+                                <v>DefaultArraySize</v>
+                                <v>500</v>
+                                <v>DescriptionUseFromParent</v>
+                                <v></v>
+                                <v>DisplayTextId</v>
+                                <v>TL_ElementProperties.Points</v>
+                                <v>''NORMAL__COMMENT</v>
+                                <v> There is no more information than the parent provides</v>
+                              </d>
+                              <v n="ConvDone">true</v>
+                            </o>
+                            <v n="TypeNodeId" t="Int16">8</v>
+                            <v n="TypeNodeIdLong">1976098288L</v>
+                            <v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+                            <n n="ElementId" />
+                            <v n="DisplayTextId">"TL_ElementProperties.Points"</v>
+                            <n n="DescriptionTextID" />
+                            <v n="DescriptionUseParent">true</v>
+                          </o>
+                          <o t="BasicTypeNode">
+                            <v n="Flags">0L</v>
+                            <n n="BasicTypeNodeValue" />
+                            <v n="BasicTypeNodeAcceptsExpression">false</v>
+                            <n n="BasicTypeNodeFastAccess" />
+                            <a n="BasicTypeNodeEnumValues" et="String" />
+                            <n n="EnumValueDisplayTextIds" />
+                            <n n="EnumValueVisibilityAttributeValues" />
+                            <n n="EnumValueLibraryId" />
+                            <n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+                            <n n="EnumValueDisplayName" />
+                            <l n="TypeNodeChildren" t="ArrayList" />
+                            <o n="TypeNodeType" t="TypeNodeType">
+                              <v n="TypeClass" t="TypeClass">Int</v>
+                              <v n="QualifiedName">"INT"</v>
+                              <v n="Name">"INT"</v>
+                            </o>
+                            <v n="TypeNodeName">"iPointCount"</v>
+                            <o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+                              <v n="AttrFlags">1UL</v>
+                              <d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+                                <v>Visible</v>
+                                <v>False</v>
+                              </d>
+                              <v n="ConvDone">true</v>
+                            </o>
+                            <v n="TypeNodeId" t="Int16">9</v>
+                            <v n="TypeNodeIdLong">3905702663L</v>
+                            <v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+                            <n n="ElementId" />
+                            <n n="DisplayTextId" />
+                            <n n="DescriptionTextID" />
+                            <v n="DescriptionUseParent">false</v>
+                          </o>
+                        </l>
+                        <o n="TypeNodeType" t="TypeNodeType">
+                          <v n="TypeClass" t="TypeClass">Userdef</v>
+                          <v n="QualifiedName">"VisuStructPolygon"</v>
+                          <v n="Name">"VisuStructPolygon"</v>
+                        </o>
+                        <v n="TypeNodeName">"m_StaticPositionPolygon"</v>
+                        <o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+                          <v n="AttrFlags">81920UL</v>
+                          <d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+                            <v>AddChildByAttribute</v>
+                            <v>StaticPolygonAngle</v>
+                            <v>Category</v>
+                            <v>Simple|Standard</v>
+                            <v>conditionalshow</v>
+                            <v>visu_elemdev</v>
+                            <v>DescriptionTextId</v>
+                            <v>TL_ElementProperties.Desc_StaticLinePos</v>
+                            <v>DisplayTextId</v>
+                            <v>TL_ElementProperties.Position</v>
+                            <v>DynamicArray</v>
+                            <v></v>
+                            <v>Polygon</v>
+                            <v></v>
+                            <v>PolygonPoints</v>
+                            <v></v>
+                            <v>Storable</v>
+                            <v>True</v>
+                          </d>
+                          <v n="ConvDone">true</v>
+                        </o>
+                        <v n="TypeNodeId" t="Int16">7</v>
+                        <v n="TypeNodeIdLong">1051212449L</v>
+                        <v n="LibraryId">"visuelems, 4.8.0.0 (system)"</v>
+                        <n n="ElementId" />
+                        <v n="DisplayTextId">"TL_ElementProperties.Position"</v>
+                        <v n="DescriptionTextID">"TL_ElementProperties.Desc_StaticLinePos"</v>
+                        <v n="DescriptionUseParent">false</v>
+                      </o>
+                    </o>
+                    <o>
+                      <v n="Id">390574330L</v>
+                      <v n="Value">""</v>
+                    </o>
+                  </l>
+                </o>
+                <v n="VisualElementName">"Line"</v>
+                <v n="VisualElementTypeName">"VisuFbElemLine"</v>
+                <v n="VisualElementIsRectangle">false</v>
+                <v n="VisualElementIdentifier">"GenElemInst_6"</v>
+                <n n="VisualElementOfflinePaintCommands" />
+                <n n="VisualElementFrameInformation" />
+                <d n="VisualElementInputActions" t="Hashtable" />
+                <v n="VisualElementIdentification">{87ca73e2-27de-4591-b56e-9c17af4c901a}</v>
+                <v n="VisualElementOwningObjectGuid">{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}</v>
+                <a n="LMGuids" et="Guid" />
+                <d n="SubElements" t="Hashtable" />
+                <v n="VisualElementId">6</v>
+                <l n="UserManagementAccessRights" t="ArrayList" />
+                <v n="AnimationDuration">"0"</v>
+                <v n="BringToForeground">""</v>
+                <v n="ElementVersion" t="Byte">0</v>
+                <n n="TabOrder" />
+              </o>
+              <o>
+                <a n="ConfiguredComplexInputs" et="ComplexInput" />
+                <l n="Elements" t="ArrayList" />
+                <n n="VisualElementDescription" />
+                <o n="VisualElemMemberList" t="VisualElemMemberList">
+                  <l n="VisualElemMemberList" t="VisualElemMemberCollection" cet="VisualElemMember">
+                    <o>
+                      <v n="Id">564465120L</v>
+                      <v n="Value">"VISU_ST_CIRCLE"</v>
+                    </o>
+                    <o>
+                      <v n="Id">1649127785L</v>
+                      <v n="Value">10</v>
+                    </o>
+                    <o>
+                      <v n="Id">357335551L</v>
+                      <v n="Value">90</v>
+                    </o>
+                    <o>
+                      <v n="Id">2422045748L</v>
+                      <v n="Value">20</v>
+                    </o>
+                    <o>
+                      <v n="Id">2134141914L</v>
+                      <v n="Value">20</v>
+                    </o>
+                    <o>
+                      <v n="Id">2812299069L</v>
+                      <v n="Value">4286611584U</v>
+                    </o>
+                    <o>
+                      <v n="Id">493260384L</v>
+                      <v n="Value">4278239232U</v>
+                    </o>
+                    <o>
+                      <v n="Id">2880254039L</v>
+                      <v n="Value">"GVL_Fixture.bEnable"</v>
+                    </o>
+                    <o>
+                      <v n="Id">550940142L</v>
+                      <v n="Value">20</v>
+                    </o>
+                    <o>
+                      <v n="Id">1473355128L</v>
+                      <v n="Value">100</v>
+                    </o>
+                    <o>
+                      <v n="Id">494569607L</v>
+                      <v n="Value">4278190080U</v>
+                    </o>
+                    <o>
+                      <v n="Id">3719097617L</v>
+                      <v n="Value">0</v>
+                    </o>
+                    <o>
+                      <v n="Id">390574330L</v>
+                      <v n="Value">""</v>
+                    </o>
+                    <o>
+                      <v n="Id">571893170L</v>
+                      <v n="Value">""</v>
+                    </o>
+                  </l>
+                </o>
+                <v n="VisualElementName">"Ellipse"</v>
+                <v n="VisualElementTypeName">"VisuFbElemSimple"</v>
+                <v n="VisualElementIsRectangle">true</v>
+                <v n="VisualElementIdentifier">"GenElemInst_7"</v>
+                <n n="VisualElementOfflinePaintCommands" />
+                <n n="VisualElementFrameInformation" />
+                <d n="VisualElementInputActions" t="Hashtable" />
+                <v n="VisualElementIdentification">{ec299df1-679c-4ab0-a80b-50a6fa148166}</v>
+                <v n="VisualElementOwningObjectGuid">{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}</v>
+                <a n="LMGuids" et="Guid" />
+                <d n="SubElements" t="Hashtable" />
+                <v n="VisualElementId">7</v>
+                <l n="UserManagementAccessRights" t="ArrayList" />
+                <v n="AnimationDuration">"0"</v>
+                <v n="BringToForeground">""</v>
+                <v n="ElementVersion" t="Byte">0</v>
+                <n n="TabOrder" />
+              </o>
+              <o>
+                <a n="ConfiguredComplexInputs" et="ComplexInput" />
+                <l n="Elements" t="ArrayList" />
+                <n n="VisualElementDescription" />
+                <o n="VisualElemMemberList" t="VisualElemMemberList">
+                  <l n="VisualElemMemberList" t="VisualElemMemberCollection" cet="VisualElemMember">
+                    <o>
+                      <v n="Id">564465120L</v>
+                      <v n="Value">"VISU_ST_ROUNDRECT"</v>
+                    </o>
+                    <o>
+                      <v n="Id">1649127785L</v>
+                      <v n="Value">40</v>
+                    </o>
+                    <o>
+                      <v n="Id">357335551L</v>
+                      <v n="Value">90</v>
+                    </o>
+                    <o>
+                      <v n="Id">2422045748L</v>
+                      <v n="Value">60</v>
+                    </o>
+                    <o>
+                      <v n="Id">2134141914L</v>
+                      <v n="Value">20</v>
+                    </o>
+                    <o>
+                      <v n="Id">390574330L</v>
+                      <v n="Value">"Count"</v>
+                    </o>
+                    <o>
+                      <v n="Id">3560616238L</v>
+                      <v n="Value">"GVL_Fixture.nCount"</v>
+                    </o>
+                    <o>
+                      <v n="Id">2496894244L</v>
+                      <v n="Value">"NOT GVL_Fixture.bEnable"</v>
+                    </o>
+                    <o>
+                      <v n="Id">550940142L</v>
+                      <v n="Value">70</v>
+                    </o>
+                    <o>
+                      <v n="Id">1473355128L</v>
+                      <v n="Value">100</v>
+                    </o>
+                    <o>
+                      <v n="Id">2812299069L</v>
+                      <v n="Value">4294967295U</v>
+                    </o>
+                    <o>
+                      <v n="Id">494569607L</v>
+                      <v n="Value">4278190080U</v>
+                    </o>
+                    <o>
+                      <v n="Id">3719097617L</v>
+                      <v n="Value">0</v>
+                    </o>
+                    <o>
+                      <v n="Id">571893170L</v>
+                      <v n="Value">""</v>
+                    </o>
+                    <o>
+                      <v n="Id">823443203L</v>
+                      <v n="Value">"711"</v>
+                    </o>
+                  </l>
+                </o>
+                <v n="VisualElementName">"Rounded Rectangle"</v>
+                <v n="VisualElementTypeName">"VisuFbElemSimple"</v>
+                <v n="VisualElementIsRectangle">true</v>
+                <v n="VisualElementIdentifier">"GenElemInst_8"</v>
+                <n n="VisualElementOfflinePaintCommands" />
+                <n n="VisualElementFrameInformation" />
+                <d n="VisualElementInputActions" t="Hashtable" />
+                <v n="VisualElementIdentification">{5a40a12a-b188-4e22-bb95-9bf89166f81d}</v>
+                <v n="VisualElementOwningObjectGuid">{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}</v>
+                <a n="LMGuids" et="Guid" />
+                <d n="SubElements" t="Hashtable" />
+                <v n="VisualElementId">8</v>
+                <l n="UserManagementAccessRights" t="ArrayList" />
+                <v n="AnimationDuration">"0"</v>
+                <v n="BringToForeground">""</v>
+                <v n="ElementVersion" t="Byte">0</v>
+                <n n="TabOrder" />
+              </o>
+              <o>
+                <a n="ConfiguredComplexInputs" et="ComplexInput" />
+                <l n="Elements" t="ArrayList" />
+                <n n="VisualElementDescription" />
+                <o n="VisualElemMemberList" t="VisualElemMemberList">
+                  <l n="VisualElemMemberList" t="VisualElemMemberCollection" cet="VisualElemMember">
+                    <o>
+                      <v n="Id">1649127785L</v>
+                      <v n="Value">210</v>
+                    </o>
+                    <o>
+                      <v n="Id">357335551L</v>
+                      <v n="Value">120</v>
+                    </o>
+                    <o>
+                      <v n="Id">2422045748L</v>
+                      <v n="Value">100</v>
+                    </o>
+                    <o>
+                      <v n="Id">2134141914L</v>
+                      <v n="Value">30</v>
+                    </o>
+                    <o>
+                      <v n="Id">390574330L</v>
+                      <v n="Value">"Enable"</v>
+                    </o>
+                    <o>
+                      <v n="Id">1647042231L</v>
+                      <v n="Value">"GVL_Fixture.bEnable"</v>
+                    </o>
+                    <o>
+                      <v n="Id">550940142L</v>
+                      <v n="Value">260</v>
+                    </o>
+                    <o>
+                      <v n="Id">1473355128L</v>
+                      <v n="Value">135</v>
+                    </o>
+                    <o>
+                      <v n="Id">2812299069L</v>
+                      <v n="Value">4294967295U</v>
+                    </o>
+                    <o>
+                      <v n="Id">494569607L</v>
+                      <v n="Value">4278190080U</v>
+                    </o>
+                    <o>
+                      <v n="Id">3719097617L</v>
+                      <v n="Value">0</v>
+                    </o>
+                    <o>
+                      <v n="Id">571893170L</v>
+                      <v n="Value">""</v>
+                    </o>
+                    <o>
+                      <v n="Id">823443203L</v>
+                      <v n="Value">"712"</v>
+                    </o>
+                  </l>
+                </o>
+                <v n="VisualElementName">"Button"</v>
+                <v n="VisualElementTypeName">"VisuFbElemButton"</v>
+                <v n="VisualElementIsRectangle">true</v>
+                <v n="VisualElementIdentifier">"GenElemInst_9"</v>
+                <n n="VisualElementOfflinePaintCommands" />
+                <n n="VisualElementFrameInformation" />
+                <d n="VisualElementInputActions" t="Hashtable" />
+                <v n="VisualElementIdentification">{101f81d0-ab76-4b25-84be-33bb71851fa0}</v>
+                <v n="VisualElementOwningObjectGuid">{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}</v>
+                <a n="LMGuids" et="Guid" />
+                <d n="SubElements" t="Hashtable" />
+                <v n="VisualElementId">9</v>
+                <l n="UserManagementAccessRights" t="ArrayList" />
+                <v n="AnimationDuration">"0"</v>
+                <v n="BringToForeground">""</v>
+                <v n="ElementVersion" t="Byte">0</v>
+                <n n="TabOrder" />
+              </o>
+            </l>
+            <v n="BackgroundBitmapId">""</v>
+            <v n="BackgroundColor">16777215</v>
+            <o n="Background" t="BackgroundSettings">
+              <n n="BgGradient" />
+              <n n="BgNamedColor" />
+              <v n="BgBmpId">""</v>
+              <v n="BgUseBmp">false</v>
+              <v n="BgColor">false</v>
+              <v n="BgUseColor">16777215</v>
+              <v n="BgUseGradient">false</v>
+            </o>
+            <v n="AllElementsHaveDynamicVisibility">false</v>
+          </o>
+          <o n="GeneratedLMMDescriptions" t="GeneratedLanguageModelEntriesData">
+            <o n="GeneratedVisuFbDescription" t="GenericFbDescription">
+              <d n="FbMethods" t="CaseInsensitiveHashtable_1" ckt="String" cvt="Guid">
+                <v>AreAllElementsHidden</v>
+                <v>4d599bbb-a0e2-55a4-8a7f-09eeb36f3805</v>
+                <v>ContainsPoint</v>
+                <v>9d9db024-2f75-485f-bc38-7f7ad3dff0da</v>
+                <v>Destruct</v>
+                <v>0987fdd0-b3ed-4839-b2f1-eabc6045e19d</v>
+                <v>ElementInfo</v>
+                <v>748f648b-a3bc-4d46-b22b-28f99374bfb6</v>
+                <v>FB_Exit</v>
+                <v>6b0f8f6f-8012-4309-b3a9-667a4bcf0f0e</v>
+                <v>FB_Reinit</v>
+                <v>b9018d36-e927-4523-b7be-5960e68c9904</v>
+                <v>GetCallerNamespace</v>
+                <v>7494492d-2bf3-59ad-8546-c5928a537cb2</v>
+                <v>GetClientData</v>
+                <v>51a0d6dc-1a10-4558-b439-71d6a55228ad</v>
+                <v>GetDialogInterface</v>
+                <v>b0c6ed8a-f390-4341-be5f-59e872255ef0</v>
+                <v>GetDialogInterfaceSize</v>
+                <v>a20a09b4-d2aa-43c6-abf2-db99dc150390</v>
+                <v>GetElementArray</v>
+                <v>a4b630d1-d1b8-41fc-b6fb-60387d72b47b</v>
+                <v>GetElementIdArray</v>
+                <v>48ed0c36-8534-48bd-a79c-ea6b93fc834e</v>
+                <v>GetElementName</v>
+                <v>c77ac381-399f-5ab5-8802-47fae058ae71</v>
+                <v>GetInitializeVersion</v>
+                <v>34c26490-ab07-49e3-8c5e-4785dcafbc22</v>
+                <v>GetInstance</v>
+                <v>e90199d7-3fac-4a89-ab0b-8cbf078f51a0</v>
+                <v>GetLocalUsergroup</v>
+                <v>5296114d-3201-4ee5-bf73-1612af2fd914</v>
+                <v>GetName</v>
+                <v>8ee8db69-88b5-4531-8292-48c1ff93d298</v>
+                <v>GetNamespace</v>
+                <v>0a6742a3-eb40-4af1-a807-681c469a1f41</v>
+                <v>GetResult</v>
+                <v>0fba18dc-ced6-4c15-9ca4-2722c7b145d3</v>
+                <v>GetSize</v>
+                <v>db4b96b4-8884-498b-8345-b2903a03b9a7</v>
+                <v>GetSurroundingRect</v>
+                <v>d799c846-4887-4dbd-896d-9834a1a1d15a</v>
+                <v>GetTabOrderIdArray</v>
+                <v>0a3e4f41-7867-57eb-ba93-310b47353095</v>
+                <v>GetText</v>
+                <v>6538c5e2-af1f-45ee-90fd-29916af1c12e</v>
+                <v>GetTextProperties</v>
+                <v>be2e0d19-3a81-4258-9ec9-61568d5339e7</v>
+                <v>GetTooltip</v>
+                <v>205a4c8d-e240-400d-be4f-b208a59e0652</v>
+                <v>GetTranslator</v>
+                <v>99539e74-7911-45a6-9a31-fece41e579ab</v>
+                <v>GetUpdateRects</v>
+                <v>f1a7a775-7753-43ae-8033-5d2d338141eb</v>
+                <v>HandleInput</v>
+                <v>ef9ef602-2e1d-4f90-97c1-e0027bed3f7a</v>
+                <v>HasInputAccess</v>
+                <v>baffea20-3f82-4022-8d14-66cf0b87b3a7</v>
+                <v>HasInputAccessIntern</v>
+                <v>5c78d855-2c5c-5ab2-a558-491b0cf469a9</v>
+                <v>HasVisibilityAccess</v>
+                <v>e75e0ef2-32f4-42df-8333-3c67d1612d97</v>
+                <v>HasVisibilityAccessIntern</v>
+                <v>3dbb0755-ed63-5842-87c4-4d03e4703dab</v>
+                <v>Initialize</v>
+                <v>9cfc2a74-56a7-41c9-8d42-e0a789c1cb83</v>
+                <v>IsAntialiasingInactive</v>
+                <v>d8457ba3-641a-4888-949f-ab7928fc8cf4</v>
+                <v>Paint</v>
+                <v>e145139b-0176-4afe-ab52-d72bac9c1543</v>
+                <v>SetClientData</v>
+                <v>63a4a1ec-042a-42c4-9015-ac0df3ebe761</v>
+                <v>SetContainerSize</v>
+                <v>044b6d5f-bef8-5ff7-aed7-9ee874eb67b4</v>
+                <v>SetDialogInterface</v>
+                <v>94d41846-07cb-4435-b03d-2b7d39131094</v>
+                <v>SetResult</v>
+                <v>450180f8-666d-4fc4-9622-37e99aca158e</v>
+                <v>SetStaticState</v>
+                <v>446020c1-c0eb-4e75-9d13-4ce01029dd5c</v>
+                <v>SetVisuFlagsInternal</v>
+                <v>afe089be-9b69-43cb-9e1f-eec2bf20ae03</v>
+                <v>Update</v>
+                <v>d0544e3c-5bf9-4765-8c39-130fad8b590d</v>
+              </d>
+              <d n="FbProperties" t="CaseInsensitiveHashtable_1" ckt="String" cvt="Guid">
+                <v>__getContainer</v>
+                <v>e3abcc49-7282-41d9-b477-8d35afa520ac</v>
+                <v>__getVisu</v>
+                <v>01dfccd7-f2ea-4450-a29f-2cb49be6d13c</v>
+              </d>
+              <v n="FbName">"NotImportant"</v>
+              <v n="FbGuid">{4e4277b3-29d8-4ce6-9de1-2b0ca0bbbe8d}</v>
+            </o>
+            <v n="GeneratedGlobalVisuVarsGuid">{d621e309-5c3a-41bb-9ec4-47eae77060d7}</v>
+            <v n="GeneratedGlobalTheVisuVarlistGuid">{0db9d97d-d571-4695-bb63-f72c91d4da49}</v>
+            <v n="GeneratedGlobalVisuConstants">{654c1ad3-bc79-4013-918c-5e64fa2fd943}</v>
+            <d n="GeneratedAllElementsEntries" t="Hashtable" />
+            <o n="VisuRegDesc" t="GenericFbDescription">
+              <d n="FbMethods" t="CaseInsensitiveHashtable_1" ckt="String" cvt="Guid">
+                <v>FB_Exit</v>
+                <v>82e091f8-26f1-48b8-999a-57752a7764d8</v>
+                <v>FB_Init</v>
+                <v>c04f7557-a855-48e2-a51a-3b8f370ef505</v>
+                <v>FB_Reinit</v>
+                <v>5b364391-4bd2-4219-8ba9-c8991594fb9a</v>
+              </d>
+              <d n="FbProperties" t="CaseInsensitiveHashtable_1" />
+              <v n="FbName">"NotImportant"</v>
+              <v n="FbGuid">{beb3a002-8e89-4ce9-8748-76cbb06b4464}</v>
+            </o>
+            <v n="VisuRegisterGvl">{9523dc70-29f2-45d0-b394-ea78055c779c}</v>
+            <n n="SettingsPou" />
+            <n n="MemManPou" />
+            <o n="InputsPou" t="GenericFbDescription">
+              <d n="FbMethods" t="CaseInsensitiveHashtable_1" ckt="String" cvt="Guid">
+                <v>abstrGetDefaultCursor</v>
+                <v>ab285d45-f263-40f8-b7ab-c3912770b3c2</v>
+                <v>ExecuteDialogClosed</v>
+                <v>71f50ea7-9f33-49ea-8020-21e87c4d7a0a</v>
+                <v>ExecuteKeyDown</v>
+                <v>79aa0c82-599b-4d05-875a-60f5ab9240f5</v>
+                <v>ExecuteKeyUp</v>
+                <v>783b8869-b938-4a2f-8d83-78eb57a47d86</v>
+                <v>ExecuteLooseCapture</v>
+                <v>c0f63cd2-8024-4ade-8fdb-315ceb4bc3e1</v>
+                <v>ExecuteMouseClick</v>
+                <v>44fc1975-5f2a-4fde-99aa-89c0fa7a6da0</v>
+                <v>ExecuteMouseDblClick</v>
+                <v>7be678e2-a4a6-442d-a39d-803b19d76daf</v>
+                <v>ExecuteMouseDown</v>
+                <v>f71f18c1-0bd9-4dde-956c-ac2910c2fbb6</v>
+                <v>ExecuteMouseEnter</v>
+                <v>d0d8f9bc-2438-4a99-951e-85c9b6514332</v>
+                <v>ExecuteMouseLeave</v>
+                <v>092568cc-f818-49ff-b46d-4420c489d4a6</v>
+                <v>ExecuteMouseMove</v>
+                <v>140f5449-ca77-4ef7-9a96-9028d625d21b</v>
+                <v>ExecuteMouseUp</v>
+                <v>77ed714e-eee0-46a7-89a5-fe971c60aace</v>
+                <v>ExecuteValueChanged</v>
+                <v>d17aea6c-ac72-425e-b408-ccf1b0b14ebb</v>
+                <v>GetElementInfo</v>
+                <v>965aeb2d-304e-4a78-bc91-37e40d84aa86</v>
+                <v>Initialize</v>
+                <v>8405f5bf-79c2-4b8e-9536-43e0242b28c7</v>
+              </d>
+              <d n="FbProperties" t="CaseInsensitiveHashtable_1" />
+              <v n="FbName">"NotImportant"</v>
+              <v n="FbGuid">{824dadfe-217c-44bd-80ce-f0233487ab23}</v>
+            </o>
+            <v n="DialogDut">{2cd7f805-b5ea-4608-9216-d386c4597b45}</v>
+          </o>
+          <v n="LastUsedIdForIdentifier">0</v>
+          <o n="TextDocument" t="TextDocument">
+            <v n="TextBlobForSerialisation">"VAR_IN_OUT
+	
+END_VAR"</v>
+            <n n="LineInfoPersistence" />
+          </o>
+          <v n="GvlCreated">false</v>
+          <n n="LMEntry" />
+          <v n="ProfileCompatibilityId">4140216668L</v>
+          <v n="LMVerMinor">0</v>
+          <v n="LMVerMajor">1</v>
+          <o n="Hotkeys" t="HotkeyConfiguration">
+            <v n="IdMin">481037385728L</v>
+            <v n="IdMax">549755813887L</v>
+            <v n="Id">481037385728L</v>
+            <v n="IdMask">549754765312L</v>
+            <v n="IdStep">1048576L</v>
+            <l2 n="Inputs" />
+          </o>
+          <o n="VisuSizeManager" t="VisualObjectSizeManager">
+            <n n="Size" />
+            <v n="Version">2</v>
+          </o>
+          <o n="FrameInterfaceDataModel" t="HierarchicalProperties">
+            <l2 n="HierarchicalProperties" />
+          </o>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="BackgroundSettings">{1038f12c-dd4b-4f96-87a3-a350fe8f3552}</Type>
+        <Type n="BasicTypeNode">{f7e1e748-ea0f-4fcb-b563-94837ee17e8d}</Type>
+        <Type n="Boolean">System.Boolean</Type>
+        <Type n="Byte">System.Byte</Type>
+        <Type n="CaseInsensitiveHashtable">{02a85e84-ef2d-46fc-93f2-acb0bbff3eda}</Type>
+        <Type n="CaseInsensitiveHashtable_1">{7df88604-7ac5-4e36-91c4-55e4fdad3e68}</Type>
+        <Type n="ComplexInput">{1de566f6-72a7-494c-9353-9a418172c96e}</Type>
+        <Type n="DynamicArrayNode">{6c16f79c-dd98-4c29-b3ba-7042e3055542}</Type>
+        <Type n="GeneratedLanguageModelEntriesData">{703465dc-4679-4ff2-bcc3-c57d0a204da3}</Type>
+        <Type n="GenericFbDescription">{40d6dd8d-dfd0-493a-8e29-c9a35e1e6539}</Type>
+        <Type n="GenericVisualElem">{f86c2928-8614-4cca-824b-e819ac4d58c4}</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="Hashtable">System.Collections.Hashtable</Type>
+        <Type n="HierarchicalProperties">{af53e824-e51f-4be1-b210-d001ef8efbd1}</Type>
+        <Type n="HotkeyConfiguration">{6b108d46-58af-4e41-a3f4-174d8f160cc4}</Type>
+        <Type n="Int16">System.Int16</Type>
+        <Type n="Int32">System.Int32</Type>
+        <Type n="Int64">System.Int64</Type>
+        <Type n="String">System.String</Type>
+        <Type n="StructuredTypeNode">{503c5b2e-e80e-4ee7-ae00-c5b93a62b1aa}</Type>
+        <Type n="TextDocument">{f3878285-8e4f-490b-bb1b-9acbb7eb04db}</Type>
+        <Type n="TypeClass">{16f7aa24-038f-444e-9d81-b001bc091d35}</Type>
+        <Type n="TypeNodeAttributes2">{c1464dbe-c10d-4717-be8f-63efe8638434}</Type>
+        <Type n="TypeNodeType">{b12a9636-e818-4598-ae0d-fb6a2446102c}</Type>
+        <Type n="UInt32">System.UInt32</Type>
+        <Type n="UInt64">System.UInt64</Type>
+        <Type n="VisualElemCollection">{ef9d0b20-c96e-48db-b361-2ded4063150e}</Type>
+        <Type n="VisualElemList">{f285c9a3-7019-446b-b98c-ccec3a0af8fa}</Type>
+        <Type n="VisualElemMember">{c694e3a2-5c0b-4177-ab35-cb06bd5a6a02}</Type>
+        <Type n="VisualElemMemberCollection">{a4b83bea-3742-489c-9fe8-d96d68dba7ab}</Type>
+        <Type n="VisualElemMemberList">{17e26cd1-bb9b-47fe-a3d5-18fcd63b9c96}</Type>
+        <Type n="VisualObject">{f18bec89-9fef-401d-9953-2f11739a6808}</Type>
+        <Type n="VisualObjectSizeManager">{5f612b0e-b404-455f-8177-27864e9f5332}</Type>
+      </TypeList>
+    </XmlArchive>
+  </Visu>
+</TcPlcObject>

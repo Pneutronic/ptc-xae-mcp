@@ -69,4 +69,23 @@ internal sealed partial class TwinCatMcpTools
                 return new VisuCoordinator(bridge.Dispatcher.Session).Apply(path, kind, input.Text, expectedRevision)
                        + SourceTextInput.FormatNotes(input);
             }), cancellationToken);
+
+    [McpServerTool(Name = "twincat_visu_edit_elements", ReadOnly = false, Destructive = true)]
+    [Description("Add, change or remove single elements of an existing PLC visualization; every other element (also one the tools do not " +
+                 "support) stays as it is. operations is a JSON array run in order, ids as twincat_visu_read reports them: " +
+                 "{ \"op\": \"add\", \"element\": { \"type\": \"Label\", \"x\": 10, \"y\": 60, \"width\": 100, \"height\": 20, \"text\": \"Ready\" } }, " +
+                 "{ \"op\": \"add\", \"element\": { \"copyFrom\": 4, \"x\": 300, \"frameParameters\": { \"fb\": \"MAIN.fbStation2\" } } }, " +
+                 "{ \"op\": \"update\", \"id\": 3, \"set\": { \"fillColor\": \"#FF0000\", \"invisibleVariable\": \"NOT MAIN.bShow\" } } (null resets a " +
+                 "property to XAE's default), { \"op\": \"remove\", \"id\": 5 }. interface optionally replaces the VAR_IN_OUT declaration. " +
+                 "The whole request is validated before anything changes. " + VisuWriteRules)]
+    public string VisuEditElements(
+        [Description(VisuPathHelp)] string path,
+        [Description(VisuKindHelp)] string kind = "",
+        [Description("JSON array of operations (see the tool description). May be empty when only interface is given.")] string? operations = null,
+        [Description("Optional new interface declaration of the visualization, e.g. \"VAR_IN_OUT\\n\\tfb : FB_Station;\\nEND_VAR\".")] string? @interface = null,
+        [Description("Revision twincat_visu_read reported. When given, a different current revision refuses the write.")] string? expectedRevision = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_visu_edit_elements", new { path, kind, operations, @interface, expectedRevision }, () =>
+            bridge.Dispatcher.Run(() =>
+                new VisuCoordinator(bridge.Dispatcher.Session).Edit(path, kind, operations ?? "[]", @interface, expectedRevision)), cancellationToken);
 }

@@ -104,4 +104,38 @@ public partial class McpServerTests
 
         Assert.StartsWith("[Error] The visu tools work on kind VISU", text);
     }
+
+    [SkippableFact]
+    public async Task Visu_EditElements_InvalidOperations_AreRefused()
+    {
+        SkipIfNotReachable();
+
+        var notJson = GetText(await CallToolAsync("twincat_visu_edit_elements", new Dictionary<string, object?>
+        {
+            ["path"] = VisuPath, ["kind"] = "VISU", ["operations"] = "[ { \"op\": ",
+        }));
+        Assert.StartsWith("[Error] operations is not valid JSON", notJson);
+
+        var unknownOp = GetText(await CallToolAsync("twincat_visu_edit_elements", new Dictionary<string, object?>
+        {
+            ["path"] = VisuPath, ["kind"] = "VISU", ["operations"] = """[ { "op": "rotate", "id": 1 } ]""",
+        }));
+        Assert.Contains("unknown op 'rotate'", unknownOp);
+    }
+
+    [SkippableFact]
+    public async Task Visu_EditElements_WithoutAnOpenProject_SaysSo()
+    {
+        SkipIfNotReachable();
+
+        // A mutating tool: the guard only calls it when no solution is open.
+        var text = GetText(await CallToolAsync("twincat_visu_edit_elements", new Dictionary<string, object?>
+        {
+            ["path"] = VisuPath, ["kind"] = "VISU", ["operations"] = """[ { "op": "remove", "id": 1 } ]""",
+        }));
+
+        Assert.StartsWith("[Error]", text);
+        Assert.True(text.Contains("No solution is currently open", StringComparison.Ordinal)
+                    || text.Contains("XAE", StringComparison.Ordinal), text);
+    }
 }

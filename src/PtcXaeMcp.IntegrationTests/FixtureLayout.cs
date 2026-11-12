@@ -75,6 +75,17 @@ public static class FixtureLayout
     public static string FolderMembersPouPath => PousFolder + "^FB_FolderMembers";
     public const string FolderMembersFolder = "Members";
 
+    // ── PLC visualization (created by create_fixture.py) ─────────────────────
+    public static string VisusFolder => PlcRoot + "^VISUs";
+    /// <summary>The visualization manager under the PLC project node (the integrated visualization needs it).</summary>
+    public static string VisuManagerPath => PlcRoot + "^VisualizationManager";
+    /// <summary>
+    /// A page as XAE saved it: Rectangle (text "Step %d" bound to <see cref="StepChainStepMember"/>), Label, TextField,
+    /// Line, Ellipse, RoundedRectangle and Button, bound to GVL_Fixture symbols. Only read or written back unchanged.
+    /// </summary>
+    public static string FixtureVisuPath => VisusFolder + "^VISU_Fixture";
+    public const int FixtureVisuElementCount = 7;
+
     // ── DUTs / GVL (created by create_fixture.py) ─────────────────────────────
 
     /// <summary>ENUM DUT <c>E_FixtureMode</c> (referenced by MAIN — read it, never edit it).</summary>

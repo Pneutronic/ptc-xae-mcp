@@ -167,6 +167,8 @@
     <EmbeddedResource Include="Assets\logo.png" LogicalName="PtcXaeMcp.WinForms.Assets.logo.png" />
     <!-- MCP prompt texts (McpPrompts), one file per prompt, looked up by file name. -->
     <EmbeddedResource Include="Mcp\Prompts\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.%(Filename).md" />
+    <!-- The point list of a visualization line as XAE 4026.22 writes it (VisuElements.EnsureLinePoints). -->
+    <EmbeddedResource Include="TwinCat\Visu\LinePoints.xml" LogicalName="PtcXaeMcp.WinForms.Visu.LinePoints.xml" />
   </ItemGroup>
 
   <!-- xae-event-logger: TC3 EventLogger ADS proxy (managed interop, no VS dep).

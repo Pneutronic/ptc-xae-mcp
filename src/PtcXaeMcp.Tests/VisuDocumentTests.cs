@@ -168,15 +168,34 @@ public sealed class VisuCatalogTests
     }
 
     [Fact]
-    public void EveryTypeHasGeometryTooltipAndInvisible_AndOnlyKnownProperties()
+    public void EveryTypeHasGeometryAndInvisible_AndOnlyKnownProperties()
     {
         foreach (var t in VisuCatalog.Types)
         {
-            t.Members.Keys.Should().Contain(["x", "y", "width", "height", "tooltip", "invisibleVariable"], t.Type);
+            t.Members.Keys.Should().Contain(["x", "y", "width", "height", "invisibleVariable"], t.Type);
             t.Members.Keys.Should().OnlyContain(k => VisuCatalog.Property(k) != null, t.Type);
+            t.Members.Keys.Should().NotContain(["tooltip", "tapVariable"], "neither showed on the running PLC");
         }
-        VisuCatalog.TypeByApiName("button")!.Members["tapVariable"].Should().Be(VisuCatalog.ButtonTapVariable);
-        VisuCatalog.TypeByApiName("Rectangle")!.Members["tapVariable"].Should().Be(VisuCatalog.TapVariable);
+        VisuCatalog.Properties.Select(p => p.Name).Should().OnlyContain(n => VisuCatalog.Types.Any(t => t.Has(n)), "every property belongs to a type");
+    }
+
+    [Fact]
+    public void MemberIds_AreTheOnesSeenWorkingOnThePlc()
+    {
+        var rect = VisuCatalog.TypeByApiName("Rectangle")!.Members;
+        rect["toggleColorVariable"].Should().Be(1999528970u);
+        rect["invisibleVariable"].Should().Be(2880254039u);
+        rect["alarmFillColor"].Should().Be(493260384u);
+        rect["alarmFrameColor"].Should().Be(135947015u);
+        rect["fillColorVariable"].Should().Be(401380312u);
+        rect["frameColorVariable"].Should().Be(3450524324u);
+        rect["textColorVariable"].Should().Be(55702900u);
+        rect.Values.Should().NotContain(2496894244u, "that member deactivates the inputs (drawn greyed), it does not hide");
+        VisuCatalog.TypeByApiName("Line")!.Members.Keys.Should().BeEquivalentTo(
+            ["x", "y", "width", "height", "invisibleVariable", "lineColor", "moveXVariable", "moveYVariable"]);
+        VisuCatalog.TypeByApiName("Label")!.Members.Keys.Should().BeEquivalentTo(["x", "y", "width", "height", "invisibleVariable", "text"]);
+        VisuCatalog.TypeByApiName("Button")!.Members.Keys.Should().NotContain(["fillColor", "frameColor", "alarmFillColor", "toggleColorVariable", "rotationVariable"]);
+        VisuCatalog.TypeByApiName("TextField")!.Members.Keys.Should().NotContain(["moveXVariable", "moveYVariable", "rotationVariable"]);
     }
 }
 
@@ -187,7 +206,7 @@ public sealed class VisuElementReadTests
         VisuElements.Read(VisuDocumentTests.Fixture(fixture).Elements.Single());
 
     [Fact]
-    public void Rectangle_WithEveryCatalogProperty()
+    public void Rectangle_WithItsCatalogProperties()
     {
         var e = Only("Rectangle.TcVIS");
         e.Supported.Should().BeTrue();
@@ -199,11 +218,12 @@ public sealed class VisuElementReadTests
         p["height"].Should().Be(40L);
         p["text"].Should().Be("Count %d");
         p["textVariable"].Should().Be("GVL_Fixture.nCount");
-        p["tooltip"].Should().Be("rect tip");
         p["fillColor"].Should().Be("#FFFFFF00", "a list of UInt32 is read as its first value");
         p["frameColor"].Should().Be("#FF000000");
-        p["toggleColorVariable"].Should().Be("GVL_Fixture.bEnable");
-        p["invisibleVariable"].Should().Be("NOT GVL_Fixture.bEnable");
+        p["invisibleVariable"].Should().Be("GVL_Fixture.bEnable");
+        p.Should().NotContainKey("toggleColorVariable");
+        p.Should().NotContainKey("tooltip");
+        e.OtherMembers.Should().BeGreaterThan(0, "the tooltip and the deactivate-inputs member are kept, not offered");
         p["moveXVariable"].Should().Be("GVL_Fixture.nCount");
         p["moveYVariable"].Should().Be("GVL_Fixture.nCount");
         p["rotationVariable"].Should().Be("GVL_Fixture.nCount");
@@ -226,7 +246,8 @@ public sealed class VisuElementReadTests
         rect["moveYVariable"].Should().Be("nLevel");
         rect["fillColor"].Should().Be("#FFC0FFC0");
         views[6].Properties.Single(p => p.Key == "text").Value.Should().Be("Edited while open");
-        VisuElements.Members(doc.Elements[5]).Should().ContainKey(VisuCatalog.ButtonTapVariable);
+        VisuElements.Members(doc.Elements[5]).Should().ContainKey(1647042231u, "the Button's input member is kept as it is");
+        views[0].Properties.Single(p => p.Key == "toggleColorVariable").Value.Should().Be("GVL_Fixture.bEnable");
     }
 
     [Fact]
@@ -241,13 +262,14 @@ public sealed class VisuElementReadTests
     }
 
     [Fact]
-    public void Button_WithTextAndTapVariable()
+    public void Button_WithText_AndItsInputKeptAsOtherMember()
     {
         var e = Only("Button.TcVIS");
         e.Def!.Type.Should().Be("Button");
         var p = e.Properties.ToDictionary(kv => kv.Key, kv => kv.Value);
         p["text"].Should().Be("Press");
-        p["tapVariable"].Should().Be("GVL_Fixture.bEnable");
+        p.Should().NotContainKey("tapVariable");
+        e.OtherMembers.Should().BeGreaterThan(0);
     }
 
     [Theory]

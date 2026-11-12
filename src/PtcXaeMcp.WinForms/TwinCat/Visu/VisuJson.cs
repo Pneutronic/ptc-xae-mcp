@@ -100,7 +100,6 @@ internal static class VisuJson
                 ["create"] = t.CanCreate,
                 ["properties"] = new JsonArray(t.Members.Keys.Select(k => (JsonNode?)JsonValue.Create(k)).ToArray()),
             };
-            if (t.Type == "Frame") o["frameParameters"] = "object { \"<parameter>\": \"<expression>\" } — the parameters of the referenced visualization (see twincat_visu_read)";
             if (t.Note.Length > 0) o["note"] = t.Note;
             types.Add(o);
         }
@@ -114,9 +113,12 @@ internal static class VisuJson
             ["types"] = types,
             ["properties"] = props,
             ["notSupported"] = new JsonArray(
-                "creating a Polygon or a Frame from scratch (copy an existing one with copyFrom)",
-                "scaling and internal rotation by variable",
-                "the input action 'toggle a variable' (tapVariable sets a variable while the element is pressed)",
+                "creating, copying or changing a Polygon or a Frame (they are read, kept as they are, and can be removed)",
+                "input configuration: tap, toggle and the other input actions (read as inputActions, kept as they are)",
+                "tooltips",
+                "deactivating inputs by variable, scaling, and rotation of the element's interior",
+                "a Label's text variable, colours and movement; a TextField's movement and rotation; a Button's fill, frame and alarm colours " +
+                "and rotation (the integrated visualization did not show them)",
                 "bars, tables, trends, images and the other element types (they are read as unsupported and kept as they are)"),
         };
         return root.ToJsonString(Options);

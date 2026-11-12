@@ -50,12 +50,12 @@ internal static class VisuElements
         var def = VisuCatalog.Identify(typeName, shape);
 
         var props = new List<KeyValuePair<string, object>>();
-        var known = new HashSet<uint> { VisuCatalog.CenterX, VisuCatalog.CenterY, VisuCatalog.ShapeMember, VisuCatalog.TextId, VisuCatalog.TooltipId };
+        var known = new HashSet<uint> { VisuCatalog.CenterX, VisuCatalog.CenterY, VisuCatalog.ShapeMember, VisuCatalog.TextId };
         if (def is not null)
         {
             if (def.Type == "Line")
             {
-                known.UnionWith([VisuCatalog.LineStartX, VisuCatalog.LineStartY, VisuCatalog.LineEndX, VisuCatalog.LineEndY]);
+                known.UnionWith([VisuCatalog.LineStartX, VisuCatalog.LineStartY, VisuCatalog.LineEndX, VisuCatalog.LineEndY, VisuCatalog.LineAngle]);
             }
             foreach (var p in VisuCatalog.Properties)
             {
@@ -257,13 +257,11 @@ internal static class VisuElements
         {
             RemoveMember(element, memberId);
             if (memberId == VisuCatalog.TextMember) RemoveMember(element, VisuCatalog.TextId);
-            if (memberId == VisuCatalog.Tooltip) RemoveMember(element, VisuCatalog.TooltipId);
             return;
         }
 
         SetMember(doc, element, memberId, ValueNode(kind, value!));
         if (memberId == VisuCatalog.TextMember) SetTextIdPlaceholder(doc, element, VisuCatalog.TextId, (string)value!);
-        if (memberId == VisuCatalog.Tooltip) SetTextIdPlaceholder(doc, element, VisuCatalog.TooltipId, (string)value!);
     }
 
     /// <summary>After x/y/width/height changed: the centre members (all types) and the end points of a line.</summary>
@@ -291,29 +289,53 @@ internal static class VisuElements
         if (def.Shape is not null) SetMember(doc, element, VisuCatalog.ShapeMember, StringNode(def.Shape));
     }
 
-    /// <summary>Assigns <paramref name="expression"/> to the Frame parameter <paramref name="name"/>. False when the frame has no such parameter.</summary>
-    public static bool SetFrameParameter(VisuDocument doc, XElement element, string name, string expression)
+    // ---- line point list --------------------------------------------------------------
+
+    /// <summary>The archive types the point list of a line uses (name as XAE writes it → type id), all format constants.</summary>
+    public static readonly IReadOnlyList<KeyValuePair<string, string>> LinePointTypes =
+    [
+        new("ArrayList", "System.Collections.ArrayList"),
+        new("BasicTypeNode", "{f7e1e748-ea0f-4fcb-b563-94837ee17e8d}"),
+        new("CaseInsensitiveHashtable", "{02a85e84-ef2d-46fc-93f2-acb0bbff3eda}"),
+        new("DynamicArrayNode", "{6c16f79c-dd98-4c29-b3ba-7042e3055542}"),
+        new("Int16", "System.Int16"),
+        new("String", "System.String"),
+        new("StructuredTypeNode", "{503c5b2e-e80e-4ee7-ae00-c5b93a62b1aa}"),
+        new("TypeClass", "{16f7aa24-038f-444e-9d81-b001bc091d35}"),
+        new("TypeNodeAttributes2", "{c1464dbe-c10d-4717-be8f-63efe8638434}"),
+        new("TypeNodeType", "{b12a9636-e818-4598-ae0d-fb6a2446102c}"),
+    ];
+
+    private static readonly Lazy<string> LinePointsXml = new(() =>
     {
-        var members = Members(element);
-        bool found = false;
-        foreach (var node in members.Values.Where(v => (string?)v.Attribute("t") == "VisualizationNode"))
-        {
-            var children = VisuDocument.Field(node, "TypeNodeChildren");
-            if (children is null) continue;
-            foreach (var p in children.Elements("o"))
-            {
-                if (VisuDocument.StringValue(VisuDocument.Field(p, "TypeNodeName")) != name) continue;
-                long? idLong = VisuDocument.NumberValue(VisuDocument.Field(p, "TypeNodeIdLong"));
-                if (idLong is null) continue;
-                var basic = VisuDocument.Field(p, "BasicTypeNodeValue");
-                var newBasic = new XElement("v", new XAttribute("n", "BasicTypeNodeValue"), VisuDocument.Quote(expression));
-                if (basic is null) VisuDocument.Field(p, "Flags")?.AddAfterSelf(newBasic);
-                else basic.ReplaceWith(newBasic);
-                SetMember(doc, element, (uint)idLong, StringNode(expression));
-                found = true;
-            }
-        }
-        return found;
+        using var stream = typeof(VisuElements).Assembly.GetManifestResourceStream("PtcXaeMcp.WinForms.Visu.LinePoints.xml")
+            ?? throw new InvalidOperationException("The line point template is missing from the assembly.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    });
+
+    /// <summary>
+    /// Gives a line its point list (m_StaticPositionPolygon) when it has none. The integrated visualization draws a line
+    /// from that type-node tree, which XAE otherwise builds only in its editor: a line with just its start and end
+    /// members was not drawn on the running PLC, and the XAE crashed painting such a line offline (ArgumentNullException
+    /// in the visualization's init-assignment collector). The tree is the one XAE 4026.22 writes; its point values come
+    /// from the start/end members, its type names are mapped to the aliases this file's TypeList uses.
+    /// </summary>
+    public static void EnsureLinePoints(VisuDocument doc, XElement element)
+    {
+        var list = MemberList(element) ?? throw new VisuFormatException("The element has no member list.");
+        if (FindMember(list, VisuCatalog.LinePoints) is not null) return;
+
+        var alias = LinePointTypes.ToDictionary(t => t.Key, t => doc.TypeAlias(t.Key, t.Value), StringComparer.Ordinal);
+        var node = XElement.Parse(LinePointsXml.Value);
+        foreach (var e in node.DescendantsAndSelf())
+            foreach (string attr in new[] { "t", "cet", "et", "ckt", "cvt" })
+                if ((string?)e.Attribute(attr) is { } name && alias.TryGetValue(name, out string? mapped))
+                    e.SetAttributeValue(attr, mapped);
+
+        if (FindMember(list, VisuCatalog.LineAngle) is null) SetMember(doc, element, VisuCatalog.LineAngle, IntegerNode(0));
+        var member = new XElement("o", new XElement("v", new XAttribute("n", "Id"), VisuCatalog.LinePoints.ToString(CultureInfo.InvariantCulture) + "L"), node);
+        doc.AppendChild(list, member);
     }
 
     // ---- member plumbing ------------------------------------------------------------

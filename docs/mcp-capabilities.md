@@ -2151,7 +2151,7 @@ _No parameters._
 
 ### `twincat_visu_read`
 
-Read a PLC visualization (.TcVIS) structured, as JSON: name, file, interface (the VAR_IN_OUT declaration), extent, revision, whether the tools may write the file, and every element with id, type, position, size, text and text variable, colours, toggle-colour/invisible/movement/rotation/tap variables, tooltip, a Frame's referenced visualizations and parameters, and its input actions. An element the tools do not support appears with type, id and supported=false and is never changed. Properties absent from an element use XAE's default. kind must be VISU.
+Read a PLC visualization (.TcVIS) structured, as JSON: name, file, interface (the VAR_IN_OUT declaration), extent, revision, whether the tools may write the file, and every element with id, type, position, size, text and text variable, colours, toggle-colour, colour, invisible, movement and rotation variables, a Frame's referenced visualizations and parameters, and its input actions. An element the tools do not support appears with type, id and supported=false and is never changed. Properties absent from an element use XAE's default. kind must be VISU.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -2160,7 +2160,7 @@ Read a PLC visualization (.TcVIS) structured, as JSON: name, file, interface (th
 
 ### `twincat_visu_apply`
 
-Create a PLC visualization or replace its whole page from JSON: { "interface": "VAR_IN_OUT … END_VAR" (optional; kept when omitted), "elements": [ { "type": "Rectangle", "x": 10, "y": 10, "width": 120, "height": 40, "text": "Step %d", "textVariable": "MAIN.fb.nStep", "fillColor": "#C0FFC0" }, … ] }. Types: Rectangle, RoundedRectangle, Ellipse, Line, Label, TextField, Button (twincat_visu_list_element_types lists their properties); a new element needs x, y, width and height. { "copyFrom": <id>, … } copies an element of the page as it was (also a Frame or a Polygon, which cannot be created from scratch) and applies the other properties; a Frame copy takes "frameParameters": { "<parameter>": "<expression>" }. Every existing element is replaced. When the path does not exist, the visualization is created there (parent: a folder or the PLC project node). Element ids are assigned anew and listed in the result.
+Create a PLC visualization or replace its whole page from JSON: { "interface": "VAR_IN_OUT … END_VAR" (optional; kept when omitted), "elements": [ { "type": "Rectangle", "x": 10, "y": 10, "width": 120, "height": 40, "text": "Step %d", "textVariable": "MAIN.fb.nStep", "fillColor": "#C0FFC0" }, … ] }. Types: Rectangle, RoundedRectangle, Ellipse, Line, Label, TextField, Button (twincat_visu_list_element_types lists their properties); a new element needs x, y, width and height. { "copyFrom": <id>, … } copies an element of one of these types as it was and applies the other properties. Frames, polygons and elements the tools do not support cannot be kept by this tool (twincat_visu_edit_elements keeps them). Every existing element is replaced. When the path does not exist, the visualization is created there (parent: a folder or the PLC project node). Element ids are assigned anew and listed in the result.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -2172,7 +2172,7 @@ Create a PLC visualization or replace its whole page from JSON: { "interface": "
 
 ### `twincat_visu_edit_elements`
 
-Add, change or remove single elements of an existing PLC visualization; every other element (also one the tools do not support) stays as it is. operations is a JSON array run in order, ids as twincat_visu_read reports them: { "op": "add", "element": { "type": "Label", "x": 10, "y": 60, "width": 100, "height": 20, "text": "Ready" } }, { "op": "add", "element": { "copyFrom": 4, "x": 300, "frameParameters": { "fb": "MAIN.fbStation2" } } }, { "op": "update", "id": 3, "set": { "fillColor": "#FF0000", "invisibleVariable": "NOT MAIN.bShow" } } (null resets a property to XAE's default), { "op": "remove", "id": 5 }. interface optionally replaces the VAR_IN_OUT declaration. The whole request is validated before anything changes.
+Add, change or remove single elements of an existing PLC visualization; every other element (also one the tools do not support) stays as it is. operations is a JSON array run in order, ids as twincat_visu_read reports them: { "op": "add", "element": { "type": "Label", "x": 10, "y": 60, "width": 100, "height": 20, "text": "Ready" } }, { "op": "add", "element": { "copyFrom": 4, "x": 300 } }, { "op": "update", "id": 3, "set": { "fillColor": "#FF0000", "invisibleVariable": "NOT MAIN.bShow" } } (null resets a property to XAE's default), { "op": "remove", "id": 5 }. A Frame or a Polygon is read only: it can be removed, not changed. interface optionally replaces the VAR_IN_OUT declaration. The whole request is validated before anything changes.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

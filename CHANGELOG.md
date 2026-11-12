@@ -17,12 +17,21 @@ pull-request numbers refer to those.
   - `twincat_visu_list_element_types`: the element types and properties the tools understand (needs no XAE).
   - `twincat_visu_read`: a visualization as JSON — interface (`VAR_IN_OUT`), extent, revision, whether the tools may
     write it, and every element with id, type, position, size, text and text variable, colours, toggle-colour,
-    invisible, movement and rotation variables, tap variable, tooltip, a Frame's references and parameters. An element
-    the tools do not support appears with type and id as `supported: false`.
+    colour, invisible, movement and rotation variables, a Frame's references and parameters, and its input actions.
+    An element the tools do not support appears with type and id as `supported: false`.
   - `twincat_visu_apply`: create a visualization or replace its whole page from JSON (Rectangle, RoundedRectangle,
-    Ellipse, Line, Label, TextField, Button; `copyFrom` copies any element of the page, also a Frame or a Polygon).
+    Ellipse, Line, Label, TextField, Button; `copyFrom` copies an element of these types).
   - `twincat_visu_edit_elements`: add, update, remove or copy single elements and replace the interface; every other
-    element, also one the tools do not support, stays byte for byte as it was.
+    element, also one the tools do not support, stays byte for byte as it was. A Frame or a Polygon is read only.
+  - Properties per type, each seen working in the integrated visualization on a running PLC (static and with the
+    variable switched): simple shapes (rectangle, rounded rectangle, ellipse) — position and size, text and text
+    variable, frame and fill colour, alarm frame and fill colour with `toggleColorVariable`, `invisibleVariable`,
+    `fillColorVariable`/`frameColorVariable`/`textColorVariable` (a DWORD `16#AARRGGBB` expression such as
+    `SEL(bOn, 16#FFC0C0C0, 16#FF00C000)`), `moveXVariable`/`moveYVariable` and `rotationVariable`; TextField — the same
+    without movement and rotation; Button — text, text variable, `textColorVariable`, `invisibleVariable` and
+    movement; Label — static text and `invisibleVariable`; Line — start and end point (`height` may be negative),
+    `lineColor`, `invisibleVariable` and movement. A line is written with the point list the visualization draws it
+    from.
   - Writing: `kind` (VISU) is checked against the node, the request and the file format are checked and the PLC
     project must have a visualization manager (the XAE adds one silently when a visualization appears without one;
     the tools refuse and name the `twincat_plc_create` call instead) — all before the automatic logout. Then the
@@ -32,8 +41,11 @@ pull-request numbers refer to those.
     when the XAE refuses the new one. `expectedRevision` refuses a write over a change made since the read.
   - Verified on TwinCAT 3.1.4026.22: files from 3.1.4024 and 3.1.4026 (TcPlcObject format 1.1.0.1) are written,
     others are only read. With a target visualization the PLC compiles the written pages without errors.
-  - Not supported yet: creating a Polygon or a Frame from scratch, scaling and internal rotation by variable, the
-    input action "toggle a variable", bars, tables, trends and images (they are read and kept as they are).
+  - Not supported: creating, copying or changing a Polygon or a Frame; input configuration (tap, toggle and the other
+    input actions); tooltips; deactivating inputs by variable; scaling and rotation of the interior; a Label's text
+    variable, colours and movement, a TextField's movement and rotation, a Button's fill, frame and alarm colours and
+    rotation (the visualization did not show them); bars, tables, trends and images (they are read and kept as they
+    are).
 - The neutral live-suite fixture has a visualization manager and a page `VISU_Fixture` (`create_fixture.py`).
 
 ## [3.1.0] - 2026-11-06

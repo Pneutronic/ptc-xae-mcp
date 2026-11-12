@@ -253,6 +253,25 @@ internal sealed class VisuDocument
         }
     }
 
+    /// <summary>
+    /// The name this archive's TypeList gives the type id <paramref name="typeId"/>. Archives name the same type
+    /// differently (one file calls a type id "CaseInsensitiveHashtable", another "CaseInsensitiveHashtable_1"), so a
+    /// node taken from another archive must use the names of this one. A type the list lacks is added under
+    /// <paramref name="preferredName"/>, or under that name with "_1", "_2", ... when the name is taken by another type.
+    /// </summary>
+    public string TypeAlias(string preferredName, string typeId)
+    {
+        var entries = TypeList.Elements("Type").ToList();
+        if (entries.FirstOrDefault(t => string.Equals(t.Value.Trim(), typeId, StringComparison.OrdinalIgnoreCase)) is { } found)
+            return (string?)found.Attribute("n") ?? preferredName;
+
+        var taken = entries.Select(t => (string?)t.Attribute("n")).Where(n => n is not null).ToHashSet(StringComparer.Ordinal);
+        string name = preferredName;
+        for (int i = 1; taken.Contains(name); i++) name = preferredName + "_" + i.ToString(CultureInfo.InvariantCulture);
+        EnsureTypes([new KeyValuePair<string, string>(name, typeId)]);
+        return name;
+    }
+
     /// <summary>Type names the archive uses (t, cet, et attributes) that have no TypeList entry.</summary>
     public IReadOnlyList<string> UndeclaredTypes()
     {

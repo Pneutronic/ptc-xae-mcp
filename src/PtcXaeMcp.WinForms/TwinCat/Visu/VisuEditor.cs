@@ -18,7 +18,6 @@ internal static class VisuEditor
     private const short MaxCoordinate = short.MaxValue;
 
     private static readonly string[] Geometry = ["x", "y", "width", "height"];
-    private static readonly HashSet<string> SpecialKeys = new(StringComparer.Ordinal) { "type", "copyFrom", "frameParameters" };
 
     // ---- format gate ------------------------------------------------------------------
 
@@ -63,8 +62,7 @@ internal static class VisuEditor
     internal sealed record ElementSpec(
         VisuElementTypeDef? Def,
         int? CopyFrom,
-        IReadOnlyList<KeyValuePair<string, object?>> Properties,
-        IReadOnlyList<KeyValuePair<string, string>> FrameParameters);
+        IReadOnlyList<KeyValuePair<string, object?>> Properties);
 
     internal sealed record Operation(string Op, int? Id, ElementSpec? Element);
 
@@ -155,10 +153,11 @@ internal static class VisuEditor
                     if (!op.TryGetProperty("set", out var set)) throw new VisuRequestException($"{where}: op 'update' needs 'set'.");
                     var view = VisuElements.Read(before[id]);
                     if (view.Def is null)
-                        throw new VisuRequestException($"{where}: element {id} is a '{view.ElementName}' ({view.TypeName}), which the tools do not support; it can only be removed or copied.");
+                        throw new VisuRequestException($"{where}: element {id} is a '{view.ElementName}' ({view.TypeName}), which the tools do not support; it can only be removed.");
+                    if (!view.Def.CanCreate)
+                        throw new VisuRequestException($"{where}: element {id} is a {view.Def.Type}, which the tools read but do not change ({view.Def.Note}); it can only be removed.");
                     var spec = ParseElement(set, $"{where}.set", before, forUpdate: view.Def);
-                    ValidateFrameParameters(before[id], spec, $"{where}.set");
-                    if (spec.Properties.Count == 0 && spec.FrameParameters.Count == 0)
+                    if (spec.Properties.Count == 0)
                         throw new VisuRequestException($"{where}: 'set' names no property.");
                     ops.Add(new Operation("update", id, spec));
                     break;
@@ -197,7 +196,7 @@ internal static class VisuEditor
                     var element = before[op.Id!.Value];
                     var def = VisuElements.Read(element).Def!;
                     Change(doc, element, def, op.Element!);
-                    lines.Add($"Updated element {op.Id}: {string.Join(", ", op.Element!.Properties.Select(p => p.Key).Concat(op.Element.FrameParameters.Select(p => "frameParameters." + p.Key)))}.");
+                    lines.Add($"Updated element {op.Id}: {string.Join(", ", op.Element!.Properties.Select(p => p.Key))}.");
                     break;
                 case "remove":
                     doc.RemoveElement(before[op.Id!.Value]);
@@ -286,9 +285,8 @@ internal static class VisuEditor
             VisuElements.Set(doc, element, def, name, value);
         if (spec.Properties.Any(p => Geometry.Contains(p.Key)))
             VisuElements.UpdateDerivedGeometry(doc, element, def);
-        foreach (var (name, expression) in spec.FrameParameters)
-            if (!VisuElements.SetFrameParameter(doc, element, name, expression))
-                throw new VisuRequestException($"The frame has no parameter '{name}'."); // validated before; defensive
+        // A line is drawn from its point list; one written without it stays invisible on the PLC.
+        if (def.Type == "Line") VisuElements.EnsureLinePoints(doc, element);
     }
 
     private static int NextId(VisuDocument doc)
@@ -346,6 +344,8 @@ internal static class VisuEditor
                     throw new VisuRequestException($"{where}: copyFrom {src}: the page has no element {src}. Ids: {IdList(before)}.");
                 copyFrom = src;
                 def = VisuElements.Read(source).Def;
+                if (def is not { CanCreate: true })
+                    throw new VisuRequestException($"{where}: copyFrom {src}: element {src} is a {def?.Type ?? "type the tools do not support"}; the tools copy only the types they create ({VisuCatalog.CreatableTypeNamesList}).");
                 if (e.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String
                     && !string.Equals(t.GetString(), def?.Type, StringComparison.OrdinalIgnoreCase))
                     throw new VisuRequestException($"{where}: type '{t.GetString()}' does not match the copied element {src} ({def?.Type ?? "unsupported"}).");
@@ -365,19 +365,11 @@ internal static class VisuEditor
         }
 
         var props = new List<KeyValuePair<string, object?>>();
-        var frameParams = new List<KeyValuePair<string, string>>();
         foreach (var p in e.EnumerateObject())
         {
             if (p.Name is "type" or "copyFrom") continue;
-            if (p.Name == "frameParameters")
-            {
-                frameParams.AddRange(ParseFrameParameters(p.Value, where, def, copyFrom, before));
-                continue;
-            }
-            if (def is null)
-                throw new VisuRequestException($"{where}: the copied element is not supported by the tools; it can be copied only as it is (no properties).");
             var prop = VisuCatalog.Property(p.Name);
-            if (prop is null || !def.Has(p.Name))
+            if (prop is null || !def!.Has(p.Name))
                 throw new VisuRequestException($"{where}: {def.Type} has no property '{p.Name}'. Its properties: {string.Join(", ", def.Members.Keys)}.");
             props.Add(new(p.Name, ParseValue(prop, p.Value, $"{where}.{p.Name}")));
         }
@@ -392,51 +384,7 @@ internal static class VisuEditor
             if (props.FirstOrDefault(p => p.Key == g) is { Key: not null, Value: null })
                 throw new VisuRequestException($"{where}: {g} cannot be null.");
 
-        return new ElementSpec(def, copyFrom, props, frameParams);
-    }
-
-    private static IEnumerable<KeyValuePair<string, string>> ParseFrameParameters(JsonElement value, string where, VisuElementTypeDef? def,
-        int? copyFrom, IReadOnlyDictionary<int, XElement> before)
-    {
-        if (def?.Type != "Frame")
-            throw new VisuRequestException($"{where}: frameParameters apply to a Frame only.");
-        if (value.ValueKind != JsonValueKind.Object)
-            throw new VisuRequestException($"{where}: frameParameters must be an object {{ \"<parameter>\": \"<expression>\" }}.");
-        // The parameters a frame offers come from its stored reference; a copy offers the source's.
-        var result = new List<KeyValuePair<string, string>>();
-        foreach (var p in value.EnumerateObject())
-        {
-            if (p.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(p.Value.GetString()))
-                throw new VisuRequestException($"{where}.frameParameters.{p.Name}: the value must be a non-empty expression string.");
-            string expr = p.Value.GetString()!;
-            ValidateText(expr, $"{where}.frameParameters.{p.Name}");
-            result.Add(new(p.Name, expr));
-        }
-        return result.Count == 0 ? result : CheckFrameParameterNames(result, where, copyFrom, before);
-    }
-
-    private static IEnumerable<KeyValuePair<string, string>> CheckFrameParameterNames(List<KeyValuePair<string, string>> parameters,
-        string where, int? copyFrom, IReadOnlyDictionary<int, XElement> before)
-    {
-        // For an update the caller checks against the element itself (see ValidateFrameParameters).
-        if (copyFrom is int src)
-        {
-            var known = VisuElements.Read(before[src]).Frame?.Parameters.Select(p => p.Name).ToHashSet(StringComparer.Ordinal) ?? [];
-            foreach (var (name, _) in parameters)
-                if (!known.Contains(name))
-                    throw new VisuRequestException($"{where}: frame {src} has no parameter '{name}'. Its parameters: {(known.Count == 0 ? "none" : string.Join(", ", known))}.");
-        }
-        return parameters;
-    }
-
-    /// <summary>For an update: every frameParameters name must exist on the element.</summary>
-    public static void ValidateFrameParameters(XElement element, ElementSpec spec, string where)
-    {
-        if (spec.FrameParameters.Count == 0) return;
-        var known = VisuElements.Read(element).Frame?.Parameters.Select(p => p.Name).ToHashSet(StringComparer.Ordinal) ?? [];
-        foreach (var (name, _) in spec.FrameParameters)
-            if (!known.Contains(name))
-                throw new VisuRequestException($"{where}: the frame has no parameter '{name}'. Its parameters: {(known.Count == 0 ? "none" : string.Join(", ", known))}.");
+        return new ElementSpec(def, copyFrom, props);
     }
 
     private static object? ParseValue(VisuPropertyDef prop, JsonElement value, string where)

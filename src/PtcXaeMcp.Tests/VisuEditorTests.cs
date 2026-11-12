@@ -17,16 +17,17 @@ public sealed class VisuEditorTests
           "interface": "VAR_IN_OUT\n\tfbStation : FB_StepChain;\nEND_VAR",
           "elements": [
             { "type": "Rectangle", "x": 10, "y": 10, "width": 120, "height": 40, "text": "Step %d", "textVariable": "MAIN.fbStepChain.Step",
-              "tooltip": "the step", "frameColor": "#000000", "fillColor": "#C0FFC0", "alarmFrameColor": "#FF0000", "alarmFillColor": "#FFC0C0",
+              "frameColor": "#000000", "fillColor": "#C0FFC0", "alarmFrameColor": "#FF0000", "alarmFillColor": "#FFC0C0",
               "toggleColorVariable": "GVL_Fixture.bEnable", "invisibleVariable": "NOT GVL_Fixture.bEnable",
-              "moveXVariable": "GVL_Fixture.nCount", "moveYVariable": "GVL_Fixture.nCount", "rotationVariable": "GVL_Fixture.nCount",
-              "tapVariable": "GVL_Fixture.bEnable" },
+              "fillColorVariable": "SEL(GVL_Fixture.bEnable, 16#FFC0C0C0, 16#FF00C000)", "frameColorVariable": "16#FF0000FF",
+              "textColorVariable": "16#FFFF0000",
+              "moveXVariable": "GVL_Fixture.nCount", "moveYVariable": "GVL_Fixture.nCount", "rotationVariable": "GVL_Fixture.nCount" },
             { "type": "RoundedRectangle", "x": 150, "y": 10, "width": 100, "height": 40, "text": "Ready" },
             { "type": "Ellipse", "x": 270, "y": 10, "width": 40, "height": 40, "fillColor": "#00FF00" },
-            { "type": "Line", "x": 10, "y": 60, "width": 300, "height": 0 },
+            { "type": "Line", "x": 10, "y": 60, "width": 300, "height": 0, "lineColor": "#FF0000", "moveYVariable": "GVL_Fixture.nCount" },
             { "type": "Label", "x": 10, "y": 70, "width": 200, "height": 20, "text": "Station" },
             { "type": "TextField", "x": 10, "y": 100, "width": 120, "height": 24, "text": "%.2f", "textVariable": "GVL_Fixture.fValue" },
-            { "type": "Button", "x": 150, "y": 100, "width": 100, "height": 30, "text": "Start", "tapVariable": "GVL_Fixture.bEnable" }
+            { "type": "Button", "x": 150, "y": 100, "width": 100, "height": 30, "text": "Start", "textColorVariable": "16#FF0000FF" }
           ]
         }
         """;
@@ -51,24 +52,31 @@ public sealed class VisuEditorTests
         rect["textVariable"].Should().Be("MAIN.fbStepChain.Step");
         rect["fillColor"].Should().Be("#FFC0FFC0");
         rect["alarmFillColor"].Should().Be("#FFFFC0C0");
-        rect["tapVariable"].Should().Be("GVL_Fixture.bEnable");
+        rect["fillColorVariable"].Should().Be("SEL(GVL_Fixture.bEnable, 16#FFC0C0C0, 16#FF00C000)");
         rect["rotationVariable"].Should().Be("GVL_Fixture.nCount");
-        rect.Should().HaveCount(17);
+        rect.Should().HaveCount(18);
 
         var rectMembers = VisuElements.Members(VisuJson.ElementById(back, outcome.AddedIds[0])!);
         VisuDocument.NumberValue(rectMembers[VisuCatalog.CenterX]).Should().Be(70);
         VisuDocument.NumberValue(rectMembers[VisuCatalog.CenterY]).Should().Be(30);
         VisuDocument.StringValue(rectMembers[VisuCatalog.ShapeMember]).Should().Be("VISU_ST_RECTANGLE");
         rectMembers.Should().ContainKey(VisuCatalog.TextId, "a text gets a text-list id placeholder XAE replaces");
-        rectMembers.Should().ContainKey(VisuCatalog.TooltipId);
+        rectMembers.Should().ContainKey(VisuCatalog.InvisibleVariable);
+        rectMembers.Should().ContainKey(VisuCatalog.ToggleColorVariable);
 
         var line = VisuElements.Members(VisuJson.ElementById(back, outcome.AddedIds[3])!);
+        VisuDocument.NumberValue(line[VisuCatalog.LineStartX]).Should().Be(10);
+        VisuDocument.NumberValue(line[VisuCatalog.LineStartY]).Should().Be(60);
         VisuDocument.NumberValue(line[VisuCatalog.LineEndX]).Should().Be(310);
         VisuDocument.NumberValue(line[VisuCatalog.LineEndY]).Should().Be(60);
+        line.Should().ContainKey(VisuCatalog.LinePoints, "a line without its point list is not drawn");
+        line[VisuCatalog.LinePoints].Attribute("t")!.Value.Should().Be("StructuredTypeNode");
+        VisuDocument.NumberValue(line[VisuCatalog.LineAngle]).Should().Be(0);
+        Props(back, outcome.AddedIds[3])["lineColor"].Should().Be("#FFFF0000");
         VisuDocument.Field(VisuJson.ElementById(back, outcome.AddedIds[3])!, "VisualElementIsRectangle")!.Value.Should().Be("false");
 
         var button = VisuElements.Members(VisuJson.ElementById(back, outcome.AddedIds[6])!);
-        button.Should().ContainKey(VisuCatalog.ButtonTapVariable);
+        button.Should().ContainKey(VisuCatalog.TextColorVariable);
         button.Should().ContainKey(VisuCatalog.TextId, "XAE refuses a Button text without its text-list id");
     }
 
@@ -97,20 +105,21 @@ public sealed class VisuEditorTests
     [Fact]
     public void ApplyPage_CopyFromRefersToThePageAsItWas()
     {
-        var doc = EmptyWith(Frame);
-        VisuEditor.ApplyPage(doc, Json("""
+        var doc = VisuDocumentTests.Fixture("Rectangle.TcVIS");
+        int src = VisuEditor.ElementId(doc.Elements[0])!.Value;
+        VisuEditor.ApplyPage(doc, Json($$"""
             { "elements": [
-              { "copyFrom": 4, "x": 0 },
-              { "copyFrom": 4, "x": 320, "frameParameters": { "fb": "MAIN.fbStation2" } } ] }
+              { "copyFrom": {{src}} },
+              { "copyFrom": {{src}}, "x": 320, "text": "Copy %d" } ] }
             """));
         var back = RoundTrip(doc);
-        var frames = back.Elements.Select(VisuElements.Read).ToList();
-        frames.Should().HaveCount(2).And.OnlyContain(f => f.Def!.Type == "Frame");
-        frames[0].Frame!.Parameters[0].Value.Should().Be("MAIN.fbStation1");
-        frames[1].Frame!.Parameters[0].Value.Should().Be("MAIN.fbStation2");
-        frames[1].Properties.Single(p => p.Key == "x").Value.Should().Be(320L);
-        frames.Select(f => f.Id).Should().OnlyHaveUniqueItems();
-        frames.Select(f => VisuDocument.Field(back.Elements[frames.IndexOf(f)], "VisualElementIdentification")!.Value).Should().OnlyHaveUniqueItems();
+        var copies = back.Elements.Select(VisuElements.Read).ToList();
+        copies.Should().HaveCount(2).And.OnlyContain(c => c.Def!.Type == "Rectangle");
+        copies[0].Properties.Single(p => p.Key == "text").Value.Should().Be("Count %d");
+        copies[1].Properties.Single(p => p.Key == "text").Value.Should().Be("Copy %d");
+        copies[1].Properties.Single(p => p.Key == "x").Value.Should().Be(320L);
+        copies.Select(c => c.Id).Should().OnlyHaveUniqueItems();
+        back.Elements.Select(e => VisuDocument.Field(e, "VisualElementIdentification")!.Value).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]
@@ -142,14 +151,14 @@ public sealed class VisuEditorTests
     {
         var doc = VisuDocumentTests.Fixture("Rectangle.TcVIS");
         int id = VisuEditor.ElementId(doc.Elements[0])!.Value;
-        ApplyOps(doc, $$"""[ { "op": "update", "id": {{id}}, "set": { "text": null, "toggleColorVariable": "", "fillColor": null } } ]""");
+        ApplyOps(doc, $$"""[ { "op": "update", "id": {{id}}, "set": { "text": null, "invisibleVariable": "", "fillColor": null } } ]""");
         var back = RoundTrip(doc);
         var members = VisuElements.Members(back.Elements[0]);
         members.Should().NotContainKey(VisuCatalog.TextMember);
         members.Should().NotContainKey(VisuCatalog.TextId);
-        members.Should().NotContainKey(VisuCatalog.ToggleColorVariable);
+        members.Should().NotContainKey(VisuCatalog.InvisibleVariable);
         members.Should().NotContainKey(VisuCatalog.FillColor);
-        members.Should().ContainKey(VisuCatalog.Tooltip);
+        members.Should().ContainKey(571893170u, "a member the catalog does not know (here the tooltip) stays");
     }
 
     [Fact]
@@ -163,14 +172,52 @@ public sealed class VisuEditorTests
     }
 
     [Fact]
-    public void Edit_FrameParameter_IsWrittenToNodeAndMember()
+    public void Line_GetsThePointListInTheTypeNamesOfTheFile()
     {
-        var doc = EmptyWith(Frame);
-        ApplyOps(doc, """[ { "op": "update", "id": 4, "set": { "frameParameters": { "fb": "MAIN.fbStation3" }, "y": 20 } } ]""");
+        // This archive names the hashtable type of the point list "CaseInsensitiveHashtable_1" and gives the usual name
+        // to another type id; the inserted point list must use the file's names.
+        var doc = VisuDocumentTests.Fixture("Empty.TcVIS");
+        doc.EnsureTypes(new Dictionary<string, string>
+        {
+            ["CaseInsensitiveHashtable"] = "{7df88604-7ac5-4e36-91c4-55e4fdad3e68}",
+            ["CaseInsensitiveHashtable_1"] = "{02a85e84-ef2d-46fc-93f2-acb0bbff3eda}",
+        });
+        ApplyOps(doc, """[ { "op": "add", "element": { "type": "Line", "x": 0, "y": 0, "width": 10, "height": 10 } } ]""");
         var back = RoundTrip(doc);
-        var frame = VisuElements.Read(back.Elements[0]).Frame!;
-        frame.Parameters.Single().Value.Should().Be("MAIN.fbStation3");
-        back.Serialize().Should().Contain("<v n=\"BasicTypeNodeValue\">\"MAIN.fbStation3\"</v>");
+        VisuEditor.WriteProblem(back).Should().BeNull();
+        var points = VisuElements.Members(back.Elements[0])[VisuCatalog.LinePoints];
+        points.Descendants("d").Select(d => (string?)d.Attribute("t")).Distinct().Should().Equal("CaseInsensitiveHashtable_1");
+        back.TypeList.Elements("Type").Single(x => (string?)x.Attribute("n") == "StructuredTypeNode").Value
+            .Should().Be("{503c5b2e-e80e-4ee7-ae00-c5b93a62b1aa}");
+    }
+
+    [Fact]
+    public void Line_TypeNameTakenByAnotherType_IsAddedUnderANumberedName()
+    {
+        var doc = VisuDocumentTests.Fixture("Empty.TcVIS");
+        doc.EnsureTypes(new Dictionary<string, string> { ["CaseInsensitiveHashtable"] = "{7df88604-7ac5-4e36-91c4-55e4fdad3e68}" });
+        ApplyOps(doc, """[ { "op": "add", "element": { "type": "Line", "x": 0, "y": 0, "width": 10, "height": 10 } } ]""");
+        var back = RoundTrip(doc);
+        VisuEditor.WriteProblem(back).Should().BeNull();
+        var types = back.TypeList.Elements("Type").ToDictionary(x => (string)x.Attribute("n")!, x => x.Value);
+        types["CaseInsensitiveHashtable_1"].Should().Be("{02a85e84-ef2d-46fc-93f2-acb0bbff3eda}");
+        types["CaseInsensitiveHashtable"].Should().Be("{7df88604-7ac5-4e36-91c4-55e4fdad3e68}");
+    }
+
+    [Fact]
+    public void Line_UpdateOfAnXaeLine_KeepsItsPointListAndMovesItsPoints()
+    {
+        var doc = VisuDocumentTests.Fixture("Line.TcVIS");
+        int id = VisuEditor.ElementId(doc.Elements[0])!.Value;
+        string pointsBefore = VisuElements.Members(doc.Elements[0])[VisuCatalog.LinePoints].ToString(SaveOptions.DisableFormatting);
+        ApplyOps(doc, $$"""[ { "op": "update", "id": {{id}}, "set": { "y": 20, "height": -10, "lineColor": "#00FF00" } } ]""");
+        var back = RoundTrip(doc);
+        var members = VisuElements.Members(back.Elements[0]);
+        members[VisuCatalog.LinePoints].ToString(SaveOptions.DisableFormatting).Should().Be(pointsBefore);
+        back.Serialize().Split("<v n=\"Id\">1051212449L</v>").Should().HaveCount(2, "the line keeps exactly one point list");
+        VisuDocument.NumberValue(members[VisuCatalog.LineStartY]).Should().Be(20);
+        VisuDocument.NumberValue(members[VisuCatalog.LineEndY]).Should().Be(10);
+        Props(back, id)["lineColor"].Should().Be("#FF00FF00");
     }
 
     [Fact]
@@ -179,19 +226,6 @@ public sealed class VisuEditorTests
         var doc = VisuDocumentTests.Fixture("Empty.TcVIS");
         VisuEditor.ApplyOperations(doc, Json("[]"), "VAR_IN_OUT\n\tb : BOOL;\nEND_VAR");
         RoundTrip(doc).InterfaceText.Should().Be("VAR_IN_OUT\n\tb : BOOL;\nEND_VAR");
-    }
-
-    [Fact]
-    public void Edit_CopyOfAnUnsupportedElement_IsAnExactCopyWithNewIds()
-    {
-        var doc = EmptyWith(Table);
-        ApplyOps(doc, """[ { "op": "add", "element": { "copyFrom": 7 } } ]""");
-        var back = RoundTrip(doc);
-        back.Elements.Should().HaveCount(2);
-        var copy = VisuElements.Read(back.Elements[1]);
-        copy.Supported.Should().BeFalse();
-        copy.Id.Should().Be(8);
-        copy.OtherMembers.Should().Be(2);
     }
 
     [Theory]
@@ -207,22 +241,30 @@ public sealed class VisuEditorTests
     [InlineData("""[ { "op": "add", "element": { "type": "Rectangle", "x": 0.5, "y": 0, "width": 1, "height": 1 } } ]""", "whole number")]
     [InlineData("""[ { "op": "update", "id": 99, "set": { "x": 1 } } ]""", "no element 99")]
     [InlineData("""[ { "op": "update", "id": 7, "set": { "x": 1 } } ]""", "do not support")]
-    [InlineData("""[ { "op": "update", "id": 4, "set": { "x": null } } ]""", "cannot be null")]
-    [InlineData("""[ { "op": "update", "id": 4, "set": { "type": "Rectangle" } } ]""", "cannot be changed")]
-    [InlineData("""[ { "op": "update", "id": 4, "set": {} } ]""", "names no property")]
-    [InlineData("""[ { "op": "update", "id": 4, "set": { "frameParameters": { "nope": "x" } } } ]""", "no parameter 'nope'")]
+    [InlineData("""[ { "op": "update", "id": 8, "set": { "x": null } } ]""", "cannot be null")]
+    [InlineData("""[ { "op": "update", "id": 8, "set": { "type": "Ellipse" } } ]""", "cannot be changed")]
+    [InlineData("""[ { "op": "update", "id": 8, "set": {} } ]""", "names no property")]
+    [InlineData("""[ { "op": "update", "id": 8, "set": { "tooltip": "x" } } ]""", "Rectangle has no property 'tooltip'")]
+    [InlineData("""[ { "op": "update", "id": 8, "set": { "tapVariable": "x" } } ]""", "Rectangle has no property 'tapVariable'")]
+    [InlineData("""[ { "op": "update", "id": 8, "set": { "frameParameters": { "fb": "x" } } } ]""", "Rectangle has no property 'frameParameters'")]
+    [InlineData("""[ { "op": "update", "id": 4, "set": { "y": 20 } } ]""", "read but do not change")]
+    [InlineData("""[ { "op": "add", "element": { "type": "Label", "x": 0, "y": 0, "width": 1, "height": 1, "fillColor": "#FFFFFF" } } ]""", "Label has no property 'fillColor'")]
+    [InlineData("""[ { "op": "add", "element": { "type": "Label", "x": 0, "y": 0, "width": 1, "height": 1, "textVariable": "a" } } ]""", "Label has no property 'textVariable'")]
+    [InlineData("""[ { "op": "add", "element": { "type": "Button", "x": 0, "y": 0, "width": 1, "height": 1, "fillColor": "#FFFFFF" } } ]""", "Button has no property 'fillColor'")]
+    [InlineData("""[ { "op": "add", "element": { "type": "TextField", "x": 0, "y": 0, "width": 1, "height": 1, "moveXVariable": "a" } } ]""", "TextField has no property 'moveXVariable'")]
+    [InlineData("""[ { "op": "add", "element": { "type": "Line", "x": 0, "y": 0, "width": 1, "height": 1, "frameColor": "#FFFFFF" } } ]""", "Line has no property 'frameColor'")]
     [InlineData("""[ { "op": "remove", "id": 4 }, { "op": "remove", "id": 4 } ]""", "named twice")]
     [InlineData("""[ { "op": "move", "id": 4 } ]""", "unknown op 'move'")]
     [InlineData("""[ { "op": "remove", "id": 4, "set": {} } ]""", "'set' does not belong")]
-    [InlineData("""[ { "op": "add", "element": { "copyFrom": 7, "x": 3 } } ]""", "copied only as it is")]
-    [InlineData("""[ { "op": "add", "element": { "copyFrom": 4, "frameParameters": { "nope": "x" } } } ]""", "no parameter 'nope'")]
-    [InlineData("""[ { "op": "add", "element": { "copyFrom": 4, "type": "Label" } } ]""", "does not match")]
-    [InlineData("""[ { "op": "add", "element": { "type": "Label", "x": 0, "y": 0, "width": 1, "height": 1, "frameParameters": { "fb": "x" } } } ]""", "Frame only")]
+    [InlineData("""[ { "op": "add", "element": { "copyFrom": 7 } } ]""", "copy only the types they create")]
+    [InlineData("""[ { "op": "add", "element": { "copyFrom": 4 } } ]""", "copy only the types they create")]
+    [InlineData("""[ { "op": "add", "element": { "copyFrom": 8, "type": "Label" } } ]""", "does not match")]
     [InlineData("[]", "Nothing to do")]
     [InlineData("{}", "must be a JSON array")]
     public void Edit_InvalidRequests_AreRefusedWithoutAChange(string ops, string expected)
     {
-        var doc = EmptyWith(Table, Frame);
+        // Frame 4 (read only), Table 7 (unsupported), Rectangle 8.
+        var doc = RoundTrip(ApplyOps(EmptyWith(Table, Frame), """[ { "op": "add", "element": { "type": "Rectangle", "x": 0, "y": 0, "width": 10, "height": 10 } } ]"""));
         string before = doc.Serialize();
         var act = () => VisuEditor.ApplyOperations(doc, Json(ops), null);
         act.Should().Throw<VisuRequestException>().Which.Message.Should().Contain(expected);

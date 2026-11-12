@@ -60,6 +60,11 @@ internal static class VisuElements
             foreach (var p in VisuCatalog.Properties)
             {
                 if (!def.Members.TryGetValue(p.Name, out uint memberId)) continue;
+                if (VisuCatalog.IsInput(memberId))
+                {
+                    if (InputVariable(element, memberId) is { } variable) props.Add(new(p.Name, variable));
+                    continue;
+                }
                 known.Add(memberId);
                 if (!members.TryGetValue(memberId, out var valueNode)) continue;
                 object? value = ReadValue(p.Kind, valueNode);
@@ -69,7 +74,10 @@ internal static class VisuElements
 
         var frame = def?.Type == "Frame" ? ReadFrame(element, members) : null;
         if (frame is not null)
+        {
             known.UnionWith(frame.Parameters.Select(p => p.MemberId));
+            known.Add(VisuCatalog.FrameFirstReference);
+        }
         int other = def is null ? members.Count : members.Keys.Count(k => !known.Contains(k) && !IsTypeNodeMember(members[k]));
 
         return new VisuElementView(id is null ? null : (int)id, identifier, elementName, typeName, def, props, other, InputActions(element), frame);
@@ -253,6 +261,11 @@ internal static class VisuElements
         var kind = VisuCatalog.Property(property)!.Kind;
 
         bool remove = value is null || (value is string s && s.Length == 0 && kind == VisuValueKind.Expression);
+        if (VisuCatalog.IsInput(memberId))
+        {
+            SetInput(doc, element, memberId, remove ? null : (string)value!);
+            return;
+        }
         if (remove)
         {
             RemoveMember(element, memberId);
@@ -338,7 +351,81 @@ internal static class VisuElements
         doc.AppendChild(list, member);
     }
 
+    // ---- tap / toggle inputs -----------------------------------------------------------
+
+    private static (string Signature, string Name, string Description) InputSignature(uint input) => input == VisuCatalog.TapInput
+        ? ("Visu_TapInput", "Tap", "Configure the tapping of a Boolean variable")
+        : ("Visu_ToggleInput", "Toggle", "Configure the toggling of a Boolean variable");
+
+    private static XElement? InputEntry(XElement element, uint input)
+    {
+        var inputs = VisuDocument.Field(element, "ConfiguredComplexInputs");
+        string signature = VisuDocument.Quote(InputSignature(input).Signature);
+        return inputs?.Elements("o").FirstOrDefault(o => VisuDocument.Field(o, "SignatureName")?.Value == signature);
+    }
+
+    /// <summary>The variable of the element's tap or toggle input; null when it has none.</summary>
+    private static string? InputVariable(XElement element, uint input)
+    {
+        var entry = InputEntry(element, input);
+        if (entry is null) return null;
+        var members = Members(entry);
+        return members.TryGetValue(VisuCatalog.InputVariable, out var v) ? VisuDocument.StringValue(v) : null;
+    }
+
+    /// <summary>
+    /// Sets (or, with null, removes) the tap or toggle input. An existing entry keeps its other members (e.g. "tap
+    /// FALSE"); a new one is written the way XAE writes it (ComplexInput with SignatureName, Name and Description).
+    /// </summary>
+    private static void SetInput(VisuDocument doc, XElement element, uint input, string? variable)
+    {
+        var inputs = VisuDocument.Field(element, "ConfiguredComplexInputs") ?? throw new VisuFormatException("The element has no input list.");
+        var entry = InputEntry(element, input);
+        if (variable is null)
+        {
+            if (entry is null) return;
+            VisuDocument.RemoveNode(entry);
+            if (!inputs.Elements().Any())
+            {
+                inputs.RemoveNodes();
+                inputs.SetAttributeValue("cet", null);
+                inputs.SetAttributeValue("et", "ComplexInput");
+            }
+            return;
+        }
+        if (entry is not null)
+        {
+            SetMember(doc, entry, VisuCatalog.InputVariable, StringNode(variable));
+            return;
+        }
+        var (signature, name, description) = InputSignature(input);
+        entry = new XElement("o",
+            new XElement("n", new XAttribute("n", "DescriptionTree")),
+            new XElement("o", new XAttribute("n", "VisualElemMemberList"), new XAttribute("t", "VisualElemMemberList"),
+                new XElement("l", new XAttribute("n", "VisualElemMemberList"), new XAttribute("t", "VisualElemMemberCollection"),
+                    new XAttribute("cet", "VisualElemMember"),
+                    new XElement("o",
+                        new XElement("v", new XAttribute("n", "Id"), VisuCatalog.InputVariable.ToString(CultureInfo.InvariantCulture) + "L"),
+                        StringNode(variable)))),
+            new XElement("v", new XAttribute("n", "SignatureName"), VisuDocument.Quote(signature)),
+            new XElement("v", new XAttribute("n", "Name"), VisuDocument.Quote(name)),
+            new XElement("v", new XAttribute("n", "Description"), VisuDocument.Quote(description)));
+        if (inputs.Attribute("et") is not null)
+        {
+            inputs.SetAttributeValue("et", null);
+            inputs.SetAttributeValue("cet", "ComplexInput");
+        }
+        doc.AppendChild(inputs, entry);
+    }
+
     // ---- member plumbing ------------------------------------------------------------
+
+    /// <summary>Sets a member by id (for the frame writer).</summary>
+    public static void SetMemberValue(VisuDocument doc, XElement element, uint memberId, XElement valueNode) =>
+        SetMember(doc, element, memberId, valueNode);
+
+    /// <summary>Removes a member by id (for the frame writer).</summary>
+    public static void RemoveMemberById(XElement element, uint memberId) => RemoveMember(element, memberId);
 
     private static XElement ValueNode(VisuValueKind kind, object value) => kind switch
     {

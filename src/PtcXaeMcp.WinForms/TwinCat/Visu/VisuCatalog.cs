@@ -80,6 +80,18 @@ internal static class VisuCatalog
     public const uint LineStartY = 669032122;
     public const uint LineEndX = 1837598620;
     public const uint LineEndY = 444643082;
+    /// <summary>The referenced visualizations of a frame (m_References), a type-node tree.</summary>
+    public const uint FrameReferences = 363316305;
+    /// <summary>The first reference with its parameter values (m_References.pReferences.[0]).</summary>
+    public const uint FrameFirstReference = 2473092364;
+
+    // Tap and toggle are not members of the element but entries of its ConfiguredComplexInputs list (Visu_TapInput,
+    // Visu_ToggleInput), each with the variable in its own member pVariable (1186196937). These two ids only key the
+    // properties in the catalog; they never appear in a file.
+    public const uint TapInput = 1;
+    public const uint ToggleInput = 2;
+    /// <summary>pVariable: the variable of a tap or toggle input.</summary>
+    public const uint InputVariable = 1186196937;
 
     public const string SimpleTypeName = "VisuFbElemSimple";
 
@@ -105,6 +117,8 @@ internal static class VisuCatalog
         new("moveYVariable", VisuValueKind.Expression, "Integer expression that moves the element vertically (pixels, absolute movement)."),
         new("rotationVariable", VisuValueKind.Expression, "Numeric expression: rotation angle in degrees around the element's centre."),
         new("lineColor", VisuValueKind.Color, "Colour of a line."),
+        new("tapVariable", VisuValueKind.Expression, "BOOL variable that is TRUE while the element is pressed (input 'Tap')."),
+        new("toggleVariable", VisuValueKind.Expression, "BOOL variable that each click inverts (input 'Toggle')."),
     ];
 
     private static readonly Dictionary<string, VisuPropertyDef> PropertyByName =
@@ -128,9 +142,12 @@ internal static class VisuCatalog
     private static readonly (string, uint)[] Move =
         [("moveXVariable", MoveXVariable), ("moveYVariable", MoveYVariable)];
 
+    private static readonly (string, uint)[] Inputs =
+        [("tapVariable", TapInput), ("toggleVariable", ToggleInput)];
+
     private static VisuElementTypeDef Simple(string type, string elementName, string shape) => new(
         type, elementName, [SimpleTypeName, "VISUFBELEMSIMPLE"], shape, CanCreate: true, IsRectangle: true,
-        Map([.. Geometry, .. TextProps, .. Colors, ("textColorVariable", TextColorVariable), .. Move, ("rotationVariable", RotationVariable)]),
+        Map([.. Geometry, .. TextProps, .. Colors, ("textColorVariable", TextColorVariable), .. Move, ("rotationVariable", RotationVariable), .. Inputs]),
         "");
 
     public static readonly IReadOnlyList<VisuElementTypeDef> Types =
@@ -148,14 +165,15 @@ internal static class VisuCatalog
             Map([.. Geometry, .. TextProps, .. Colors, ("textColorVariable", TextColorVariable)]),
             "Shows textVariable through the format in text, e.g. text '%.2f'. No movement or rotation."),
         new("Button", "Button", ["VisuFbElemButton", "VISUFBELEMBUTTON"], null, CanCreate: true, IsRectangle: true,
-            Map([.. Geometry, .. TextProps, ("textColorVariable", TextColorVariable), .. Move]),
-            "Drawn in the button style: no fill, frame or alarm colours. No input configuration (tap/toggle) yet."),
+            Map([.. Geometry, .. TextProps, ("textColorVariable", TextColorVariable), .. Move, .. Inputs]),
+            "Drawn in the button style: no fill, frame or alarm colours. Drawn pressed while its tap or toggle variable is TRUE."),
         new("Polygon", "Polygon", ["VisuFbElemPolygon", "VISUFBELEMPOLYGON"], null, CanCreate: false, IsRectangle: false,
             Map([.. Geometry]),
             "Read only: its points live in a type-node structure the tools do not write."),
-        new("Frame", "Frame", ["VisuFbFrame", "VISUFBFRAME"], null, CanCreate: false, IsRectangle: true,
+        new("Frame", "Frame", ["VisuFbFrame", "VISUFBFRAME"], null, CanCreate: true, IsRectangle: true,
             Map([.. Geometry]),
-            "Read only (references and parameters are listed): XAE builds the frame's reference and parameter structure in its editor."),
+            "Shows another visualization of the project: \"visualization\": \"<name>\" and \"parameters\": { \"<interface variable>\": " +
+            "\"<expression>\" } for every VAR_IN_OUT of its interface (other interface sections are not supported). One reference per frame."),
     ];
 
     private static readonly Dictionary<string, VisuElementTypeDef> TypeByName =
@@ -164,6 +182,9 @@ internal static class VisuCatalog
     public static VisuElementTypeDef? TypeByApiName(string name) => TypeByName.GetValueOrDefault(name);
 
     public static string TypeNamesList => string.Join(", ", Types.Select(t => t.Type));
+
+    /// <summary>The properties that are stored as complex inputs, not as members.</summary>
+    public static bool IsInput(uint id) => id is TapInput or ToggleInput;
 
     public static string CreatableTypeNamesList => string.Join(", ", Types.Where(t => t.CanCreate).Select(t => t.Type));
 

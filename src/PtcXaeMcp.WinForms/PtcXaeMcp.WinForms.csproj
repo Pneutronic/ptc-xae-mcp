@@ -169,6 +169,7 @@
     <EmbeddedResource Include="Mcp\Prompts\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.%(Filename).md" />
     <!-- The point list of a visualization line as XAE 4026.22 writes it (VisuElements.EnsureLinePoints). -->
     <EmbeddedResource Include="TwinCat\Visu\LinePoints.xml" LogicalName="PtcXaeMcp.WinForms.Visu.LinePoints.xml" />
+    <EmbeddedResource Include="TwinCat\Visu\FrameReferences.xml" LogicalName="PtcXaeMcp.WinForms.Visu.FrameReferences.xml" />
   </ItemGroup>
 
   <!-- xae-event-logger: TC3 EventLogger ADS proxy (managed interop, no VS dep).

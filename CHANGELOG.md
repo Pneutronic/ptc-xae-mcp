@@ -17,12 +17,13 @@ pull-request numbers refer to those.
   - `twincat_visu_list_element_types`: the element types and properties the tools understand (needs no XAE).
   - `twincat_visu_read`: a visualization as JSON — interface (`VAR_IN_OUT`), extent, revision, whether the tools may
     write it, and every element with id, type, position, size, text and text variable, colours, toggle-colour,
-    colour, invisible, movement and rotation variables, a Frame's references and parameters, and its input actions.
+    colour, invisible, movement and rotation variables, tap and toggle variables, a Frame's referenced visualization
+    and parameters, and its other input actions.
     An element the tools do not support appears with type and id as `supported: false`.
   - `twincat_visu_apply`: create a visualization or replace its whole page from JSON (Rectangle, RoundedRectangle,
-    Ellipse, Line, Label, TextField, Button; `copyFrom` copies an element of these types).
+    Ellipse, Line, Label, TextField, Button, Frame; `copyFrom` copies an element of these types).
   - `twincat_visu_edit_elements`: add, update, remove or copy single elements and replace the interface; every other
-    element, also one the tools do not support, stays byte for byte as it was. A Frame or a Polygon is read only.
+    element, also one the tools do not support, stays byte for byte as it was. A Polygon is read only.
   - Properties per type, each seen working in the integrated visualization on a running PLC (static and with the
     variable switched): simple shapes (rectangle, rounded rectangle, ellipse) — position and size, text and text
     variable, frame and fill colour, alarm frame and fill colour with `toggleColorVariable`, `invisibleVariable`,
@@ -32,6 +33,15 @@ pull-request numbers refer to those.
     movement; Label — static text and `invisibleVariable`; Line — start and end point (`height` may be negative),
     `lineColor`, `invisibleVariable` and movement. A line is written with the point list the visualization draws it
     from.
+  - Inputs for manual operation on Button and the simple shapes: `tapVariable` (TRUE while pressed) and
+    `toggleVariable` (each click inverts it), written as the element's Tap/Toggle input configuration; a Button is
+    drawn pressed while its variable is TRUE.
+  - Frames: `{ "type": "Frame", …, "visualization": "<name>", "parameters": { "<VAR_IN_OUT>": "<expression>" } }`
+    places another visualization of the project, e.g. one block visualization per component with the component's FB
+    instance as parameter. The tools find the visualization in the project, read the `VAR_IN_OUT` variables of its
+    interface (every one needs a value) and write the frame's reference list the way the XAE keeps it. Frames can be
+    moved, resized, made invisible, given new parameters or another visualization, copied with their own parameters
+    and removed.
   - Writing: `kind` (VISU) is checked against the node, the request and the file format are checked and the PLC
     project must have a visualization manager (the XAE adds one silently when a visualization appears without one;
     the tools refuse and name the `twincat_plc_create` call instead) — all before the automatic logout. Then the
@@ -41,8 +51,9 @@ pull-request numbers refer to those.
     when the XAE refuses the new one. `expectedRevision` refuses a write over a change made since the read.
   - Verified on TwinCAT 3.1.4026.22: files from 3.1.4024 and 3.1.4026 (TcPlcObject format 1.1.0.1) are written,
     others are only read. With a target visualization the PLC compiles the written pages without errors.
-  - Not supported: creating, copying or changing a Polygon or a Frame; input configuration (tap, toggle and the other
-    input actions); tooltips; deactivating inputs by variable; scaling and rotation of the interior; a Label's text
+  - Not supported: creating, copying or changing a Polygon; frames that switch between several visualizations and
+    frame parameters other than `VAR_IN_OUT`; input actions other than tap and toggle and their options; inputs on
+    Label, TextField and Line; tooltips; deactivating inputs by variable; scaling and rotation of the interior; a Label's text
     variable, colours and movement, a TextField's movement and rotation, a Button's fill, frame and alarm colours and
     rotation (the visualization did not show them); bars, tables, trends and images (they are read and kept as they
     are).

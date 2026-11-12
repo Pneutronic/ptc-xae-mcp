@@ -1,0 +1,241 @@
+<o n="Value" t="StructuredTypeNode">
+<v n="StructuredTypeNodeIsAnimation">false</v>
+<l n="TypeNodeChildren" t="ArrayList">
+<o t="DynamicArrayNode">
+<o n="DynamicArrayNodeCounterNode" t="BasicTypeNode">
+<v n="Flags">0L</v>
+<v n="BasicTypeNodeValue" t="Int16">1</v>
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iCount"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">1UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>Visible</v>
+<v>False</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">104</v>
+<v n="TypeNodeIdLong">87295452L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+<n n="DynamicArrayNodeFastAccess" />
+<o n="ChildTemplate" t="VisualizationNode">
+<v n="VisuNodeReferenceGuid">{00000000-0000-0000-0000-000000000000}</v>
+<n n="VisuNodeReference" />
+<n n="VisNodeRefs33" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"IVisualisation"</v>
+<v n="Name">"IVisualisation"</v>
+</o>
+<v n="TypeNodeName">""</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>conditionalshow</v>
+<v>visu_elemdev</v>
+<v>ieccodeconversion_useexistinginterface</v>
+<v>_3S.CoDeSys.VisuGenerated.IVisualisationIEC</v>
+<v>''NORMAL__COMMENT</v>
+<v> interface contains additional methods to IVisualElement</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">1</v>
+<v n="TypeNodeIdLong">3861935604L</v>
+<n n="LibraryId" />
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+<l n="TypeNodeChildren" t="ArrayList" cet="VisualizationNode">
+<o>
+<v n="VisuNodeReferenceGuid">{00000000-0000-0000-0000-000000000000}</v>
+<n n="VisuNodeReference" />
+<v n="VisNodeRefs33">"VISU_Block"</v>
+<l n="TypeNodeChildren" t="ArrayList" cet="BasicTypeNode">
+<o>
+<v n="Flags">2L</v>
+<n n="BasicTypeNodeValue" />
+<v n="BasicTypeNodeAcceptsExpression">true</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Reference</v>
+<v n="QualifiedName">"FB_StepChain"</v>
+<v n="Name">"FB_StepChain"</v>
+</o>
+<v n="TypeNodeName">"fb"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" />
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">255</v>
+<v n="TypeNodeIdLong">259060178L</v>
+<n n="LibraryId" />
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+</l>
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"IVisualisation"</v>
+<v n="Name">"IVisualisation"</v>
+</o>
+<v n="TypeNodeName">"[0]"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>conditionalshow</v>
+<v>visu_elemdev</v>
+<v>ieccodeconversion_useexistinginterface</v>
+<v>_3S.CoDeSys.VisuGenerated.IVisualisationIEC</v>
+<v>''NORMAL__COMMENT</v>
+<v> interface contains additional methods to IVisualElement</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">1</v>
+<v n="TypeNodeIdLong">2473092364L</v>
+<n n="LibraryId" />
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+</l>
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"IVisualisation"</v>
+<v n="Name">"IVisualisation"</v>
+</o>
+<v n="TypeNodeName">"pReferences"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">1048577UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>DefaultArraySize</v>
+<v>5</v>
+<v>ieccodeconversion_array</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> We hide this node to prevent having two References nodes
+ Nevertheless we want to make sure that the children are displayed</v>
+<v>Visible</v>
+<v>False</v>
+<v>VisibleChildren</v>
+<v>True</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">103</v>
+<v n="TypeNodeIdLong">1547928903L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+<o t="BasicTypeNode">
+<v n="Flags">0L</v>
+<v n="BasicTypeNodeValue" t="Int16">1</v>
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iCount"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">1UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>Visible</v>
+<v>False</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">104</v>
+<v n="TypeNodeIdLong">87295452L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+</l>
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"VisuStructReferenceList"</v>
+<v n="Name">"VisuStructReferenceList"</v>
+</o>
+<v n="TypeNodeName">"m_References"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">81920UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>AssignDestination</v>
+<v>Init</v>
+<v>Category</v>
+<v>Simple|Standard</v>
+<v>conditionalshow</v>
+<v>visu_elemdev</v>
+<v>DescriptionTextId</v>
+<v>TL_ElementProperties.Desc_ReferencedVisus</v>
+<v>DisplayFrameReferencesConfiguration</v>
+<v></v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.References</v>
+<v>DynamicArray</v>
+<v></v>
+<v>FrameReferences</v>
+<v></v>
+<v>SortFlag</v>
+<v>80</v>
+<v>Storable</v>
+<v>True</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">102</v>
+<v n="TypeNodeIdLong">363316305L</v>
+<v n="LibraryId">"visuelems, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.References"</v>
+<v n="DescriptionTextID">"TL_ElementProperties.Desc_ReferencedVisus"</v>
+<v n="DescriptionUseParent">false</v>
+</o>

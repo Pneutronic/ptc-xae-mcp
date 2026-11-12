@@ -39,7 +39,7 @@ internal sealed partial class VisuCoordinator
         {
             var mismatch = PlcKindResolver.Check(path, PlcKind.Visu, node, VisualizationSubtype);
             if (mismatch is not null) return mismatch;
-            return Write(path, parentPath, name, expectedRevision, doc => VisuEditor.ApplyPage(doc, page), created: false);
+            return Write(path, parentPath, name, expectedRevision, doc => VisuEditor.ApplyPage(doc, page, ResolverFor(path)), created: false);
         }
 
         // A new visualization: parent and manager are checked before the logout.
@@ -54,7 +54,7 @@ internal sealed partial class VisuCoordinator
                    "the parent must be a folder or the PLC project node.";
 
         // Validate the page against an empty visualization before anything changes.
-        try { VisuEditor.ApplyPage(EmptyProbeDocument(), page); }
+        try { VisuEditor.ApplyPage(EmptyProbeDocument(), page, ResolverFor(parentPath)); }
         catch (VisuRequestException ex) { return "[Error] " + ex.Message + " Nothing was changed."; }
 
         var managerError = RequireManager(parentPath);
@@ -67,7 +67,7 @@ internal sealed partial class VisuCoordinator
         try { newPath = session.CreatePlcChild(parentPath, name, PlcItemType.VisObj, "VISU (VISUALIZATION)"); }
         catch (Exception ex) { return Describe(ex); }
 
-        string written = Write(newPath, parentPath, name, null, doc => VisuEditor.ApplyPage(doc, page), created: true, skipLogout: true);
+        string written = Write(newPath, parentPath, name, null, doc => VisuEditor.ApplyPage(doc, page, ResolverFor(parentPath)), created: true, skipLogout: true);
         return written.StartsWith("[Error]", StringComparison.Ordinal)
             ? $"[Error] The visualization '{newPath}' was created (empty), but its content was not written: {written["[Error] ".Length..]}"
             : written;
@@ -225,15 +225,7 @@ internal sealed partial class VisuCoordinator
         string? root = null;
         try
         {
-            string probe = anyPathBelow;
-            while (true)
-            {
-                var info = session.ProbePlcNode(probe);
-                if (info.Exists && info.ItemType == PlcItemType.PlcApp) { root = probe; break; }
-                int caret = probe.LastIndexOf('^');
-                if (caret <= 0) break;
-                probe = probe[..caret];
-            }
+            root = PlcRootOf(anyPathBelow);
             if (root is null)
                 return $"[Error] '{anyPathBelow}' is not inside a PLC project node. Nothing was changed.";
             if (session.ListTreeChildren(root).Any(c => c.ItemType == PlcItemType.VisMan)) return null;
@@ -244,6 +236,56 @@ internal sealed partial class VisuCoordinator
             $"The PLC project '{root}' has no visualization manager. XAE needs one to show a visualization and would add it " +
             "by itself; the visu tools do not do that silently. Nothing was changed.",
             $"twincat_plc_create(kind='VISU', subtype='MANAGER', parentPath='{root}', name='VisualizationManager'), then call this tool again.");
+    }
+
+    /// <summary>The PLC project node above <paramref name="anyPathBelow"/>; null when there is none.</summary>
+    private string? PlcRootOf(string anyPathBelow)
+    {
+        string probe = anyPathBelow;
+        while (true)
+        {
+            var info = session.ProbePlcNode(probe);
+            if (info.Exists && info.ItemType == PlcItemType.PlcApp) return probe;
+            int caret = probe.LastIndexOf('^');
+            if (caret <= 0) return null;
+            probe = probe[..caret];
+        }
+    }
+
+    /// <summary>
+    /// Finds a visualization of the PLC project of <paramref name="anyPathBelow"/> by name, for a frame: searches the
+    /// project's folders and reads the VAR_IN_OUT variables of the visualization's interface from its file.
+    /// </summary>
+    internal VisuEditor.VisuResolver ResolverFor(string anyPathBelow) => name =>
+    {
+        try
+        {
+            string root = PlcRootOf(anyPathBelow) ?? throw new VisuRequestException($"'{anyPathBelow}' is not inside a PLC project node.");
+            string? found = FindVisualization(root, name, depth: 0);
+            if (found is null) return null;
+            var doc = VisuDocument.Parse(ReadText(FilePathOf(found)));
+            var (variables, problem) = VisuInterfaceParser.Parse(doc.InterfaceText);
+            if (problem is not null)
+                throw new VisuRequestException($"The visualization '{name}' cannot be shown in a frame by the tools: {problem}.");
+            // The name as the project tree has it (the reference names the object, not the file).
+            return new VisuReferenceTarget(found[(found.LastIndexOf('^') + 1)..], variables);
+        }
+        catch (VisuRequestException) { throw; }
+        catch (VisuFormatException ex) { throw new VisuRequestException($"The visualization '{name}' cannot be read: {ex.Message}."); }
+        catch (Exception ex) when (!ComCall.IsFinal(ex)) { throw new VisuRequestException($"The visualization '{name}' could not be looked up: {Message(ex)}."); }
+    };
+
+    private string? FindVisualization(string path, string name, int depth)
+    {
+        if (depth > 8) return null;
+        var children = session.ListTreeChildren(path);
+        foreach (var c in children)
+            if (c.ItemType == PlcItemType.VisObj && string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase))
+                return path + "^" + c.Name;
+        foreach (var c in children.Where(c => c.ItemType == PlcItemType.Folder))
+            if (FindVisualization(path + "^" + c.Name, name, depth + 1) is { } found)
+                return found;
+        return null;
     }
 
     /// <summary>A minimal valid visualization, only to validate a page before a new one is created.</summary>

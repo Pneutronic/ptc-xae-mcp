@@ -62,7 +62,21 @@ internal static class VisuEditor
     internal sealed record ElementSpec(
         VisuElementTypeDef? Def,
         int? CopyFrom,
-        IReadOnlyList<KeyValuePair<string, object?>> Properties);
+        IReadOnlyList<KeyValuePair<string, object?>> Properties,
+        VisuReferenceTarget? Visualization = null,
+        IReadOnlyList<KeyValuePair<string, string>>? FrameParameters = null)
+    {
+        public IReadOnlyList<KeyValuePair<string, string>> Parameters => FrameParameters ?? [];
+
+        /// <summary>The names of what the spec changes, for the tool result.</summary>
+        public IEnumerable<string> ChangedNames =>
+            Properties.Select(p => p.Key)
+                .Concat(Visualization is null ? [] : ["visualization"])
+                .Concat(Parameters.Select(p => "parameters." + p.Key));
+    }
+
+    /// <summary>Finds a visualization of the project by name for a frame; null when there is none.</summary>
+    internal delegate VisuReferenceTarget? VisuResolver(string name);
 
     internal sealed record Operation(string Op, int? Id, ElementSpec? Element);
 
@@ -73,7 +87,7 @@ internal static class VisuEditor
     /// Replaces every element of the page with <paramref name="page"/>'s "elements" and, when given, the interface.
     /// A copyFrom refers to an element of the page as it was before.
     /// </summary>
-    public static Outcome ApplyPage(VisuDocument doc, JsonElement page)
+    public static Outcome ApplyPage(VisuDocument doc, JsonElement page, VisuResolver? resolve = null)
     {
         if (page.ValueKind != JsonValueKind.Object)
             throw new VisuRequestException("The page must be a JSON object: { \"interface\": \"VAR_IN_OUT … END_VAR\", \"elements\": [ … ] }.");
@@ -91,7 +105,7 @@ internal static class VisuEditor
         foreach (var e in elements.EnumerateArray())
         {
             string where = $"elements[{index++}]";
-            specs.Add(ParseElement(e, where, before, forUpdate: null));
+            specs.Add(ParseElement(e, where, before, forUpdate: null, resolve, doc.Name));
         }
 
         var lines = new List<string>();
@@ -115,7 +129,7 @@ internal static class VisuEditor
     /// Runs the operations of twincat_visu_edit_elements in order: add (new or copyFrom), update (set), remove. The
     /// whole list is validated against the page first; ids refer to the page as it was before the call.
     /// </summary>
-    public static Outcome ApplyOperations(VisuDocument doc, JsonElement operations, string? interfaceText)
+    public static Outcome ApplyOperations(VisuDocument doc, JsonElement operations, string? interfaceText, VisuResolver? resolve = null)
     {
         if (operations.ValueKind != JsonValueKind.Array)
             throw new VisuRequestException("operations must be a JSON array, e.g. [{\"op\":\"update\",\"id\":3,\"set\":{\"x\":40}}].");
@@ -144,7 +158,7 @@ internal static class VisuEditor
             {
                 case "add":
                     if (!op.TryGetProperty("element", out var el)) throw new VisuRequestException($"{where}: op 'add' needs 'element'.");
-                    ops.Add(new Operation("add", null, ParseElement(el, $"{where}.element", before, forUpdate: null)));
+                    ops.Add(new Operation("add", null, ParseElement(el, $"{where}.element", before, forUpdate: null, resolve, doc.Name)));
                     break;
                 case "update":
                 {
@@ -156,8 +170,8 @@ internal static class VisuEditor
                         throw new VisuRequestException($"{where}: element {id} is a '{view.ElementName}' ({view.TypeName}), which the tools do not support; it can only be removed.");
                     if (!view.Def.CanCreate)
                         throw new VisuRequestException($"{where}: element {id} is a {view.Def.Type}, which the tools read but do not change ({view.Def.Note}); it can only be removed.");
-                    var spec = ParseElement(set, $"{where}.set", before, forUpdate: view.Def);
-                    if (spec.Properties.Count == 0)
+                    var spec = ParseElement(set, $"{where}.set", before, forUpdate: view.Def, resolve, doc.Name, before[id]);
+                    if (spec.Properties.Count == 0 && spec.Visualization is null && spec.Parameters.Count == 0)
                         throw new VisuRequestException($"{where}: 'set' names no property.");
                     ops.Add(new Operation("update", id, spec));
                     break;
@@ -196,7 +210,7 @@ internal static class VisuEditor
                     var element = before[op.Id!.Value];
                     var def = VisuElements.Read(element).Def!;
                     Change(doc, element, def, op.Element!);
-                    lines.Add($"Updated element {op.Id}: {string.Join(", ", op.Element!.Properties.Select(p => p.Key))}.");
+                    lines.Add($"Updated element {op.Id}: {string.Join(", ", op.Element!.ChangedNames)}.");
                     break;
                 case "remove":
                     doc.RemoveElement(before[op.Id!.Value]);
@@ -234,7 +248,7 @@ internal static class VisuEditor
             {
                 string where = $"elements[{i++}]";
                 if (e.ValueKind == JsonValueKind.Object && !e.TryGetProperty("copyFrom", out _))
-                    ParseElement(e, where, none, forUpdate: null);
+                    ParseElement(e, where, none, forUpdate: null, resolve: null, pageName: null);
             }
             return;
         }
@@ -250,7 +264,7 @@ internal static class VisuEditor
             if (kind is not ("add" or "update" or "remove"))
                 throw new VisuRequestException($"{where}: unknown op '{kind}'. Expected add, update or remove.");
             if (kind == "add" && op.TryGetProperty("element", out var el) && el.ValueKind == JsonValueKind.Object && !el.TryGetProperty("copyFrom", out _))
-                ParseElement(el, $"{where}.element", none, forUpdate: null);
+                ParseElement(el, $"{where}.element", none, forUpdate: null, resolve: null, pageName: null);
         }
     }
 
@@ -287,6 +301,20 @@ internal static class VisuEditor
             VisuElements.UpdateDerivedGeometry(doc, element, def);
         // A line is drawn from its point list; one written without it stays invisible on the PLC.
         if (def.Type == "Line") VisuElements.EnsureLinePoints(doc, element);
+        if (spec.Visualization is { } target)
+        {
+            var existing = VisuElements.Read(element).Frame?.Parameters.ToDictionary(p => p.Name, p => p.Value, StringComparer.OrdinalIgnoreCase)
+                           ?? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            var given = spec.Parameters.ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
+            var assignments = target.Parameters.Select(v => new VisuFrameAssignment(v.Name, v.Type,
+                given.TryGetValue(v.Name, out var g) ? g : existing.GetValueOrDefault(v.Name)
+                    ?? throw new VisuRequestException($"The frame parameter '{v.Name}' of {target.Name} needs a value."))).ToList();
+            VisuFrames.SetReference(doc, element, target.Name, assignments);
+        }
+        else if (spec.Parameters.Count > 0)
+        {
+            VisuFrames.SetParameterValues(doc, element, spec.Parameters);
+        }
     }
 
     private static int NextId(VisuDocument doc)
@@ -329,7 +357,10 @@ internal static class VisuEditor
     }
 
     /// <param name="forUpdate">The type of the existing element for an update; null for a new element or a copy.</param>
-    private static ElementSpec ParseElement(JsonElement e, string where, IReadOnlyDictionary<int, XElement> before, VisuElementTypeDef? forUpdate)
+    /// <param name="resolve">Finds the visualization a frame references; null in the precheck (then frames are checked for shape only).</param>
+    /// <param name="existing">The element an update changes.</param>
+    private static ElementSpec ParseElement(JsonElement e, string where, IReadOnlyDictionary<int, XElement> before, VisuElementTypeDef? forUpdate,
+        VisuResolver? resolve, string? pageName, XElement? existing = null)
     {
         if (e.ValueKind != JsonValueKind.Object) throw new VisuRequestException($"{where} must be an object.");
 
@@ -364,10 +395,29 @@ internal static class VisuEditor
             throw new VisuRequestException($"{where}: 'type' and 'copyFrom' cannot be changed by an update; remove the element and add a new one.");
         }
 
+        if (existing is null && copyFrom is int copied) existing = before[copied];
         var props = new List<KeyValuePair<string, object?>>();
+        string? visualization = null;
+        List<KeyValuePair<string, string>>? parameters = null;
         foreach (var p in e.EnumerateObject())
         {
             if (p.Name is "type" or "copyFrom") continue;
+            if (p.Name is "visualization" or "parameters")
+            {
+                if (def?.Type != "Frame")
+                    throw new VisuRequestException($"{where}: '{p.Name}' belongs to a Frame only.");
+                if (p.Name == "visualization")
+                {
+                    if (p.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(p.Value.GetString()))
+                        throw new VisuRequestException($"{where}.visualization must be the name of a visualization of the project.");
+                    visualization = p.Value.GetString()!.Trim();
+                }
+                else
+                {
+                    parameters = ParseFrameParameters(p.Value, $"{where}.parameters");
+                }
+                continue;
+            }
             var prop = VisuCatalog.Property(p.Name);
             if (prop is null || !def!.Has(p.Name))
                 throw new VisuRequestException($"{where}: {def.Type} has no property '{p.Name}'. Its properties: {string.Join(", ", def.Members.Keys)}.");
@@ -377,14 +427,59 @@ internal static class VisuEditor
         if (forUpdate is null && copyFrom is null)
         {
             var missing = Geometry.Where(g => !props.Any(p => p.Key == g)).ToList();
+            if (def!.Type == "Frame" && visualization is null) missing.Add("visualization");
             if (missing.Count > 0)
                 throw new VisuRequestException($"{where}: a new {def!.Type} needs {string.Join(", ", missing)}.");
+        }
+
+        VisuReferenceTarget? target = null;
+        if (visualization is not null && resolve is not null)
+        {
+            if (string.Equals(visualization, pageName, StringComparison.OrdinalIgnoreCase))
+                throw new VisuRequestException($"{where}: a frame cannot show the visualization it is on ({visualization}).");
+            target = resolve(visualization)
+                     ?? throw new VisuRequestException($"{where}.visualization: the project has no visualization '{visualization}'.");
+            var names = target.Parameters.Select(v => v.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, _) in parameters ?? [])
+                if (!names.Contains(name))
+                    throw new VisuRequestException($"{where}.parameters: {target.Name} has no VAR_IN_OUT '{name}'. Its parameters: {(names.Count == 0 ? "none" : string.Join(", ", target.Parameters.Select(v => v.Name)))}.");
+            var keep = existing is null ? [] : VisuElements.Read(existing).Frame?.Parameters.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+            var missingParams = target.Parameters.Where(v => !(parameters ?? []).Any(g => string.Equals(g.Key, v.Name, StringComparison.OrdinalIgnoreCase)) && !keep.Contains(v.Name)).ToList();
+            if (missingParams.Count > 0)
+                throw new VisuRequestException($"{where}.parameters: {target.Name} needs a value for {string.Join(", ", missingParams.Select(v => v.Name))} (VAR_IN_OUT).");
+        }
+        else if (visualization is null && parameters is { Count: > 0 } && resolve is not null)
+        {
+            // Changing values only: the names must be parameters the frame (or the copied frame) already has.
+            var frameElement = existing ?? (copyFrom is int src2 ? before[src2] : null);
+            var known = frameElement is null ? [] : VisuElements.Read(frameElement).Frame?.Parameters.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+            foreach (var (name, _) in parameters)
+                if (!known.Contains(name))
+                    throw new VisuRequestException($"{where}.parameters: the frame has no parameter '{name}'. Its parameters: {(known.Count == 0 ? "none" : string.Join(", ", known))}.");
         }
         foreach (var g in Geometry)
             if (props.FirstOrDefault(p => p.Key == g) is { Key: not null, Value: null })
                 throw new VisuRequestException($"{where}: {g} cannot be null.");
 
-        return new ElementSpec(def, copyFrom, props);
+        return new ElementSpec(def, copyFrom, props, target, parameters);
+    }
+
+    private static List<KeyValuePair<string, string>> ParseFrameParameters(JsonElement value, string where)
+    {
+        if (value.ValueKind != JsonValueKind.Object)
+            throw new VisuRequestException($"{where} must be an object {{ \"<interface variable>\": \"<expression>\" }}.");
+        var result = new List<KeyValuePair<string, string>>();
+        foreach (var p in value.EnumerateObject())
+        {
+            if (p.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(p.Value.GetString()))
+                throw new VisuRequestException($"{where}.{p.Name}: the value must be a non-empty expression, e.g. 'MAIN.fbStation1'.");
+            string expression = p.Value.GetString()!.Trim();
+            ValidateText(expression, $"{where}.{p.Name}");
+            if (result.Any(r => string.Equals(r.Key, p.Name, StringComparison.OrdinalIgnoreCase)))
+                throw new VisuRequestException($"{where}: '{p.Name}' is given twice.");
+            result.Add(new(p.Name, expression));
+        }
+        return result;
     }
 
     private static object? ParseValue(VisuPropertyDef prop, JsonElement value, string where)

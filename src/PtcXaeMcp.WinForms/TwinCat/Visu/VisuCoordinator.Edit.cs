@@ -27,6 +27,6 @@ internal sealed partial class VisuCoordinator
         if (mismatch is not null) return mismatch;
 
         return Write(path, path[..caret], path[(caret + 1)..], expectedRevision,
-            doc => VisuEditor.ApplyOperations(doc, ops, interfaceText), created: false);
+            doc => VisuEditor.ApplyOperations(doc, ops, interfaceText, ResolverFor(path)), created: false);
     }
 }

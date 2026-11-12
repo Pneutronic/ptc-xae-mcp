@@ -162,7 +162,7 @@ public sealed class VisuCatalogTests
         var types = doc.RootElement.GetProperty("types").EnumerateArray().ToList();
         types.Select(t => t.GetProperty("type").GetString()).Should().Equal(
             "Rectangle", "RoundedRectangle", "Ellipse", "Line", "Label", "TextField", "Button", "Polygon", "Frame");
-        types.Where(t => !t.GetProperty("create").GetBoolean()).Select(t => t.GetProperty("type").GetString()).Should().Equal("Polygon", "Frame");
+        types.Where(t => !t.GetProperty("create").GetBoolean()).Select(t => t.GetProperty("type").GetString()).Should().Equal("Polygon");
         doc.RootElement.GetProperty("properties").GetArrayLength().Should().Be(VisuCatalog.Properties.Count);
         doc.RootElement.GetProperty("notSupported").GetArrayLength().Should().BeGreaterThan(0);
     }
@@ -174,7 +174,7 @@ public sealed class VisuCatalogTests
         {
             t.Members.Keys.Should().Contain(["x", "y", "width", "height", "invisibleVariable"], t.Type);
             t.Members.Keys.Should().OnlyContain(k => VisuCatalog.Property(k) != null, t.Type);
-            t.Members.Keys.Should().NotContain(["tooltip", "tapVariable"], "neither showed on the running PLC");
+            t.Members.Keys.Should().NotContain("tooltip", "it is not observable on the running PLC");
         }
         VisuCatalog.Properties.Select(p => p.Name).Should().OnlyContain(n => VisuCatalog.Types.Any(t => t.Has(n)), "every property belongs to a type");
     }

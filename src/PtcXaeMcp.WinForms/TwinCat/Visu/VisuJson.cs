@@ -100,6 +100,12 @@ internal static class VisuJson
                 ["create"] = t.CanCreate,
                 ["properties"] = new JsonArray(t.Members.Keys.Select(k => (JsonNode?)JsonValue.Create(k)).ToArray()),
             };
+            if (t.Type == "Frame")
+            {
+                o["visualization"] = "text: the name of the visualization of the project the frame shows (required for a new frame)";
+                o["parameters"] = "object { \"<VAR_IN_OUT of that visualization>\": \"<expression>\" }, every VAR_IN_OUT needs one, e.g. " +
+                                  "{ \"fb\": \"MAIN.fbStation1\" }";
+            }
             if (t.Note.Length > 0) o["note"] = t.Note;
             types.Add(o);
         }
@@ -113,8 +119,10 @@ internal static class VisuJson
             ["types"] = types,
             ["properties"] = props,
             ["notSupported"] = new JsonArray(
-                "creating, copying or changing a Polygon or a Frame (they are read, kept as they are, and can be removed)",
-                "input configuration: tap, toggle and the other input actions (read as inputActions, kept as they are)",
+                "creating, copying or changing a Polygon (it is read, kept as it is, and can be removed)",
+                "frames that switch between several visualizations, and frame parameters other than VAR_IN_OUT",
+                "input actions other than tap and toggle (OnMouseClick … actions are read as inputActions and kept as they are), " +
+                "the tap and toggle options (tap FALSE, on enter/up if captured), and inputs on Label, TextField and Line",
                 "tooltips",
                 "deactivating inputs by variable, scaling, and rotation of the element's interior",
                 "a Label's text variable, colours and movement; a TextField's movement and rotation; a Button's fill, frame and alarm colours " +

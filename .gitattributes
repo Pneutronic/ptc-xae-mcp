@@ -9,3 +9,6 @@ src/PtcXaeMcp.Tests/Fixtures/Safety/** -text
 # Neutral HMI fixture (tests/Fixtures/create_hmi_fixture.py): byte-for-byte as generated (BOMs, CRLF/LF mix of the
 # Beckhoff template), so re-running the script leaves `git status` clean.
 tests/Fixtures/PtcXaeMcpHmiFixture/** -text
+
+# PLC visualization files saved by XAE: byte-for-byte (BOM + CRLF) — the round-trip tests compare against them.
+src/PtcXaeMcp.Tests/Fixtures/Visu/** -text

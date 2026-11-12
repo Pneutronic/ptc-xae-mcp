@@ -104,16 +104,26 @@ public class VisuIntegrationTests : IAsyncLifetime
               "frameColor": "#000000", "fillColor": "#C0FFC0", "alarmFrameColor": "#FF0000", "alarmFillColor": "#FFC0C0",
               "toggleColorVariable": "GVL_Fixture.bEnable", "invisibleVariable": "NOT GVL_Fixture.bEnable",
               "textColorVariable": "SEL(GVL_Fixture.bEnable, 16#FF000000, 16#FFFF0000)",
-              "moveXVariable": "GVL_Fixture.nCount", "moveYVariable": "nLevel", "rotationVariable": "GVL_Fixture.nCount" },
+              "moveXVariable": "GVL_Fixture.nCount", "moveYVariable": "nLevel", "rotationVariable": "GVL_Fixture.nCount",
+              "toggleVariable": "GVL_Fixture.bEnable" },
             { "type": "RoundedRectangle", "x": 150, "y": 10, "width": 100, "height": 40, "text": "Ready", "fillColor": "#E0E0FF" },
             { "type": "Ellipse", "x": 270, "y": 10, "width": 40, "height": 40, "fillColor": "#00FF00", "toggleColorVariable": "GVL_Fixture.bEnable" },
             { "type": "Line", "x": 10, "y": 60, "width": 300, "height": 0, "lineColor": "#0000FF", "moveYVariable": "nLevel" },
             { "type": "Label", "x": 10, "y": 70, "width": 200, "height": 20, "text": "Live page" },
             { "type": "TextField", "x": 10, "y": 100, "width": 120, "height": 24, "text": "%.2f", "textVariable": "GVL_Fixture.fValue",
               "fillColorVariable": "SEL(GVL_Fixture.bEnable, 16#FFC0C0C0, 16#FF00C000)" },
-            { "type": "Button", "x": 150, "y": 100, "width": 100, "height": 30, "text": "Enable", "textColorVariable": "16#FF0000FF" }
+            { "type": "Button", "x": 150, "y": 100, "width": 100, "height": 30, "text": "Enable", "textColorVariable": "16#FF0000FF",
+              "tapVariable": "GVL_Fixture.bEnable" },
+            { "type": "Frame", "x": 320, "y": 10, "width": 160, "height": 40, "visualization": "@BLOCK@", "parameters": { "fb": "MAIN.fbStepChain" } }
           ]
         }
+        """;
+
+    /// <summary>A block for frames: its interface takes a step chain.</summary>
+    private const string Block = """
+        { "interface": "VAR_IN_OUT\n\tfb : FB_StepChain;\nEND_VAR",
+          "elements": [ { "type": "Rectangle", "x": 0, "y": 0, "width": 160, "height": 40, "text": "Step %d", "textVariable": "fb.Step",
+                          "fillColor": "#C0C0C0", "alarmFillColor": "#FF0000", "toggleColorVariable": "fb.Step = 0" } ] }
         """;
 
     // ── read ─────────────────────────────────────────────────────────────────
@@ -168,7 +178,7 @@ public class VisuIntegrationTests : IAsyncLifetime
 
     // ── create, edit, XAE keeps it, it compiles ──────────────────────────────────
 
-    [Trait("Description", "Neue Visu mit allen Elementtypen per visu_apply anlegen, zurücklesen, Elemente ändern/entfernen/hinzufügen/kopieren, im XAE öffnen, per Umbenennen von XAE speichern lassen (Inhalt bleibt), mit temporärer TargetVisu ohne Fehler übersetzen; alles wird wieder gelöscht.")]
+    [Trait("Description", "Neue Visu mit allen Elementtypen (auch Frame auf eine Baustein-Visu mit VAR_IN_OUT, Tippen/Umschalten) per visu_apply anlegen, zurücklesen, Elemente ändern/entfernen/hinzufügen/kopieren, im XAE öffnen, per Umbenennen von XAE speichern lassen (Inhalt bleibt), mit temporärer TargetVisu ohne Fehler übersetzen; alles wird wieder gelöscht.")]
     [SkippableFact(Timeout = 900_000)]
     public async Task CreateEditAndCompile_AndXaeKeepsTheContent()
     {
@@ -179,14 +189,23 @@ public class VisuIntegrationTests : IAsyncLifetime
         string visu = FixtureLayout.VisusFolder + "^VISU_Live" + stamp;
         string renamed = visu + "R";
         string target = FixtureLayout.VisuManagerPath + "^TargetVisu" + stamp;
+        string blockName = "VISU_LiveBlock" + stamp;
+        string block = FixtureLayout.VisusFolder + "^" + blockName;
         try
         {
-            string created = await OkAsync("twincat_visu_apply", ("path", visu), ("kind", "VISU"), ("page", Page));
+            await OkAsync("twincat_visu_apply", ("path", block), ("kind", "VISU"), ("page", Block));
+            string created = await OkAsync("twincat_visu_apply", ("path", visu), ("kind", "VISU"), ("page", Page.Replace("@BLOCK@", blockName, StringComparison.Ordinal)));
             Assert.StartsWith("Created visualization", created);
             Assert.Contains("Interface written.", created);
 
             var page = await ReadVisuAsync(visu);
-            Assert.Equal(7, page.GetProperty("elementCount").GetInt32());
+            Assert.Equal(8, page.GetProperty("elementCount").GetInt32());
+            Assert.Equal("GVL_Fixture.bEnable", ElementOfType(page, "Button").GetProperty("tapVariable").GetString());
+            Assert.Equal("GVL_Fixture.bEnable", ElementOfType(page, "Rectangle").GetProperty("toggleVariable").GetString());
+            var frame = ElementOfType(page, "Frame");
+            Assert.Equal(blockName, frame.GetProperty("frame").GetProperty("visualizations")[0].GetString());
+            Assert.Equal("MAIN.fbStepChain", frame.GetProperty("frame").GetProperty("parameters").GetProperty("fb").GetString());
+            int frameId = frame.GetProperty("id").GetInt32();
             Assert.Equal("VAR_IN_OUT\n\tnLevel : INT;\nEND_VAR", page.GetProperty("interface").GetString());
             var rect = ElementOfType(page, "Rectangle");
             Assert.Equal("#FFC0FFC0", rect.GetProperty("fillColor").GetString());
@@ -202,7 +221,9 @@ public class VisuIntegrationTests : IAsyncLifetime
                   { "op": "update", "id": {{lineId}}, "set": { "y": 70, "height": -10, "lineColor": "#FF0000" } },
                   { "op": "remove", "id": {{ellipseId}} },
                   { "op": "add", "element": { "type": "Label", "x": 10, "y": 140, "width": 150, "height": 20, "text": "Added" } },
-                  { "op": "add", "element": { "copyFrom": {{buttonId}}, "x": 260 } } ]
+                  { "op": "add", "element": { "copyFrom": {{buttonId}}, "x": 260 } },
+                  { "op": "update", "id": {{frameId}}, "set": { "x": 330, "width": 200, "parameters": { "fb": "MAIN.fbStepChain" } } },
+                  { "op": "add", "element": { "copyFrom": {{frameId}}, "y": 60 } } ]
                 """;
             string edited = await OkAsync("twincat_visu_edit_elements", ("path", visu), ("kind", "VISU"), ("operations", ops),
                 ("expectedRevision", page.GetProperty("revision").GetString()));
@@ -215,7 +236,13 @@ public class VisuIntegrationTests : IAsyncLifetime
             // A rename makes XAE write the page from what it holds: the edit must be in it.
             await OkAsync("twincat_plc_rename", ("path", visu), ("kind", "VISU"), ("newName", "VISU_Live" + stamp + "R"));
             var saved = await ReadVisuAsync(renamed);
-            Assert.Equal(8, saved.GetProperty("elementCount").GetInt32());
+            Assert.Equal(10, saved.GetProperty("elementCount").GetInt32());
+            var savedFrames = saved.GetProperty("elements").EnumerateArray().Where(e => e.GetProperty("type").GetString() == "Frame").ToList();
+            Assert.Equal(2, savedFrames.Count);
+            Assert.All(savedFrames, f => Assert.Equal("MAIN.fbStepChain", f.GetProperty("frame").GetProperty("parameters").GetProperty("fb").GetString()));
+            Assert.Equal(200, savedFrames.Single(f => f.GetProperty("id").GetInt32() == frameId).GetProperty("width").GetInt32());
+            Assert.Equal("GVL_Fixture.bEnable", saved.GetProperty("elements").EnumerateArray()
+                .First(e => e.GetProperty("type").GetString() == "Button").GetProperty("tapVariable").GetString());
             var savedRect = saved.GetProperty("elements").EnumerateArray().Single(e => e.GetProperty("id").GetInt32() == rectId);
             Assert.Equal("Level %d", savedRect.GetProperty("text").GetString());
             Assert.Equal("#FFFFFF00", savedRect.GetProperty("fillColor").GetString());
@@ -237,6 +264,7 @@ public class VisuIntegrationTests : IAsyncLifetime
             await TryDeleteAsync(target);
             await TryDeleteAsync(renamed);
             await TryDeleteAsync(visu);
+            await TryDeleteAsync(block);
         }
     }
 }

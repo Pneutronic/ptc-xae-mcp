@@ -4,7 +4,8 @@ Drives the ONE running TwinCAT XAE (TcXaeShell, 4026) in two ways:
   * the XAE COM Automation Interface (pywin32) for what the MCP server cannot do:
     create the solution + TwinCAT project and add the PLC project;
   * the repo's own MCP server on http://localhost:5010 for everything else
-    (POUs/DUTs/GVLs/interface, disabled EtherCAT master + EK1100, NC task, save).
+    (POUs/DUTs/GVLs/interface, a PLC visualization, disabled EtherCAT master + EK1100,
+    NC task, save).
 
 Requirements: Windows, TwinCAT XAE 4026 running, ptc-xae-mcp.exe --http-server
 listening on port 5010, Python 3.11+ with `pywin32` and `mcp` installed.
@@ -237,6 +238,24 @@ arCalProbe := GVL_Persistent.arCal;
 PRG_IntegrationScratch(); // [INTEGRATION-TEST-HOOK] do not remove manually
 """
 
+# PLC visualization (twincat_visu_*): a small page with one element of most types, bound to fixture symbols.
+VISU_PAGE = """{
+  "elements": [
+    { "type": "Rectangle", "x": 10, "y": 10, "width": 300, "height": 30, "text": "Step %d", "textVariable": "MAIN.fbStepChain.Step",
+      "fillColor": "#E0E0E0", "alarmFillColor": "#C0FFC0", "toggleColorVariable": "GVL_Fixture.bEnable" },
+    { "type": "Label", "x": 10, "y": 50, "width": 140, "height": 20, "text": "Value" },
+    { "type": "TextField", "x": 160, "y": 50, "width": 150, "height": 20, "text": "%.3f", "textVariable": "GVL_Fixture.fValue" },
+    { "type": "Line", "x": 10, "y": 80, "width": 300, "height": 0, "lineColor": "#000000" },
+    { "type": "Ellipse", "x": 10, "y": 90, "width": 20, "height": 20, "fillColor": "#808080", "alarmFillColor": "#00C000",
+      "toggleColorVariable": "GVL_Fixture.bEnable" },
+    { "type": "RoundedRectangle", "x": 40, "y": 90, "width": 60, "height": 20, "text": "Count", "moveXVariable": "GVL_Fixture.nCount",
+      "invisibleVariable": "NOT GVL_Fixture.bEnable" },
+    { "type": "Button", "x": 210, "y": 120, "width": 100, "height": 30, "text": "Enable",
+      "textColorVariable": "SEL(GVL_Fixture.bEnable, 16#FF000000, 16#FF00C000)" }
+  ]
+}
+"""
+
 SCRATCH_DECL = "PROGRAM PRG_IntegrationScratch\nVAR\nEND_VAR"
 SCRATCH_IMPL = ("; // integration-test scratch POU. Body is freely overwritten and "
                 "restored by the live test suite. Never put real logic here.")
@@ -371,6 +390,13 @@ def main():
         await call("twincat_plc_create", kind="POU", subtype="PROGRAM", parentPath=pou, name="PRG_IntegrationScratch")
         await call("twincat_plc_write", path=f"{pou}^PRG_IntegrationScratch", kind="POU", declaration=SCRATCH_DECL, implementation=SCRATCH_IMPL)
         await call("twincat_plc_write", path=f"{pou}^MAIN", kind="POU", declaration=MAIN_DECL, implementation=MAIN_IMPL)
+        # PLC visualization: the manager (the integrated visualization needs one) and a page written with the visu
+        # tools. The two renames make XAE save the page itself, so the fixture holds a page as XAE writes it.
+        visus = f"{root}^VISUs"
+        await call("twincat_plc_create", kind="VISU", subtype="MANAGER", parentPath=root, name="VisualizationManager")
+        await call("twincat_visu_apply", path=f"{visus}^VISU_Fixture", kind="VISU", page=VISU_PAGE)
+        await call("twincat_plc_rename", path=f"{visus}^VISU_Fixture", kind="VISU", newName="VISU_FixtureTmp")
+        await call("twincat_plc_rename", path=f"{visus}^VISU_FixtureTmp", kind="VISU", newName="VISU_Fixture")
         await call("twincat_save_project")
         # Build BEFORE adding EtherCAT: it creates the PLC process image the link
         # below needs, and a master without a task link would pop a modal

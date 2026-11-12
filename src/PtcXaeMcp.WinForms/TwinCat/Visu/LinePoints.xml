@@ -1,0 +1,526 @@
+<o n="Value" t="StructuredTypeNode">
+<v n="StructuredTypeNodeIsAnimation">false</v>
+<l n="TypeNodeChildren" t="ArrayList">
+<o t="DynamicArrayNode">
+<o n="DynamicArrayNodeCounterNode" t="BasicTypeNode">
+<v n="Flags">0L</v>
+<v n="BasicTypeNodeValue" t="Int16">2</v>
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iPointCount"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">1UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>Visible</v>
+<v>False</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">9</v>
+<v n="TypeNodeIdLong">3905702663L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+<n n="DynamicArrayNodeFastAccess" />
+<o n="ChildTemplate" t="StructuredTypeNode">
+<v n="StructuredTypeNodeIsAnimation">false</v>
+<l n="TypeNodeChildren" t="ArrayList" cet="BasicTypeNode">
+<o>
+<v n="Flags">0L</v>
+<n n="BasicTypeNodeValue" />
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iX"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>DescriptionUseFromParent</v>
+<v></v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.XCoordinate</v>
+<v>ieccodeconversion_generategetter</v>
+<v></v>
+<v>ieccodeconversion_generatesetter</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> setter and getter for the single member: as we want to have access within the AP, we prefer single properties. See IVisuStructPoint2</v>
+<v>PossibleRealCoordinates</v>
+<v>rX</v>
+</d>
+<v n="ConvDone">false</v>
+</o>
+<v n="TypeNodeId" t="Int16">2</v>
+<v n="TypeNodeIdLong">2727218658L</v>
+<v n="LibraryId">"cmpvisuhandler, 3.5.19.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.XCoordinate"</v>
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">true</v>
+</o>
+<o>
+<v n="Flags">0L</v>
+<n n="BasicTypeNodeValue" />
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iY"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>DescriptionUseFromParent</v>
+<v></v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.YCoordinate</v>
+<v>ieccodeconversion_generategetter</v>
+<v></v>
+<v>ieccodeconversion_generatesetter</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> setter and getter for the single member: as we want to have access within the AP, we prefer single properties. See IVisuStructPoint2</v>
+<v>PossibleRealCoordinates</v>
+<v>rY</v>
+</d>
+<v n="ConvDone">false</v>
+</o>
+<v n="TypeNodeId" t="Int16">3</v>
+<v n="TypeNodeIdLong">3582541172L</v>
+<v n="LibraryId">"cmpvisuhandler, 3.5.19.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.YCoordinate"</v>
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">true</v>
+</o>
+</l>
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"VisuStructPoint"</v>
+<v n="Name">"VisuStructPoint"</v>
+</o>
+<v n="TypeNodeName">""</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>ieccodeconversion_createarrayfactorymethod</v>
+<v></v>
+<v>ieccodeconversion_createfactorymethod</v>
+<v></v>
+<v>ieccodeconversion_creategenericsetter</v>
+<v></v>
+<v>ieccodeconversion_generate_checksum</v>
+<v></v>
+<v>ieccodeconversion_implementexistinginterface</v>
+<v>_3S.CoDeSys.VisuGenerated.IVisuStructPoint;_3S.CoDeSys.VisuGenerated.IVisuStructPoint2</v>
+<v>m4export_hide</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> This type is used also within the runtime system under the name RTS_Point, 
+ defined in SysGraphicBase.h
+ Structure can be used also from end users (Polygon dynamic array)</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">1</v>
+<v n="TypeNodeIdLong">3005012099L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+<l n="TypeNodeChildren" t="ArrayList" cet="StructuredTypeNode">
+<o>
+<v n="StructuredTypeNodeIsAnimation">false</v>
+<l n="TypeNodeChildren" t="ArrayList" cet="BasicTypeNode">
+<o>
+<v n="Flags">0L</v>
+<n n="BasicTypeNodeValue" />
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iX"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>DescriptionUseFromParent</v>
+<v></v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.XCoordinate</v>
+<v>ieccodeconversion_generategetter</v>
+<v></v>
+<v>ieccodeconversion_generatesetter</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> setter and getter for the single member: as we want to have access within the AP, we prefer single properties. See IVisuStructPoint2</v>
+<v>PossibleRealCoordinates</v>
+<v>rX</v>
+</d>
+<v n="ConvDone">false</v>
+</o>
+<v n="TypeNodeId" t="Int16">2</v>
+<v n="TypeNodeIdLong">1357360684L</v>
+<v n="LibraryId">"cmpvisuhandler, 3.5.19.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.XCoordinate"</v>
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">true</v>
+</o>
+<o>
+<v n="Flags">0L</v>
+<n n="BasicTypeNodeValue" />
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iY"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>DescriptionUseFromParent</v>
+<v></v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.YCoordinate</v>
+<v>ieccodeconversion_generategetter</v>
+<v></v>
+<v>ieccodeconversion_generatesetter</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> setter and getter for the single member: as we want to have access within the AP, we prefer single properties. See IVisuStructPoint2</v>
+<v>PossibleRealCoordinates</v>
+<v>rY</v>
+</d>
+<v n="ConvDone">false</v>
+</o>
+<v n="TypeNodeId" t="Int16">3</v>
+<v n="TypeNodeIdLong">669032122L</v>
+<v n="LibraryId">"cmpvisuhandler, 3.5.19.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.YCoordinate"</v>
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">true</v>
+</o>
+</l>
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"VisuStructPoint"</v>
+<v n="Name">"VisuStructPoint"</v>
+</o>
+<v n="TypeNodeName">"[0]"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>ieccodeconversion_createarrayfactorymethod</v>
+<v></v>
+<v>ieccodeconversion_createfactorymethod</v>
+<v></v>
+<v>ieccodeconversion_creategenericsetter</v>
+<v></v>
+<v>ieccodeconversion_generate_checksum</v>
+<v></v>
+<v>ieccodeconversion_implementexistinginterface</v>
+<v>_3S.CoDeSys.VisuGenerated.IVisuStructPoint;_3S.CoDeSys.VisuGenerated.IVisuStructPoint2</v>
+<v>m4export_hide</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> This type is used also within the runtime system under the name RTS_Point, 
+ defined in SysGraphicBase.h
+ Structure can be used also from end users (Polygon dynamic array)</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">1</v>
+<v n="TypeNodeIdLong">3953636811L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+<o>
+<v n="StructuredTypeNodeIsAnimation">false</v>
+<l n="TypeNodeChildren" t="ArrayList" cet="BasicTypeNode">
+<o>
+<v n="Flags">0L</v>
+<n n="BasicTypeNodeValue" />
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iX"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>DescriptionUseFromParent</v>
+<v></v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.XCoordinate</v>
+<v>ieccodeconversion_generategetter</v>
+<v></v>
+<v>ieccodeconversion_generatesetter</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> setter and getter for the single member: as we want to have access within the AP, we prefer single properties. See IVisuStructPoint2</v>
+<v>PossibleRealCoordinates</v>
+<v>rX</v>
+</d>
+<v n="ConvDone">false</v>
+</o>
+<v n="TypeNodeId" t="Int16">2</v>
+<v n="TypeNodeIdLong">1837598620L</v>
+<v n="LibraryId">"cmpvisuhandler, 3.5.19.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.XCoordinate"</v>
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">true</v>
+</o>
+<o>
+<v n="Flags">0L</v>
+<n n="BasicTypeNodeValue" />
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iY"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>DescriptionUseFromParent</v>
+<v></v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.YCoordinate</v>
+<v>ieccodeconversion_generategetter</v>
+<v></v>
+<v>ieccodeconversion_generatesetter</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> setter and getter for the single member: as we want to have access within the AP, we prefer single properties. See IVisuStructPoint2</v>
+<v>PossibleRealCoordinates</v>
+<v>rY</v>
+</d>
+<v n="ConvDone">false</v>
+</o>
+<v n="TypeNodeId" t="Int16">3</v>
+<v n="TypeNodeIdLong">444643082L</v>
+<v n="LibraryId">"cmpvisuhandler, 3.5.19.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.YCoordinate"</v>
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">true</v>
+</o>
+</l>
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"VisuStructPoint"</v>
+<v n="Name">"VisuStructPoint"</v>
+</o>
+<v n="TypeNodeName">"[1]"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>ieccodeconversion_createarrayfactorymethod</v>
+<v></v>
+<v>ieccodeconversion_createfactorymethod</v>
+<v></v>
+<v>ieccodeconversion_creategenericsetter</v>
+<v></v>
+<v>ieccodeconversion_generate_checksum</v>
+<v></v>
+<v>ieccodeconversion_implementexistinginterface</v>
+<v>_3S.CoDeSys.VisuGenerated.IVisuStructPoint;_3S.CoDeSys.VisuGenerated.IVisuStructPoint2</v>
+<v>m4export_hide</v>
+<v></v>
+<v>''NORMAL__COMMENT</v>
+<v> This type is used also within the runtime system under the name RTS_Point, 
+ defined in SysGraphicBase.h
+ Structure can be used also from end users (Polygon dynamic array)</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">1</v>
+<v n="TypeNodeIdLong">4072440970L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+</l>
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"VisuStructPoint"</v>
+<v n="Name">"VisuStructPoint"</v>
+</o>
+<v n="TypeNodeName">"pPoints"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">0UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>DefaultArraySize</v>
+<v>500</v>
+<v>DescriptionUseFromParent</v>
+<v></v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.Points</v>
+<v>''NORMAL__COMMENT</v>
+<v> There is no more information than the parent provides</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">8</v>
+<v n="TypeNodeIdLong">1976098288L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.Points"</v>
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">true</v>
+</o>
+<o t="BasicTypeNode">
+<v n="Flags">0L</v>
+<v n="BasicTypeNodeValue" t="Int16">2</v>
+<v n="BasicTypeNodeAcceptsExpression">false</v>
+<n n="BasicTypeNodeFastAccess" />
+<a n="BasicTypeNodeEnumValues" et="String" />
+<n n="EnumValueDisplayTextIds" />
+<n n="EnumValueVisibilityAttributeValues" />
+<n n="EnumValueLibraryId" />
+<n n="DynamicEnumMemberVisibilityCheckerTypeGuid" />
+<n n="EnumValueDisplayName" />
+<l n="TypeNodeChildren" t="ArrayList" />
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Int</v>
+<v n="QualifiedName">"INT"</v>
+<v n="Name">"INT"</v>
+</o>
+<v n="TypeNodeName">"iPointCount"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">1UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>Visible</v>
+<v>False</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">9</v>
+<v n="TypeNodeIdLong">3905702663L</v>
+<v n="LibraryId">"visuelembase, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<n n="DisplayTextId" />
+<n n="DescriptionTextID" />
+<v n="DescriptionUseParent">false</v>
+</o>
+</l>
+<o n="TypeNodeType" t="TypeNodeType">
+<v n="TypeClass" t="TypeClass">Userdef</v>
+<v n="QualifiedName">"VisuStructPolygon"</v>
+<v n="Name">"VisuStructPolygon"</v>
+</o>
+<v n="TypeNodeName">"m_StaticPositionPolygon"</v>
+<o n="TypeNodeAttributes" t="TypeNodeAttributes2">
+<v n="AttrFlags">81920UL</v>
+<d n="TypeNodeAttributesData" t="CaseInsensitiveHashtable" ckt="String" cvt="String">
+<v>AddChildByAttribute</v>
+<v>StaticPolygonAngle</v>
+<v>Category</v>
+<v>Simple|Standard</v>
+<v>conditionalshow</v>
+<v>visu_elemdev</v>
+<v>DescriptionTextId</v>
+<v>TL_ElementProperties.Desc_StaticLinePos</v>
+<v>DisplayTextId</v>
+<v>TL_ElementProperties.Position</v>
+<v>DynamicArray</v>
+<v></v>
+<v>Polygon</v>
+<v></v>
+<v>PolygonPoints</v>
+<v></v>
+<v>Storable</v>
+<v>True</v>
+</d>
+<v n="ConvDone">true</v>
+</o>
+<v n="TypeNodeId" t="Int16">7</v>
+<v n="TypeNodeIdLong">1051212449L</v>
+<v n="LibraryId">"visuelems, 4.8.0.0 (system)"</v>
+<n n="ElementId" />
+<v n="DisplayTextId">"TL_ElementProperties.Position"</v>
+<v n="DescriptionTextID">"TL_ElementProperties.Desc_StaticLinePos"</v>
+<v n="DescriptionUseParent">false</v>
+</o>

@@ -28,12 +28,12 @@ internal static class EventClassXae
     public static string CreateType(string name, string dataTypeXml)
     {
         dynamic dte = XaeDte.TryGet() ?? throw new InvalidOperationException("No running XAE (TcXaeShell.DTE) in the ROT.");
-        XaeDte.Retry(() =>
+        WhileLoading(() => XaeDte.Retry(() =>
         {
             object typeSystem = TypeSystemOf(dte);
             _ = ((dynamic)typeSystem).CreateType(dataTypeXml);
             return true;
-        });
+        }));
         return GuidOf(name) ?? throw new InvalidOperationException($"CreateType did not leave a type '{name}' with a GUID.");
     }
 
@@ -41,30 +41,68 @@ internal static class EventClassXae
     public static string? GuidOf(string name)
     {
         dynamic dte = XaeDte.TryGet() ?? throw new InvalidOperationException("No running XAE (TcXaeShell.DTE) in the ROT.");
-        return XaeDte.Retry(() =>
+        return WhileLoading(() => XaeDte.Retry(() =>
         {
-            foreach (object? type in (IEnumerable)TypeSystemOf(dte))
+            foreach (object? type in TypesOf(TypeSystemOf(dte)))
             {
                 if (type is null || !string.Equals((string)((dynamic)type).Name, name, StringComparison.OrdinalIgnoreCase)) continue;
                 var guid = Regex.Match((string)((dynamic)type).ExportXml(false), "GUID=\"(\\{[^\"]+\\})\"");
                 if (guid.Success) return guid.Groups[1].Value;
             }
             return (string?)null;
-        });
+        }));
+    }
+
+    /// <summary>The types: the IDispatch enumerator, else the dual interface's NewEnum (the first is refused now and then).</summary>
+    private static IEnumerable<object?> TypesOf(object typeSystem)
+    {
+        if (typeSystem is IEnumerable sequence) return sequence.Cast<object?>();
+        if (((ITcTypeSystemVtable)typeSystem).NewEnum is not System.Runtime.InteropServices.ComTypes.IEnumVARIANT e)
+            throw new InvalidCastException("The type system offers no enumerator.");
+        var types = new List<object?>();
+        var item = new object[1];
+        while (e.Next(1, item, IntPtr.Zero) == 0) types.Add(item[0]);
+        return types;
+    }
+
+    /// <summary>
+    /// Right after a solution was opened the XAE may still load (a fixture with a visualization manager loads its
+    /// libraries a moment longer): the type system is not there yet or does not hand out its enumerator. Retried for 60 s.
+    /// </summary>
+    private static T WhileLoading<T>(Func<T> call)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(60);
+        while (true)
+        {
+            try { return call(); }
+            catch (Exception ex) when (ex is InvalidCastException
+                                       || (ex is InvalidOperationException && ex.Message.StartsWith("The open solution has no TwinCAT project", StringComparison.Ordinal)))
+            {
+                if (DateTime.UtcNow >= deadline) throw;
+                Thread.Sleep(1000);
+            }
+        }
     }
 
     private static object TypeSystemOf(dynamic dte)
     {
+        // A busy XAE (RPC_E_CALL_REJECTED / RETRYLATER) must reach XaeDte.Retry: swallowed here it read as "no type
+        // system" right after a fixture with a visualization manager was opened (it loads its libraries a moment longer).
         dynamic projects = dte.Solution.Projects;
+        Exception? last = null;
         for (int i = 1; i <= (int)projects.Count; i++)
         {
             object? sysMan = null;
-            try { sysMan = projects.Item(i).Object; } catch (COMException) { }
+            try { sysMan = projects.Item(i).Object; } catch (COMException ex) when (!IsBusy(ex)) { last = ex; }
             if (sysMan is null) continue;
-            try { return ((dynamic)sysMan).GetTypeSystem(); } catch (COMException) { }
+            try { return ((dynamic)sysMan).GetTypeSystem(); } catch (COMException ex) when (!IsBusy(ex)) { last = ex; }
         }
-        throw new InvalidOperationException("The open solution has no TwinCAT project with a type system.");
+        throw new InvalidOperationException("The open solution has no TwinCAT project with a type system." +
+                                            (last is null ? "" : $" Last error: {last.Message} (0x{last.HResult:X8})"));
     }
+
+    private static bool IsBusy(COMException ex) =>
+        ex.HResult is unchecked((int)0x80010001) or unchecked((int)0x8001010A);
 
     /// <summary>Deletes the type <paramref name="name"/> from the type system of the open solution; returns what happened. Does not save.</summary>
     public static string DeleteType(string name)

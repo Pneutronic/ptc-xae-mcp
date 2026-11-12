@@ -222,6 +222,14 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     string CreatePlcChild(string parentPath, string name, int subType, string label);
 
+    /// <summary>
+    /// Imports the PLC object file <paramref name="filePath"/> under <paramref name="parentPath"/> as
+    /// <paramref name="name"/> (<c>CreateChild(name, 58, null, filePath)</c>) and checks that the new path holds
+    /// <paramref name="expectedItemType"/>. Throws otherwise, after removing a plain file node XAE may have left
+    /// behind. Returns the new tree path.
+    /// </summary>
+    string ImportPlcObjectFile(string parentPath, string name, string filePath, int expectedItemType);
+
     // ---- visible-for-video --------------------------------------------------
     /// <summary>
     /// Open a PLC source object (POU/GVL/DUT/INTERFACE) at <paramref name="treePath"/>

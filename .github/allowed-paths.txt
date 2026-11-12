@@ -60,6 +60,8 @@ src/**/*.splcproj
 src/**/*.diagram
 # MCP prompt texts, embedded into the exe (McpPrompts)
 src/PtcXaeMcp.WinForms/Mcp/Prompts/*.md
+# PLC visualization files the unit tests read (saved by the XAE in the neutral fixture)
+src/PtcXaeMcp.Tests/Fixtures/Visu/*.TcVIS
 
 # Test fixtures (TwinCAT and TwinCAT HMI projects and their generators)
 tests/Fixtures/*.py
@@ -74,6 +76,9 @@ tests/Fixtures/**/*.TcDUT
 tests/Fixtures/**/*.TcGVL
 tests/Fixtures/**/*.TcIO
 tests/Fixtures/**/*.TcTTO
+tests/Fixtures/**/*.TcVIS
+tests/Fixtures/**/*.TcVMO
+tests/Fixtures/**/*.TcGTLO
 tests/Fixtures/**/*.tmc
 tests/Fixtures/**/*.tpl
 tests/Fixtures/**/*.xsd

@@ -122,6 +122,24 @@ internal sealed partial class FakeTwinCatSession
         return newPath;
     }
 
+    /// <summary>Thrown by <see cref="ImportPlcObjectFile"/> in turn; a null entry lets that call succeed.</summary>
+    public Queue<Exception?> ImportPlcObjectFileThrows { get; } = new();
+
+    /// <summary>Called on a successful import (parentPath, name, filePath) — e.g. to copy the file to where the fake XAE keeps it.</summary>
+    public Action<string, string, string>? ImportPlcObjectFileHook { get; set; }
+
+    public string ImportPlcObjectFile(string parentPath, string name, string filePath, int expectedItemType)
+    {
+        CallLog.Add($"ImportPlcObjectFile(parent={parentPath}, name={name}, type={expectedItemType})");
+        if (ImportPlcObjectFileThrows.Count > 0 && ImportPlcObjectFileThrows.Dequeue() is { } ex) throw ex;
+        string newPath = parentPath + "^" + name;
+        PlcTreeMutated = true;
+        MissingPlcPaths.Remove(newPath);
+        PlcNodeItemTypes[newPath] = expectedItemType;
+        ImportPlcObjectFileHook?.Invoke(parentPath, name, filePath);
+        return newPath;
+    }
+
     public Exception? CreatePlcChildThrows { get; set; }
 
     public string CreatePlcChild(string parentPath, string name, int subType, string label)
@@ -138,8 +156,12 @@ internal sealed partial class FakeTwinCatSession
             GvlDeclarationsByPath[newPath] = skeleton;
             PouBodiesByPath[newPath] = new PouBody(skeleton, string.Empty, string.Empty);
         }
+        CreatePlcChildHook?.Invoke(newPath);
         return newPath;
     }
+
+    /// <summary>Runs at the end of <see cref="CreatePlcChild"/> with the new path (e.g. to write the file the XAE would create).</summary>
+    public Action<string>? CreatePlcChildHook { get; set; }
 
     public string CreateInterface(string parentPath, string name)
     {

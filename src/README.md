@@ -50,7 +50,7 @@ Tests skip gracefully via `SkipException` if port 5010 isn't reachable.
 **Integration (requires TwinCAT XAE 3.1.4026 on the machine):**
 
 The suite runs against the neutral fixture `tests/Fixtures/PtcXaeMcpFixture` (one PLC with MAIN,
-a step-chain FB, a GVL, STRUCT/ENUM/ALIAS DUTs, an interface, a disabled (adapter-free) EtherCAT master + EK1100
+a step-chain FB, a GVL, STRUCT/ENUM/ALIAS DUTs, an interface, a PLC visualization with its manager, a disabled (adapter-free) EtherCAT master + EK1100
 and an NC task; Beckhoff standard libraries only). It never opens the committed copy: with
 `PTC_XAE_MCP_REQUIRE_LIVE=1` it copies the fixture to `%TEMP%\ptc-xae-mcp-fixture-runs\run-…`,
 starts the host if port 5010 is dead (newest `src\PtcXaeMcp.WinForms\bin\**\ptc-xae-mcp.exe`, or

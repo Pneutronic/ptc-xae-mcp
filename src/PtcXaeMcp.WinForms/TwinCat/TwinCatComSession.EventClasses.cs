@@ -223,14 +223,45 @@ internal sealed partial class TwinCatComSession
         return typeSystem ?? throw new InvalidOperationException("ITcSysManager.GetTypeSystem returned nothing.");
     }
 
+    // Seen live with a project that has a visualization manager (its libraries add many types): now and then the type
+    // system refuses the IDispatch enumerator (E_NOINTERFACE for DISPID_NEWENUM) right after the solution was opened.
+    // The dual interface's NewEnum (through the vtable) is tried then, and both for a few seconds.
+    private static readonly TimeSpan TypeEnumSettle = TimeSpan.FromSeconds(20);
+
     private static List<object> TypesOf(object typeSystem)
     {
-        if (typeSystem is not IEnumerable sequence)
-            throw new InvalidOperationException("The type system cannot be enumerated (_NewEnum).");
-        var types = new List<object>();
-        foreach (object? t in sequence)
-            if (t is not null) types.Add(t);
-        return types;
+        var sw = Stopwatch.StartNew();
+        while (true)
+        {
+            var types = new List<object>();
+            if (typeSystem is IEnumerable sequence)
+            {
+                foreach (object? t in sequence)
+                    if (t is not null) types.Add(t);
+                return types;
+            }
+            if (TryEnumerateThroughVtable(typeSystem, types)) return types;
+            if (sw.Elapsed >= TypeEnumSettle)
+                throw new InvalidOperationException("The type system cannot be enumerated (_NewEnum).");
+            Thread.Sleep(500);
+        }
+    }
+
+    private static bool TryEnumerateThroughVtable(object typeSystem, List<object> types)
+    {
+        try
+        {
+            if (((ITcTypeSystemVtable)typeSystem).NewEnum is not System.Runtime.InteropServices.ComTypes.IEnumVARIANT e) return false;
+            var item = new object[1];
+            while (e.Next(1, item, IntPtr.Zero) == 0)
+                if (item[0] is not null) types.Add(item[0]);
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidCastException || ComCall.NotBusy(ex))
+        {
+            types.Clear();
+            return false;
+        }
     }
 
     private static string ExportXml(object type) =>

@@ -56,6 +56,10 @@ public partial class McpServerTests
         Assert.Contains("twincat_plc_list", names);
         Assert.Contains("twincat_plc_create", names);
         Assert.Contains("twincat_plc_read", names);
+        Assert.Contains("twincat_visu_list_element_types", names);
+        Assert.Contains("twincat_visu_read", names);
+        Assert.Contains("twincat_visu_apply", names);
+        Assert.Contains("twincat_visu_edit_elements", names);
         Assert.Contains("twincat_plc_write", names);
         Assert.Contains("twincat_plc_delete", names);
         Assert.Contains("twincat_plc_rename", names);

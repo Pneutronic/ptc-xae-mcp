@@ -726,7 +726,7 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
         string stamp = Stamp();
         string tl = $"TL_PlcObj_{stamp}", ip = $"IP_PlcObj_{stamp}", uml = $"UML_PlcObj_{stamp}",
                vm = $"VM_PlcObj_{stamp}", vo = $"VO_PlcObj_{stamp}", rm = $"RM_PlcObj_{stamp}", prg = $"PRG_PlcObjRef_{stamp}";
-        string tlPath = $"{root}^{tl}", ipPath = $"{root}^{ip}", umlPath = $"{root}^{uml}", vmPath = $"{root}^{vm}",
+        string tlPath = $"{root}^{tl}", ipPath = $"{root}^{ip}", umlPath = $"{root}^{uml}", vmPath = FixtureLayout.VisuManagerPath,
                voPath = $"{root}^{vo}", rmPath = $"{root}^{rm}", prgPath = $"{FixtureLayout.PousFolder}^{prg}";
         string taskPath = $"{root}^PlcTask";
         var created = new List<(string Path, string Kind)>();
@@ -736,10 +736,14 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
             await OkAsync("twincat_plc_create", ("kind", "TEXTLIST"), ("parentPath", root), ("name", tl)); created.Add((tlPath, "TEXTLIST"));
             await OkAsync("twincat_plc_create", ("kind", "IMAGEPOOL"), ("parentPath", root), ("name", ip)); created.Add((ipPath, "IMAGEPOOL"));
             await OkAsync("twincat_plc_create", ("kind", "UML"), ("parentPath", root), ("name", uml)); created.Add((umlPath, "UML"));
-            await OkAsync("twincat_plc_create", ("kind", "VISU"), ("subtype", "MANAGER"), ("parentPath", root), ("name", vm)); created.Add((vmPath, "VISU"));
+            // The fixture has its visualization manager (a PLC project takes only one): a second one is refused by the XAE.
+            string second = await CallAsync("twincat_plc_create", ("kind", "VISU"), ("subtype", "MANAGER"), ("parentPath", root), ("name", vm));
+            Assert.StartsWith("[Error]", second);
             await OkAsync("twincat_plc_create", ("kind", "VISU"), ("subtype", "VISUALIZATION"), ("parentPath", root), ("name", vo)); created.Add((voPath, "VISU"));
-            await OkAsync("twincat_plc_create", ("kind", "VISU"), ("subtype", "TARGET"), ("parentPath", vmPath), ("name", "TargetVisu"));
-            await OkAsync("twincat_plc_create", ("kind", "VISU"), ("subtype", "WEB"), ("parentPath", vmPath), ("name", "WebVisu"));
+            await OkAsync("twincat_plc_create", ("kind", "VISU"), ("subtype", "TARGET"), ("parentPath", vmPath), ("name", $"TargetVisu{stamp}"));
+            created.Add(($"{vmPath}^TargetVisu{stamp}", "VISU"));
+            await OkAsync("twincat_plc_create", ("kind", "VISU"), ("subtype", "WEB"), ("parentPath", vmPath), ("name", $"WebVisu{stamp}"));
+            created.Add(($"{vmPath}^WebVisu{stamp}", "VISU"));
             await OkAsync("twincat_plc_create", ("kind", "RECIPE"), ("subtype", "MANAGER"), ("parentPath", root), ("name", rm)); created.Add((rmPath, "RECIPE"));
             await OkAsync("twincat_plc_create", ("kind", "RECIPE"), ("subtype", "DEFINITION"), ("parentPath", rmPath), ("name", "Rcp_A"));
             await OkAsync("twincat_plc_create", ("kind", "POU"), ("subtype", "PROGRAM"), ("parentPath", FixtureLayout.PousFolder), ("name", prg));
@@ -750,8 +754,8 @@ public class PlcObjectsIntegrationTests : IAsyncLifetime
             Assert.Matches(new Regex($@"IMAGEPOOL/LOCAL\s+{Regex.Escape(ipPath)}"), all);
             Assert.Matches(new Regex($@"UML/CLASSDIAGRAM\s+{Regex.Escape(umlPath)}"), all);
             Assert.Matches(new Regex($@"VISU/MANAGER\s+{Regex.Escape(vmPath)}"), all);
-            Assert.Matches(new Regex($@"VISU/TARGET\s+{Regex.Escape(vmPath)}\^TargetVisu"), all);
-            Assert.Matches(new Regex($@"VISU/WEB\s+{Regex.Escape(vmPath)}\^WebVisu"), all);
+            Assert.Matches(new Regex($@"VISU/TARGET\s+{Regex.Escape(vmPath)}\^TargetVisu{stamp}"), all);
+            Assert.Matches(new Regex($@"VISU/WEB\s+{Regex.Escape(vmPath)}\^WebVisu{stamp}"), all);
             Assert.Matches(new Regex($@"RECIPE/DEFINITION\s+{Regex.Escape(rmPath)}\^Rcp_A"), all);
             Assert.Matches(new Regex($@"TASKREF/PROGRAM\s+{Regex.Escape(taskPath)}\^{Regex.Escape(prg)}"), all);
 

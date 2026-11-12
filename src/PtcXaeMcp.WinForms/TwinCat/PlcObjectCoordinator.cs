@@ -79,7 +79,10 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
         if (ContentlessKinds.Contains(kind) && ContentVerbs.Contains(verb))
             return $"[Error] kind {kind} is not supported by twincat_plc_{verb}: XAE does not expose the content of this element " +
                    "through the Automation Interface (ProduceXml returns only tree metadata; it has no declaration or " +
-                   "implementation). Listing, creating (where XAE allows it), renaming and deleting work. Nothing was changed.";
+                   "implementation). Listing, creating (where XAE allows it), renaming and deleting work. Nothing was changed." +
+                   (kind == PlcKind.Visu
+                       ? " The content of a visualization: twincat_visu_read, twincat_visu_apply, twincat_visu_edit_elements."
+                       : "");
         return null;
     }
 

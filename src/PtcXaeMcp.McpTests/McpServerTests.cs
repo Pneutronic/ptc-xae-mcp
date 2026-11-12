@@ -106,7 +106,7 @@ public partial class McpServerTests : IAsyncLifetime
         "twincat_check_iodd_present",
         "twincat_plcopen_export",
         "twincat_plc_list", "twincat_plc_read", "twincat_plc_list_entries", "twincat_plc_search",
-        "twincat_visu_list_element_types",
+        "twincat_visu_list_element_types", "twincat_visu_read",
         "twincat_get_scope_status", "twincat_list_scope_channels", "twincat_read_scope_acquisition",
         "twincat_broadcast_search", "twincat_read_event_logger", "twincat_get_license_info",
         "twincat_list_nc_tasks_axes", "twincat_read_axis_params", "twincat_read_ads_variable",

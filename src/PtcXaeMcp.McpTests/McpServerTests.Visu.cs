@@ -21,4 +21,39 @@ public partial class McpServerTests
         Assert.Contains("Frame", types);
         Assert.True(doc.RootElement.GetProperty("properties").GetArrayLength() > 10);
     }
+
+    [SkippableFact]
+    public async Task Visu_Read_WrongKind_IsRefusedBeforeTheXaeIsAsked()
+    {
+        SkipIfNotReachable();
+
+        var text = GetText(await CallToolAsync("twincat_visu_read",
+            new Dictionary<string, object?> { ["path"] = VisuPath, ["kind"] = "POU" }));
+
+        Assert.StartsWith("[Error] The visu tools work on kind VISU", text);
+    }
+
+    [SkippableFact]
+    public async Task Visu_Read_MissingKind_IsRefused()
+    {
+        SkipIfNotReachable();
+
+        var text = GetText(await CallToolAsync("twincat_visu_read",
+            new Dictionary<string, object?> { ["path"] = VisuPath }));
+
+        Assert.StartsWith("[Error] kind is required", text);
+    }
+
+    [SkippableFact]
+    public async Task Visu_Read_PathNotFound_IsAnError()
+    {
+        SkipIfNotReachable();
+
+        var text = GetText(await CallToolAsync("twincat_visu_read",
+            new Dictionary<string, object?> { ["path"] = VisuPath, ["kind"] = "VISU" }));
+        SkipIfXaeNotRunning(text);
+
+        Assert.StartsWith("[Error]", text);
+        Assert.Contains("not found", text);
+    }
 }

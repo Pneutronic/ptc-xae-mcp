@@ -28,4 +28,17 @@ internal sealed partial class TwinCatMcpTools
                  "created, its properties (name, kind integer/text/expression/color, meaning), and what is not supported. Needs no XAE.")]
     public string VisuListElementTypes(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_visu_list_element_types", new { }, VisuJson.Catalog, cancellationToken);
+
+    [McpServerTool(Name = "twincat_visu_read", ReadOnly = true)]
+    [Description("Read a PLC visualization (.TcVIS) structured, as JSON: name, file, interface (the VAR_IN_OUT declaration), extent, revision, " +
+                 "whether the tools may write the file, and every element with id, type, position, size, text and text variable, colours, " +
+                 "toggle-colour/invisible/movement/rotation/tap variables, tooltip, a Frame's referenced visualizations and parameters, and its " +
+                 "input actions. An element the tools do not support appears with type, id and supported=false and is never changed. Properties " +
+                 "absent from an element use XAE's default. kind must be VISU.")]
+    public string VisuRead(
+        [Description(VisuPathHelp)] string path,
+        [Description(VisuKindHelp)] string kind = "",
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_visu_read", new { path, kind }, () =>
+            bridge.Dispatcher.Run(() => new VisuCoordinator(bridge.Dispatcher.Session).Read(path, kind)), cancellationToken);
 }

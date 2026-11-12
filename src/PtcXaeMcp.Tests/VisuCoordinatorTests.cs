@@ -31,6 +31,8 @@ public sealed partial class VisuCoordinatorTests : IDisposable
         _session.PlcNodeItemTypes[Visu] = PlcItemType.VisObj;
         _session.TreeChildren[Root] = [new TreeChildInfo("VISUs", PlcItemType.Folder), new TreeChildInfo("Visualization Manager", PlcItemType.VisMan)];
         _session.TreeItemXml[Visu] = TreeItemXml(_projectFile);
+        // The fake XAE keeps the imported file where the project file is (what the real import does).
+        _session.ImportPlcObjectFileHook = (_, _, file) => File.Copy(file, _projectFile, overwrite: true);
         _coordinator = new VisuCoordinator(_session) { WorkRoot = Path.Combine(_dir, "work") };
     }
 

@@ -56,4 +56,52 @@ public partial class McpServerTests
         Assert.StartsWith("[Error]", text);
         Assert.Contains("not found", text);
     }
+
+    [SkippableFact]
+    public async Task Visu_Apply_UnknownElementType_IsRefusedBeforeTheXaeIsAsked()
+    {
+        SkipIfNotReachable();
+
+        var text = GetText(await CallToolAsync("twincat_visu_apply", new Dictionary<string, object?>
+        {
+            ["path"] = VisuPath,
+            ["kind"] = "VISU",
+            ["page"] = """{ "elements": [ { "type": "Gauge", "x": 0, "y": 0, "width": 10, "height": 10 } ] }""",
+        }));
+
+        Assert.StartsWith("[Error]", text);
+        Assert.Contains("unknown element type 'Gauge'", text);
+        Assert.EndsWith("Nothing was changed.", text);
+    }
+
+    [SkippableFact]
+    public async Task Visu_Apply_PageAndPageFile_IsRefused()
+    {
+        SkipIfNotReachable();
+
+        var text = GetText(await CallToolAsync("twincat_visu_apply", new Dictionary<string, object?>
+        {
+            ["path"] = VisuPath,
+            ["kind"] = "VISU",
+            ["page"] = """{ "elements": [] }""",
+            ["pageFile"] = Path.Combine(Path.GetTempPath(), "page.json"),
+        }));
+
+        Assert.StartsWith("[Error]", text);
+    }
+
+    [SkippableFact]
+    public async Task Visu_Apply_WrongKind_IsRefused()
+    {
+        SkipIfNotReachable();
+
+        var text = GetText(await CallToolAsync("twincat_visu_apply", new Dictionary<string, object?>
+        {
+            ["path"] = VisuPath,
+            ["kind"] = "DUT",
+            ["page"] = """{ "elements": [] }""",
+        }));
+
+        Assert.StartsWith("[Error] The visu tools work on kind VISU", text);
+    }
 }

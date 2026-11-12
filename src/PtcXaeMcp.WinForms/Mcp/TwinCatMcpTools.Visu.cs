@@ -41,4 +41,32 @@ internal sealed partial class TwinCatMcpTools
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_visu_read", new { path, kind }, () =>
             bridge.Dispatcher.Run(() => new VisuCoordinator(bridge.Dispatcher.Session).Read(path, kind)), cancellationToken);
+
+    [McpServerTool(Name = "twincat_visu_apply", ReadOnly = false, Destructive = true)]
+    [Description("Create a PLC visualization or replace its whole page from JSON: { \"interface\": \"VAR_IN_OUT … END_VAR\" (optional; kept when " +
+                 "omitted), \"elements\": [ { \"type\": \"Rectangle\", \"x\": 10, \"y\": 10, \"width\": 120, \"height\": 40, \"text\": \"Step %d\", " +
+                 "\"textVariable\": \"MAIN.fb.nStep\", \"fillColor\": \"#C0FFC0\" }, … ] }. Types: Rectangle, RoundedRectangle, Ellipse, Line, Label, " +
+                 "TextField, Button (twincat_visu_list_element_types lists their properties); a new element needs x, y, width and height. " +
+                 "{ \"copyFrom\": <id>, … } copies an element of the page as it was (also a Frame or a Polygon, which cannot be created from scratch) " +
+                 "and applies the other properties; a Frame copy takes \"frameParameters\": { \"<parameter>\": \"<expression>\" }. Every existing " +
+                 "element is replaced. When the path does not exist, the visualization is created there (parent: a folder or the PLC project node). " +
+                 "Element ids are assigned anew and listed in the result. " + VisuWriteRules)]
+    public string VisuApply(
+        [Description(VisuPathHelp + " The last part is the visualization's name.")] string path,
+        [Description(VisuKindHelp)] string kind = "",
+        [Description("The page as JSON (see the tool description). Alternative to 'pageFile'.")] string? page = null,
+        [Description("Path to a file holding the page JSON. Alternative to 'page'.")] string? pageFile = null,
+        [Description("Revision twincat_visu_read reported. When given, a different current revision refuses the write.")] string? expectedRevision = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_visu_apply", new { path, kind, page, pageFile, expectedRevision }, () =>
+            bridge.Dispatcher.Run(() =>
+            {
+                var guard = McpPathGuard.CheckOptionalFile(pageFile, bridge.Dispatcher.Session, "pageFile");
+                if (guard is not null) return guard;
+                var input = SourceTextInput.Resolve("page", page, pageFile);
+                if (input.Error is not null) return input.Error;
+                if (input.Text is null) return "[Error] page is required: the page JSON inline, or pageFile.";
+                return new VisuCoordinator(bridge.Dispatcher.Session).Apply(path, kind, input.Text, expectedRevision)
+                       + SourceTextInput.FormatNotes(input);
+            }), cancellationToken);
 }

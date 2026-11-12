@@ -101,17 +101,17 @@ public class VisuIntegrationTests : IAsyncLifetime
           "interface": "VAR_IN_OUT\n\tnLevel : INT;\nEND_VAR",
           "elements": [
             { "type": "Rectangle", "x": 10, "y": 10, "width": 120, "height": 40, "text": "Count %d", "textVariable": "GVL_Fixture.nCount",
-              "tooltip": "the counter", "frameColor": "#000000", "fillColor": "#C0FFC0", "alarmFrameColor": "#FF0000", "alarmFillColor": "#FFC0C0",
+              "frameColor": "#000000", "fillColor": "#C0FFC0", "alarmFrameColor": "#FF0000", "alarmFillColor": "#FFC0C0",
               "toggleColorVariable": "GVL_Fixture.bEnable", "invisibleVariable": "NOT GVL_Fixture.bEnable",
-              "moveXVariable": "GVL_Fixture.nCount", "moveYVariable": "nLevel", "rotationVariable": "GVL_Fixture.nCount",
-              "tapVariable": "GVL_Fixture.bEnable" },
+              "textColorVariable": "SEL(GVL_Fixture.bEnable, 16#FF000000, 16#FFFF0000)",
+              "moveXVariable": "GVL_Fixture.nCount", "moveYVariable": "nLevel", "rotationVariable": "GVL_Fixture.nCount" },
             { "type": "RoundedRectangle", "x": 150, "y": 10, "width": 100, "height": 40, "text": "Ready", "fillColor": "#E0E0FF" },
             { "type": "Ellipse", "x": 270, "y": 10, "width": 40, "height": 40, "fillColor": "#00FF00", "toggleColorVariable": "GVL_Fixture.bEnable" },
-            { "type": "Line", "x": 10, "y": 60, "width": 300, "height": 0 },
+            { "type": "Line", "x": 10, "y": 60, "width": 300, "height": 0, "lineColor": "#0000FF", "moveYVariable": "nLevel" },
             { "type": "Label", "x": 10, "y": 70, "width": 200, "height": 20, "text": "Live page" },
-            { "type": "TextField", "x": 10, "y": 100, "width": 120, "height": 24, "text": "%.2f", "textVariable": "GVL_Fixture.fValue" },
-            { "type": "Button", "x": 150, "y": 100, "width": 100, "height": 30, "text": "Enable", "tooltip": "sets bEnable while pressed",
-              "tapVariable": "GVL_Fixture.bEnable" }
+            { "type": "TextField", "x": 10, "y": 100, "width": 120, "height": 24, "text": "%.2f", "textVariable": "GVL_Fixture.fValue",
+              "fillColorVariable": "SEL(GVL_Fixture.bEnable, 16#FFC0C0C0, 16#FF00C000)" },
+            { "type": "Button", "x": 150, "y": 100, "width": 100, "height": 30, "text": "Enable", "textColorVariable": "16#FF0000FF" }
           ]
         }
         """;
@@ -132,7 +132,8 @@ public class VisuIntegrationTests : IAsyncLifetime
         var rect = ElementOfType(page, "Rectangle");
         Assert.Equal("Step %d", rect.GetProperty("text").GetString());
         Assert.Equal(FixtureLayout.StepChainStepMember, rect.GetProperty("textVariable").GetString());
-        Assert.Equal("GVL_Fixture.bEnable", ElementOfType(page, "Button").GetProperty("tapVariable").GetString());
+        Assert.Equal("GVL_Fixture.bEnable", rect.GetProperty("toggleColorVariable").GetString());
+        Assert.Equal("#FF000000", ElementOfType(page, "Line").GetProperty("lineColor").GetString());
 
         string wrongKind = await CallAsync("twincat_visu_read", ("path", FixtureLayout.FixtureVisuPath), ("kind", "POU"));
         Assert.StartsWith("[Error] The visu tools work on kind VISU", wrongKind);
@@ -192,17 +193,20 @@ public class VisuIntegrationTests : IAsyncLifetime
             Assert.Equal("nLevel", rect.GetProperty("moveYVariable").GetString());
             int rectId = rect.GetProperty("id").GetInt32();
             int lineId = ElementOfType(page, "Line").GetProperty("id").GetInt32();
+            int ellipseId = ElementOfType(page, "Ellipse").GetProperty("id").GetInt32();
             int buttonId = ElementOfType(page, "Button").GetProperty("id").GetInt32();
+            Assert.Equal("#FF0000FF", ElementOfType(page, "Line").GetProperty("lineColor").GetString());
 
             string ops = $$"""
                 [ { "op": "update", "id": {{rectId}}, "set": { "text": "Level %d", "textVariable": "nLevel", "fillColor": "#FFFF00" } },
-                  { "op": "remove", "id": {{lineId}} },
+                  { "op": "update", "id": {{lineId}}, "set": { "y": 70, "height": -10, "lineColor": "#FF0000" } },
+                  { "op": "remove", "id": {{ellipseId}} },
                   { "op": "add", "element": { "type": "Label", "x": 10, "y": 140, "width": 150, "height": 20, "text": "Added" } },
                   { "op": "add", "element": { "copyFrom": {{buttonId}}, "x": 260 } } ]
                 """;
             string edited = await OkAsync("twincat_visu_edit_elements", ("path", visu), ("kind", "VISU"), ("operations", ops),
                 ("expectedRevision", page.GetProperty("revision").GetString()));
-            Assert.Contains($"Removed element {lineId}.", edited);
+            Assert.Contains($"Removed element {ellipseId}.", edited);
 
             // Open and close the editor: XAE shows the page (no prompt, nothing to save).
             await OkAsync("twincat_open_object", ("treePath", visu));
@@ -215,7 +219,10 @@ public class VisuIntegrationTests : IAsyncLifetime
             var savedRect = saved.GetProperty("elements").EnumerateArray().Single(e => e.GetProperty("id").GetInt32() == rectId);
             Assert.Equal("Level %d", savedRect.GetProperty("text").GetString());
             Assert.Equal("#FFFFFF00", savedRect.GetProperty("fillColor").GetString());
-            Assert.DoesNotContain(saved.GetProperty("elements").EnumerateArray(), e => e.GetProperty("id").GetInt32() == lineId);
+            Assert.DoesNotContain(saved.GetProperty("elements").EnumerateArray(), e => e.GetProperty("id").GetInt32() == ellipseId);
+            var savedLine = saved.GetProperty("elements").EnumerateArray().Single(e => e.GetProperty("id").GetInt32() == lineId);
+            Assert.Equal("#FFFF0000", savedLine.GetProperty("lineColor").GetString());
+            Assert.Equal(-10, savedLine.GetProperty("height").GetInt32());
             Assert.Equal(2, saved.GetProperty("elements").EnumerateArray().Count(e => e.GetProperty("type").GetString() == "Button"));
             Assert.Contains(saved.GetProperty("elements").EnumerateArray(), e => e.TryGetProperty("text", out var t) && t.GetString() == "Added");
 

@@ -242,15 +242,16 @@ PRG_IntegrationScratch(); // [INTEGRATION-TEST-HOOK] do not remove manually
 VISU_PAGE = """{
   "elements": [
     { "type": "Rectangle", "x": 10, "y": 10, "width": 300, "height": 30, "text": "Step %d", "textVariable": "MAIN.fbStepChain.Step",
-      "fillColor": "#E0E0E0", "alarmFillColor": "#C0FFC0", "toggleColorVariable": "GVL_Fixture.bEnable", "tooltip": "step of fbStepChain" },
+      "fillColor": "#E0E0E0", "alarmFillColor": "#C0FFC0", "toggleColorVariable": "GVL_Fixture.bEnable" },
     { "type": "Label", "x": 10, "y": 50, "width": 140, "height": 20, "text": "Value" },
     { "type": "TextField", "x": 160, "y": 50, "width": 150, "height": 20, "text": "%.3f", "textVariable": "GVL_Fixture.fValue" },
-    { "type": "Line", "x": 10, "y": 80, "width": 300, "height": 0 },
+    { "type": "Line", "x": 10, "y": 80, "width": 300, "height": 0, "lineColor": "#000000" },
     { "type": "Ellipse", "x": 10, "y": 90, "width": 20, "height": 20, "fillColor": "#808080", "alarmFillColor": "#00C000",
       "toggleColorVariable": "GVL_Fixture.bEnable" },
     { "type": "RoundedRectangle", "x": 40, "y": 90, "width": 60, "height": 20, "text": "Count", "moveXVariable": "GVL_Fixture.nCount",
       "invisibleVariable": "NOT GVL_Fixture.bEnable" },
-    { "type": "Button", "x": 210, "y": 120, "width": 100, "height": 30, "text": "Enable", "tapVariable": "GVL_Fixture.bEnable" }
+    { "type": "Button", "x": 210, "y": 120, "width": 100, "height": 30, "text": "Enable",
+      "textColorVariable": "SEL(GVL_Fixture.bEnable, 16#FF000000, 16#FF00C000)" }
   ]
 }
 """

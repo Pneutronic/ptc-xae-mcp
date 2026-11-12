@@ -80,8 +80,9 @@ public static class FixtureLayout
     /// <summary>The visualization manager under the PLC project node (the integrated visualization needs it).</summary>
     public static string VisuManagerPath => PlcRoot + "^VisualizationManager";
     /// <summary>
-    /// A page as XAE saved it: Rectangle (text "Step %d" bound to <see cref="StepChainStepMember"/>), Label, TextField,
-    /// Line, Ellipse, RoundedRectangle and Button, bound to GVL_Fixture symbols. Only read or written back unchanged.
+    /// A page as XAE saved it: Rectangle (text "Step %d" bound to <see cref="StepChainStepMember"/>, toggle colour on
+    /// GVL_Fixture.bEnable), Label, TextField, Line (black), Ellipse, RoundedRectangle and Button, bound to GVL_Fixture
+    /// symbols. Only read or written back unchanged.
     /// </summary>
     public static string FixtureVisuPath => VisusFolder + "^VISU_Fixture";
     public const int FixtureVisuElementCount = 7;

@@ -43,7 +43,7 @@ internal static class EventClassXae
         dynamic dte = XaeDte.TryGet() ?? throw new InvalidOperationException("No running XAE (TcXaeShell.DTE) in the ROT.");
         return WhileLoading(() => XaeDte.Retry(() =>
         {
-            foreach (object? type in (IEnumerable)TypeSystemOf(dte))
+            foreach (object? type in TypesOf(TypeSystemOf(dte)))
             {
                 if (type is null || !string.Equals((string)((dynamic)type).Name, name, StringComparison.OrdinalIgnoreCase)) continue;
                 var guid = Regex.Match((string)((dynamic)type).ExportXml(false), "GUID=\"(\\{[^\"]+\\})\"");
@@ -53,13 +53,25 @@ internal static class EventClassXae
         }));
     }
 
+    /// <summary>The types: the IDispatch enumerator, else the dual interface's NewEnum (the first is refused now and then).</summary>
+    private static IEnumerable<object?> TypesOf(object typeSystem)
+    {
+        if (typeSystem is IEnumerable sequence) return sequence.Cast<object?>();
+        if (((ITcTypeSystemVtable)typeSystem).NewEnum is not System.Runtime.InteropServices.ComTypes.IEnumVARIANT e)
+            throw new InvalidCastException("The type system offers no enumerator.");
+        var types = new List<object?>();
+        var item = new object[1];
+        while (e.Next(1, item, IntPtr.Zero) == 0) types.Add(item[0]);
+        return types;
+    }
+
     /// <summary>
     /// Right after a solution was opened the XAE may still load (a fixture with a visualization manager loads its
-    /// libraries a moment longer): the type system is not there yet or does not hand out its enumerator. Retried for 30 s.
+    /// libraries a moment longer): the type system is not there yet or does not hand out its enumerator. Retried for 60 s.
     /// </summary>
     private static T WhileLoading<T>(Func<T> call)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(30);
+        var deadline = DateTime.UtcNow.AddSeconds(60);
         while (true)
         {
             try { return call(); }

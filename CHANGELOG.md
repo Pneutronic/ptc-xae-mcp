@@ -19,7 +19,8 @@ pull-request numbers refer to those.
   now write the ids themselves on every write: a text the global text list already has keeps that id, a new text gets
   a free id above every id of the project, the same text shares one id. Rewriting a page (e.g. with an unchanged
   `interface`) repairs one written by an earlier version. Checked on 4026.22: page rewritten, project saved, closed and
-  opened again, texts correct online; the global text list stays unchanged.
+  opened again, texts correct online. The tools do not write the global text list; the XAE adds the row for a new text
+  under the id from the file when it takes the page over.
 
 ## [3.2.0] - 2026-11-12
 

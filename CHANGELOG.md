@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-11-13
+
 ### Fixed
 - **Visualization texts after reopening the project** — `twincat_visu_apply` and `twincat_visu_edit_elements` wrote
   the text-list id "0" for every text. The XAE gives texts their own ids only in memory and saves a taken-over file

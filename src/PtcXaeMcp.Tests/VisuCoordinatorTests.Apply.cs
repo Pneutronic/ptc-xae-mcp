@@ -26,6 +26,32 @@ public sealed partial class VisuCoordinatorTests
     }
 
     [Fact]
+    public void Apply_WritesOneTextListIdPerDistinctText_UsingTheProjectsTextList()
+    {
+        // The file lies in the PLC project folder next to the global text list, which has id 0 for another text.
+        File.WriteAllText(Path.Combine(_dir, "P.plcproj"), "<Project />");
+        File.WriteAllText(Path.Combine(_dir, "GlobalTextList.TcGTLO"),
+            "<TcPlcObject><GlobalTextList><XmlArchive><Data><o><l n=\"TextList\">" +
+            "<o><v n=\"TextID\">\"0\"</v><v n=\"TextDefault\">\"Other page title\"</v></o>" +
+            "<o><v n=\"TextID\">\"7\"</v><v n=\"TextDefault\">\"Stop\"</v></o>" +
+            "</l></o></Data></XmlArchive></GlobalTextList></TcPlcObject>");
+        const string page = """
+            { "elements": [
+                { "type": "Label",  "x": 0, "y": 0,  "width": 90, "height": 20, "text": "Title" },
+                { "type": "Button", "x": 0, "y": 30, "width": 90, "height": 20, "text": "Start" },
+                { "type": "Button", "x": 0, "y": 60, "width": 90, "height": 20, "text": "Stop" } ] }
+            """;
+
+        string result = _coordinator.Apply(Visu, "VISU", page, expectedRevision: null);
+
+        result.Should().StartWith("Wrote visualization").And.Contain("text-list ids set on 3 element(s)");
+        var ids = VisuTextIds.Texts(VisuDocument.Parse(ProjectText)).ToDictionary(t => t.Text, t => t.Id);
+        ids["Stop"].Should().Be("7");
+        ids["Title"].Should().NotBe("0").And.NotBe(ids["Start"]);
+        ids.Values.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
     public void StaleRevision_IsRefusedBeforeTheLogout()
     {
         _coordinator.Apply(Visu, "VISU", OneLabel, expectedRevision: "0123456789abcdef")

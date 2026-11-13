@@ -439,10 +439,9 @@ internal static class VisuElements
 
     private static XElement StringNode(string s) => new("v", new XAttribute("n", "Value"), VisuDocument.Quote(s));
 
-    // The text-list id has to be present (a Button text without one makes XAE refuse the file). XAE files the text in the
-    // global text list when it loads the file: under "0" while that id is free, otherwise under an id of its own; a text
-    // it already knows keeps that text's id (seen live on 4026.22). A changed text therefore gets "0" again, never the
-    // old text's id.
+    // The text-list id has to be present (a Button text without one makes XAE refuse the file). A changed text gets "0"
+    // here, never the old text's id; the write path then gives every text its real id (VisuTextIds.Assign), because XAE
+    // assigns ids of its own only in memory and saves the file with the ids it was given.
     private static void SetTextIdPlaceholder(VisuDocument doc, XElement element, uint idMember, string text)
     {
         if (text.Length == 0) { RemoveMember(element, idMember); return; }

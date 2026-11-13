@@ -10,6 +10,15 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Fixed
+- **Visualization texts after reopening the project** — `twincat_visu_apply` and `twincat_visu_edit_elements` wrote
+  the text-list id "0" for every text. The XAE gives texts their own ids only in memory and saves a taken-over file
+  with the ids it was given, so after the project was opened again every element showed the text of id 0. The tools
+  now write the ids themselves on every write: a text the global text list already has keeps that id, a new text gets
+  a free id above every id of the project, the same text shares one id. Rewriting a page (e.g. with an unchanged
+  `interface`) repairs one written by an earlier version. Checked on 4026.22: page rewritten, project saved, closed and
+  opened again, texts correct online; the global text list stays unchanged.
+
 ## [3.2.0] - 2026-11-12
 
 ### Added

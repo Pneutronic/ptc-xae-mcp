@@ -108,6 +108,11 @@ internal sealed partial class VisuCoordinator
         catch (VisuRequestException ex) { return "[Error] " + ex.Message + " Nothing was changed."; }
         catch (VisuFormatException ex) { return $"[Error] '{path}': {ex.Message}. Nothing was changed."; }
 
+        // Every distinct text needs its own text-list id in the file (XAE keeps the ids of a taken-over file as they are).
+        var idLines = VisuTextIds.Assign(doc, VisuTextIds.Load(file));
+        if (idLines.Count > 0)
+            outcome = outcome with { Lines = [.. outcome.Lines, $"text-list ids set on {idLines.Count} element(s) (one id per distinct text)."] };
+
         string after = doc.Serialize();
         // The new file must read back as a writable visualization before XAE gets it.
         try

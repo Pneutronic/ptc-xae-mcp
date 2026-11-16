@@ -236,6 +236,24 @@ public sealed class RequestReceiptsTests : IDisposable
     }
 
     [Fact]
+    public async Task ATargetReadFromTheProject_ThatTheRequestItselfChanged_StillFindsTheReceipt()
+    {
+        // Live, 2026-11-16: twincat_deploy saved the project and with it the target set earlier, so the repeat read
+        // another project target than the first call and was refused as "another request" instead of answered.
+        string? projectTarget = null; // .tsproj on disk without a target: local
+        var sut = new RequestReceipts(NewStore(), () => projectTarget, n => $"state of {n}: Run", null);
+        var body = new Body("{\"success\":true}");
+
+        await sut.RunAsync("twincat_deploy", Key, Args(new { lifeSign = new[] { "MAIN.n changed" } }), body.Run);
+        projectTarget = Remote; // the deploy's build saved the target
+        var again = await sut.RunAsync("twincat_deploy", Key, Args(new { lifeSign = new[] { "MAIN.n changed" } }), body.Run);
+
+        Assert.Equal(1, body.Runs);
+        Assert.False(again.IsError);
+        Assert.Contains(Texts(again), t => t.StartsWith("[Receipt] Repeated request", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ArgumentOrderNullsAndTheReservedNames_DoNotMakeADifferentRequest()
     {
         var sut = Create(NewStore());

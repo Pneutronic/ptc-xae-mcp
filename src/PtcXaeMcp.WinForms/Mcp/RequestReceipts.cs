@@ -52,7 +52,7 @@ internal sealed partial class RequestReceipts(
         if (begin.Failure is not null)
             return Error($"[Error] {toolName} was not started: {begin.Failure}. A request key promises that a request runs once, " +
                          $"so without a receipt it does not run. Leave out {KeyArgument} to run it without that promise.");
-        if (!begin.Created) return Existing(begin.Receipt, toolName, hash, netId);
+        if (!begin.Created) return Existing(begin.Receipt, toolName, hash, netId, TargetIsAnArgument(tool));
 
         CallToolResult result;
         try
@@ -104,10 +104,17 @@ internal sealed partial class RequestReceipts(
 
     // ---- a key that is there already ------------------------------------------------------------------------------
 
-    private CallToolResult Existing(Receipt receipt, string toolName, string hash, string? netId)
+    /// <summary>
+    /// Whether the target is part of what the caller sent. Only then does another target make another request. A target
+    /// read from the open project can change through the request itself: a deploy saves the project, and a target set
+    /// with twincat_set_target reaches the .tsproj on disk only then. Its repeat must still find its receipt.
+    /// </summary>
+    internal static bool TargetIsAnArgument(ToolInfo tool) => tool.Target == TargetRule.AmsNetIdArgument;
+
+    private CallToolResult Existing(Receipt receipt, string toolName, string hash, string? netId, bool compareTarget)
     {
         if (receipt.Tool != toolName || receipt.ArgumentHash != hash
-            || !string.Equals(receipt.TargetNetId, netId, StringComparison.OrdinalIgnoreCase))
+            || (compareTarget && !string.Equals(receipt.TargetNetId, netId, StringComparison.OrdinalIgnoreCase)))
         {
             string text = $"[Error] {KeyArgument} '{receipt.RequestKey}' belongs to another request ({receipt.Tool}, started " +
                           $"{Utc(receipt.StartedUtc)}). A key names one request: use a new {KeyArgument} for this call. Nothing was done.";

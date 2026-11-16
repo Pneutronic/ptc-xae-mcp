@@ -46,19 +46,31 @@ internal sealed partial class ApprovalsView
             Name = "_lblConfirmHint",
             AutoSize = true,
             ForeColor = ThemeManager.Palette.Inactive,
-            Text = "An agent whose client cannot ask you itself is waiting here. Check the tool, the target and the arguments, then " +
-                   "press Release; the agent repeats its call with the token it was given and the action runs once. Nothing runs until then.",
-            Margin = new Padding(8, 6, 0, 0),
+            Text = "A waiting agent's client cannot ask you itself. Check tool, target and arguments, then Release: " +
+                   "the agent repeats its call with its token and the action runs once.",
+            Margin = new Padding(0, 4, 0, 0),
         };
-        var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true, Margin = new Padding(0, 4, 0, 0) };
-        buttons.Controls.AddRange([_btnConfirmRelease, _btnConfirmDeny, _lblConfirmHint]);
+        // Buttons in one row that never wraps, the hint in its own row bounded to the group width: a wrapping hint inside
+        // the button row was measured on one line and then took the height the grid needs (grid shrank to its header).
+        var buttons = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, 4, 0, 0),
+        };
+        buttons.Controls.AddRange([_btnConfirmRelease, _btnConfirmDeny]);
 
-        var inner = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        var inner = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
         inner.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         inner.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         inner.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        inner.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         inner.Controls.Add(_gridConfirmations, 0, 0);
         inner.Controls.Add(buttons, 0, 1);
+        inner.Controls.Add(_lblConfirmHint, 0, 2);
+        inner.Resize += (_, _) => _lblConfirmHint.MaximumSize = new Size(Math.Max(200, inner.ClientSize.Width - 8), 0);
 
         var group = new GroupBox { Name = "_grpConfirmations", Text = "Confirmation requests", Dock = DockStyle.Fill, Padding = new Padding(8) };
         group.Controls.Add(inner);

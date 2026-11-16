@@ -233,9 +233,9 @@ internal sealed partial class ApprovalsView : UserControl
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 40F));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 30F));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 30F));
         root.Controls.Add(topRow, 0, 0);
         root.Controls.Add(armRow, 0, 1);
         root.Controls.Add(lblArmHint, 0, 2);
@@ -501,7 +501,8 @@ internal sealed partial class ApprovalsView : UserControl
         if (IsDisposed || _host is null) return;
         int pending = PendingProposalCount();
         string pendingText = pending == 0 ? string.Empty
-            : pending == 1 ? " · 1 proposal awaiting your confirmation" : $" · {pending} proposals awaiting your confirmation";
+            // Counts IBN proposals, snapshot restores and confirmation requests alike, so it names none of them.
+            : pending == 1 ? " · 1 request awaiting your answer" : $" · {pending} requests awaiting your answer";
         bool armed = _liveCoordinator.IsArmed;
         int remaining = armed ? _liveCoordinator.RemainingSeconds : 0;
         if (armed)

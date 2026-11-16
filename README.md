@@ -286,6 +286,16 @@ Mode Runtimes, so local work and the live test suite run unchanged. Dry runs, re
 stops, HMI writes and snapshot restores (which a human already confirms in the window) are never asked.
 `twincat_doctor` and `twincat_get_client_info` report the mode and whether the client can be asked in-band.
 
+**Request keys.** A call to `twincat_activate_config`, `twincat_restart_runtime`, `twincat_activate_boot_project`,
+`twincat_persistent_snapshot_restore`, `twincat_write_ads_variable` or any other tool a human is asked about may carry a
+`requestKey` (a UUID). A client that timed out while the host went on, and then asks again, would otherwise run the action
+twice. With a key the same call never runs twice: a repeat returns the stored result (with a second line saying so), a
+request that is still running is reported as running, and a request the host never saw finish (restart, cancel, a call
+held by an XAE dialog) answers `[Warn] outcome_unknown` with the live ADS state of the target — it is never retried
+by itself; to run it again on purpose, use a new key. The same key with other arguments is an error.
+`twincat_receipt_get` shows the receipt. Receipts are kept for seven days in
+`%LOCALAPPDATA%\ptc-xae-mcp\receipts.jsonl` (no tool can read or write that file). Without a key everything works as before.
+
 **No telemetry.** The server makes no network connections of its own: no
 usage statistics, no license check, nothing is sent to Pneutronic or anyone
 else. The only outbound traffic is ADS to the TwinCAT targets you address

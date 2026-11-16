@@ -191,11 +191,6 @@ internal sealed class HumanConfirmation(
     /// <summary>How long an elicitation may stay unanswered before the call is refused.</summary>
     public TimeSpan AskTimeout { get; init; } = TimeSpan.FromSeconds(ConfirmationRegistry.TtlSeconds);
 
-    /// <summary>
-    /// Set by the request receipts: true when the call repeats a request that was answered already, so a replay is not asked again.
-    /// </summary>
-    public Func<string, IDictionary<string, JsonElement>?, bool>? IsReplay { get; set; }
-
     private static readonly string[] Reserved = [TokenArgument, "requestKey"];
 
     // ---- the call-tool filter -------------------------------------------------------------------------------
@@ -224,7 +219,6 @@ internal sealed class HumanConfirmation(
         string? netId = AccessGate.Target(tool, args, projectTarget);
         bool isLocal = netId is not null && IsLocal(netId);
         if (!ConfirmRules.Needs(tool, current.EffectiveConfirm, isLocal, args)) return null;
-        if (IsReplay?.Invoke(toolName, arguments) == true) return null;
         if (activity?.AccessGate is { } gate && Safe(gate, toolName, args)?.Denied is not null) return null;
 
         string hash = ArgumentHash(arguments);

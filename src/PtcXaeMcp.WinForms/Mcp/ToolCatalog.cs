@@ -41,6 +41,9 @@ internal sealed record ToolInfo(string Name, Toolset Toolset, AccessLevel Level,
 
     /// <summary>An argument value that changes nothing on the target (<c>login</c> with <c>mode=login_without_change</c>): no confirmation.</summary>
     public (string Argument, string Value)? ConfirmExempt { get; init; }
+
+    /// <summary>True when the call may carry a <c>requestKey</c>: the same key with the same arguments never runs twice (<see cref="RequestReceipts"/>).</summary>
+    public bool Receipts { get; init; }
 }
 
 /// <summary>
@@ -55,6 +58,7 @@ internal static class ToolCatalog
         [
             "ptc_test_marker", "ptc_test_hold_xae_dialog", "twincat_get_status", "twincat_get_log", "twincat_stop", "twincat_shutdown",
             "twincat_get_client_info", "twincat_doctor", "twincat_xae_dialogs", "twincat_xae_dialog_answer",
+            "twincat_receipt_get",
         ]),
         (Toolset.Project,
         [
@@ -200,6 +204,9 @@ internal static class ToolCatalog
         ["twincat_add_route"] = ConfirmClass.Runtime,
     };
 
+    /// <summary>Tools that take a <c>requestKey</c> besides every tool a human confirms: the restore of a snapshot has its own confirmation.</summary>
+    private static readonly HashSet<string> ReceiptExtras = new(StringComparer.Ordinal) { "twincat_persistent_snapshot_restore" };
+
     /// <summary>Tools that only act with <c>dryRun=false</c> (their default is a dry run).</summary>
     private static readonly HashSet<string> DryRunByDefault = new(StringComparer.Ordinal) { "twincat_activate_boot_project" };
 
@@ -224,7 +231,7 @@ internal static class ToolCatalog
 
     /// <summary>Tool names the toolset table lists that no tool has (a stale entry).</summary>
     internal static IEnumerable<string> UnknownNamesInTables() =>
-        Toolsets.Keys.Concat(RuntimeActions.Keys).Concat(Always).Concat(SymbolArguments.Keys).Concat(ConfirmClasses.Keys).Concat(DryRunByDefault).Distinct().Where(n => !Tools.ContainsKey(n));
+        Toolsets.Keys.Concat(RuntimeActions.Keys).Concat(Always).Concat(SymbolArguments.Keys).Concat(ConfirmClasses.Keys).Concat(DryRunByDefault).Concat(ReceiptExtras).Distinct().Where(n => !Tools.ContainsKey(n));
 
     /// <summary>The <c>[McpServerTool]</c> methods of the tool classes with their annotation.</summary>
     internal static IEnumerable<(MethodInfo Method, McpServerToolAttribute Attribute)> ToolMethods() =>
@@ -253,6 +260,7 @@ internal static class ToolCatalog
                 Confirm = ConfirmClasses.GetValueOrDefault(name),
                 ConfirmOnlyWithoutDryRun = DryRunByDefault.Contains(name),
                 ConfirmExempt = name == "twincat_login" ? ("mode", "login_without_change") : null,
+                Receipts = ConfirmClasses.ContainsKey(name) || ReceiptExtras.Contains(name),
             };
         }
         return tools.ToFrozenDictionary(StringComparer.Ordinal);

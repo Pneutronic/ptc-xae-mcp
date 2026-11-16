@@ -50,6 +50,15 @@ Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migrati
   `twincat_get_client_info` report the mode and whether the client can be asked in-band. The existing `confirm`,
   `autoConfirmRestart` and `autoConfirmLogin` parameters still answer XAE dialogs and are no consent. Snapshot restores
   and HMI writes keep their confirmation popup in the window and are not asked twice.
+- **`requestKey` and receipts: a request runs once.** Every tool a human is asked about, and
+  `twincat_persistent_snapshot_restore`, take an optional `requestKey` (UUID). The same key with the same arguments
+  and target never runs twice: a repeat returns the stored result plus a note, a request still running answers
+  `[Receipt] running`, and a request the host never saw finish (restart, cancel, a call held by an XAE dialog) answers
+  `[Warn] outcome_unknown` with the live ADS state of the target and is never retried by itself (use a new key). The same
+  key with other arguments is an `[Error]`; a refusal that did nothing (access policy, a confirmation request, a busy
+  host) leaves the key free. Receipts go to `%LOCALAPPDATA%\ptc-xae-mcp\receipts.jsonl`, append-only, kept 7 days; no
+  tool can read or write the file. New tool **`twincat_receipt_get(requestKey)`** (read-only, toolset `meta`). Without a
+  key nothing changes. The built-in workflow prompts recommend a key for activation.
 - **`ioPoints[].symbol`** (optional): the full PLC instance path of an `AT %I*/%Q*` variable, e.g.
   `MAIN.fbCyl.LimitSwitchWorkingPosition` or `MAIN.aCyl[1].bOut`. Grammar: identifiers separated by `.`, each
   optionally followed by index groups of signed integers — `[1]`, `[0]`, `[-1]`, `[2,3]`, `[2][3]`,

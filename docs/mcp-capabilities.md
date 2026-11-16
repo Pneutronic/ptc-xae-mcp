@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-211 tools, generated from the source attributes — one section per
+212 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -45,6 +45,7 @@
 - [PlcSearch](#plcsearch) (2)
 - [PlcTasks](#plctasks) (1)
 - [PouMembers](#poumembers) (2)
+- [Receipts](#receipts) (1)
 - [Recovery](#recovery) (6)
 - [RuntimeControl](#runtimecontrol) (9)
 - [Safety](#safety) (5)
@@ -1613,6 +1614,16 @@ Import objects from a PLCopen XML file into the PLC project. Logs the XAE out fi
 |---|---|---|---|
 | `filePath` | `string` |  | Absolute path of the XML file to read. |
 | `conflictMode` | `string?` | `null` | On a name conflict: None, Rename, Replace or Skip (default, non-destructive). |
+
+## Receipts
+
+### `twincat_receipt_get`
+
+Show the receipt of a request that carried a requestKey. It names the tool, the start and finish time, the target, the outcome (running, ok, error or unknown) and the stored result. Use it after a timeout: running means the host is still at it, unknown means it never saw the call finish (look at the live state before you run it again with a new key). Returns JSON { requestKey, tool, targetNetId, startedUtc, finishedUtc, outcome, resultText } or [Error] when there is no receipt (never used, older than 7 days, or refused before it ran).
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `requestKey` | `string` |  | The requestKey of the call, e.g. the UUID passed to twincat_activate_config. |
 
 ## Recovery
 

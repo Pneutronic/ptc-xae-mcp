@@ -38,6 +38,15 @@ internal static class PathPolicy
             return false;
         }
 
+        // The receipts of requests with a requestKey are the host's record; no tool may read or write them either.
+        if (string.Equals(Path.GetFileName(full), Mcp.ReceiptStore.FileName, StringComparison.OrdinalIgnoreCase)
+            && TryGetFullPath(Path.GetDirectoryName(Mcp.ReceiptStore.DefaultPath), out string receiptDir, out _)
+            && IsUnderOrEqual(full, receiptDir))
+        {
+            reason = $"'{full}' holds the request receipts; only the host writes it.";
+            return false;
+        }
+
         foreach (string root in AllowedRoots(solutionDirectory))
         {
             if (TryGetFullPath(root, out string fullRoot, out _) && IsUnderOrEqual(full, fullRoot))

@@ -13,6 +13,10 @@ internal static class ReservedArguments
     internal const string TokenDescription =
         "Only after a [Confirm] answer: the token a human released in the ptc-xae-mcp window. Leave out on the first call.";
 
+    internal const string KeyDescription =
+        "Optional UUID. The same key with the same arguments never runs twice: a repeat gets the stored result " +
+        "(twincat_receipt_get shows it). Use a new key to run again on purpose.";
+
     /// <summary>Adds the reserved arguments to the schema of every tool they apply to; returns how many tools changed.</summary>
     public static int AddAll(IEnumerable<McpServerTool>? tools)
     {
@@ -31,8 +35,11 @@ internal static class ReservedArguments
     internal static IReadOnlyList<(string Name, string Description)> For(string toolName)
     {
         var list = new List<(string, string)>();
-        if (ToolCatalog.Find(toolName) is { Confirm: not ConfirmClass.Never })
+        var tool = ToolCatalog.Find(toolName);
+        if (tool is { Confirm: not ConfirmClass.Never })
             list.Add((HumanConfirmation.TokenArgument, TokenDescription));
+        if (tool is { Receipts: true })
+            list.Add((RequestReceipts.KeyArgument, KeyDescription));
         return list;
     }
 

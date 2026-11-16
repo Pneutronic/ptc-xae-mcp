@@ -84,6 +84,8 @@ internal sealed class McpBridge : IDisposable
             () => _host.Dispatcher.Session.ProjectTargetNetId(), () => _host.UmrManager.InstanceNetIds());
         Confirmation = new HumanConfirmation(() => Policy.Current,
             () => _host.Dispatcher.Session.ProjectTargetNetId(), () => _host.UmrManager.InstanceNetIds(), _host.Confirmations, Activity);
+        Receipts = new ReceiptStore(ReceiptStore.DefaultPath);
+        RequestReceipts = new RequestReceipts(Receipts, () => _host.Dispatcher.Session.ProjectTargetNetId(), ReceiptLiveState.Read, Activity);
         Policy.Changed += Surface.NotifyToolListChanged;
         // A call that answered [Blocked] reports its real result here once the XAE returns it.
         _host.Dispatcher.LateResult = Activity.RecordLateResult;
@@ -98,6 +100,12 @@ internal sealed class McpBridge : IDisposable
 
     /// <summary>The human confirmation before an action with effect on a target system (elicitation, else a token a human releases in the window).</summary>
     public HumanConfirmation Confirmation { get; }
+
+    /// <summary>The receipts of the requests that carry a <c>requestKey</c> (<c>%LOCALAPPDATA%\ptc-xae-mcp\receipts.jsonl</c>).</summary>
+    public ReceiptStore Receipts { get; }
+
+    /// <summary>The call-tool filter that keeps a request with a <c>requestKey</c> from running twice.</summary>
+    public RequestReceipts RequestReceipts { get; }
 
     /// <summary>True when the diagnostics/test-support tools are registered; the GUI shows the
     /// test-harness controls (single-step, narration) only then (issue #269).</summary>
@@ -191,6 +199,8 @@ internal sealed class McpBridge : IDisposable
                     filters.AddCallToolFilter(Mcp.UnknownArguments.Filter);
                     // The tool profile of the client and the access policy decide which tools a session sees.
                     filters.AddCallToolFilter(Surface.CallFilter);
+                    // A request key never runs twice; around the confirmation, so a repeat is answered from its receipt without asking again.
+                    filters.AddCallToolFilter(RequestReceipts.Filter);
                     // A human confirms an action with effect on a target system before its body (and the access gate in it) runs.
                     filters.AddCallToolFilter(Confirmation.Filter);
                     filters.AddListToolsFilter(Surface.ListFilter);

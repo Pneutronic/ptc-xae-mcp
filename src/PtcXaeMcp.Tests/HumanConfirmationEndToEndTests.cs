@@ -30,6 +30,7 @@ public sealed class HumanConfirmationEndToEndTests : IAsyncLifetime
     private string? _projectTarget = Remote;
     private ConfirmMode? _mode = ConfirmMode.Remote;
     private readonly ConfirmationRegistry _registry = new();
+    private readonly string _receiptsDir = Path.Combine(Path.GetTempPath(), "e2e_receipts_" + Guid.NewGuid().ToString("N"));
 
     [McpServerToolType]
     internal sealed class E2eTools
@@ -49,20 +50,30 @@ public sealed class HumanConfirmationEndToEndTests : IAsyncLifetime
             () => new AccessPolicy(AccessLevel.Runtime, AccessPolicy.ParseList(null), null, "test", Confirm: _mode),
             () => _projectTarget, () => [], _registry, null, () => [Local]);
 
+        var receipts = new RequestReceipts(new ReceiptStore(Path.Combine(_receiptsDir, ReceiptStore.FileName)), () => _projectTarget);
+
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Services.AddMcpServer()
             .WithHttpTransport()
             .WithTools<E2eTools>()
-            .WithRequestFilters(filters => filters.AddCallToolFilter(confirmation.Filter));
+            .WithRequestFilters(filters =>
+            {
+                filters.AddCallToolFilter(receipts.Filter);
+                filters.AddCallToolFilter(confirmation.Filter);
+            });
         _app = builder.Build();
         _app.MapMcp("/");
         await _app.StartAsync();
         _url = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
     }
 
-    public async Task DisposeAsync() => await _app.DisposeAsync();
+    public async Task DisposeAsync()
+    {
+        await _app.DisposeAsync();
+        try { Directory.Delete(_receiptsDir, recursive: true); } catch (IOException) { }
+    }
 
     private async Task<McpClient> ConnectAsync(Func<ElicitRequestParams, ValueTask<ElicitResult>>? onQuestion)
     {
@@ -186,6 +197,68 @@ public sealed class HumanConfirmationEndToEndTests : IAsyncLifetime
 
         Assert.StartsWith("activated", TextOf(await CallAsync(client, "twincat_activate_config")));
         Assert.Equal(0, asked);
+        Assert.Equal(before + 1, E2eTools.Runs);
+    }
+
+    // ---- request keys through the real filters -------------------------------------------------------------------------
+
+    private static string Key() => Guid.NewGuid().ToString();
+
+    [Fact]
+    public async Task TheSameRequestKey_RunsOnce_AndTheRepeatIsNotAskedAgain()
+    {
+        _mode = ConfirmMode.Off;
+        int before = E2eTools.Runs;
+        await using var client = await ConnectAsync(null);
+        string key = Key();
+
+        var first = await CallAsync(client, "twincat_activate_config", new() { ["requestKey"] = key });
+        var again = await CallAsync(client, "twincat_activate_config", new() { ["requestKey"] = key });
+
+        Assert.Equal(before + 1, E2eTools.Runs);
+        var blocks = again.Content.OfType<TextContentBlock>().Select(c => c.Text).ToArray();
+        Assert.Equal(TextOf(first), blocks[0]);
+        Assert.StartsWith("[Receipt] Repeated request", blocks[1]);
+    }
+
+    [Fact]
+    public async Task ARequestKeyWithTheTokenPath_IsFreeUntilAHumanReleased_ThenRunsOnce()
+    {
+        int before = E2eTools.Runs;
+        await using var client = await ConnectAsync(null);
+        string key = Key();
+
+        var asked = await CallAsync(client, "twincat_activate_config", new() { ["requestKey"] = key });
+        Assert.StartsWith("[Confirm]", TextOf(asked));
+        var entry = Assert.Single(_registry.Snapshot());
+        Assert.Equal(before, E2eTools.Runs);
+
+        Assert.True(_registry.Release(entry.Code));
+        var ran = await CallAsync(client, "twincat_activate_config", new() { ["requestKey"] = key, ["confirmationToken"] = entry.Token });
+        Assert.StartsWith("activated", TextOf(ran));
+        Assert.Equal(before + 1, E2eTools.Runs);
+
+        // The token is used up, but the request is answered: the repeat is not asked and does not run.
+        var repeat = await CallAsync(client, "twincat_activate_config", new() { ["requestKey"] = key });
+        Assert.Equal(before + 1, E2eTools.Runs);
+        Assert.StartsWith("[Receipt] Repeated request", repeat.Content.OfType<TextContentBlock>().Last().Text);
+    }
+
+    [Fact]
+    public async Task ADeclinedQuestion_LeavesTheRequestKeyFree()
+    {
+        int before = E2eTools.Runs;
+        bool accept = false;
+        await using var client = await ConnectAsync(_ => ValueTask.FromResult(accept ? Answer("accept", true) : Answer("decline")));
+        string key = Key();
+
+        var declined = await CallAsync(client, "twincat_activate_config", new() { ["requestKey"] = key });
+        Assert.True(declined.IsError);
+        Assert.Equal(before, E2eTools.Runs);
+
+        accept = true;
+        var ran = await CallAsync(client, "twincat_activate_config", new() { ["requestKey"] = key });
+        Assert.StartsWith("activated", TextOf(ran));
         Assert.Equal(before + 1, E2eTools.Runs);
     }
 }

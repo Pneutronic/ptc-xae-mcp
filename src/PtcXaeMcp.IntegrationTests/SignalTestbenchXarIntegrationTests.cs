@@ -11,10 +11,16 @@ namespace PtcXaeMcp.IntegrationTests;
 /// <see cref="PersistentSnapshotXarIntegrationTests"/>: the neutral fixture activated on the stage's explicit runtime
 /// target and in Run, MCP server on port 5010. Every call passes the target as <c>amsNetId</c> (issue #195).
 ///
-/// The fixture's task runs at 10 ms and has no dedicated toggling symbol, so the tests use what MAIN already does:
-/// <c>GVL_Fixture.nCycleCount</c> counts once per task cycle (a counter with a known interval), and while
-/// <c>GVL_Fixture.bEnable</c> is TRUE the step chain of <c>MAIN.fbStepChain</c> loops: its TON <c>tonWait.IN</c> is
-/// high for the 100 ms preset (rounded up to a cycle) and low for four cycles. The tests leave bEnable FALSE.
+/// The fixture has no dedicated toggling symbol, so the tests use what MAIN already does:
+/// <c>GVL_Fixture.nCycleCount</c> counts once per task cycle, and while <c>GVL_Fixture.bEnable</c> is TRUE the step
+/// chain of <c>MAIN.fbStepChain</c> loops: its TON <c>tonWait.IN</c> is high for the 100 ms preset (rounded up to a
+/// cycle) and low for four cycles. The tests leave bEnable FALSE.
+///
+/// The task is configured at 10 ms, and the runtime's own time stamps (timeBase "plc") show exactly that. A user-mode
+/// runtime need not keep pace with the wall clock, though: on 2026-11-16 UmRT_AI took about 95 ms of wall time per
+/// 10 ms cycle. So statistics from PLC time stamps are checked against the configured cycle, while everything counted
+/// against the wall clock (how many changes or pulses fit into a recording, how long a wait takes) uses the wall time
+/// per cycle measured first from two plain reads of the counter (<see cref="MeasureCycleMsAsync"/>).
 /// </summary>
 [Collection("Stage XAR")]
 [Trait("Stage", "XAR")]
@@ -30,6 +36,9 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
     private const string TonIn = FixtureLayout.StepChainInstanceSymbol + ".tonWait.IN";
     private const string Step = FixtureLayout.StepChainStepMember;
     private const string NeverSet = FixtureLayout.IbnProbeGvlName + ".bFault";
+
+    /// <summary>The fixture's PlcTask cycle in PLC time (PlcTask.TcTTO).</summary>
+    private const double PlcCycleMs = 10.0;
 
     public SignalTestbenchXarIntegrationTests(XarRuntimeFixture xar) => _xar = xar;
 
@@ -100,11 +109,26 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
         return doc.RootElement.GetProperty("value").GetInt64();
     }
 
-    [Trait("Description", "record misst die Zykluszeit der Fixture-Task (10 ms) am Zykluszähler per ADS-Notification: Änderungsintervall und Zählerstand passen zusammen.")]
+    /// <summary>Wall-clock ms per task cycle, from two plain reads of the cycle counter about 1.5 s apart.</summary>
+    private async Task<double> MeasureCycleMsAsync()
+    {
+        long first = await ReadCounterAsync();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        await Task.Delay(1500);
+        long last = await ReadCounterAsync();
+        sw.Stop();
+        Assert.True(last - first >= 3, $"the cycle counter barely moves ({first} -> {last} in {sw.ElapsedMilliseconds} ms)");
+        double cycle = sw.Elapsed.TotalMilliseconds / (last - first);
+        Console.WriteLine($"[signal-testbench] measured task cycle: {cycle:F1} ms ({last - first} counts in {sw.ElapsedMilliseconds} ms)");
+        return cycle;
+    }
+
+    [Trait("Description", "record misst die Zykluszeit der Fixture-Task am Zykluszähler per ADS-Notification: Änderungsintervall passt zum vorher per Lesen gemessenen Zyklus, kein Zählschritt geht verloren.")]
     [SkippableFact(Timeout = 300_000)]
     public async Task Record_CycleCounter_MeasuresTheTaskCycle()
     {
         SkipIfNotReady();
+        double cycle = await MeasureCycleMsAsync();
         using var doc = Json(await CallAsync("twincat_ads_record",
             new() { ["symbols"] = new[] { CycleCounter }, ["durationMs"] = 2000, ["writeCsv"] = false }));
         var root = doc.RootElement;
@@ -116,11 +140,16 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
         double interval = s.GetProperty("changeIntervalMs").GetProperty("avg").GetDouble();
         long counted = s.GetProperty("last").GetInt64() - s.GetProperty("first").GetInt64();
 
-        // 2 s at 10 ms is about 200 counts, one change each; the runtime's own time stamps give the interval.
-        Assert.InRange(changes, 150, 205);
-        Assert.InRange(interval, 9.0, 11.0);
-        Assert.Equal(changes, counted); // no cycle was lost: every count arrived as its own change
-        Assert.InRange(root.GetProperty("windowMs").GetDouble(), 1900, 2300);
+        // About 2 s of wall time / wall ms per cycle counts, one change each; the runtime's own time stamps give the
+        // interval in PLC time, which is the configured cycle however fast the runtime runs.
+        double expected = 2000 / cycle;
+        Assert.InRange(changes, (int)(expected * 0.7), (int)Math.Ceiling(expected * 1.3) + 1);
+        Assert.InRange(interval, PlcCycleMs * 0.9, PlcCycleMs * 1.1);
+        // Nearly every count arrives as its own change. Over ADS-over-MQTT to UmRT_AI a notification now and then carried
+        // two counts at once (21 changes for 22 counts, 2026-11-16), so up to 10 % may merge; more would be lost data.
+        Assert.InRange(counted - changes, 0, Math.Max(1, counted / 10));
+        // The window runs from the first to the last delivered sample, so it can miss up to a few wall cycles at either end.
+        Assert.InRange(root.GetProperty("windowMs").GetDouble(), 2000 - 3 * cycle - 100, 2300);
     }
 
     [Trait("Description", "record an tonWait.IN der laufenden Schrittkette: Pulsbreite = 100-ms-Preset (auf Zyklen gerundet), Low = 4 Zyklen, Periode = Summe, CSV mit allen Änderungen.")]
@@ -128,6 +157,7 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
     public async Task Record_StepChainTimer_MeasuresPulseWidthAndPeriod_AndWritesTheCsv()
     {
         SkipIfNotReady();
+        double cycle = await MeasureCycleMsAsync();
         await CallAsync("twincat_write_ads_variable", new() { ["symbolPath"] = Enable, ["value"] = "true" });
         try
         {
@@ -138,15 +168,20 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
             var ton = root.GetProperty("symbols")[0];
 
             Assert.Equal("plc", root.GetProperty("timeBase").GetString());
-            Assert.True(ton.GetProperty("rising").GetInt32() >= 15, "expected about 20 pulses in 3 s");
             double high = ton.GetProperty("highMs").GetProperty("avg").GetDouble();
             double low = ton.GetProperty("lowMs").GetProperty("avg").GetDouble();
             double period = ton.GetProperty("periodMs").GetProperty("avg").GetDouble();
-            Assert.InRange(high, 100, 120);   // PT 100 ms, rounded up to whole 10 ms cycles (plus the cycle that starts it)
-            Assert.InRange(low, 30, 50);      // four cycles
+            // In PLC time: PT 100 ms, rounded up to whole 10 ms cycles (plus the cycle that starts it); low for four cycles.
+            Assert.InRange(high, 100, 120);
+            Assert.InRange(low, 30, 50);
             Assert.InRange(period, 130, 170);
             Assert.Equal(high + low, period, 1.0);
             Assert.InRange(ton.GetProperty("frequencyHz").GetDouble(), 5.9, 7.7);
+            // In wall time a period lasts period / PlcCycleMs cycles of `cycle` ms each.
+            double periodWallMs = period / PlcCycleMs * cycle;
+            int expectedPulses = (int)(3000 / periodWallMs);
+            Assert.True(ton.GetProperty("rising").GetInt32() >= Math.Max(1, expectedPulses - 1),
+                $"expected about {expectedPulses} pulses in 3 s at {cycle:F1} ms wall time per cycle");
 
             // The step counter walks 0 → 10 → 1010 → 1020 → 0 → …: four distinct values.
             var step = root.GetProperty("symbols")[1];
@@ -172,22 +207,24 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
     public async Task WaitUntil_CycleCounter_IsMetAfterTheExpectedTime_AndTimesOutOtherwise()
     {
         SkipIfNotReady();
+        double cycle = await MeasureCycleMsAsync();
+        int counts = Math.Max(5, (int)Math.Round(1500 / cycle)); // about 1.5 s of cycles
         long now = await ReadCounterAsync();
 
         using (var met = Json(await CallAsync("twincat_ads_wait_until",
-                   new() { ["conditions"] = new[] { $"{CycleCounter} > {(now + 100).ToString(CultureInfo.InvariantCulture)}" }, ["timeoutMs"] = 10_000 })))
+                   new() { ["conditions"] = new[] { $"{CycleCounter} > {(now + counts).ToString(CultureInfo.InvariantCulture)}" }, ["timeoutMs"] = 10_000 })))
         {
             Assert.True(met.RootElement.GetProperty("met").GetBoolean());
             double elapsed = met.RootElement.GetProperty("elapsedMs").GetDouble();
-            Assert.InRange(elapsed, 500, 3000); // 100 cycles of 10 ms plus the call overhead
-            Assert.True(met.RootElement.GetProperty("values").GetProperty(CycleCounter).GetInt64() > now + 100);
+            Assert.InRange(elapsed, counts * cycle * 0.5, counts * cycle * 1.5 + 500); // the counts plus the call overhead
+            Assert.True(met.RootElement.GetProperty("values").GetProperty(CycleCounter).GetInt64() > now + counts);
         }
 
         using (var changed = Json(await CallAsync("twincat_ads_wait_until",
                    new() { ["conditions"] = new[] { $"{CycleCounter} changed" }, ["timeoutMs"] = 2000 })))
         {
             Assert.True(changed.RootElement.GetProperty("met").GetBoolean());
-            Assert.InRange(changed.RootElement.GetProperty("elapsedMs").GetDouble(), 0, 500);
+            Assert.InRange(changed.RootElement.GetProperty("elapsedMs").GetDouble(), 0, 3 * cycle + 500);
         }
 
         using var timedOut = Json(await CallAsync("twincat_ads_wait_until",
@@ -220,6 +257,7 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
     public async Task Expect_Stable_Never_Within_OnTheFixture()
     {
         SkipIfNotReady();
+        double cycle = await MeasureCycleMsAsync();
 
         using (var stable = Json(await CallAsync("twincat_ads_expect",
                    new() { ["mode"] = "stable", ["durationMs"] = 1500, ["symbols"] = new[] { Constant } })))
@@ -234,8 +272,9 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
             Assert.False(unstable.RootElement.GetProperty("passed").GetBoolean());
             var v = unstable.RootElement.GetProperty("firstViolation");
             Assert.Equal(CycleCounter, v.GetProperty("symbol").GetString(), ignoreCase: true);
-            Assert.InRange(v.GetProperty("atMs").GetDouble(), 0, 500);
-            Assert.Equal(v.GetProperty("from").GetInt64() + 1, v.GetProperty("to").GetInt64());
+            Assert.InRange(v.GetProperty("atMs").GetDouble(), 0, 3 * cycle + 500);
+            // Usually one count; a count can fall between reading the start value and the first notification.
+            Assert.InRange(v.GetProperty("to").GetInt64() - v.GetProperty("from").GetInt64(), 1, 3);
         }
 
         using (var never = Json(await CallAsync("twincat_ads_expect",
@@ -246,15 +285,16 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
                    new() { ["mode"] = "never", ["durationMs"] = 2000, ["conditions"] = new[] { $"{CycleCounter} changed" } })))
         {
             Assert.False(neverFails.RootElement.GetProperty("passed").GetBoolean());
-            Assert.InRange(neverFails.RootElement.GetProperty("firstViolation").GetProperty("atMs").GetDouble(), 0, 500);
+            Assert.InRange(neverFails.RootElement.GetProperty("firstViolation").GetProperty("atMs").GetDouble(), 0, 3 * cycle + 500);
         }
 
+        int counts = Math.Max(5, (int)Math.Round(1000 / cycle)); // about 1 s of cycles
         long now = await ReadCounterAsync();
         using (var within = Json(await CallAsync("twincat_ads_expect",
-                   new() { ["mode"] = "within", ["durationMs"] = 3000, ["conditions"] = new[] { $"{CycleCounter} > {(now + 50).ToString(CultureInfo.InvariantCulture)}" } })))
+                   new() { ["mode"] = "within", ["durationMs"] = 5000, ["conditions"] = new[] { $"{CycleCounter} > {(now + counts).ToString(CultureInfo.InvariantCulture)}" } })))
         {
             Assert.True(within.RootElement.GetProperty("passed").GetBoolean());
-            Assert.InRange(within.RootElement.GetProperty("elapsedMs").GetDouble(), 200, 3000);
+            Assert.InRange(within.RootElement.GetProperty("elapsedMs").GetDouble(), counts * cycle * 0.3, 5000);
         }
 
         using var tooEarly = Json(await CallAsync("twincat_ads_expect",
@@ -290,6 +330,7 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
     public async Task Record_ManyTypes_IncludingAnInputMappedBool_AndAString()
     {
         SkipIfNotReady();
+        double cycle = await MeasureCycleMsAsync();
         using var doc = Json(await CallAsync("twincat_ads_record", new()
         {
             ["symbols"] = new[] { FixtureLayout.BoolSymbol, Constant, CycleCounter, FixtureLayout.LrealSymbol,
@@ -300,7 +341,8 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
         Assert.Equal(6, symbols.Count);
         var byName = symbols.ToDictionary(s => s.GetProperty("symbol").GetString()!, StringComparer.OrdinalIgnoreCase);
         Assert.Equal(0, byName[Constant].GetProperty("changes").GetInt32());
-        Assert.True(byName[FixtureLayout.LrealSymbol].GetProperty("changes").GetInt32() > 50, "fValue grows every cycle");
+        Assert.True(byName[FixtureLayout.LrealSymbol].GetProperty("changes").GetInt32() >= (int)(1000 / cycle * 0.5),
+            $"fValue grows every cycle ({cycle:F1} ms)");
         Assert.Equal("fixture", byName[FixtureLayout.StringSymbol].GetProperty("last").GetString());
         Assert.Equal("BOOL", byName[FixtureLayout.InputMappedBoolSymbol].GetProperty("plcType").GetString());
     }

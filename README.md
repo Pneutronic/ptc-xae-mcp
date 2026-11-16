@@ -223,21 +223,27 @@ next call starts once it has returned (`PTC_XAE_MCP_DIALOG_WATCH=off` switches t
 
 ## Applying an IO schema (`twincat_apply_schema`)
 
-`twincat_apply_schema` builds an EtherCAT topology, a GVL and the variable links
-from a JSON schema. Through MCP it is **fail-closed by default**
-(`failClosed=true`):
+`twincat_apply_schema` builds an EtherCAT topology and links the IO points that
+name a PLC symbol, from a JSON schema. Through MCP it is **fail-closed by
+default** (`failClosed=true`):
 
 - the PLC project and the EtherCAT master must match by exact name — there is
   no fallback to the first PLC or master; the target master must be empty;
-- the GVL is written to exactly `TIPC^<plc>^<plc> Project^GVLs^<gvlName>`; a
-  missing or ambiguous `GVLs` folder is an error, never a fallback to another
-  folder or the PLC root;
-- a GVL that already exists at that path is an `[Error]` and nothing is deleted.
-  Pass `overwriteExistingGvl=true` (or set `twincat.overwriteExistingGvl` in the
-  schema) to replace exactly that GVL; its declarations and links are lost.
+- an IO point links to the `AT %I*` / `AT %Q*` variable named by
+  `ioPoints[].symbol`, the full PLC instance path
+  (`MAIN.fbCyl.LimitSwitchWorkingPosition`, `MAIN.aCyl[1].bOut`,
+  `MAIN.aGrid[2,1].bIn`). The symbol is looked up exactly in the process image
+  of the PLC's instance (inputs only for direction `I`, outputs only for `Q`);
+  a symbol that is not there, or is there twice, is reported and nothing is
+  linked for that point;
+- a point without `symbol` only builds the hardware and is counted as
+  `notLinked`;
+- the schema no longer creates a GVL: `twincat.gvlName`,
+  `twincat.overwriteExistingGvl` and the tool parameter `overwriteExistingGvl`
+  were removed (see the changelog for the migration).
 
-Pass `failClosed=false` for the lenient greenfield resolution. The GUI's Apply
-button keeps that lenient behaviour, but the GVL collision rule applies there too.
+Pass `failClosed=false` for the lenient greenfield resolution of PLC and
+master.
 
 ## Security model
 

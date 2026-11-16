@@ -15,7 +15,6 @@
   "twincat": {
     "deviceName": "Gerät 1 (EtherCAT)",
     "plcProjectName": "PLC",
-    "gvlName": "IO_Generated",
     "linking": {
       "enabled": true,
       "failIfUnresolved": true
@@ -36,9 +35,9 @@
     }
   },
   "ioPoints": [
-    { "terminalName": "A1.05 (EL1809)", "channel": 1, "direction": "I", "type": "BOOL", "varName": "I_Test_Input_1", "group": "+01", "description": "Test Input 1" },
-    { "terminalName": "A1.05 (EL1809)", "channel": 2, "direction": "I", "type": "BOOL", "varName": "I_Test_Input_2", "group": "+01", "description": "Test Input 2" },
-    { "terminalName": "A1.11 (EL2809)", "channel": 1, "direction": "Q", "type": "BOOL", "varName": "Q_Test_Output_1", "group": "+01", "description": "Test Output 1" },
-    { "terminalName": "A1.11 (EL2809)", "channel": 2, "direction": "Q", "type": "BOOL", "varName": "Q_Test_Output_2", "group": "+01", "description": "Test Output 2" }
+    { "terminalName": "A1.05 (EL1809)", "channel": 1, "direction": "I", "type": "BOOL", "symbol": "MAIN.fbCyl.LimitSwitchWorkingPosition", "group": "+01", "description": "Test Input 1" },
+    { "terminalName": "A1.05 (EL1809)", "channel": 2, "direction": "I", "type": "BOOL", "symbol": "MAIN.aCyl[1].bIn", "group": "+01", "description": "Test Input 2" },
+    { "terminalName": "A1.11 (EL2809)", "channel": 1, "direction": "Q", "type": "BOOL", "symbol": "MAIN.fbCyl.ValveWorkingPosition", "varName": "Cylinder valve", "group": "+01", "description": "Test Output 1" },
+    { "terminalName": "A1.11 (EL2809)", "channel": 2, "direction": "Q", "type": "BOOL", "group": "+01", "description": "Test Output 2" }
   ]
 }

@@ -33,7 +33,8 @@ internal sealed partial class TwinCatMcpTools
         }, cancellationToken, bypassGate: true);
 
     [McpServerTool(Name = "twincat_validate_schema", ReadOnly = true)]
-    [Description("Validate a JSON IO schema file without applying it. Returns Valid/Invalid with the issues found.")]
+    [Description("Validate a JSON IO schema file without applying it. Returns Valid/Invalid with the issues found. " +
+                 "Checks ioPoints[].symbol (full PLC instance path, e.g. MAIN.aCyl[1].bOut) and refuses schema fields removed in 4.0.0 (the error names the migration).")]
     public string ValidateSchema(
         [Description("Absolute path to the JSON schema file")] string schemaPath,
         [Description("Optional brownfield target EtherCAT master tree path (e.g. 'TIID^Device 1 (EtherCAT)'); its format is validated too.")] string? targetMasterPath = null,
@@ -69,7 +70,7 @@ internal sealed partial class TwinCatMcpTools
         [Description("EtherCAT master name. Empty = the schema's twincat.deviceName.")] string? etherCatMaster = null,
         [Description("Brownfield: exact target EtherCAT master tree path (e.g. 'TIID^Device 1 (EtherCAT)'); resolved exactly and forces fail-closed mode.")] string? targetMasterPath = null,
         [Description("Default true: exact PLC/master match, empty-check aborts on any uncertainty. false = lenient greenfield resolution (single-PLC / first-master fallback, prefix match on the master name).")] bool failClosed = true,
-        [Description("false skips the full solution build so a brownfield apply does not re-bind the existing PLC project (build later with twincat_build_plc). Default true.")] bool autoBuild = true,
+        [Description("false skips the full solution build so a brownfield apply does not re-bind the existing PLC project; the symbols the schema names must then already be in the process image (twincat_build_plc). Default true.")] bool autoBuild = true,
         CancellationToken cancellationToken = default)
         => await bridge.Activity.TraceAsync("twincat_apply_schema",
             new { schemaPath, plcProject, etherCatMaster, targetMasterPath, failClosed, autoBuild }, async () =>

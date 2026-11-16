@@ -85,7 +85,7 @@ Read the live values of many PLC symbols in one ADS call. Much cheaper than repe
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `symbolPaths` | `string[]` |  | Symbol paths, at least one, e.g. ['MAIN.nStep', 'GVL_IO.bCyl1Extended']. |
+| `symbolPaths` | `string[]` |  | Symbol paths, at least one, e.g. ['MAIN.nStep', 'MAIN.fbCyl.LimitSwitchWorkingPosition']. |
 | `amsNetId` | `string?` | `null` | AMS NetId of the target. Omit for the local runtime. |
 | `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
 
@@ -905,8 +905,8 @@ Measure the time between two symbol conditions (edge A → edge B) by polling. R
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `startSymbol` | `string` |  | Symbol whose condition starts the measurement, e.g. 'GVL_IO.bCyl1Cmd'. |
-| `endSymbol` | `string` |  | Symbol whose condition ends the measurement, e.g. 'GVL_IO.bCyl1Extended'. |
+| `startSymbol` | `string` |  | Symbol whose condition starts the measurement, e.g. 'MAIN.fbCyl.ValveWorkingPosition'. |
+| `endSymbol` | `string` |  | Symbol whose condition ends the measurement, e.g. 'MAIN.fbCyl.LimitSwitchWorkingPosition'. |
 | `startEquals` | `string?` | `null` | Value the start symbol must equal to begin timing. Default 'true'. |
 | `endEquals` | `string?` | `null` | Value the end symbol must equal to stop timing. Default 'true'. |
 | `timeoutMs` | `int?` | `null` | Overall timeout in ms (default 5000, max 60000). |
@@ -1842,7 +1842,7 @@ _No parameters._
 
 ### `twincat_validate_schema`
 
-Validate a JSON IO schema file without applying it. Returns Valid/Invalid with the issues found.
+Validate a JSON IO schema file without applying it. Returns Valid/Invalid with the issues found. Checks ioPoints[].symbol (full PLC instance path, e.g. MAIN.aCyl[1].bOut) and refuses schema fields removed in 4.0.0 (the error names the migration).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1851,7 +1851,7 @@ Validate a JSON IO schema file without applying it. Returns Valid/Invalid with t
 
 ### `twincat_apply_schema`
 
-Apply a JSON IO schema to the active XAE project. Builds the EtherCAT tree, creates the GVL, links variables and exports; progress shows in the server window. Fail-closed by default: PLC project and EtherCAT master must match exactly (no fallback to the first one), the target master must be provably empty, and an existing same-named GVL at the target path is an [Error] (nothing deleted) unless overwriteExistingGvl. Links use the exact symbol <gvlName>.<varName>, never a same-named variable of another GVL. During the build the XAE's 'Sync Master' and 'Double use of the same Ethernet interface' boxes are answered with OK and the 'unrestored variable links' question with 'Ja' (keep the link information); answered dialogs are listed in the result, any other blocking dialog ends the run with an [Error] naming it.
+Apply a JSON IO schema to the active XAE project. Builds the EtherCAT tree, links IO points that name a PLC symbol and exports; progress shows in the server window. Fail-closed by default: PLC project and EtherCAT master must match exactly (no fallback to the first one) and the target master must be provably empty. An IO point links to the AT %I*/%Q* variable named by ioPoints[].symbol, the full PLC instance path (MAIN.fbCyl.LimitSwitchWorkingPosition, MAIN.aCyl[1].bOut): looked up exactly in the process image, never a same-named member of another instance. A point without symbol only builds hardware. During the build the XAE's 'Sync Master' and 'Double use of the same Ethernet interface' boxes are answered with OK and the 'unrestored variable links' question with 'Ja' (keep the link information); answered dialogs are listed in the result, any other blocking dialog ends the run with an [Error] naming it.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1860,8 +1860,7 @@ Apply a JSON IO schema to the active XAE project. Builds the EtherCAT tree, crea
 | `etherCatMaster` | `string?` | `null` | EtherCAT master name. Empty = the schema's twincat.deviceName. |
 | `targetMasterPath` | `string?` | `null` | Brownfield: exact target EtherCAT master tree path (e.g. 'TIID^Device 1 (EtherCAT)'); resolved exactly and forces fail-closed mode. |
 | `failClosed` | `bool` | `true` | Default true: exact PLC/master match, empty-check aborts on any uncertainty. false = lenient greenfield resolution (single-PLC / first-master fallback, prefix match on the master name). |
-| `autoBuild` | `bool` | `true` | false skips the full solution build so a brownfield apply does not re-bind the existing PLC project (build later with twincat_build_plc). Default true. |
-| `overwriteExistingGvl` | `bool` | `false` | Replace an existing same-named GVL at the exact target path (TIPC^<plc>^<plc> Project^GVLs^<gvlName>); its declarations and links are lost. Default false: collision = [Error], nothing deleted. Same as the schema's twincat.overwriteExistingGvl. Never deletes a same-named GVL elsewhere. |
+| `autoBuild` | `bool` | `true` | false skips the full solution build so a brownfield apply does not re-bind the existing PLC project; the symbols the schema names must then already be in the process image (twincat_build_plc). Default true. |
 
 ## Scope
 

@@ -10,6 +10,37 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+Breaking change; the next release is 4.0.0.
+
+### Breaking
+- **`twincat_apply_schema` no longer creates a GVL.** The central GVL (`twincat.gvlName`, one `AT %I*/%Q*` variable per
+  IO point) is removed; an IO point names the PLC member it links to instead. Component-based PLC code declares its IO
+  as `AT %I*/%Q*` members inside the component FBs (often directly instantiated library FBs, also arrays of them), and
+  a caller had to skip the GVL and link every member by hand with `twincat_link_variables`.
+
+  | Removed | Use instead |
+  |---|---|
+  | schema `twincat.gvlName`, `twincat.overwriteExistingGvl` and the tool parameter `overwriteExistingGvl` | declare the `AT %I*/%Q*` variables in the component and set `ioPoints[].symbol` to the member's full instance path |
+  | a schema that still carries one of the two fields | `twincat_validate_schema` and the apply run report an `[Error]` naming the field and this migration; nothing is ignored silently |
+  | `ioPoints[].varName` as the PLC variable name (it was the GVL member) | `varName` is an optional label for log, report and CSV; default: the `symbol`, else `<terminalName> Ch<channel>` |
+  | the duplicate-`varName` check | a duplicate `symbol` is an error (two points would link the same variable) |
+  | CSV export first column `varName` | `symbol;varName;direction;type;terminal;channel;group;description;plcPath;ioPath` |
+
+### Added
+- **`ioPoints[].symbol`** (optional): the full PLC instance path of an `AT %I*/%Q*` variable, e.g.
+  `MAIN.fbCyl.LimitSwitchWorkingPosition` or `MAIN.aCyl[1].bOut`. Grammar: identifiers separated by `.`, each
+  optionally followed by index groups of signed integers — `[1]`, `[0]`, `[-1]`, `[2,3]`, `[2][3]`,
+  `MAIN.aStation[2].aCyl[1].fbValve.bOut`. Not accepted: `^`, blanks (`[2, 1]` does not resolve in the process image, write
+  `[2,1]`), `[01]`, `[]`, constants or expressions as an index, ranges.
+- **Linking is exact.** A point with a symbol links to `<instance>^<task> Inputs|Outputs^<symbol>`, an input point only
+  in the input folders and an output point only in the output folders. An array element is a flat name of the process
+  image (`MAIN.aCyl[1].bIn`), so `aCyl[1]` never reaches `aCyl[10]` or `aCyl[1].bIn2`. Nothing found names the folders
+  tried and says to build the PLC (`twincat_build_plc`) and apply again; the same symbol in two tasks is an
+  ambiguity error and nothing is linked.
+- **A point without `symbol` only builds the hardware** and is counted as `notLinked` in the result (information, not a
+  failure), so a schema can build the EtherCAT tree first and link later. The PLC build before linking runs only when
+  linking is enabled and at least one point has a symbol.
+
 ## [3.2.2] - 2026-11-16
 
 ### Changed

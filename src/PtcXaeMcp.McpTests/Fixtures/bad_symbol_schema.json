@@ -1,0 +1,18 @@
+{
+  "twincat": {
+    "deviceName": "Gerät 1 (EtherCAT)",
+    "plcProjectName": "PLC"
+  },
+  "ethercat": {
+    "root": {
+      "name": "A1.00 (EK1200-5000)",
+      "vInfo": "EK1200-5000",
+      "children": [
+        { "name": "A1.05 (EL1809)", "vInfo": "EL1809" }
+      ]
+    }
+  },
+  "ioPoints": [
+    { "terminalName": "A1.05 (EL1809)", "channel": 1, "direction": "I", "symbol": "MAIN.aGrid[2, 1].bIn" }
+  ]
+}

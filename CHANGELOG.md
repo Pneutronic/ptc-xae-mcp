@@ -10,7 +10,9 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
-Breaking change; the next release is 4.0.0.
+## [4.0.0] - 2026-11-16
+
+Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migration table below.
 
 ### Breaking
 - **`twincat_apply_schema` no longer creates a GVL.** The central GVL (`twincat.gvlName`, one `AT %I*/%Q*` variable per
@@ -689,7 +691,10 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.0.0
+[3.2.2]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.2
+[3.2.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.1
 [3.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.0
 [3.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.1.0
 [3.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.0.0

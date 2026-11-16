@@ -115,7 +115,8 @@ internal sealed partial class TwinCatComSession
 
     private static bool IsContainer(ISymbol s) => s is IStructInstance || s is IArrayInstance;
 
-    private static void FlattenSnapshot(ISymbol sym, List<SnapLeaf> leaves, List<SnapshotSkip> skipped, int depth)
+    private static void FlattenSnapshot(ISymbol sym, List<SnapLeaf> leaves, List<SnapshotSkip> skipped, int depth,
+        bool observe = false)
     {
         string path = sym.InstancePath;
         if (depth > SnapshotMaxDepth) { skipped.Add(new(path, "nesting deeper than " + SnapshotMaxDepth)); return; }
@@ -125,20 +126,20 @@ internal sealed partial class TwinCatComSession
         var leaf = IsContainer(sym) ? null : ClassifySnapshotLeaf(sym);
         if (leaf is not null)
         {
-            if (IsInputMapped(sym)) { skipped.Add(new(path, "input-mapped (AT %I*)")); return; }
-            if (sym.IsReadOnly) { skipped.Add(new(path, "read-only / CONSTANT")); return; }
+            if (!observe && IsInputMapped(sym)) { skipped.Add(new(path, "input-mapped (AT %I*)")); return; }
+            if (!observe && sym.IsReadOnly) { skipped.Add(new(path, "read-only / CONSTANT")); return; }
             leaves.Add(leaf);
             return;
         }
 
         if (sym is IStructInstance st)
         {
-            foreach (var m in st.MemberInstances) FlattenSnapshot(m, leaves, skipped, depth + 1);
+            foreach (var m in st.MemberInstances) FlattenSnapshot(m, leaves, skipped, depth + 1, observe);
             return;
         }
         if (sym is IArrayInstance arr)
         {
-            foreach (var e in arr.Elements) FlattenSnapshot(e, leaves, skipped, depth + 1);
+            foreach (var e in arr.Elements) FlattenSnapshot(e, leaves, skipped, depth + 1, observe);
             return;
         }
         skipped.Add(new(path, $"unsupported type '{sym.TypeName}'"));
@@ -236,7 +237,7 @@ internal sealed partial class TwinCatComSession
             {
                 var sym = symbols.Resolve(path);
                 if (sym is null) { missing.Add(path); continue; }
-                FlattenSnapshot(sym, leaves, skipped, 0);
+                FlattenSnapshot(sym, leaves, skipped, 0, request.Observe);
             }
 
             var distinct = leaves.GroupBy(l => l.Symbol.InstancePath, StringComparer.Ordinal).Select(g => g.First()).ToList();

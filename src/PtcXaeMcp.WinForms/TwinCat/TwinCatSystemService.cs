@@ -34,6 +34,7 @@ internal static class TwinCatSystemService
         "twincat_ibn_arm", "twincat_ibn_propose",
         "twincat_list_ads_symbols", "twincat_persistent_snapshot_save", "twincat_persistent_snapshot_compare",
         "twincat_persistent_snapshot_restore", "twincat_tcunit_results",
+        "twincat_ads_wait_until", "twincat_ads_expect", "twincat_ads_record", "twincat_ads_snapshot_compare",
     };
 
     public static SystemServiceStatus Query()

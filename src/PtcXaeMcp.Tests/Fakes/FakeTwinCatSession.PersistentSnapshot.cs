@@ -22,7 +22,7 @@ internal sealed partial class FakeTwinCatSession
     public SnapshotReadResult ReadSnapshotLeaves(SnapshotReadRequest request, string? amsNetId, int adsPort)
     {
         lock (CallLog)
-            CallLog.Add($"ReadSnapshotLeaves(paths=[{string.Join(",", request.Paths)}], adsRoots={request.AdsPersistentRoots}, net={amsNetId ?? "<null>"}, port={adsPort})");
+            CallLog.Add($"ReadSnapshotLeaves(paths=[{string.Join(",", request.Paths)}], adsRoots={request.AdsPersistentRoots}, observe={request.Observe}, net={amsNetId ?? "<null>"}, port={adsPort})");
         if (SnapshotReadError is not null)
             return new(false, new Dictionary<string, SnapshotLeaf>(), [], [], [], amsNetId ?? "1.2.3.4.1.1", adsPort, SnapshotReadError);
 

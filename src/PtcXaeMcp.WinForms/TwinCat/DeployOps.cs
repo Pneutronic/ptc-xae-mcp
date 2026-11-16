@@ -24,8 +24,8 @@ internal sealed class DeployOps(ITwinCatSession session, Func<Func<string>, stri
         return outcome.Summary;
     }
 
-    public string Activate(DeployRequest request) =>
-        new BuildCoordinator(session).ActivateConfig(
+    public ActivationOutcome Activate(DeployRequest request) =>
+        new BuildCoordinator(session).ActivateConfigDetailed(
             request.Restart, request.AutoGenerateLicenses, request.AutoConfirmLogin, request.LoginMode,
             request.UpdateBootProject, request.AllowDownloadFallback, request.RunTimeoutSeconds);
 

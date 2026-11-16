@@ -47,7 +47,7 @@ internal interface IDeployOps
     string Build(DeployRequest request);
 
     /// <summary>The result text of <c>twincat_activate_config</c> with the activation parameters of the request.</summary>
-    string Activate(DeployRequest request);
+    ActivationOutcome Activate(DeployRequest request);
 
     TargetStateReading ReadSystemState(string netId);
     TargetStateReading ReadPlcState(string netId, int port);
@@ -196,16 +196,17 @@ internal sealed class DeployCoordinator(
 
     private (bool Ok, string Message) ActivateStep(DeployRequest request, DeployRun run)
     {
-        string text = ops.Activate(request);
+        var outcome = ops.Activate(request);
+        string text = outcome.Text;
         if (McpErrors.IsError(text)) return Fail(Digest(text));
         if (!text.StartsWith("Activated", StringComparison.Ordinal))
             return Fail("the activation did not report 'Activated': " + Digest(text));
 
         if (request.Restart)
         {
-            // The activation call restarts only after the configuration was saved without a refused dialog, and calls the
-            // restart a success only when the target's system state read Run again. Anything else is not "took effect".
-            if (!text.Contains("TwinCAT restarted", StringComparison.Ordinal))
+            // The activation call restarts only after the configuration was saved without a refused dialog, and sets
+            // Restarted only when the target's system state read Run again. Anything else is not "took effect".
+            if (!outcome.Restarted)
                 return Fail("the configuration was saved but the activation does not report a restart of TwinCAT into it: " + Digest(text));
             return Pass(Truncate(text, 400));
         }

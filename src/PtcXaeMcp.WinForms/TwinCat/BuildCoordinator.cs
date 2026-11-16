@@ -372,10 +372,22 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
         LoginMode loginMode = LoginMode.OnlineChange,
         bool updateBootProject = true,
         bool allowDownloadFallback = false,
+        int? runTimeoutSeconds = null) =>
+        ActivateConfigDetailed(autoConfirmRestart, autoGenerateLicenses, autoConfirmLogin, loginMode,
+            updateBootProject, allowDownloadFallback, runTimeoutSeconds).Text;
+
+    /// <summary>As <see cref="ActivateConfig"/>, plus whether TwinCAT was restarted into the configuration (for callers that chain on it).</summary>
+    public ActivationOutcome ActivateConfigDetailed(
+        bool autoConfirmRestart = false,
+        bool autoGenerateLicenses = false,
+        bool autoConfirmLogin = false,
+        LoginMode loginMode = LoginMode.OnlineChange,
+        bool updateBootProject = true,
+        bool allowDownloadFallback = false,
         int? runTimeoutSeconds = null)
     {
         string? error = SessionGuards.RequireOpenSolution(session);
-        if (error is not null) return error;
+        if (error is not null) return new ActivationOutcome(error, Restarted: false);
 
         ActivateResult result;
         try
@@ -385,12 +397,12 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
                 autoConfirmLogin, loginMode, updateBootProject, allowDownloadFallback,
                 ActivationWait.ClampDeadline(runTimeoutSeconds));
         }
-        catch (Exception ex) { return $"[Error] {ex.Message}"; }
+        catch (Exception ex) { return new ActivationOutcome($"[Error] {ex.Message}", Restarted: false); }
 
         if (!result.Success)
-            return $"[Error] Activation failed: {result.Message}";
+            return new ActivationOutcome($"[Error] Activation failed: {result.Message}", Restarted: false);
 
-        return $"Activated: {result.Message}";
+        return new ActivationOutcome($"Activated: {result.Message}", result.Restarted);
     }
 
     public string GetLicenseInfo()

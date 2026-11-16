@@ -30,6 +30,8 @@ public sealed class DeployCoordinatorTests
         public ActivationTarget? Target { get; set; } = new(Net, IsLocal: true);
         public string BuildText { get; set; } = BuildOk;
         public string ActivateText { get; set; } = ActivatedWithRestart;
+        /// <summary>The structured flag the chain decides on; the text alone no longer counts.</summary>
+        public bool ActivateRestarted { get; set; } = true;
         public TargetStateReading SystemState { get; set; } = TargetStateReading.Of("Run");
         public Queue<TargetStateReading> PlcStates { get; } = new();
         public TargetStateReading PlcStateDefault { get; set; } = TargetStateReading.Of("Run");
@@ -48,7 +50,7 @@ public sealed class DeployCoordinatorTests
             return BuildText;
         }
 
-        public string Activate(DeployRequest request) { Log("activate"); return ActivateText; }
+        public ActivationOutcome Activate(DeployRequest request) { Log("activate"); return new ActivationOutcome(ActivateText, ActivateRestarted); }
         public TargetStateReading ReadSystemState(string netId) { Log("system"); return SystemState; }
 
         public TargetStateReading ReadPlcState(string netId, int port)
@@ -249,11 +251,28 @@ public sealed class DeployCoordinatorTests
     [Fact]
     public void ARestartThatTheActivationDoesNotReport_IsNotAnActivationThatTookEffect()
     {
-        var (text, ops) = Run(o => o.ActivateText = "Activated: Configuration saved to registry only (ActivateConfiguration, no restart).");
+        var (text, ops) = Run(o =>
+        {
+            o.ActivateText = "Activated: Configuration saved to registry only (ActivateConfiguration, no restart).";
+            o.ActivateRestarted = false;
+        });
 
         Assert.StartsWith("[Error] twincat_deploy stopped at step 'activate'", text, StringComparison.Ordinal);
         Assert.DoesNotContain("system", ops.Calls);
         Assert.DoesNotContain("start", ops.Calls);
+    }
+
+    [Fact]
+    public void TheRestartFlag_NotTheWording_Decides()
+    {
+        // A text that still says "TwinCAT restarted" but without the flag (e.g. reworded or misreported) does not pass…
+        var (refused, refusedOps) = Run(o => o.ActivateRestarted = false);
+        Assert.StartsWith("[Error] twincat_deploy stopped at step 'activate'", refused, StringComparison.Ordinal);
+        Assert.DoesNotContain("start", refusedOps.Calls);
+
+        // …and a reworded success text with the flag set does.
+        var (passed, _) = Run(o => o.ActivateText = "Activated: the configuration is live (new wording).");
+        Assert.DoesNotContain("[Error]", passed, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -288,6 +307,7 @@ public sealed class DeployCoordinatorTests
             o =>
             {
                 o.ActivateText = "Activated: Configuration saved to registry only (ActivateConfiguration, no restart). The running PLC keeps the PREVIOUS code.";
+                o.ActivateRestarted = false;
                 o.SystemState = TargetStateReading.Of("Config");
                 o.PlcStateDefault = TargetStateReading.Of("Stop");
             },

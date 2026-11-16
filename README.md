@@ -263,8 +263,13 @@ authentication model beyond that token. Full threat model and details:
 | Access level | `read` (only tools that change nothing), `engineer` (also the project: PLC code, IO, mapping, libraries, build, save), `runtime` (also target systems: activate, login, PLC start/stop, ADS writes, routes, system mode, User Mode Runtime) | `PTC_XAE_MCP_ACCESS` |
 | Blocked NetIds | no runtime action on these systems; reading stays allowed | `PTC_XAE_MCP_BLOCKED_NETIDS` (`;`-separated) |
 | Allowed NetIds | runtime actions only on these systems | `PTC_XAE_MCP_ALLOWED_NETIDS` |
+| Allowed variable writes | variable writes (`twincat_write_ads_variable`, `twincat_hmi_write_symbol`, `twincat_write_init_symbol`, `twincat_persistent_snapshot_restore`) reach only symbols matching one of these patterns, e.g. `MAIN.stTest.*; GVL_Param.r*` (`*` any text, `?` one character, case ignored) | `PTC_XAE_MCP_ADS_WRITE_ALLOW` (`;`-separated) |
+| Denied variable writes | these symbols are never written, whatever the allowed list says | `PTC_XAE_MCP_ADS_WRITE_DENY` |
 
 `local` in a list means this PC and its User Mode Runtimes. Without any setting everything is allowed, as before.
+The symbol lists keep an agent on the commissioning variables (test flags, parameters) of a customer machine while valves,
+axes and safety-related signals stay out of reach; a restore that would write one symbol outside the lists is refused as a
+whole. Of two sources (window and environment) the allowed lists are intersected and the denied lists added up.
 A refused call returns `[Error]` and does nothing; tools above the level are left out of the tool list. Emergency
 stops (`twincat_stop`, `twincat_shutdown`, `twincat_force_close_xae`, the IBN abort/disarm/release) always work. No
 tool can read the policy file or change the policy; `twincat_get_status` shows it, and the window title names a

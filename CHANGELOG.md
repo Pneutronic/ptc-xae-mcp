@@ -29,6 +29,14 @@ Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migrati
   | CSV export first column `varName` | `symbol;varName;direction;type;terminal;channel;group;description;plcPath;ioPath` |
 
 ### Added
+- **Symbol lists for variable writes in the access policy.** `policy.json` (`adsWriteAllow`, `adsWriteDeny`), the
+  environment (`PTC_XAE_MCP_ADS_WRITE_ALLOW`, `PTC_XAE_MCP_ADS_WRITE_DENY`) and *Settings…* take glob patterns on the
+  full symbol path (`MAIN.stTest.*`, `GVL_Param.r*`; case ignored). With an allowed list `twincat_write_ads_variable`,
+  `twincat_hmi_write_symbol` (ADS domain, by its PLC path) and `twincat_write_init_symbol` write only matching
+  symbols; a denied pattern wins. `twincat_persistent_snapshot_restore` is refused as a whole, naming the symbols,
+  when one symbol it would write does not match (use `include` to narrow it). An empty allowed list allows nothing;
+  without lists everything is allowed as before. Merging two sources intersects the allowed lists and unites the denied
+  lists. No tool can read or change them; `twincat_get_status` shows them.
 - **`ioPoints[].symbol`** (optional): the full PLC instance path of an `AT %I*/%Q*` variable, e.g.
   `MAIN.fbCyl.LimitSwitchWorkingPosition` or `MAIN.aCyl[1].bOut`. Grammar: identifiers separated by `.`, each
   optionally followed by index groups of signed integers — `[1]`, `[0]`, `[-1]`, `[2,3]`, `[2][3]`,

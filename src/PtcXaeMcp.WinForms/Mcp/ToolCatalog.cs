@@ -28,7 +28,11 @@ internal enum TargetRule
 }
 
 /// <summary>One tool as the tool lists and the access policy see it.</summary>
-internal sealed record ToolInfo(string Name, Toolset Toolset, AccessLevel Level, TargetRule Target, bool AlwaysAllowed, bool ReadOnly);
+internal sealed record ToolInfo(string Name, Toolset Toolset, AccessLevel Level, TargetRule Target, bool AlwaysAllowed, bool ReadOnly)
+{
+    /// <summary>The argument that names the PLC symbol a variable-writing tool changes (checked against the access policy's symbol lists), or null.</summary>
+    public string? SymbolArgument { get; init; }
+}
 
 /// <summary>
 /// Toolset, access level and target rule of every MCP tool, in one place so the classification can be reviewed
@@ -160,6 +164,14 @@ internal static class ToolCatalog
         ["twincat_hmi_write_symbol"] = TargetRule.Unknown,
     };
 
+    /// <summary>Tools that write one named PLC variable, with the argument that names it (the symbol lists of the access policy apply).</summary>
+    private static readonly Dictionary<string, string> SymbolArguments = new(StringComparer.Ordinal)
+    {
+        ["twincat_write_ads_variable"] = "symbolPath",
+        ["twincat_write_init_symbol"] = "symbol",
+        ["twincat_hmi_write_symbol"] = "symbol",
+    };
+
     /// <summary>Emergency stops and the way out: never refused, whatever the access policy says.</summary>
     private static readonly HashSet<string> Always = new(StringComparer.Ordinal)
     {
@@ -181,7 +193,7 @@ internal static class ToolCatalog
 
     /// <summary>Tool names the toolset table lists that no tool has (a stale entry).</summary>
     internal static IEnumerable<string> UnknownNamesInTables() =>
-        Toolsets.Keys.Concat(RuntimeActions.Keys).Concat(Always).Distinct().Where(n => !Tools.ContainsKey(n));
+        Toolsets.Keys.Concat(RuntimeActions.Keys).Concat(Always).Concat(SymbolArguments.Keys).Distinct().Where(n => !Tools.ContainsKey(n));
 
     /// <summary>The <c>[McpServerTool]</c> methods of the tool classes with their annotation.</summary>
     internal static IEnumerable<(MethodInfo Method, McpServerToolAttribute Attribute)> ToolMethods() =>
@@ -204,7 +216,10 @@ internal static class ToolCatalog
                 : Toolset.Meta;
             bool runtime = RuntimeActions.TryGetValue(name, out var target);
             var level = runtime ? AccessLevel.Runtime : attr.ReadOnly ? AccessLevel.Read : AccessLevel.Engineer;
-            tools[name] = new ToolInfo(name, toolset, level, runtime ? target : TargetRule.None, Always.Contains(name), attr.ReadOnly);
+            tools[name] = new ToolInfo(name, toolset, level, runtime ? target : TargetRule.None, Always.Contains(name), attr.ReadOnly)
+            {
+                SymbolArgument = SymbolArguments.GetValueOrDefault(name),
+            };
         }
         return tools.ToFrozenDictionary(StringComparer.Ordinal);
     }

@@ -48,6 +48,9 @@ internal static class SettingsInfo
                 Env(Mcp.AccessPolicy.LevelEnvVar) + " (read, engineer, runtime; the stricter of this and the choice above applies)"),
             new("Blocked NetIds (environment)", Raw(Mcp.AccessPolicy.BlockedEnvVar, "(none)"), Env(Mcp.AccessPolicy.BlockedEnvVar)),
             new("Allowed NetIds (environment)", Raw(Mcp.AccessPolicy.AllowedEnvVar, "(none)"), Env(Mcp.AccessPolicy.AllowedEnvVar)),
+            new("Allowed variable writes (environment)", Raw(Mcp.AccessPolicy.AdsWriteAllowEnvVar, "(none)"),
+                Env(Mcp.AccessPolicy.AdsWriteAllowEnvVar) + " (symbol patterns, e.g. MAIN.stTest.*; the lists of both sources are intersected)"),
+            new("Denied variable writes (environment)", Raw(Mcp.AccessPolicy.AdsWriteDenyEnvVar, "(none)"), Env(Mcp.AccessPolicy.AdsWriteDenyEnvVar)),
         };
         if (updateCheckState is not null)
             rows.Add(new("Update check at start", updateCheckState,

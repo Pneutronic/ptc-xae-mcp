@@ -104,7 +104,9 @@ internal sealed partial class TwinCatMcpTools
         => bridge.Activity.Trace("twincat_persistent_snapshot_restore", new { snapshotPath, dryRun, planHash, pathMap, include, amsNetId, adsPort }, () =>
             bridge.Dispatcher.Run(() =>
                 new PersistentSnapshotCoordinator(bridge.Dispatcher.Session, bridge.SnapshotRestore)
-                    .Restore(snapshotPath, dryRun, planHash, pathMap, include, amsNetId, adsPort)), cancellationToken);
+                    .Restore(snapshotPath, dryRun, planHash, pathMap, include, amsNetId, adsPort,
+                        paths => bridge.Policy.Current.DenySymbols(Mcp.ToolCatalog.Tools["twincat_persistent_snapshot_restore"], paths))),
+            cancellationToken);
 
     [McpServerTool(Name = "twincat_persistent_snapshot_restore_status", ReadOnly = true)]
     [Description("Poll the status of a persistent-snapshot restore proposal. Read-only. Returns JSON " +

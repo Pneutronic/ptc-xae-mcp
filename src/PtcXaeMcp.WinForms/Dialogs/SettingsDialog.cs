@@ -32,8 +32,8 @@ internal sealed class SettingsDialog : Form
         MinimizeBox = false;
         MaximizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(760, access is null ? 520 : 760);
-        MinimumSize = new Size(600, access is null ? 440 : 640);
+        ClientSize = new Size(760, access is null ? 520 : 860);
+        MinimumSize = new Size(600, access is null ? 440 : 740);
 
         var layout = new TableLayoutPanel
         {
@@ -123,12 +123,16 @@ internal sealed class SettingsDialog : Form
         _cmbAccess.SelectedIndex switch { 0 => AccessLevel.Read, 1 => AccessLevel.Engineer, _ => AccessLevel.Runtime },
         AccessPolicy.ParseList(_txtBlocked.Text),
         string.IsNullOrWhiteSpace(_txtAllowed.Text) ? null : AccessPolicy.ParseList(_txtAllowed.Text),
-        "window");
+        "window",
+        string.IsNullOrWhiteSpace(_txtWriteAllow.Text) ? null : AccessPolicy.ParsePatterns(_txtWriteAllow.Text),
+        string.IsNullOrWhiteSpace(_txtWriteDeny.Text) ? null : AccessPolicy.ParsePatterns(_txtWriteDeny.Text));
 
     private readonly ComboBox _cmbProfile = new();
     private readonly ComboBox _cmbAccess = new();
     private readonly TextBox _txtBlocked = new();
     private readonly TextBox _txtAllowed = new();
+    private readonly TextBox _txtWriteAllow = new();
+    private readonly TextBox _txtWriteDeny = new();
 
     private const string AutomaticLabel = "Automatic (by client: Claude all, Cursor/VS Code/Windsurf/Hermes core)";
 
@@ -174,6 +178,17 @@ internal sealed class SettingsDialog : Form
         _txtAllowed.Width = 460;
         AddRow(layout, row++, "Allowed NetIds", _txtAllowed);
         AddNote(layout, row++, "When set, runtime actions only on these systems. Empty = no allow list.");
+
+        _txtWriteAllow.Text = access.Window.AdsWriteAllow is { } writeAllow ? string.Join("; ", writeAllow.Order()) : string.Empty;
+        _txtWriteAllow.Width = 460;
+        AddRow(layout, row++, "Allowed variable writes", _txtWriteAllow);
+        AddNote(layout, row++, "When set, ADS and HMI writes and a snapshot restore reach only matching symbols, e.g. MAIN.stTest.*; GVL_Param.r*. " +
+                               "'*' is any text, '?' one character, case is ignored. Empty = no list (all symbols).");
+
+        _txtWriteDeny.Text = access.Window.AdsWriteDeny is { } writeDeny ? string.Join("; ", writeDeny.Order()) : string.Empty;
+        _txtWriteDeny.Width = 460;
+        AddRow(layout, row++, "Denied variable writes", _txtWriteDeny);
+        AddNote(layout, row++, "Never written, whatever the allowed list says, e.g. *.bEmergency*; GVL_Safety.*.");
 
         if (access.Environment is { } envPolicy)
             AddNote(layout, row++, $"The environment sets {envPolicy.Summary()}; the stricter of both applies.");

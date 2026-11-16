@@ -406,6 +406,41 @@ public sealed class PersistentSnapshotCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public void Restore_with_a_symbol_the_policy_refuses_is_refused_as_a_whole_and_writes_nothing()
+    {
+        string snap = DriftPlc();
+        string hash = DryRunHash(snap);
+        var raised = new List<RestoreProposal>();
+        _restore.ProposalRaised += raised.Add;
+        Func<IEnumerable<string>, string?> onlyCount = paths =>
+            paths.Where(p => p != "GVL.stRecipe.nCount").ToList() is { Count: > 0 } refused
+                ? "[Error] Access policy: not allowed: " + string.Join(", ", refused)
+                : null;
+
+        _sut.Restore(snap, true, null, null, null, null, null, onlyCount)
+            .Should().StartWith("[Error] Access policy").And.Contain("GVL.stRecipe.sName");
+        _sut.Restore(snap, false, hash, null, null, null, null, onlyCount)
+            .Should().StartWith("[Error] Access policy").And.Contain("GVL.stRecipe.sName");
+
+        raised.Should().BeEmpty("no proposal is raised, so no human is asked about a restore that is refused anyway");
+        _plc.CallLog.Should().NotContain(c => c.StartsWith("WriteSnapshotLeaves", StringComparison.Ordinal));
+        _plc.PlcLeaves["GVL.stRecipe.nCount"].Value.GetInt32().Should().Be(9);
+    }
+
+    [Fact]
+    public void Restore_include_narrows_the_plan_to_symbols_the_policy_allows()
+    {
+        string snap = DriftPlc();
+        string[] include = ["GVL.stRecipe.nCount"];
+        Func<IEnumerable<string>, string?> onlyCount = paths =>
+            paths.All(p => p == "GVL.stRecipe.nCount") ? null : "[Error] Access policy: refused";
+
+        var j = Parse(_sut.Restore(snap, true, null, null, include, null, null, onlyCount));
+
+        j.GetProperty("writeCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
     public void Status_of_an_unknown_id_is_an_error()
         => _sut.RestoreStatus("nope").Should().StartWith("[Error] Unknown restoreId");
 }

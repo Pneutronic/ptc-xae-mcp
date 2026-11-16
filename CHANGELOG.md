@@ -51,6 +51,14 @@ Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migrati
   the point was unresolved even with `ioLeaf`. An `ioLeaf` that is a tree path is now looked up exactly before any
   channel-name candidate: relative to the terminal (`"ioLeaf": "AI Standard Channel 1^Value"`) or absolute from
   `TIID^`. A path that does not exist is an error naming it, never a guess; a plain name keeps its old role.
+- **Analog channels are found without `ioLeaf`.** When a terminal has no `Channel N` node, `apply_schema` reads the
+  terminal's PDO list: the PDO of the channel (from the selected PDO assignment, else the active PDO named
+  `… Channel N`, so channel 1 never hits channel 10) and in it the one entry whose bit width fits the point's `type`
+  (`INT` on an EL3174 → `AI Standard Channel 1^Value`, on an EL4004 output → `AO Outputs Channel 1^Analog output`).
+  No entry or several (a `BOOL` on an analog input: eight status bits) is an error listing the entries as ready
+  `ioLeaf` values (`AI Standard Channel 1^Status^Error`); a plain `ioLeaf` name (`Error`) picks that entry. The built
+  path is confirmed in the tree; excluded alternative PDOs (`AI Compact Channel 1`) are never used. Digital terminals
+  keep their `Channel N^Input` path.
 
 ## [3.2.2] - 2026-11-16
 

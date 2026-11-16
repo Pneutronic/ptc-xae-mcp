@@ -61,6 +61,8 @@ internal sealed partial class TwinCatMcpTools
         "master must be provably empty. An IO point links to the AT %I*/%Q* variable named by ioPoints[].symbol, the full PLC " +
         "instance path (MAIN.fbCyl.LimitSwitchWorkingPosition, MAIN.aCyl[1].bOut): looked up exactly in the process image, never a " +
         "same-named member of another instance. A point without symbol only builds hardware. " +
+        "An analog channel is found from the terminal's PDOs (EL3174 channel 1 = 'AI Standard Channel 1^Value', the entry whose " +
+        "width fits the point's type); set ioLeaf only for another entry (a status bit). " +
         "During the build the XAE's 'Sync Master' and 'Double use of the same Ethernet interface' boxes are answered with OK and " +
         "the 'unrestored variable links' question with 'Ja' (keep the link information); answered dialogs are listed in the " +
         "result, any other blocking dialog ends the run with an [Error] naming it.")]

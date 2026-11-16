@@ -46,6 +46,7 @@ internal sealed class Linker
     private readonly HashSet<string> _ioddCheckedTerminals = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, List<string>>? _masterNameIndex;
     private List<(string Path, string Direction)>? _imageFolderCache;
+    private readonly Dictionary<string, TerminalPdoMap?> _pdoMapCache = new(StringComparer.OrdinalIgnoreCase);
 
     public Linker(
         ISysManTree tree,
@@ -245,14 +246,105 @@ internal sealed class Linker
             if (Probe(candidate, tried)) return candidate;
         }
 
-        string? leaf = FindIoLeafUnder(terminal, point.Channel, point.Direction, point.IoLeaf ?? string.Empty);
+        string? leaf = FindChannelInGroupFolders(terminal, point.Channel, point.Direction);
         if (leaf is not null) return leaf;
 
+        leaf = ResolveFromPdo(terminal, point, tried);
+        if (leaf is not null) return leaf;
+
+        leaf = ScanIoLeafUnder(terminal, point.Channel, point.Direction, point.IoLeaf ?? string.Empty);
+        if (leaf is not null) return leaf;
+
+        TerminalPdoMap? map = PdoMap(terminal);
+        string pdoHint = map is null || map.Active(point.Direction).Count == 0
+            ? string.Empty
+            : $" Active {(IsOutput(point.Direction) ? "output" : "input")} PDOs of this terminal: " +
+              string.Join(", ", map.Active(point.Direction).Select(p => $"'{p.Name}'")) + ".";
         throw new InvalidOperationException(
             $"IO leaf not found: terminal '{terminal.Path}', channel {point.Channel}, direction {point.Direction}. " +
             $"None of these paths exists: {string.Join(", ", tried.Select(t => $"'{t}'"))}. " +
             "Channel variables of a terminal are not listed as its tree children, only addressable by path — check " +
-            "the channel number, or pass the leaf name as ioLeaf.");
+            "the channel number, or pass the leaf name as ioLeaf." + pdoHint);
+    }
+
+    /// <summary>
+    /// Leaf of <paramref name="point"/> from the terminal's own PDO list (its ProduceXml): the PDO(s) of
+    /// the channel (<see cref="TerminalPdoMap.ForChannel"/>), then the one entry that fits — the entry an
+    /// <c>ioLeaf</c> name hint names, else the one entry whose bit width equals the point's type. The
+    /// built path <c>&lt;terminal&gt;^&lt;PDO name&gt;^&lt;entry&gt;</c> is confirmed by an exact lookup.
+    /// Null when the terminal names no PDO for the channel (the caller goes on); throws when PDOs exist
+    /// but no single entry fits, or the built path is not in the tree — never a guess.
+    /// </summary>
+    private string? ResolveFromPdo(ITreeNode terminal, IoPoint point, List<string> tried)
+    {
+        TerminalPdoMap? map = PdoMap(terminal);
+        if (map is null) return null;
+        IReadOnlyList<TerminalPdo> pdos = map.ForChannel(point.Channel, point.Direction);
+        if (pdos.Count == 0) return null;
+
+        var entries = pdos
+            .SelectMany(p => p.Entries.Where(e => !e.IsGap && e.Name.Length > 0).Select(e => (Pdo: p, Entry: e)))
+            .ToList();
+
+        string hint = point.IoLeaf?.Trim() ?? string.Empty;
+        string type = string.IsNullOrWhiteSpace(point.Type) ? "BOOL" : point.Type!.Trim();
+        int? width = TerminalPdoMap.BitWidth(type);
+        List<(TerminalPdo Pdo, PdoEntry Entry)> matches;
+        string rule;
+        if (hint.Length > 0)
+        {
+            matches = entries.Where(c => NamesEntry(c.Entry, hint)).ToList();
+            rule = $"named '{hint}' (ioLeaf)";
+        }
+        else
+        {
+            matches = width is null ? [] : entries.Where(c => c.Entry.BitLen == width.Value).ToList();
+            rule = width is null
+                ? $"for type '{type}' (no fixed bit width)"
+                : $"of {width.Value} bit{(width.Value == 1 ? string.Empty : "s")} for type '{type}'";
+        }
+
+        string pdoNames = string.Join(", ", pdos.Select(p => $"'{p.Name}'"));
+        if (matches.Count != 1)
+        {
+            string candidates = string.Join(", ", entries.Select(c =>
+                $"'{c.Pdo.Name}^{c.Entry.TreeName}' ({(c.Entry.DataType.Length > 0 ? c.Entry.DataType + ", " : string.Empty)}{c.Entry.BitLen} bit)"));
+            throw new InvalidOperationException(
+                $"Channel {point.Channel} of terminal '{terminal.Path}' is PDO {pdoNames}; " +
+                $"{(matches.Count == 0 ? "no" : matches.Count.ToString(CultureInfo.InvariantCulture))} entr{(matches.Count == 1 ? "y" : "ies")} {rule}. " +
+                $"Set ioLeaf to one of: {candidates}.");
+        }
+
+        (TerminalPdo pdo, PdoEntry entry) = matches[0];
+        string path = $"{terminal.Path}^{pdo.Name}^{entry.TreeName}";
+        if (Probe(path, tried)) return path;
+        string raw = $"{terminal.Path}^{pdo.Name}^{entry.Name}";
+        if (!string.Equals(raw, path, StringComparison.Ordinal) && Probe(raw, tried)) return raw;
+
+        throw new InvalidOperationException(
+            $"Channel {point.Channel} of terminal '{terminal.Path}' is PDO '{pdo.Name}' with entry '{entry.Name}', " +
+            $"but '{path}' is not in the tree. Check the PDO assignment of the terminal, or pass the leaf as ioLeaf.");
+    }
+
+    // An ioLeaf name hint names an entry by its ESI name ('Status__Error'), its tree path ('Status^Error')
+    // or the last segment ('Error').
+    private static bool NamesEntry(PdoEntry entry, string hint) =>
+        string.Equals(entry.Name, hint, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(entry.TreeName, hint, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(TreeNodeExtensions.Leaf(entry.TreeName), hint, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsOutput(string direction) =>
+        string.Equals(direction?.Trim(), "Q", StringComparison.OrdinalIgnoreCase);
+
+    // The terminal's PDO list, read once per terminal per run; null when it has none or cannot be read.
+    private TerminalPdoMap? PdoMap(ITreeNode terminal)
+    {
+        string key = terminal.Path;
+        if (_pdoMapCache.TryGetValue(key, out TerminalPdoMap? cached)) return cached;
+        TerminalPdoMap? map;
+        try { map = TerminalPdoMap.Parse(terminal.ProduceXml(false)); }
+        catch (Exception ex) when (ComCall.Recoverable(ex)) { map = null; }
+        return _pdoMapCache[key] = map;
     }
 
     /// <summary>
@@ -347,9 +439,8 @@ internal sealed class Linker
         return index;
     }
 
-    // Channel node by name in the terminal's IO group folders, then a bounded scored scan of the
-    // terminal's own subtree (never outside it).
-    private string? FindIoLeafUnder(ITreeNode terminal, int channel, string direction, string ioLeafOverride)
+    // Channel node by name in the terminal's IO group folders.
+    private string? FindChannelInGroupFolders(ITreeNode terminal, int channel, string direction)
     {
         string[] channelNames = [$"Channel {channel}", $"Kanal {channel}"];
         foreach (string folderName in LinkCandidates.IoGroupFolderNames(direction))
@@ -360,7 +451,12 @@ internal sealed class Linker
                 if (hit is not null) return hit.Path;
             }
         }
+        return null;
+    }
 
+    // Last resort: a bounded scored scan of the terminal's own subtree (never outside it).
+    private string? ScanIoLeafUnder(ITreeNode terminal, int channel, string direction, string ioLeafOverride)
+    {
         string dir = direction.Trim().ToUpperInvariant();
         string? best = null;
         int bestScore = -1;

@@ -10,21 +10,13 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     private const string HmiDataTypeParam =
-        "Data type: a TwinCAT HMI type reference like 'tchmi:general#/definitions/Boolean' (also INT16, " +
-        "String, ...) or a JSON-schema type: boolean, number, integer, string.";
+        "'tchmi:general#/definitions/Boolean' (or INT16, String, …) or boolean, number, integer, string.";
 
-    private const string HmiDefaultValueParam =
-        "Optional default as a JSON scalar: true, 42, 3.5, \"text\" or null (no objects/arrays). Must fit " +
-        "dataType when that is a known scalar type.";
+    private const string HmiDefaultValueParam = "Default as a JSON scalar: true, 42, \"text\" or null; must fit dataType.";
 
     [McpServerTool(Name = "twincat_hmi_list_internal_symbols", ReadOnly = true)]
-    [Description("List the HMI-owned symbols (no PLC behind them) of a TwinCAT HMI project. Read from the project " +
-                 @"files, no HMI server needed. client = framework internal symbols %i%Name%/i% from Properties\tchmiconfig.json " +
-                 "(name, type, valueJson, persist, readOnly); server = non-hidden TcHmiSrv-domain symbols from " +
-                 @"Server\TcHmiSrv\TcHmiSrv.Config.default.json (name, mapping, useMapping (false = pure offline " +
-                 "server variable), dataType, defaultJson, persist). An unreadable server file is reported as " +
-                 "unknown, never as none. JSON: { hmiProject, client{file,count,symbols[]}, " +
-                 "server{file,readable,count,offline,symbols[]} }.")]
+    [Description("List the HMI-owned symbols (no PLC behind them) of an HMI project. Read from its files, no " +
+                 "server needed: client internal symbols %i%Name%/i% and TcHmiSrv server symbols.")]
     public string HmiListInternalSymbols(
         [Description(HmiProjectParam)] string? hmiProject = null,
         CancellationToken cancellationToken = default)
@@ -33,20 +25,17 @@ internal sealed partial class TwinCatMcpTools
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ListInternalSymbols(hmiProject))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_add_internal_symbol", ReadOnly = false, Destructive = false)]
-    [Description("Add a client internal symbol %i%name%/i% to a TwinCAT HMI project. Stored in " +
-                 @"Properties\tchmiconfig.json; for HMI-side state (selection, page index, dialog flag) without a PLC " +
-                 "variable. " + ConfirmNote +
-                 " Refuses an existing name. Success only after read-back finds the entry; differing stored " +
-                 "type/value/flags are a WARNING. For a symbol the HMI server holds use twincat_hmi_map_offline_symbol. " +
-                 "Undo with twincat_hmi_remove_internal_symbol.")]
+    [Description("Add a client internal symbol %i%name%/i% to an HMI project. For HMI-side state (selection, " +
+                 "page index) without a PLC variable. " + ConfirmNote + " Refuses an existing name. For a symbol the " +
+                 "server holds for all clients use twincat_hmi_map_offline_symbol.")]
     public string HmiAddInternalSymbol(
-        [Description("Letters, digits, '_'; starts with a letter or '_'; max 128. Referenced as %i%name%/i%.")]
+        [Description("Letters, digits, '_', max 128; not starting with a digit.")]
         string name,
         [Description(HmiDataTypeParam)] string dataType,
         [Description(HmiDefaultValueParam)] string? defaultValueJson = null,
-        [Description("Persist the value in the client (not the server, not historizing). Default false.")]
+        [Description("Persist the value in the client.")]
         bool persist = false,
-        [Description("Read-only for bindings. Default false.")]
+        [Description("Read-only for bindings.")]
         bool readOnly = false,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
@@ -59,11 +48,10 @@ internal sealed partial class TwinCatMcpTools
                         confirmTimeoutSeconds))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_remove_internal_symbol", ReadOnly = false, Destructive = true)]
-    [Description("Remove a client internal symbol %i%name%/i% from a TwinCAT HMI project. " + ConfirmNote +
-                 " Unknown name (case-sensitive) = 'Nothing to do', no popup. Success only after read-back no longer " +
-                 "finds it. Bindings still referencing it stop resolving.")]
+    [Description("Remove a client internal symbol %i%name%/i% from an HMI project. Bindings to it stop resolving. " +
+                 ConfirmNote + " Unknown name = 'Nothing to do'.")]
     public string HmiRemoveInternalSymbol(
-        [Description("Name as twincat_hmi_list_internal_symbols reports it.")]
+        [Description("Name as twincat_hmi_list_internal_symbols reports it (case-sensitive).")]
         string name,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
@@ -75,22 +63,17 @@ internal sealed partial class TwinCatMcpTools
                     .RemoveInternalSymbol(hmiProject, name, confirmTimeoutSeconds))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_map_offline_symbol", ReadOnly = false, Destructive = false)]
-    [Description("Create a server symbol in the TcHmiSrv domain of an HMI engineering server. A variable the HMI " +
-                 "SERVER holds for all clients, no PLC behind it, persisted in " +
-                 @"Server\TcHmiSrv\TcHmiSrv.Config.default.json; bind to it like any mapped symbol. Needs the HMI " +
-                 "engineering server running. " + ConfirmNote +
-                 " Refuses a name the server config or running server already knows. Success only after its config " +
-                 "reads back with DOMAIN TcHmiSrv and the requested USEMAPPING. Remove with twincat_hmi_unmap_symbol " +
-                 "(domain 'TcHmiSrv').")]
+    [Description("Create a server symbol (TcHmiSrv domain) without a PLC behind it. The HMI server holds it for all " +
+                 "clients; bind to it like any mapped symbol. Needs the HMI server running. " + ConfirmNote + " Refuses a " +
+                 "known name. Remove with twincat_hmi_unmap_symbol (domain 'TcHmiSrv').")]
     public string HmiMapOfflineSymbol(
-        [Description("Dotted identifiers (letters, digits, '_'), e.g. 'Recipe.SelectedIndex', max 256.")]
+        [Description("Dotted identifiers, e.g. 'Recipe.SelectedIndex', max 256.")]
         string mapName,
         [Description(HmiDataTypeParam)] string dataType,
         [Description(HmiDefaultValueParam)] string? defaultValueJson = null,
-        [Description("Sets USEMAPPING. Default false = pure offline server variable starting at the default value; " +
-                     "true is unverified live, prefer false.")]
+        [Description("Sets USEMAPPING; false = pure server variable (true is unverified, prefer false).")]
         bool online = false,
-        [Description("Server keeps the last value across restarts. Default false.")]
+        [Description("Server keeps the last value across restarts.")]
         bool persist = false,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,

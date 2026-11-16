@@ -575,90 +575,90 @@ Write device-configuration XML to an EtherCAT slave and verify by read-back. Eve
 
 ### `twincat_hmi_list_projects`
 
-List the TwinCAT HMI (TE2000) projects of the open solution. Per project: name, projectDirectory, isReady, isPublishRunning; also automationVersion and whether the XAE window 'Activate Engineering Server Trial License' is open (a CAPTCHA only a person can answer; the HMI engineering server does not work until then).
+List the HMI (TE2000) projects of the open solution with their state. Also reports an open 'Activate Engineering Server Trial License' window: a CAPTCHA only a person can answer; the HMI server does not work until then.
 
 _No parameters._
 
 ### `twincat_hmi_get_project_info`
 
-Show config, server extensions and file tree of one TwinCAT HMI project. Config: ActiveTheme, Locale, ScaleMode, StartupView, LoginPage, websocket timeouts. Engineering-server extensions (e.g. ADS, TcHmiSrv): domainName, state, loaded, version. Tree (max 400 nodes) only with includeFiles.
+Show config, server extensions and file tree of an HMI project.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `hmiProject` | `string?` | `null` |  |
-| `includeFiles` | `bool` | `false` | Also return the project tree. Default false. |
-| `maxDepth` | `int` | `2` | Tree depth 1..6 when includeFiles. Default 2. |
+| `includeFiles` | `bool` | `false` | Also return the project tree (max 400 nodes). |
+| `maxDepth` | `int` | `2` | Tree depth 1..6. |
 
 ### `twincat_hmi_list_mapped_symbols`
 
-List the symbols mapped in a TwinCAT HMI project's engineering server. Per symbol: mappedName (e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'), domain, type, dataTypeDisplayName, readOnly, hidden. CAUTION: cached view; maps/unmaps after the project was loaded are NOT shown, even with refresh=true. For the live state of one symbol use twincat_hmi_read_symbols (SYMBOL_NOT_MAPPED = not mapped). JSON: mappedCount (all mapped), total (after filters), offset, has_more, next_offset, symbols[]; while has_more, call again with offset=next_offset.
+List the symbols mapped in an HMI project's server. CAUTION: cached; maps/unmaps after the project was loaded are not shown, even with refresh. For the live state of one symbol use twincat_hmi_read_symbols. While has_more, call again with offset=next_offset.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `hmiProject` | `string?` | `null` |  |
-| `domain` | `string?` | `null` | Only this server domain, e.g. 'ADS' (case-insensitive). |
-| `namePrefix` | `string?` | `null` | Only mapped names starting with this, e.g. 'ADS.PLC1.GVL_HMI.' (case-insensitive). |
-| `includeHidden` | `bool` | `false` | Include hidden symbols. Default false. |
-| `refresh` | `bool` | `false` | Ask the server to refresh its symbol list first. Default false. |
-| `limit` | `int?` | `null` | Page size: default 500, max 5000 (0 = 5000). |
-| `offset` | `int` | `0` | Symbols to skip (next_offset of the previous page). Default 0. |
+| `domain` | `string?` | `null` | Only this domain, e.g. 'ADS'. |
+| `namePrefix` | `string?` | `null` | Only mapped names starting with this, e.g. 'ADS.PLC1.GVL_HMI.'. |
+| `includeHidden` | `bool` | `false` | Include hidden symbols. |
+| `refresh` | `bool` | `false` | Refresh the server's symbol list first. |
+| `limit` | `int?` | `null` | Page size, default 500, max 5000. |
+| `offset` | `int` | `0` | Symbols to skip (next_offset). |
 
 ### `twincat_hmi_read_symbols`
 
-Read symbol values through the HMI engineering server (what the HMI shows). Max 200 names. A failing symbol does not fail the batch: it gets ok=false and the server error (SYMBOL_NOT_MAPPED; HMI_ADS_E_SYNC_TIMEOUT = PLC runtime unreachable). Values come as the server reports them, not guaranteed JSON (a BOOL reads 'False'). Compare with twincat_read_ads_variable to prove a binding end-to-end. JSON: { hmiProject, count, ok, results[] }.
+Read symbol values through the HMI server (what the HMI shows), max 200. A failing symbol gets ok=false and the server error (SYMBOL_NOT_MAPPED; HMI_ADS_E_SYNC_TIMEOUT = PLC unreachable). Values as the server reports them (a BOOL reads 'False').
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `symbols` | `string[]` |  | HMI symbol names (at least one), e.g. ['ADS.PLC1.GVL_HMI.HmiOpened', 'UserSelectType']. |
+| `symbols` | `string[]` |  | HMI symbol names, e.g. ['ADS.PLC1.GVL_HMI.bOpen']. |
 | `hmiProject` | `string?` | `null` |  |
 
 ### `twincat_hmi_server_control`
 
-Start, shut down or refresh symbols of an HMI project's engineering server. That is the local TcHmiSrv the XAE runs for the project (live view), NOT the TF2000 runtime server on a target. The XAE starts it when the project opens; use 'start' after a shutdown/crash, 'refresh_symbols' after PLC symbol changes. 'start' waits until an extension is loaded, 'shutdown' until none is. Changes no project file. JSON includes extensionsAfter[].
+Start, shut down or refresh symbols of an HMI engineering server. That is the XAE's local TcHmiSrv, not a TF2000 runtime. 'start' after a shutdown/crash, 'refresh_symbols' after PLC symbol changes. Changes no project file.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `action` | `string` |  | start \| shutdown \| refresh_symbols |
 | `hmiProject` | `string?` | `null` |  |
-| `timeoutMs` | `int` | `30000` | Max wait for the server to settle, 0..120000 ms. Default 30000. |
+| `timeoutMs` | `int` | `30000` | Max wait for the server to settle, 0..120000 ms. |
 
 ### `twincat_hmi_map_symbol`
 
-Map a PLC symbol into an HMI project's server so views can bind to it.  plcPath 'MAIN.fbHmi.bStart' becomes mapName 'ADS.PLC1.MAIN.fbHmi.bStart' + internalName 'PLC1::MAIN::fbHmi::bStart'; for arrays or other domains pass mapName + internalName. Refuses an already mapped name (never re-maps). Success only after read-back finds the mapping. An ADS map needs the ADS extension's PLC runtime reachable.
+Map a PLC symbol into an HMI project's server so views can bind to it.  plcPath 'MAIN.x' becomes 'ADS.PLC1.MAIN.x' (internal 'PLC1::MAIN::x'); for arrays or other domains pass mapName + internalName. Refuses an already mapped name. Needs the PLC reachable.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `plcPath` | `string?` | `null` | Dotted PLC path, e.g. 'GVL_HMI.HmiOpened'. Alternative to mapName + internalName. |
-| `mapName` | `string?` | `null` | Explicit mapped name, e.g. 'ADS.PLC1.GVL_HMI.HmiOpened'. Needs internalName. |
-| `internalName` | `string?` | `null` | Explicit internal name, e.g. 'PLC1::GVL_HMI::HmiOpened'. Needs mapName. |
+| `plcPath` | `string?` | `null` | Dotted PLC path, e.g. 'GVL_HMI.bOpen'. Or mapName + internalName. |
+| `mapName` | `string?` | `null` | Mapped name, e.g. 'ADS.PLC1.GVL_HMI.bOpen'. |
+| `internalName` | `string?` | `null` | Internal name, e.g. 'PLC1::GVL_HMI::bOpen'. |
 | `domain` | `string?` | `null` | Server domain. Default 'ADS'. |
-| `runtime` | `string?` | `null` | ADS runtime for names derived from plcPath. Default 'PLC1'. |
-| `subSymbolName` | `string?` | `null` | Optional sub-symbol. |
+| `runtime` | `string?` | `null` | ADS runtime for plcPath. Default 'PLC1'. |
+| `subSymbolName` | `string?` | `null` | Sub-symbol. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_unmap_symbol`
 
-Remove a symbol mapping from an HMI project's server.  Not mapped = 'Nothing to do', no popup. Success only after read-back no longer finds it.
+Remove a symbol mapping from an HMI project's server.  Not mapped = 'Nothing to do'.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `mapName` | `string?` | `null` | Mapped name, e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'. Alternative to plcPath. |
-| `plcPath` | `string?` | `null` | Dotted PLC path, e.g. 'MAIN.fbHmi.bStart' (name derived as in twincat_hmi_map_symbol). Alternative to mapName. |
+| `mapName` | `string?` | `null` | Mapped name. Or plcPath. |
+| `plcPath` | `string?` | `null` | Dotted PLC path (named as in twincat_hmi_map_symbol). Or mapName. |
 | `domain` | `string?` | `null` | Server domain. Default 'ADS'. |
-| `runtime` | `string?` | `null` | ADS runtime for names derived from plcPath. Default 'PLC1'. |
-| `removeHistorizedData` | `bool` | `false` | Also delete the symbol's historized data. Default false. |
+| `runtime` | `string?` | `null` | ADS runtime for plcPath. Default 'PLC1'. |
+| `removeHistorizedData` | `bool` | `false` | Also delete its historized data. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_write_symbol`
 
-Write a symbol value through a TwinCAT HMI project's server. For an ADS-mapped symbol ('ADS.PLC1.…') this WRITES TO THE LIVE PLC, physically effective like twincat_write_ads_variable.  The popup shows current and new value. Refuses unmapped (SYMBOL_NOT_MAPPED) and read-only symbols before asking. The value is read back; a difference is a warning (verified=false), as the PLC may change it at once. JSON: { written, before, after, verified, writesToPlc }.
+Write a symbol value through an HMI project's server. An ADS symbol ('ADS.PLC1.…') WRITES TO THE LIVE PLC, like twincat_write_ads_variable.  Refuses unmapped and read-only symbols. Read back; a difference sets verified=false (the PLC may change it at once).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `symbol` | `string` |  | HMI symbol name, e.g. 'ADS.PLC1.MAIN.fbHmi.bStart' or 'UserSelectType'. |
-| `valueJson` | `string` |  | Value as valid JSON: true, 42, 3.5, "text" (quoted), or an object/array for structs. |
+| `symbol` | `string` |  | HMI symbol name, e.g. 'ADS.PLC1.MAIN.bStart'. |
+| `valueJson` | `string` |  | Value as JSON: true, 42, "text", or an object/array. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
@@ -666,7 +666,7 @@ Write a symbol value through a TwinCAT HMI project's server. For an ADS-mapped s
 
 ### `twincat_hmi_list_internal_symbols`
 
-List the HMI-owned symbols (no PLC behind them) of a TwinCAT HMI project. Read from the project files, no HMI server needed. client = framework internal symbols %i%Name%/i% from Properties\tchmiconfig.json (name, type, valueJson, persist, readOnly); server = non-hidden TcHmiSrv-domain symbols from Server\TcHmiSrv\TcHmiSrv.Config.default.json (name, mapping, useMapping (false = pure offline server variable), dataType, defaultJson, persist). An unreadable server file is reported as unknown, never as none. JSON: { hmiProject, client{file,count,symbols[]}, server{file,readable,count,offline,symbols[]} }.
+List the HMI-owned symbols (no PLC behind them) of an HMI project. Read from its files, no server needed: client internal symbols %i%Name%/i% and TcHmiSrv server symbols.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -674,39 +674,39 @@ List the HMI-owned symbols (no PLC behind them) of a TwinCAT HMI project. Read f
 
 ### `twincat_hmi_add_internal_symbol`
 
-Add a client internal symbol %i%name%/i% to a TwinCAT HMI project. Stored in Properties\tchmiconfig.json; for HMI-side state (selection, page index, dialog flag) without a PLC variable.  Refuses an existing name. Success only after read-back finds the entry; differing stored type/value/flags are a WARNING. For a symbol the HMI server holds use twincat_hmi_map_offline_symbol. Undo with twincat_hmi_remove_internal_symbol.
+Add a client internal symbol %i%name%/i% to an HMI project. For HMI-side state (selection, page index) without a PLC variable.  Refuses an existing name. For a symbol the server holds for all clients use twincat_hmi_map_offline_symbol.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `name` | `string` |  | Letters, digits, '_'; starts with a letter or '_'; max 128. Referenced as %i%name%/i%. |
+| `name` | `string` |  | Letters, digits, '_', max 128; not starting with a digit. |
 | `dataType` | `string` |  |  |
 | `defaultValueJson` | `string?` | `null` |  |
-| `persist` | `bool` | `false` | Persist the value in the client (not the server, not historizing). Default false. |
-| `readOnly` | `bool` | `false` | Read-only for bindings. Default false. |
+| `persist` | `bool` | `false` | Persist the value in the client. |
+| `readOnly` | `bool` | `false` | Read-only for bindings. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_remove_internal_symbol`
 
-Remove a client internal symbol %i%name%/i% from a TwinCAT HMI project.  Unknown name (case-sensitive) = 'Nothing to do', no popup. Success only after read-back no longer finds it. Bindings still referencing it stop resolving.
+Remove a client internal symbol %i%name%/i% from an HMI project. Bindings to it stop resolving.  Unknown name = 'Nothing to do'.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `name` | `string` |  | Name as twincat_hmi_list_internal_symbols reports it. |
+| `name` | `string` |  | Name as twincat_hmi_list_internal_symbols reports it (case-sensitive). |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_map_offline_symbol`
 
-Create a server symbol in the TcHmiSrv domain of an HMI engineering server. A variable the HMI SERVER holds for all clients, no PLC behind it, persisted in Server\TcHmiSrv\TcHmiSrv.Config.default.json; bind to it like any mapped symbol. Needs the HMI engineering server running.  Refuses a name the server config or running server already knows. Success only after its config reads back with DOMAIN TcHmiSrv and the requested USEMAPPING. Remove with twincat_hmi_unmap_symbol (domain 'TcHmiSrv').
+Create a server symbol (TcHmiSrv domain) without a PLC behind it. The HMI server holds it for all clients; bind to it like any mapped symbol. Needs the HMI server running.  Refuses a known name. Remove with twincat_hmi_unmap_symbol (domain 'TcHmiSrv').
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `mapName` | `string` |  | Dotted identifiers (letters, digits, '_'), e.g. 'Recipe.SelectedIndex', max 256. |
+| `mapName` | `string` |  | Dotted identifiers, e.g. 'Recipe.SelectedIndex', max 256. |
 | `dataType` | `string` |  |  |
 | `defaultValueJson` | `string?` | `null` |  |
-| `online` | `bool` | `false` | Sets USEMAPPING. Default false = pure offline server variable starting at the default value; true is unverified live, prefer false. |
-| `persist` | `bool` | `false` | Server keeps the last value across restarts. Default false. |
+| `online` | `bool` | `false` | Sets USEMAPPING; false = pure server variable (true is unverified, prefer false). |
+| `persist` | `bool` | `false` | Server keeps the last value across restarts. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
@@ -714,7 +714,7 @@ Create a server symbol in the TcHmiSrv domain of an HMI engineering server. A va
 
 ### `twincat_hmi_list_tmc_files`
 
-List the TMC files attached to a TwinCAT HMI project (offline PLC symbols). They give the HMI engineering PLC symbols WITHOUT a PLC connection; reflects the saved project. Per entry: virtualPlcName, stored path (solution-relative when below it), plcName, absolute path, exists. Also lists, separately, the ADS runtimes that serve symbols from a TMC file server-side (USE_TMC, see twincat_hmi_enable_runtime_tmc). JSON: { hmiProject, count, attachments[], adsRuntimesUsingTmc[] }.
+List the TMC files attached to an HMI project (offline PLC symbols). Also lists the ADS runtimes that serve symbols from a TMC file (see twincat_hmi_enable_runtime_tmc).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -722,7 +722,7 @@ List the TMC files attached to a TwinCAT HMI project (offline PLC symbols). They
 
 ### `twincat_hmi_list_ads_runtimes`
 
-List the ADS runtimes of a TwinCAT HMI project's engineering server. Read live from 'ADS.Config::RUNTIMES'. Per runtime: name (e.g. PLC1), enabled, netId, port, readOnly, useWhitelisting, symbolCount, useTmc, tmcFile (symbols from a converted TMC file, not an ADS upload). Tells 'PLC unreachable' apart from 'needs no PLC' and shows the NetId/port a failing binding points at. Switch a runtime to TMC with twincat_hmi_enable_runtime_tmc. JSON: { hmiProject, count, usingTmc, runtimes[] }.
+List the ADS runtimes (NetId, port, symbols, useTmc) of an HMI project's server. Tells 'PLC unreachable' apart from 'needs no PLC'. Switch one to TMC with twincat_hmi_enable_runtime_tmc.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -730,24 +730,24 @@ List the ADS runtimes of a TwinCAT HMI project's engineering server. Read live f
 
 ### `twincat_hmi_list_plc_tmc_candidates`
 
-List the TMC file of every PLC project in the open solution. These are the candidates for twincat_hmi_attach_tmc_file, found like TE2000's 'Browse solution for TMC file' dialog. Per candidate: tcProject, plcProject, relativeTmcPath, absolutePath, exists, lastWriteUtc, symbolCount (null when not opened: missing or outside the allowed roots) and a note why a field is empty. Needs no HMI project. Does NOT choose which PLC belongs to the HMI: pass one absolutePath as tmcFile. JSON: { count, existing, candidates[] }.
+List the TMC file of every PLC project in the open solution. These are the candidates for twincat_hmi_attach_tmc_file. Needs no HMI project. Does not choose the PLC for the HMI: pass one absolutePath as tmcFile.
 
 _No parameters._
 
 ### `twincat_hmi_attach_tmc_file`
 
-Attach a PLC project's TMC file to an HMI project for offline symbols. The TE2000 'Attach TMC file' function: the PLC symbols become browsable and bindable in the engineering WITHOUT ANY PLC CONNECTION. The file must be a <TcModuleClass> with at least one <Symbol>; its symbol count and size are shown in the popup.  Refuses a file already attached or a virtualPlcName already in use. Success only after read-back finds the new entry. Undo with twincat_hmi_detach_tmc_file.
+Attach a PLC project's TMC file to an HMI project for offline symbols. Like TE2000 'Attach TMC file', its symbols become bindable in the engineering without a PLC.  Refuses a file or virtualPlcName already attached. Undo with twincat_hmi_detach_tmc_file.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `tmcFile` | `string` |  | Absolute path of the PLC project's '<PlcProject>\<PlcProject>.tmc' (twincat_hmi_list_plc_tmc_candidates lists them), NOT the HMI_Error/HMI_Info/HMI_Warning.tmc event classes. Must lie under the open solution's directory, %TEMP%, %LOCALAPPDATA%\ptc-xae-mcp, the TwinCAT installation or a root in the host's PTC_XAE_MCP_ALLOWED_PATHS (';'-separated); other paths get [Error]. |
-| `virtualPlcName` | `string?` | `null` | Virtual PLC name: letters, digits, '_' or '-', max 64. Default: the .tmc file name without extension. |
+| `tmcFile` | `string` |  |  |
+| `virtualPlcName` | `string?` | `null` | Letters, digits, '_' or '-', max 64. Default: the .tmc file name. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_detach_tmc_file`
 
-Detach a TMC file from a TwinCAT HMI project by its virtual PLC name. Its symbols are then no longer known offline.  Not attached = 'Nothing to do', no popup. Success only after read-back no longer lists it.
+Detach a TMC file from an HMI project. Its symbols are then no longer known offline.  Not attached = 'Nothing to do'.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -757,18 +757,18 @@ Detach a TMC file from a TwinCAT HMI project by its virtual PLC name. Its symbol
 
 ### `twincat_hmi_enable_runtime_tmc`
 
-Serve an HMI ADS runtime's PLC symbols from a TMC file instead of a PLC. Server-side USE_TMC: mapping, reading and binding PLC symbols then work WITHOUT ANY PLC (unlike twincat_hmi_attach_tmc_file, which only feeds the engineering). Converts the .tmc into '<runtime>_<tmc>.DATA_UPLOADINFO2.bin' under 'Tmc\' in the engineering server's working directory (<solution>\.engineering_servers\<project>), then sets the runtime's TMC::DATA_SYMBOLUPANDDOWNLOAD to it and USE_TMC=true in ADS.Config::RUNTIMES. The file is checked and converted before the popup.  Success only after read-back shows USE_TMC=true with the path; whether symbols are served is not checked (read one with twincat_hmi_read_symbols). Re-running regenerates the file. Undo with twincat_hmi_disable_runtime_tmc. Not yet verified against a live HMI server.
+Serve an HMI ADS runtime's symbols from a TMC file instead of a PLC (USE_TMC). Mapping, reading and binding then work without any PLC (twincat_hmi_attach_tmc_file only feeds the engineering). Converts the .tmc into a .bin in the engineering server's folder and sets USE_TMC=true.  Whether symbols are served is not checked: read one with twincat_hmi_read_symbols. Undo with twincat_hmi_disable_runtime_tmc. Not yet verified on a live HMI server.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `runtime` | `string` |  |  |
-| `tmcFile` | `string` |  | Absolute path of the PLC project's '<PlcProject>\<PlcProject>.tmc' (twincat_hmi_list_plc_tmc_candidates lists them), NOT the HMI_Error/Info/Warning.tmc event classes. Must lie under the open solution's directory, %TEMP%, %LOCALAPPDATA%\ptc-xae-mcp, the TwinCAT installation or a root in the host's PTC_XAE_MCP_ALLOWED_PATHS (';'-separated); other paths are refused. |
+| `tmcFile` | `string` |  |  |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_disable_runtime_tmc`
 
-Switch an HMI ADS runtime back from a TMC file to the ADS upload from the PLC. Clears DATA_SYMBOLUPANDDOWNLOAD and sets USE_TMC=false, as TE2000's own detach; without a reachable PLC the runtime then has no symbols. No TMC in use = 'Nothing to do', no popup.  Success only after read-back shows USE_TMC=false without a file. The converted .bin stays on disk. Not yet verified against a live HMI server.
+Switch an HMI ADS runtime from a TMC file back to the PLC (USE_TMC=false). Without a reachable PLC it then has no symbols.  No TMC in use = 'Nothing to do'. The .bin stays on disk. Not yet verified on a live HMI server.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -780,7 +780,7 @@ Switch an HMI ADS runtime back from a TMC file to the ADS upload from the PLC. C
 
 ### `twincat_hmi_read_file`
 
-Read the source text of a file in a TwinCAT HMI project. Views, contents, user controls, .usercontrol.json, functions (.js/.function.json), CSS etc. JSON: { path, length, lines, source }.
+Read the source text of a file in an HMI project.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -789,44 +789,44 @@ Read the source text of a file in a TwinCAT HMI project. Views, contents, user c
 
 ### `twincat_hmi_add_item`
 
-Create a new file in a TwinCAT HMI project from a TE2000 item template. Creates missing folders; refuses an existing file. kind: view, content, usercontrol (+ .usercontrol.json), function_js / function_ts (+ .function.json, namespace = project name), codebehind_js, codebehind_ts, css, html, js, json, ts, text (.txt), xml. html and text start empty, view as the vendor skeleton.  JSON lists the created paths.
+Create a file in an HMI project from a TE2000 item template. Refuses an existing file. kind: view, content, usercontrol, function_js, function_ts, codebehind_js, codebehind_ts, css, html, js, json, ts, text, xml (usercontrol and function_* also create their .json).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `kind` | `string` |  | Template kind (list in the tool description). |
-| `folder` | `string?` |  | Target folder, project-relative with '/', e.g. 'UserControls/Foo'. Must be passed; null or empty = project root. |
-| `name` | `string` |  | File name without extension (the template adds it), e.g. 'Foo'. |
+| `kind` | `string` |  | Template kind (see the tool description). |
+| `folder` | `string?` |  | Target folder, project-relative, e.g. 'UserControls/Foo'; empty = project root. |
+| `name` | `string` |  | File name without extension. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_write_file`
 
-Replace the source text of an existing file in a TwinCAT HMI project. Saves and verifies by read-back. Identical content = 'Nothing to do', no popup.
+Replace the source text of an existing file in an HMI project. Identical content = 'Nothing to do'.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `path` | `string` |  |  |
-| `source` | `string?` | `null` | Complete new content. Alternative to sourceFile. |
-| `sourceFile` | `string?` | `null` | Absolute path of a local file (max 5 MB) to write. Alternative to source. |
-| `keepSchema` | `bool` | `true` | Keep a JSON file's existing "$schema" value (it points into the project's Packages folder). Default true. |
+| `source` | `string?` | `null` | Complete new content. Or sourceFile. |
+| `sourceFile` | `string?` | `null` | Absolute path of a local file (max 5 MB) to write. Or source. |
+| `keepSchema` | `bool` | `true` | Keep a JSON file's existing "$schema". |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_import_file`
 
-Import an external file (HTML, image, PDF, JS library) into an HMI project. Creates a missing folder; refuses an existing target. If TE2000 reports an error although the file was added, it counts only when the copy on disk is byte-identical (engineError, verifiedOnDisk). For .js/.css the result shows the dependencyFiles entry in Properties/tchmiconfig.json (dependencyType); run twincat_hmi_build afterwards so the live view loads it.
+Import an external file (HTML, image, PDF, JS library) into an HMI project. Refuses an existing target. For .js/.css run twincat_hmi_build afterwards so the live view loads it.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `sourcePath` | `string` |  | Absolute path of the file to import. |
-| `folder` | `string?` | `null` | Target folder, project-relative with '/'. Empty = project root. |
-| `name` | `string?` | `null` | Target file name. Default: source file name. |
+| `folder` | `string?` | `null` | Target folder, project-relative; empty = project root. |
+| `name` | `string?` | `null` | Target file name. Default: the source name. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_build`
 
-Build a TwinCAT HMI project so changes reach the server's live view. Needed for new user controls, functions and contents. Changes no source file (no popup). On failure see twincat_get_error_list.
+Build an HMI project so changes reach the server's live view. Needed for new user controls, functions, contents. On failure see twincat_get_error_list.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -835,7 +835,7 @@ Build a TwinCAT HMI project so changes reach the server's live view. Needed for 
 
 ### `twincat_hmi_apply_bundle`
 
-Create/write a package of HMI files from a manifest with one confirmation. Manifest JSON: { "name": "…", "entries": [ { "path": "UserControls/X/X.usercontrol", "kind": "usercontrol", "source": "X.usercontrol" }, { "path": "UserControls/X/X.usercontrol.json", "source": "X.usercontrol.json" } ] }. 'source' is relative to the manifest. Existing files are replaced; missing ones are created from 'kind' first (not needed for a file an earlier entry's template creates, e.g. .usercontrol.json, .function.json). JSON files keep the project's "$schema". All validated before the popup; entries then run in order and stop at the first error, reporting what was written.
+Write a package of HMI files from a manifest with one confirmation. Manifest: { "name": "…", "entries": [ { "path": "UserControls/X/X.usercontrol", "kind": "usercontrol", "source": "X.usercontrol" } ] }; 'source' is relative to the manifest. Existing files are replaced, missing ones created from 'kind' (not needed for a file an earlier entry's template creates). Validated before the popup; stops at the first error.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -845,7 +845,7 @@ Create/write a package of HMI files from a manifest with one confirmation. Manif
 
 ### `twincat_hmi_delete_item`
 
-Delete a file or folder of a TwinCAT HMI project, from project AND disk. No recycle bin. Refused without popup: project infrastructure (Server, Properties, Packages), the startup view and folders containing it; a missing item is reported without popup. The popup shows file/folder and the item count below it.  Success only when the item is gone afterwards.
+Delete a file or folder of an HMI project from project AND disk. No recycle bin. Refuses project infrastructure (Server, Properties, Packages) and the startup view.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

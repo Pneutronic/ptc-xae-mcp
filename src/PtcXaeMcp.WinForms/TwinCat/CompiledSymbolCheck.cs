@@ -34,17 +34,39 @@ internal static class CompiledSymbolCheck
         "function leave no symbol. Use the object from a called program, or put {attribute 'linkalways'} on the " +
         "GVL/POU; a variable marked {attribute 'hide'} is never listed.";
 
-    /// <summary>Splits the caller's list; blank entries are dropped, duplicates kept once (first spelling wins).</summary>
+    /// <summary>
+    /// Splits the caller's list at <c>,</c> <c>;</c> and line breaks outside brackets, so the index list of a
+    /// multi-dimensional array element (<c>PRG.aGrid[2,1].bOut</c>) stays one name; blank entries are dropped,
+    /// duplicates kept once (first spelling wins).
+    /// </summary>
     internal static IReadOnlyList<string> Normalize(IEnumerable<string>? expected)
     {
         var result = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var raw in expected ?? [])
         {
-            foreach (var part in (raw ?? "").Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            foreach (var part in SplitOutsideBrackets(raw ?? ""))
                 if (seen.Add(part)) result.Add(part);
         }
         return result;
+    }
+
+    private static IEnumerable<string> SplitOutsideBrackets(string text)
+    {
+        int depth = 0;
+        int start = 0;
+        for (int i = 0; i <= text.Length; i++)
+        {
+            char c = i < text.Length ? text[i] : ',';
+            if (c == '[') depth++;
+            else if (c == ']' && depth > 0) depth--;
+            else if (i == text.Length || (depth == 0 && (c == ',' || c == ';' || c == '\n')))
+            {
+                string part = text[start..i].Trim();
+                if (part.Length > 0) yield return part;
+                start = i + 1;
+            }
+        }
     }
 
     /// <summary>Reads symbols and data types out of a .tmc document; throws <see cref="XmlException"/> on malformed XML.</summary>

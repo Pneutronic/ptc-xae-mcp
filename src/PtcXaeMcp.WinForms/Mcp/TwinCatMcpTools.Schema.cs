@@ -33,7 +33,8 @@ internal sealed partial class TwinCatMcpTools
         }, cancellationToken, bypassGate: true);
 
     [McpServerTool(Name = "twincat_validate_schema", ReadOnly = true)]
-    [Description("Validate a JSON IO schema file without applying it. Returns Valid/Invalid with the issues found.")]
+    [Description("Validate a JSON IO schema file without applying it. Returns Valid/Invalid with the issues found. " +
+                 "Checks ioPoints[].symbol (full PLC instance path, e.g. MAIN.aCyl[1].bOut) and refuses schema fields removed in 4.0.0 (the error names the migration).")]
     public string ValidateSchema(
         [Description("Absolute path to the JSON schema file")] string schemaPath,
         [Description("Optional brownfield target EtherCAT master tree path (e.g. 'TIID^Device 1 (EtherCAT)'); its format is validated too.")] string? targetMasterPath = null,
@@ -55,10 +56,13 @@ internal sealed partial class TwinCatMcpTools
 
     [McpServerTool(Name = "twincat_apply_schema", ReadOnly = false, Destructive = true)]
     [Description("Apply a JSON IO schema to the active XAE project. " +
-        "Builds the EtherCAT tree, creates the GVL, links variables and exports; progress shows in the server window. " +
-        "Fail-closed by default: PLC project and EtherCAT master must match exactly (no fallback to the first one), the target " +
-        "master must be provably empty, and an existing same-named GVL at the target path is an [Error] (nothing deleted) " +
-        "unless overwriteExistingGvl. Links use the exact symbol <gvlName>.<varName>, never a same-named variable of another GVL. " +
+        "Builds the EtherCAT tree, links IO points that name a PLC symbol and exports; progress shows in the server window. " +
+        "Fail-closed by default: PLC project and EtherCAT master must match exactly (no fallback to the first one) and the target " +
+        "master must be provably empty. An IO point links to the AT %I*/%Q* variable named by ioPoints[].symbol, the full PLC " +
+        "instance path (MAIN.fbCyl.LimitSwitchWorkingPosition, MAIN.aCyl[1].bOut): looked up exactly in the process image, never a " +
+        "same-named member of another instance. A point without symbol only builds hardware. " +
+        "An analog channel is found from the terminal's PDOs (EL3174 channel 1 = 'AI Standard Channel 1^Value', the entry whose " +
+        "width fits the point's type); set ioLeaf only for another entry (a status bit). " +
         "During the build the XAE's 'Sync Master' and 'Double use of the same Ethernet interface' boxes are answered with OK and " +
         "the 'unrestored variable links' question with 'Ja' (keep the link information); answered dialogs are listed in the " +
         "result, any other blocking dialog ends the run with an [Error] naming it.")]
@@ -68,11 +72,10 @@ internal sealed partial class TwinCatMcpTools
         [Description("EtherCAT master name. Empty = the schema's twincat.deviceName.")] string? etherCatMaster = null,
         [Description("Brownfield: exact target EtherCAT master tree path (e.g. 'TIID^Device 1 (EtherCAT)'); resolved exactly and forces fail-closed mode.")] string? targetMasterPath = null,
         [Description("Default true: exact PLC/master match, empty-check aborts on any uncertainty. false = lenient greenfield resolution (single-PLC / first-master fallback, prefix match on the master name).")] bool failClosed = true,
-        [Description("false skips the full solution build so a brownfield apply does not re-bind the existing PLC project (build later with twincat_build_plc). Default true.")] bool autoBuild = true,
-        [Description("Replace an existing same-named GVL at the exact target path (TIPC^<plc>^<plc> Project^GVLs^<gvlName>); its declarations and links are lost. Default false: collision = [Error], nothing deleted. Same as the schema's twincat.overwriteExistingGvl. Never deletes a same-named GVL elsewhere.")] bool overwriteExistingGvl = false,
+        [Description("false skips the full solution build so a brownfield apply does not re-bind the existing PLC project; the symbols the schema names must then already be in the process image (twincat_build_plc). Default true.")] bool autoBuild = true,
         CancellationToken cancellationToken = default)
         => await bridge.Activity.TraceAsync("twincat_apply_schema",
-            new { schemaPath, plcProject, etherCatMaster, targetMasterPath, failClosed, autoBuild, overwriteExistingGvl }, async () =>
+            new { schemaPath, plcProject, etherCatMaster, targetMasterPath, failClosed, autoBuild }, async () =>
         {
             try
             {
@@ -86,7 +89,7 @@ internal sealed partial class TwinCatMcpTools
                 // relative export paths resolve next to it (issue #155 E-25, no temp copy).
                 var log = await host.RunApplySchemaAsync(
                     schemaPath, plcProject, etherCatMaster, cancellationToken,
-                    targetMasterPath, failClosed, autoBuild, overwriteExistingGvl);
+                    targetMasterPath, failClosed, autoBuild);
                 return string.Join("\n", log);
             }
             catch (InvalidOperationException ex)

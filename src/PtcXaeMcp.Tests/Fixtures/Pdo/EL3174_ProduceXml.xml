@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<!-- ProduceXml(false) of an EL3174-0000-0017 (TwinCAT 3.1.4026), trimmed to ProcessData: Comment and AdsInfo
+     removed, channels 3 and 4 kept with their Value entry only. Active PDOs carry Sm="3"; the Compact PDOs are
+     the excluded alternatives; AlternativeSmMapping[@Selected='true'] assigns the channel numbers. -->
+<TreeItem>
+  <ItemName>AI2 (EL3174)</ItemName>
+  <PathName>TIID^AiProbe (EtherCAT)^AI1 (EK1100)^AI2 (EL3174)</PathName>
+  <ItemType>5</ItemType>
+  <ItemSubType>9099</ItemSubType>
+  <EtherCAT>
+    <Slave>
+      <Info>
+        <Name><![CDATA[AI2 (EL3174)]]></Name>
+        <ProductRevision>EL3174-0000-0017</ProductRevision>
+      </Info>
+      <ProcessData>
+        <Sm2><Type>Outputs</Type><Enable>0</Enable></Sm2>
+        <Sm3><Type>Inputs</Type><Enable>1</Enable><Pdo>6656</Pdo><Pdo>6658</Pdo><Pdo>6660</Pdo><Pdo>6662</Pdo></Sm3>
+        <TxPdo Fixed="true" Sm="3">
+          <Index>#x1a00</Index>
+          <Name>AI Standard Channel 1</Name>
+          <Exclude>#x1a01</Exclude>
+          <Entry><Index>#x6000</Index><SubIndex>1</SubIndex><BitLen>1</BitLen><Name>Status__Underrange</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6000</Index><SubIndex>2</SubIndex><BitLen>1</BitLen><Name>Status__Overrange</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6000</Index><SubIndex>3</SubIndex><BitLen>2</BitLen><Name>Status__Limit 1</Name><DataType>BIT2</DataType></Entry>
+          <Entry><Index>#x6000</Index><SubIndex>5</SubIndex><BitLen>2</BitLen><Name>Status__Limit 2</Name><DataType>BIT2</DataType></Entry>
+          <Entry><Index>#x6000</Index><SubIndex>7</SubIndex><BitLen>1</BitLen><Name>Status__Error</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x0</Index><BitLen>1</BitLen><Name>Status__</Name></Entry>
+          <Entry><Index>#x0</Index><BitLen>5</BitLen><Name>Status__</Name></Entry>
+          <Entry><Index>#x6000</Index><SubIndex>14</SubIndex><BitLen>1</BitLen><Name>Status__Sync error</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6000</Index><SubIndex>15</SubIndex><BitLen>1</BitLen><Name>Status__TxPDO State</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6000</Index><SubIndex>16</SubIndex><BitLen>1</BitLen><Name>Status__TxPDO Toggle</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6000</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Value</Name><DataType>INT</DataType></Entry>
+        </TxPdo>
+        <TxPdo Fixed="true">
+          <Index>#x1a01</Index>
+          <Name>AI Compact Channel 1</Name>
+          <Exclude>#x1a00</Exclude>
+          <Entry><Index>#x6000</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Value</Name><DataType>INT</DataType></Entry>
+        </TxPdo>
+        <TxPdo Fixed="true" Sm="3">
+          <Index>#x1a02</Index>
+          <Name>AI Standard Channel 2</Name>
+          <Exclude>#x1a03</Exclude>
+          <Entry><Index>#x6010</Index><SubIndex>1</SubIndex><BitLen>1</BitLen><Name>Status__Underrange</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6010</Index><SubIndex>2</SubIndex><BitLen>1</BitLen><Name>Status__Overrange</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6010</Index><SubIndex>3</SubIndex><BitLen>2</BitLen><Name>Status__Limit 1</Name><DataType>BIT2</DataType></Entry>
+          <Entry><Index>#x6010</Index><SubIndex>5</SubIndex><BitLen>2</BitLen><Name>Status__Limit 2</Name><DataType>BIT2</DataType></Entry>
+          <Entry><Index>#x6010</Index><SubIndex>7</SubIndex><BitLen>1</BitLen><Name>Status__Error</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x0</Index><BitLen>1</BitLen><Name>Status__</Name></Entry>
+          <Entry><Index>#x0</Index><BitLen>5</BitLen><Name>Status__</Name></Entry>
+          <Entry><Index>#x6010</Index><SubIndex>14</SubIndex><BitLen>1</BitLen><Name>Status__Sync error</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6010</Index><SubIndex>15</SubIndex><BitLen>1</BitLen><Name>Status__TxPDO State</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6010</Index><SubIndex>16</SubIndex><BitLen>1</BitLen><Name>Status__TxPDO Toggle</Name><DataType>BIT</DataType></Entry>
+          <Entry><Index>#x6010</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Value</Name><DataType>INT</DataType></Entry>
+        </TxPdo>
+        <TxPdo Fixed="true">
+          <Index>#x1a03</Index>
+          <Name>AI Compact Channel 2</Name>
+          <Exclude>#x1a02</Exclude>
+          <Entry><Index>#x6010</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Value</Name><DataType>INT</DataType></Entry>
+        </TxPdo>
+        <TxPdo Fixed="true" Sm="3">
+          <Index>#x1a04</Index>
+          <Name>AI Standard Channel 3</Name>
+          <Exclude>#x1a05</Exclude>
+          <Entry><Index>#x6020</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Value</Name><DataType>INT</DataType></Entry>
+        </TxPdo>
+        <TxPdo Fixed="true">
+          <Index>#x1a05</Index>
+          <Name>AI Compact Channel 3</Name>
+          <Exclude>#x1a04</Exclude>
+          <Entry><Index>#x6020</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Value</Name><DataType>INT</DataType></Entry>
+        </TxPdo>
+        <TxPdo Fixed="true" Sm="3">
+          <Index>#x1a06</Index>
+          <Name>AI Standard Channel 4</Name>
+          <Exclude>#x1a07</Exclude>
+          <Entry><Index>#x6030</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Value</Name><DataType>INT</DataType></Entry>
+        </TxPdo>
+        <TxPdo Fixed="true">
+          <Index>#x1a07</Index>
+          <Name>AI Compact Channel 4</Name>
+          <Exclude>#x1a06</Exclude>
+          <Entry><Index>#x6030</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Value</Name><DataType>INT</DataType></Entry>
+        </TxPdo>
+        <AlternativeSmMappings>
+          <AlternativeSmMapping Default="1" Selected="true">
+            <Name>Standard</Name>
+            <Sm No="3">
+              <Pdo ChannelNo="1">#x1a00</Pdo>
+              <Pdo ChannelNo="2">#x1a02</Pdo>
+              <Pdo ChannelNo="3">#x1a04</Pdo>
+              <Pdo ChannelNo="4">#x1a06</Pdo>
+              <ExcludedPdo ChannelNo="1">#x1a01</ExcludedPdo>
+              <ExcludedPdo ChannelNo="2">#x1a03</ExcludedPdo>
+              <ExcludedPdo ChannelNo="3">#x1a05</ExcludedPdo>
+              <ExcludedPdo ChannelNo="4">#x1a07</ExcludedPdo>
+            </Sm>
+          </AlternativeSmMapping>
+        </AlternativeSmMappings>
+      </ProcessData>
+    </Slave>
+  </EtherCAT>
+</TreeItem>

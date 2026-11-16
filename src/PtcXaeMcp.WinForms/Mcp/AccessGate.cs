@@ -21,7 +21,8 @@ internal static class AccessGate
             string? denied = policy().Deny(tool,
                 () => Target(tool, arguments, projectTarget),
                 () => LocalNetIds.Collect(umrInstanceNetIds),
-                out string? warning);
+                out string? warning,
+                () => tool.SymbolArgument is { } name ? ArgumentText(arguments, name) : null);
             return denied is null && warning is null ? AccessDecision.Allowed : new AccessDecision(denied, warning);
         };
 

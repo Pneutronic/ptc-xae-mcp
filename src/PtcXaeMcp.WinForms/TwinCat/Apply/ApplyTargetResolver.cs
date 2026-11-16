@@ -5,23 +5,13 @@ namespace PtcXaeMcp.WinForms.TwinCat.Apply;
 /// <summary>A PLC under TIPC: its name (the TIPC child) and its source-project node (ItemType 600).</summary>
 internal sealed record PlcTarget(string PlcName, string PlcPath, string ProjectNodePath);
 
-/// <summary>Where apply_schema writes its GVL: the resolved GVL folder and the GVL name.</summary>
-internal sealed record GvlTarget(PlcTarget Plc, string FolderPath, string GvlName)
-{
-    /// <summary>The exact tree path of the GVL: <c>TIPC^&lt;plc&gt;^&lt;project&gt;^GVLs^&lt;name&gt;</c>.</summary>
-    public string GvlPath => $"{FolderPath}^{GvlName}";
-}
-
 /// <summary>
-/// Resolves the PLC project and the GVL folder an apply_schema run writes into (issue #155
-/// step 4, R4). Replaces the runner's solution-wide fuzzy searches (E-15): the GVL folder is an
-/// exact child of the PLC's source-project node; an ambiguous or missing one is an error naming
-/// the candidates — never "the first match" or the PLC root.
+/// Resolves the PLC project and the EtherCAT master an apply_schema run works on (issue #155
+/// step 4, R4). Replaces the runner's solution-wide fuzzy searches (E-15): an ambiguous or
+/// missing PLC or master is an error naming the candidates — never "the first match".
 /// </summary>
 internal sealed class ApplyTargetResolver
 {
-    internal const string GvlFolderName = "GVLs";
-
     private readonly ISysManTree _tree;
     private readonly Action<string> _warn;
 
@@ -88,55 +78,6 @@ internal sealed class ApplyTargetResolver
 
         _warn($"PLC project '{requestedName}' not found; using the only PLC '{plcs[0].PlcName}'.");
         return plcs[0];
-    }
-
-    /// <summary>
-    /// The GVL folder of <paramref name="plc"/>: the single direct child named "GVLs" of its
-    /// source-project node. Missing or ambiguous is an error listing what is there (E-15).
-    /// </summary>
-    public string ResolveGvlFolder(PlcTarget plc)
-    {
-        ArgumentNullException.ThrowIfNull(plc);
-        if (string.IsNullOrWhiteSpace(plc.ProjectNodePath))
-            throw new InvalidOperationException(
-                $"PLC '{plc.PlcName}' has no PLC source-project node (ItemType {PlcItemType.PlcApp}) under '{plc.PlcPath}'; " +
-                "a GVL cannot be created there.");
-
-        ITreeNode project = _tree.Lookup(plc.ProjectNodePath)
-            ?? throw new InvalidOperationException($"PLC project node '{plc.ProjectNodePath}' not found.");
-
-        List<ITreeNode> children = project.Children().ToList();
-        var folders = children
-            .Where(c => string.Equals(c.Name, GvlFolderName, StringComparison.OrdinalIgnoreCase) &&
-                        (c.ItemType == PlcItemType.Folder || c.ItemType < 0))
-            .ToList();
-
-        if (folders.Count == 1)
-        {
-            string path = folders[0].Path;
-            return path.Length > 0 ? path : $"{plc.ProjectNodePath}^{folders[0].Name}";
-        }
-
-        if (folders.Count > 1)
-            throw new InvalidOperationException(
-                $"GVL folder under '{plc.ProjectNodePath}' is ambiguous: " +
-                string.Join(", ", folders.Select(f => $"'{f.Path}'")) + ". Nothing was written.");
-
-        string present = children.Count == 0
-            ? "<none>"
-            : string.Join(", ", children.Select(c => $"'{c.Name}'"));
-        throw new InvalidOperationException(
-            $"No '{GvlFolderName}' folder directly under '{plc.ProjectNodePath}' (children: {present}). " +
-            "There is no fallback to another folder or the PLC root. Create the folder in the PLC project, then retry.");
-    }
-
-    /// <summary><see cref="ResolvePlc"/> + <see cref="ResolveGvlFolder"/>.</summary>
-    public GvlTarget ResolveGvlTarget(string requestedPlcName, string gvlName, bool strict)
-    {
-        if (string.IsNullOrWhiteSpace(gvlName))
-            throw new InvalidOperationException("gvlName is empty.");
-        PlcTarget plc = ResolvePlc(requestedPlcName, strict);
-        return new GvlTarget(plc, ResolveGvlFolder(plc), gvlName.Trim());
     }
 
     /// <summary>EtherCAT master ItemSubType under TIID.</summary>

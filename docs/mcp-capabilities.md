@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-211 tools, generated from the source attributes — one section per
+218 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -45,6 +45,7 @@
 - [PlcSearch](#plcsearch) (2)
 - [PlcTasks](#plctasks) (1)
 - [PouMembers](#poumembers) (2)
+- [Receipts](#receipts) (1)
 - [Recovery](#recovery) (6)
 - [RuntimeControl](#runtimecontrol) (9)
 - [Safety](#safety) (5)
@@ -52,11 +53,13 @@
 - [Schema](#schema) (5)
 - [Scope](#scope) (18)
 - [ScopeFile](#scopefile) (2)
+- [SignalTestbench](#signaltestbench) (4)
 - [StaticAnalysis](#staticanalysis) (1)
 - [TcUnit](#tcunit) (1)
 - [VariantManagement](#variantmanagement) (2)
 - [VisibleEditor](#visibleeditor) (2)
 - [Visu](#visu) (4)
+- [Workflow](#workflow) (2)
 - [XaeDialogs](#xaedialogs) (2)
 
 ## ActiveProject
@@ -85,7 +88,7 @@ Read the live values of many PLC symbols in one ADS call. Much cheaper than repe
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `symbolPaths` | `string[]` |  | Symbol paths, at least one, e.g. ['MAIN.nStep', 'GVL_IO.bCyl1Extended']. |
+| `symbolPaths` | `string[]` |  | Symbol paths, at least one, e.g. ['MAIN.nStep', 'MAIN.fbCyl.LimitSwitchWorkingPosition']. |
 | `amsNetId` | `string?` | `null` | AMS NetId of the target. Omit for the local runtime. |
 | `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
 
@@ -905,8 +908,8 @@ Measure the time between two symbol conditions (edge A → edge B) by polling. R
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `startSymbol` | `string` |  | Symbol whose condition starts the measurement, e.g. 'GVL_IO.bCyl1Cmd'. |
-| `endSymbol` | `string` |  | Symbol whose condition ends the measurement, e.g. 'GVL_IO.bCyl1Extended'. |
+| `startSymbol` | `string` |  | Symbol whose condition starts the measurement, e.g. 'MAIN.fbCyl.ValveWorkingPosition'. |
+| `endSymbol` | `string` |  | Symbol whose condition ends the measurement, e.g. 'MAIN.fbCyl.LimitSwitchWorkingPosition'. |
 | `startEquals` | `string?` | `null` | Value the start symbol must equal to begin timing. Default 'true'. |
 | `endEquals` | `string?` | `null` | Value the end symbol must equal to stop timing. Default 'true'. |
 | `timeoutMs` | `int?` | `null` | Overall timeout in ms (default 5000, max 60000). |
@@ -1614,6 +1617,16 @@ Import objects from a PLCopen XML file into the PLC project. Logs the XAE out fi
 | `filePath` | `string` |  | Absolute path of the XML file to read. |
 | `conflictMode` | `string?` | `null` | On a name conflict: None, Rename, Replace or Skip (default, non-destructive). |
 
+## Receipts
+
+### `twincat_receipt_get`
+
+Show the receipt of a request that carried a requestKey. It names the tool, the start and finish time, the target, the outcome (running, ok, error or unknown) and the stored result. Use it after a timeout: running means the host is still at it, unknown means it never saw the call finish (look at the live state before you run it again with a new key). Returns JSON { requestKey, tool, targetNetId, startedUtc, finishedUtc, outcome, resultText } or [Error] when there is no receipt (never used, older than 7 days, or refused before it ran).
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `requestKey` | `string` |  | The requestKey of the call, e.g. the UUID passed to twincat_activate_config. |
+
 ## Recovery
 
 ### `twincat_login`
@@ -1842,7 +1855,7 @@ _No parameters._
 
 ### `twincat_validate_schema`
 
-Validate a JSON IO schema file without applying it. Returns Valid/Invalid with the issues found.
+Validate a JSON IO schema file without applying it. Returns Valid/Invalid with the issues found. Checks ioPoints[].symbol (full PLC instance path, e.g. MAIN.aCyl[1].bOut) and refuses schema fields removed in 4.0.0 (the error names the migration).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1851,7 +1864,7 @@ Validate a JSON IO schema file without applying it. Returns Valid/Invalid with t
 
 ### `twincat_apply_schema`
 
-Apply a JSON IO schema to the active XAE project. Builds the EtherCAT tree, creates the GVL, links variables and exports; progress shows in the server window. Fail-closed by default: PLC project and EtherCAT master must match exactly (no fallback to the first one), the target master must be provably empty, and an existing same-named GVL at the target path is an [Error] (nothing deleted) unless overwriteExistingGvl. Links use the exact symbol <gvlName>.<varName>, never a same-named variable of another GVL. During the build the XAE's 'Sync Master' and 'Double use of the same Ethernet interface' boxes are answered with OK and the 'unrestored variable links' question with 'Ja' (keep the link information); answered dialogs are listed in the result, any other blocking dialog ends the run with an [Error] naming it.
+Apply a JSON IO schema to the active XAE project. Builds the EtherCAT tree, links IO points that name a PLC symbol and exports; progress shows in the server window. Fail-closed by default: PLC project and EtherCAT master must match exactly (no fallback to the first one) and the target master must be provably empty. An IO point links to the AT %I*/%Q* variable named by ioPoints[].symbol, the full PLC instance path (MAIN.fbCyl.LimitSwitchWorkingPosition, MAIN.aCyl[1].bOut): looked up exactly in the process image, never a same-named member of another instance. A point without symbol only builds hardware. An analog channel is found from the terminal's PDOs (EL3174 channel 1 = 'AI Standard Channel 1^Value', the entry whose width fits the point's type); set ioLeaf only for another entry (a status bit). During the build the XAE's 'Sync Master' and 'Double use of the same Ethernet interface' boxes are answered with OK and the 'unrestored variable links' question with 'Ja' (keep the link information); answered dialogs are listed in the result, any other blocking dialog ends the run with an [Error] naming it.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1860,8 +1873,7 @@ Apply a JSON IO schema to the active XAE project. Builds the EtherCAT tree, crea
 | `etherCatMaster` | `string?` | `null` | EtherCAT master name. Empty = the schema's twincat.deviceName. |
 | `targetMasterPath` | `string?` | `null` | Brownfield: exact target EtherCAT master tree path (e.g. 'TIID^Device 1 (EtherCAT)'); resolved exactly and forces fail-closed mode. |
 | `failClosed` | `bool` | `true` | Default true: exact PLC/master match, empty-check aborts on any uncertainty. false = lenient greenfield resolution (single-PLC / first-master fallback, prefix match on the master name). |
-| `autoBuild` | `bool` | `true` | false skips the full solution build so a brownfield apply does not re-bind the existing PLC project (build later with twincat_build_plc). Default true. |
-| `overwriteExistingGvl` | `bool` | `false` | Replace an existing same-named GVL at the exact target path (TIPC^<plc>^<plc> Project^GVLs^<gvlName>); its declarations and links are lost. Default false: collision = [Error], nothing deleted. Same as the schema's twincat.overwriteExistingGvl. Never deletes a same-named GVL elsewhere. |
+| `autoBuild` | `bool` | `true` | false skips the full solution build so a brownfield apply does not re-bind the existing PLC project; the symbols the schema names must then already be in the process image (twincat_build_plc). Default true. |
 
 ## Scope
 
@@ -2077,6 +2089,62 @@ Convert a saved TwinCAT Scope recording (.svdx) to CSV, TDMS or similar. EXPERIM
 | `targetPath` | `string` |  | Output file; its extension selects the format, e.g. C:\temp\run1.csv. |
 | `overwrite` | `bool` | `false` | Replace an existing target file. Default false. |
 
+## SignalTestbench
+
+### `twincat_ads_wait_until`
+
+Wait until live PLC values meet conditions (ADS notifications). Short pulses are not missed. Read-only. Conditions are texts: '<symbol> <op> <value>' with op == != < <= > >=, or '<symbol> changed' (changed = differs from the value when the wait began, stays true once it happened), e.g. 'MAIN.nStep == 20', 'GVL.bDone == true', 'MAIN.fbCyl.State == E_STATE_RUN' (an ENUM by member name or number). Up to 8 conditions on up to 8 symbols (BOOL, numbers, time types in their raw unit, STRING, ENUM). A condition that already holds ends the wait at once (elapsedMs 0). Returns JSON { success, met, timedOut, elapsedMs, timeoutMs, combine, conditions: [{ condition, met }], values: { symbol: value }, amsNetId, adsPort }; a timeout is met=false with the last values, not an error. [Error] when a symbol is missing, is not a scalar, or the runtime stops while waiting. Changes are seen at the resolution of the PLC task cycle.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `conditions` | `string[]` |  | 1 to 8 conditions, e.g. ['MAIN.nCount > 5', 'MAIN.bDone == true']. |
+| `combine` | `string?` | `null` | 'all' (default: every condition holds) or 'any' (one holds). |
+| `timeoutMs` | `int?` | `null` | How long to wait in ms: default 10000, at most 300000 (a fixed limit). |
+| `amsNetId` | `string?` | `null` | AMS NetId of the target. Omit for the local runtime. |
+| `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+
+### `twincat_ads_expect`
+
+Check live PLC values over a time window (ADS notifications). Read-only. mode 'stable': none of the symbols changes for durationMs. mode 'within': the conditions hold at some point inside durationMs (already true counts). mode 'never': the conditions do not hold at any time of the window, the opening state included. Conditions as in twincat_ads_wait_until ('<symbol> <op> <value>' or '<symbol> changed'). A violation ends the check at once. Returns JSON { success, mode, passed, elapsedMs, durationMs, firstViolation: { symbol, atMs, reason, from, to } | null, combine, conditions, values, amsNetId, adsPort }; a failed expectation is passed=false, not an error. [Error] when a symbol is missing or not a scalar, or the runtime stops during the window (a stopped PLC would otherwise look stable). Up to 8 symbols, window at most 300000 ms.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `mode` | `string` |  | 'stable', 'within' or 'never'. |
+| `durationMs` | `int` |  | Length of the observation window in ms, at most 300000 (a fixed limit). |
+| `conditions` | `string[]?` | `null` | Conditions for 'within' and 'never', e.g. ['MAIN.nStep == 20']. |
+| `symbols` | `string[]?` | `null` | Symbol paths for 'stable', e.g. ['GVL.bReady', 'MAIN.nMode']. |
+| `combine` | `string?` | `null` | 'all' (default) or 'any', for 'within' and 'never'. |
+| `amsNetId` | `string?` | `null` | AMS NetId of the target. Omit for the local runtime. |
+| `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+
+### `twincat_ads_record`
+
+Record live PLC values briefly (ADS notifications) and report statistics. Read-only on the PLC; writes only a local CSV of the changes. 1 to 32 scalar symbols (BOOL, numbers, time types, STRING, ENUM), durationMs at most 120000, cycleMs 1 to 1000 (the notification cycle). Times are the runtime's own time stamps, so pulse widths and periods are exact to a task cycle. Returns JSON { success, endedBy: completed | changeLimit | fault, durationMs, windowMs, timeBase, changes, csv: { path, rows, bytes }, symbols: [{ symbol, plcType, changes, first, last, min, max, mean (time-weighted), rising, falling, highMs / lowMs / periodMs: { count, min, max, avg } (BOOL: complete pulses only), frequencyHz, changeIntervalMs }] }. At most 200000 changes are kept; the run then ends with endedBy changeLimit. The CSV (t_ms;symbol;value;name, one row per change, opening values at 0) goes to %TEMP%\ptc-xae-mcp\rec unless csvPath is given; recordings there older than 7 days are removed. A pulse shorter than one PLC task cycle is not visible.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `symbols` | `string[]` |  | 1 to 32 symbol paths, e.g. ['MAIN.bRun', 'GVL.nCycleCount']. |
+| `durationMs` | `int?` | `null` | Recording time in ms: default 5000, at most 120000 (a fixed limit). |
+| `cycleMs` | `int?` | `null` | Notification cycle in ms, 1 to 1000. Default 1 (every task cycle); a slower cycle only loses changes. |
+| `csvPath` | `string?` | `null` | Target .csv file. Default %TEMP%\ptc-xae-mcp\rec\<utc>_<netId>.csv. Must be inside the solution directory, TEMP, %LOCALAPPDATA%\ptc-xae-mcp or PTC_XAE_MCP_ALLOWED_PATHS. |
+| `writeCsv` | `bool` | `true` | Write the CSV (default true). false: statistics only. |
+| `amsNetId` | `string?` | `null` | AMS NetId of the target. Omit for the local runtime. |
+| `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+
+### `twincat_ads_snapshot_compare`
+
+Compare live values of any symbols with a baseline, or capture them. Read-only on the PLC; savePath writes only a local JSON file. A STRUCT or ARRAY symbol is read leaf by leaf; input-mapped and read-only variables are read too. The baseline is baselinePath (a file written by savePath of this tool or by twincat_persistent_snapshot_save) or baseline (JSON object { "<leaf symbol>": <value> }, typed like the PLC symbol). Without symbols, the baseline's leaves are read. savePath alone captures the current values. Returns JSON { success, equal, equalCount, differenceCount, onlyInBaselineCount, notInBaselineCount, typeMismatchCount, missingOnPlcCount, differences: [{ symbol, type, baseline, live }], onlyInBaseline, notInBaseline, typeMismatches, missingOnPlc, skipped, saved: { path, leafCount } | null }; lists show at most 200 entries. Up to 256 symbols and 5000 leaves per call. For the remanent (PERSISTENT / RETAIN) data and its restore use the twincat_persistent_snapshot_* tools.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `symbols` | `string[]?` | `null` | Symbol paths to read (up to 256), e.g. ['GVL_Settings', 'MAIN.nMode']. Omit to read the baseline's leaves. |
+| `baselinePath` | `string?` | `null` | Snapshot file to compare with. |
+| `baseline` | `string?` | `null` | Inline baseline as JSON, e.g. {"MAIN.nMode": 2, "GVL.bReady": true}. Not together with baselinePath. |
+| `savePath` | `string?` | `null` | Write the current values to this .json file (inside the solution directory, TEMP, %LOCALAPPDATA%\ptc-xae-mcp or PTC_XAE_MCP_ALLOWED_PATHS). |
+| `tolerance` | `double?` | `null` | Numbers differing by at most this much count as equal. Default 0. |
+| `amsNetId` | `string?` | `null` | AMS NetId of the target. Omit for the local runtime. |
+| `adsPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851. |
+
 ## StaticAnalysis
 
 ### `twincat_plc_static_analysis`
@@ -2181,6 +2249,36 @@ Add, change or remove single elements of an existing PLC visualization. Every ot
 | `operations` | `string?` | `null` | JSON array of operations (see the tool description); may be empty when only interface is given. |
 | `@interface` | `string?` | `null` | Optional new VAR_IN_OUT interface declaration, e.g. "VAR_IN_OUT\ \tfb : FB_Station;\ END_VAR". |
 | `expectedRevision` | `string?` | `null` | Revision from twincat_visu_read; a different current revision refuses the write. |
+
+## Workflow
+
+### `twincat_deploy`
+
+Build, activate and check in one call. Fixed order: build (PLC project, or the whole solution with buildSolution), expectSymbols, target check, twincat_activate_config with a restart of TwinCAT into the new configuration, an ADS check that the target's system reads Run, the PLC runtime reads Run (put into Run over ADS when it does not and startPlc is true), then optionally lifeSign conditions (as twincat_ads_wait_until). The first step that fails ends the run and nothing after it starts: build errors are never activated, and an activation that cannot be shown to have taken effect is never followed by a PLC start. A human is asked once for the whole run, not per step; requestKey makes a retry after a timeout safe. Returns JSON { success, amsNetId, steps: [{ step, ok, durationMs, message }], warnings }; a failure answers '[Error] twincat_deploy stopped at step …' followed by the same JSON with notRun. With restart=false only the registry is written (a warning says the PLC keeps its old code). The target is the open solution's. Needs an open solution.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `plcProjectName` | `string?` | `null` | PLC project name (e.g. 'PLC') for the PLC build. Empty = first .plcproj. Not together with buildSolution. |
+| `buildSolution` | `bool` | `false` | Build the whole solution (PLC code and IO mapping) instead of the PLC project only. Default false. |
+| `ignoreStaleFiles` | `bool` | `false` | Build despite PLC files changed on disk outside the XAE (as in twincat_build_plc). Default false refuses. |
+| `expectSymbols` | `string[]?` | `null` | Names that must exist in the compiled PLC (as in twincat_build_plc), e.g. ['MAIN.fbAxis']. A missing name ends the run before the activation. |
+| `restart` | `bool` | `true` | Restart TwinCAT into the new configuration (forcibly restarts the PLC; the activation's dialog watcher confirms the restart prompt). Default true. False: registry only, no deploy. |
+| `autoGenerateLicenses` | `bool` | `false` | Answer the trial-license prompt with 'Ja' (as in twincat_activate_config). Default false. |
+| `autoConfirmLogin` | `bool` | `false` | Confirm the 'application changed since the last download' login modal (as in twincat_activate_config). Default false. |
+| `loginMode` | `string` | `"online_change"` | Answer for that modal: 'online_change' (default) \| 'download' \| 'login_without_change'. |
+| `updateBootProject` | `bool` | `true` | On download, tick 'Bootapplikation aktualisieren'. Default true. |
+| `allowDownloadFallback` | `bool` | `false` | loginMode='online_change' only: download instead if online change is impossible (stops the PLC). Default false. |
+| `runTimeoutSeconds` | `int?` | `null` | Seconds to wait for the system to read Run after the restart. Default 60, clamped to 5..300. |
+| `startPlc` | `bool` | `true` | Put the PLC runtime into Run over ADS when it does not read Run after the activation. Default true; false makes that a failed step. |
+| `adsPort` | `int` | `851` | ADS port of the PLC runtime for the state check and the life sign. Default 851. |
+| `lifeSign` | `string[]?` | `null` | Conditions that prove the PLC program runs, as twincat_ads_wait_until takes them, e.g. ['MAIN.nCycle changed']. Up to 8. Omit to skip. |
+| `lifeSignTimeoutMs` | `int` | `10000` | How long the lifeSign conditions may take, in ms. Default 10000, at most 300000. |
+
+### `twincat_release_check`
+
+Read-only release checklist: one traffic light per technical finding. Items: build state (Error List against the newest PLC source), Check all objects, static analysis (last report), libraries installed and pinned, required licenses against the target, boot project (files), PLC runtime state, open XAE dialogs. It never builds, saves or starts anything. What cannot be read without doing so is 'unknown' (never green) and names the tool that would show it: Check all objects and the static analysis compile and save, so only a report left by an earlier run is read. Returns JSON { success, overall, green, yellow, red, unknown, solution, items: [{ id, title, status, summary, details }] }; overall is the worst item (red, then unknown, then yellow). It lists findings, it does not judge the hand-over. Needs an open solution; with an XAE dialog blocking, the reads that need the XAE are unknown.
+
+_No parameters._
 
 ## XaeDialogs
 

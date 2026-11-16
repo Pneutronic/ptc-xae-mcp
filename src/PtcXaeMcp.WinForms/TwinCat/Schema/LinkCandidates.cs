@@ -8,8 +8,9 @@ namespace PtcXaeMcp.WinForms.TwinCat.Schema;
 /// extracted from NativeTwinCatRunner (AddIoCandidates, FindIoLeaf's scoring block,
 /// ScoreEthernetBranchPortCandidate). No COM: every method here takes plain
 /// strings and returns candidate path strings or a score; the Linker does the tree lookups.
-/// Issue #155 E-3: there is no PLC-variable scoring any more — a GVL variable is addressed by its
-/// exact process-image symbol (<see cref="GvlSymbol"/>) in the exact image folders.
+/// Issue #155 E-3: there is no PLC-variable scoring any more — a PLC variable is addressed by its
+/// exact process-image symbol (the point's <c>symbol</c>, e.g. <c>MAIN.fbCyl.LimitSwitchWorkingPosition</c>)
+/// in the exact image folders.
 /// </summary>
 internal static class LinkCandidates
 {
@@ -51,12 +52,6 @@ internal static class LinkCandidates
         IsOutput(direction)
             ? ["Ausgaenge", "Ausgänge", "Outputs"]
             : ["Eingaenge", "Eingänge", "Inputs"];
-
-    /// <summary>
-    /// The process-image symbol of a GVL variable ("GVL_IO.I_Start"). Linking addresses exactly
-    /// this name (issue #155 E-3): never a same-named variable of another GVL.
-    /// </summary>
-    internal static string GvlSymbol(string gvlName, string varName) => $"{gvlName.Trim()}.{varName.Trim()}";
 
     private static bool IsOutput(string direction) =>
         string.Equals(direction?.Trim(), "Q", StringComparison.OrdinalIgnoreCase);

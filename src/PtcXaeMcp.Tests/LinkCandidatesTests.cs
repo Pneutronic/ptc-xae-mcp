@@ -32,10 +32,6 @@ public class LinkCandidatesTests
     }
 
     [Fact]
-    public void GvlSymbol_IsTheQualifiedName() =>
-        LinkCandidates.GvlSymbol(" GVL_IO ", " I_Start ").Should().Be("GVL_IO.I_Start");
-
-    [Fact]
     public void AddIoCandidates_InputDirection_ProducesInputPathsAndNoDuplicates()
     {
         var result = new List<string>();

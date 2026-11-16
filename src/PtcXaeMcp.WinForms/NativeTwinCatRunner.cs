@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -14,24 +15,18 @@ namespace PtcXaeMcp.WinForms;
 
 internal sealed class RunnerOptions
 {
-    public bool NoHw { get; init; }
-    public bool NoGvl { get; init; }
-    public bool NoLink { get; init; }
-    public bool NoExport { get; init; }
     public bool AutoConfirmBuild { get; init; }
     // Explicit values (MCP tool parameters): win over the schema.
     public string PlcProjectNameOverride { get; init; } = string.Empty;
     public string MasterNameOverride { get; init; } = string.Empty;
-    public string GvlNameOverride { get; init; } = string.Empty;
 
     // GUI selections: used only where the schema states no value, so a stale selection never
     // overrides the schema (issue #155).
     public string PlcProjectNameDefault { get; init; } = string.Empty;
     public string MasterNameDefault { get; init; } = string.Empty;
-    public string GvlNameDefault { get; init; } = string.Empty;
 
-    // brownfield-guard: fail-closed brownfield mode. When active, the empty-check,
-    // master/device resolution and GVL-collision guard hard-abort on any uncertainty
+    // brownfield-guard: fail-closed brownfield mode. When active, the empty-check and
+    // master/device resolution hard-abort on any uncertainty
     // instead of silently proceeding. Off by default to preserve greenfield onboarding.
     public bool FailClosed { get; init; }
 
@@ -44,16 +39,14 @@ internal sealed class RunnerOptions
     // RefreshPlcProcessImage is skipped so a brownfield apply does not re-bind the entire
     // existing PLC project. Default true preserves greenfield onboarding (Stufe 6).
     public bool AutoBuild { get; init; } = true;
-
-    // issue #155 E-2: an existing GVL at the target path is replaced only when this is set (or
-    // the schema's twincat.overwriteExistingGvl is true). Otherwise the apply stops with an
-    // error naming the existing GVL, before any tree change.
-    public bool OverwriteExistingGvl { get; init; }
 }
 
 internal sealed class LinkResult
 {
+    /// <summary>The point's label (<see cref="IoPoint.Label"/>).</summary>
     public string VarName { get; init; } = string.Empty;
+    /// <summary>The PLC symbol the point was linked to (<see cref="IoPoint.Symbol"/>).</summary>
+    public string Symbol { get; init; } = string.Empty;
     public string Direction { get; init; } = string.Empty;
     public string Type { get; init; } = string.Empty;
     public string Terminal { get; init; } = string.Empty;
@@ -90,16 +83,6 @@ internal sealed class TwinCatConfig
 
     [JsonPropertyName("plcProjectName")]
     public string PlcProjectName { get; set; } = string.Empty;
-
-    [JsonPropertyName("gvlName")]
-    public string GvlName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// issue #155 E-2: replace an existing GVL of the same name at the target path (its
-    /// declarations and links are lost). Default false: a collision is an error.
-    /// </summary>
-    [JsonPropertyName("overwriteExistingGvl")]
-    public bool OverwriteExistingGvl { get; init; }
 
     [JsonPropertyName("linking")]
     public LinkingConfig Linking { get; init; } = new();
@@ -161,8 +144,31 @@ internal sealed class IoPoint
     [JsonPropertyName("type")]
     public string? Type { get; init; }
 
+    /// <summary>
+    /// Optional label of the point (log, report, CSV). Not a PLC name: linking uses
+    /// <see cref="Symbol"/> only. See <see cref="Label"/> for the default.
+    /// </summary>
     [JsonPropertyName("varName")]
     public string VarName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Full PLC instance path of the <c>AT %I*</c> / <c>AT %Q*</c> variable this point links to, e.g.
+    /// <c>MAIN.fbCyl.LimitSwitchWorkingPosition</c> or <c>MAIN.aCyl[1].bOut</c> (grammar:
+    /// <see cref="PlcSymbolPath"/>). A point without a symbol only builds hardware and is not linked.
+    /// </summary>
+    [JsonPropertyName("symbol")]
+    public string? Symbol { get; init; }
+
+    /// <summary>True when this point names a PLC symbol and is therefore linked.</summary>
+    [JsonIgnore]
+    public bool HasSymbol => !string.IsNullOrWhiteSpace(Symbol);
+
+    /// <summary>The point's label: <see cref="VarName"/>, else <see cref="Symbol"/>, else "&lt;terminal&gt; Ch&lt;channel&gt;".</summary>
+    [JsonIgnore]
+    public string Label =>
+        !string.IsNullOrWhiteSpace(VarName) ? VarName.Trim()
+        : HasSymbol ? Symbol!.Trim()
+        : $"{TerminalName} Ch{Channel.ToString(CultureInfo.InvariantCulture)}";
 
     [JsonPropertyName("group")]
     public string? Group { get; init; }
@@ -283,12 +289,9 @@ internal sealed class NativeTwinCatRunner
     // issue #155 steps 3-6: the tree seam and the components built on it.
     private ComSysManTree? _tree;
     private ApplyTargetResolver? _targetResolver;
-    private GvlWriter? _gvlWriter;
-    // EtherCAT topology of this run (null when -NoHw skipped it).
+    // EtherCAT topology of this run.
     private EtherCatTopologyBuilder? _topology;
 
-    // Exact GVL target of this run (null when the GVL folder is not resolved, e.g. -NoGvl).
-    private GvlTarget? _gvlTarget;
     // Exact tree path of the resolved EtherCAT master.
     private string _masterPath = string.Empty;
     // Every Warn() call also lands here so the end-of-run ApplyReport can carry them (step 2).
@@ -343,11 +346,9 @@ internal sealed class NativeTwinCatRunner
                 throw new InvalidOperationException($"Schema JSON not found: {schemaPath}");
 
             var cfg = LoadAndValidateSchema(schemaPath);
-            cfg.TwinCat.GvlName = Effective(options.GvlNameOverride, cfg.TwinCat.GvlName, options.GvlNameDefault);
             string requestedPlcName = Effective(options.PlcProjectNameOverride, cfg.TwinCat.PlcProjectName, options.PlcProjectNameDefault);
             string requestedMasterName = Effective(options.MasterNameOverride, cfg.TwinCat.DeviceName, options.MasterNameDefault);
-            bool overwriteExistingGvl = options.OverwriteExistingGvl || cfg.TwinCat.OverwriteExistingGvl;
-            ShowRunConfiguration(schemaPath, options, cfg, requestedPlcName, requestedMasterName, overwriteExistingGvl);
+            ShowRunConfiguration(schemaPath, options, cfg, requestedPlcName, requestedMasterName);
 
             Step("TwinCAT/XAE");
             Info("Connecting to TwinCAT XAE...");
@@ -359,7 +360,6 @@ internal sealed class NativeTwinCatRunner
             _dte = TwinCatComSession.AttachForExternalCaller(GetCandidateProgIds(), TimeSpan.FromSeconds(30));
             _tree = new ComSysManTree(TwinCatComSession.RequireSystemManagerOf(_dte), _cancellationToken);
             _targetResolver = new ApplyTargetResolver(_tree, Warn);
-            _gvlWriter = new GvlWriter(_tree, Info, Warn);
 
             // E-25: export targets resolved against the schema file and allowed by PathPolicy
             // before the run changes anything.
@@ -385,63 +385,29 @@ internal sealed class NativeTwinCatRunner
                 ? $"EtherCAT master: '{master.Name}'"
                 : $"EtherCAT master resolved: '{requestedMasterName}' -> '{master.Name}'");
 
-            // E-2 / E-15: resolve the exact GVL target and refuse a collision BEFORE anything in
-            // the tree changes.
-            _gvlTarget = ResolveGvlTarget(plcTarget, cfg.TwinCat.GvlName, required: !options.NoGvl);
-            if (!options.NoGvl)
-            {
-                Info($"GVL target: {_gvlTarget!.GvlPath} (overwriteExistingGvl={overwriteExistingGvl})");
-                _gvlWriter.CheckWritable(_gvlTarget, overwriteExistingGvl);
-            }
+            Step("EtherCAT Tree");
+            ApplyEthercatTree(master, cfg);
 
-            if (!options.NoHw)
+            if (cfg.TwinCat.Linking.Enabled)
             {
-                Step("EtherCAT Tree");
-                ApplyEthercatTree(master, cfg);
-            }
-            else
-            {
-                Info("Step skipped: EtherCAT Tree (-NoHw)");
-            }
-
-            if (!options.NoGvl)
-            {
-                Step($"GVL '{cfg.TwinCat.GvlName}'");
-                EnsureGvl(_gvlTarget!, GvlDeclarationRenderer.Render(cfg.IoPoints), overwriteExistingGvl);
-                if (cfg.TwinCat.Linking.Enabled)
-                    RefreshPlcProcessImage(options.AutoConfirmBuild, cfg.TwinCat.PlcProjectName);
-            }
-            else
-            {
-                Info("Step skipped: GVL (-NoGvl)");
-            }
-
-            if (!options.NoLink && cfg.TwinCat.Linking.Enabled)
-            {
-                if (options.NoGvl)
+                // The PLC build only matters when a point names a symbol to link: the symbols have to
+                // be in the process image (no symbol anywhere = topology only, nothing to refresh).
+                if (NeedsProcessImageRefresh(cfg))
                     RefreshPlcProcessImage(options.AutoConfirmBuild, cfg.TwinCat.PlcProjectName);
 
                 Step($"Linking (failIfUnresolved={cfg.TwinCat.Linking.FailIfUnresolved})");
                 // Step 6: exact symbols only (E-3), one LinkVariables per point (E-17), per-run caches (E-16).
-                var linker = new Linker(_tree, new LinkTarget(cfg.TwinCat.PlcProjectName, cfg.TwinCat.GvlName, _masterPath,
-                        _failClosed, _gvlTarget?.GvlPath ?? string.Empty),
+                var linker = new Linker(_tree, new LinkTarget(cfg.TwinCat.PlcProjectName, _masterPath, _failClosed),
                     cfg.EtherCat.Root, _topology?.CreatedPaths, Info, Warn, _cancellationToken);
                 linked = linker.LinkAll(cfg.IoPoints, cfg.TwinCat.Linking.FailIfUnresolved);
             }
             else
             {
-                Info(options.NoLink ? "Step skipped: Linking (-NoLink)" : "Step skipped: Linking (disabled)");
+                Info("Step skipped: Linking (disabled)");
             }
 
-            if (!options.NoExport)
-            {
-                Step("Export");
-                ExportResults(cfg.TwinCat.DeviceName, exports, linked.Links);
-            }
-            else
-            {
-                Info("Step skipped: Export (-NoExport)");
-            }
+            Step("Export");
+            ExportResults(cfg.TwinCat.DeviceName, exports, linked.Links);
         }
         finally
         {
@@ -452,7 +418,7 @@ internal sealed class NativeTwinCatRunner
         // E-4 / E-11: the run's overall pass/fail is decided once here, from the accumulated
         // ApplyReport, instead of individual call sites deciding for themselves.
         ApplyReport report = ApplyReport.Build(_topology?.MissingNodes ?? [], linked.Links, _warnings,
-            linked.HadUnresolvedFailure, linked.Unresolved, dialogsAnswered);
+            linked.HadUnresolvedFailure, linked.Unresolved, dialogsAnswered, linked.NotLinked);
         Step("Result");
         Info(report.Describe());
         if (!report.Ok)
@@ -495,20 +461,24 @@ internal sealed class NativeTwinCatRunner
         return cfg ?? throw new InvalidOperationException("Schema is empty.");
     }
 
+    /// <summary>
+    /// True when the PLC's process image has to be refreshed before linking: linking is enabled and at
+    /// least one IO point names a <c>symbol</c>. A schema without symbols only builds hardware.
+    /// </summary>
+    internal static bool NeedsProcessImageRefresh(SchemaConfig cfg) =>
+        cfg.TwinCat.Linking.Enabled && cfg.IoPoints.Any(p => p.HasSymbol);
+
     private void ShowRunConfiguration(string schemaPath, RunnerOptions options, SchemaConfig cfg,
-        string plcName, string masterName, bool overwriteExistingGvl)
+        string plcName, string masterName)
     {
+        int withSymbol = cfg.IoPoints.Count(p => p.HasSymbol);
         Step("Configuration");
         Info($"Schema JSON         : {schemaPath}");
-        Info($"Build hardware      : {(options.NoHw ? "no (skip)" : "yes")}");
-        Info($"Write GVL           : {(options.NoGvl ? "no (skip)" : "yes")}");
-        Info($"Create links        : {(options.NoLink ? "no (skip)" : "yes")}");
-        Info($"Write export        : {(options.NoExport ? "no (skip)" : "yes")}");
         Info($"Auto-confirm build  : {(options.AutoConfirmBuild ? "yes" : "no")}");
-        Info($"Replace existing GVL: {(overwriteExistingGvl ? "yes (overwriteExistingGvl)" : "no (collision = error)")}");
         Info($"PLC target          : {(plcName.Length == 0 ? "<none>" : plcName)}");
         Info($"Master target       : {(masterName.Length == 0 ? "<none>" : masterName)}");
-        Info($"GVL name            : {cfg.TwinCat.GvlName}");
+        Info($"IO points           : {cfg.IoPoints.Count} ({withSymbol} with a symbol to link, " +
+             $"{cfg.IoPoints.Count - withSymbol} topology only)");
     }
 
     private static IEnumerable<string> GetCandidateProgIds()
@@ -541,47 +511,6 @@ internal sealed class NativeTwinCatRunner
         _topology = new EtherCatTopologyBuilder(_tree!, Info, Warn, _cancellationToken);
         _topology.Build(master, cfg.EtherCat.Root);
         Info("EtherCAT topology created.");
-    }
-
-    // E-2: GvlWriter creates the GVL at the exact target path. An existing GVL there is a
-    // collision error unless overwriteExistingGvl is set (or this run created it); a failed
-    // CreateChild is reported, never answered with a delete.
-    private void EnsureGvl(GvlTarget target, string declarationText, bool overwriteExistingGvl)
-    {
-        ITreeNode created = _gvlWriter!.Write(target, declarationText, overwriteExistingGvl);
-        string gvlPath = created.Path.Length > 0 ? created.Path : target.GvlPath;
-
-        AlwaysBindOutcome alwaysBind = _gvlWriter.SetAlwaysBind(gvlPath);
-        if (alwaysBind.Verified)
-        {
-            Info(alwaysBind.Message);
-            return;
-        }
-
-        // E-22: diagnostics under %LOCALAPPDATA%\ptc-xae-mcp\diagnostics, never next to the exe.
-        string dump;
-        try { dump = ApplyFiles.WriteDiagnostic($"{target.GvlName}.xml", alwaysBind.Xml); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { dump = $"<not written: {ex.Message}>"; }
-        Warn($"{alwaysBind.Message} XML diagnostics: {dump}");
-    }
-
-    // E-15: the GVL folder is resolved exactly (ApplyTargetResolver). When the run does not write
-    // a GVL (-NoGvl) the target is only used to find the existing GVL for linking, so a missing
-    // folder is logged instead of failing the run.
-    private GvlTarget? ResolveGvlTarget(PlcTarget plc, string gvlName, bool required)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(gvlName))
-                throw new InvalidOperationException("twincat.gvlName is empty.");
-            return new GvlTarget(plc, _targetResolver!.ResolveGvlFolder(plc), gvlName.Trim());
-        }
-        // XaeBlockedException is an InvalidOperationException too: busy is never "no folder".
-        catch (InvalidOperationException ex) when (!required && TwinCat.ComCall.Recoverable(ex))
-        {
-            Info($"GVL target not resolved (the GVL is not written): {ex.Message}");
-            return null;
-        }
     }
 
     /// <summary>Deadline for the apply build (the session's own build budget).</summary>
@@ -622,19 +551,20 @@ internal sealed class NativeTwinCatRunner
         if (!built)
         {
             Info("Full productive rebuild skipped on purpose (autoBuild=false): the existing PLC project is not " +
-                 "re-bound. New IO reaches the process image only after a separate 'build_plc'.");
+                 "re-bound. The symbols the schema names must already be in the process image; a missing one is " +
+                 "reported as unresolved (build the PLC with twincat_build_plc, then apply again).");
         }
     }
 
     // A referenced stand-alone PLC's instance keeps the process image of the TMC it was loaded from; after the
-    // build regenerated that TMC it is reloaded here, before the linker looks for the new GVL (#14).
+    // build regenerated that TMC it is reloaded here, before the linker looks for the symbols (#14).
     private void ReloadReferencedPlcTmc(string plcName)
     {
         if (_tree is not ComSysManTree com || string.IsNullOrWhiteSpace(plcName)) return;
         IReadOnlyList<string> reloaded = com.Call(() => TwinCatComSession.ReloadReferencedPlcTmc(com.SysMan, plcName),
             "ReloadTmc of the referenced PLC instance");
         foreach (string instance in reloaded)
-            Info($"Referenced stand-alone PLC project: reloaded the TMC into '{instance}' so the new GVL is in its process image.");
+            Info($"Referenced stand-alone PLC project: reloaded the TMC into '{instance}' so the new symbols are in its process image.");
     }
 
     private void ExportResults(string deviceName, ApplyExportPaths exports, IReadOnlyList<LinkResult> results)

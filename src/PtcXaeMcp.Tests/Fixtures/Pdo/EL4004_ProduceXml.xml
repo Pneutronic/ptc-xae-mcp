@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<!-- ProduceXml(false) of an EL4004-0000-0021 (TwinCAT 3.1.4026), trimmed to ProcessData: AdsInfo removed. Outputs
+     are RxPdo with Sm="2"; there is no AlternativeSmMappings block, so the channel comes from the PDO name. -->
+<TreeItem>
+  <ItemName>AO3 (EL4004)</ItemName>
+  <PathName>TIID^AiProbe (EtherCAT)^AI1 (EK1100)^AO3 (EL4004)</PathName>
+  <ItemType>5</ItemType>
+  <ItemSubType>9099</ItemSubType>
+  <EtherCAT>
+    <Slave>
+      <Info>
+        <Name><![CDATA[AO3 (EL4004)]]></Name>
+        <ProductRevision>EL4004-0000-0021</ProductRevision>
+      </Info>
+      <ProcessData>
+        <Sm2><Type>Outputs</Type><Enable>1</Enable><Pdo>5632</Pdo><Pdo>5633</Pdo><Pdo>5634</Pdo><Pdo>5635</Pdo></Sm2>
+        <Sm3><Type>Inputs</Type><Enable>0</Enable></Sm3>
+        <RxPdo Fixed="true" Mandatory="true" Sm="2">
+          <Index>#x1600</Index>
+          <Name>AO Outputs Channel 1</Name>
+          <Entry><Index>#x7000</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Analog output</Name><DataType DScale="0-10">INT</DataType></Entry>
+        </RxPdo>
+        <RxPdo Fixed="true" Mandatory="true" Sm="2">
+          <Index>#x1601</Index>
+          <Name>AO Outputs Channel 2</Name>
+          <Entry><Index>#x7010</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Analog output</Name><DataType DScale="0-10">INT</DataType></Entry>
+        </RxPdo>
+        <RxPdo Fixed="true" Mandatory="true" Sm="2">
+          <Index>#x1602</Index>
+          <Name>AO Outputs Channel 3</Name>
+          <Entry><Index>#x7020</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Analog output</Name><DataType DScale="0-10">INT</DataType></Entry>
+        </RxPdo>
+        <RxPdo Fixed="true" Mandatory="true" Sm="2">
+          <Index>#x1603</Index>
+          <Name>AO Outputs Channel 4</Name>
+          <Entry><Index>#x7030</Index><SubIndex>17</SubIndex><BitLen>16</BitLen><Name>Analog output</Name><DataType DScale="0-10">INT</DataType></Entry>
+        </RxPdo>
+      </ProcessData>
+    </Slave>
+  </EtherCAT>
+</TreeItem>

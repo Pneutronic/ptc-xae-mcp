@@ -13,10 +13,11 @@ internal static class CsvExport
     internal static string BuildMappingCsv(IReadOnlyList<LinkResult> rows)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("varName;direction;type;terminal;channel;group;description;plcPath;ioPath");
+        sb.AppendLine("symbol;varName;direction;type;terminal;channel;group;description;plcPath;ioPath");
         foreach (var row in rows)
         {
             sb.AppendLine(string.Join(";",
+                Escape(row.Symbol),
                 Escape(row.VarName),
                 Escape(row.Direction),
                 Escape(row.Type),

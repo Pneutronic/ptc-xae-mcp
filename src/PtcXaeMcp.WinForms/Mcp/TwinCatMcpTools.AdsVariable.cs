@@ -29,7 +29,7 @@ internal sealed partial class TwinCatMcpTools
                  "amsNetId, adsPort }, or [Error] on a connection failure. An unreadable symbol does not " +
                  "fail the batch (ok=false). ENUM values as in twincat_read_ads_variable. Never writes.")]
     public string ReadAdsVariablesBatch(
-        [Description("Symbol paths, at least one, e.g. ['MAIN.nStep', 'GVL_IO.bCyl1Extended'].")] string[] symbolPaths,
+        [Description("Symbol paths, at least one, e.g. ['MAIN.nStep', 'MAIN.fbCyl.LimitSwitchWorkingPosition'].")] string[] symbolPaths,
         [Description("AMS NetId of the target. Omit for the local runtime.")]
             string? amsNetId = null,
         [Description("ADS port of the PLC runtime. Default 851.")] int? adsPort = null,

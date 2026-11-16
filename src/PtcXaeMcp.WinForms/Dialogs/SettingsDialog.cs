@@ -32,8 +32,8 @@ internal sealed class SettingsDialog : Form
         MinimizeBox = false;
         MaximizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(760, access is null ? 520 : 760);
-        MinimumSize = new Size(600, access is null ? 440 : 640);
+        ClientSize = new Size(760, access is null ? 520 : 920);
+        MinimumSize = new Size(600, access is null ? 440 : 780);
 
         var layout = new TableLayoutPanel
         {
@@ -123,12 +123,18 @@ internal sealed class SettingsDialog : Form
         _cmbAccess.SelectedIndex switch { 0 => AccessLevel.Read, 1 => AccessLevel.Engineer, _ => AccessLevel.Runtime },
         AccessPolicy.ParseList(_txtBlocked.Text),
         string.IsNullOrWhiteSpace(_txtAllowed.Text) ? null : AccessPolicy.ParseList(_txtAllowed.Text),
-        "window");
+        "window",
+        string.IsNullOrWhiteSpace(_txtWriteAllow.Text) ? null : AccessPolicy.ParsePatterns(_txtWriteAllow.Text),
+        string.IsNullOrWhiteSpace(_txtWriteDeny.Text) ? null : AccessPolicy.ParsePatterns(_txtWriteDeny.Text),
+        _cmbConfirm.SelectedIndex switch { 1 => ConfirmMode.Remote, 2 => ConfirmMode.All, 3 => ConfirmMode.Off, _ => null });
 
     private readonly ComboBox _cmbProfile = new();
     private readonly ComboBox _cmbAccess = new();
     private readonly TextBox _txtBlocked = new();
     private readonly TextBox _txtAllowed = new();
+    private readonly TextBox _txtWriteAllow = new();
+    private readonly TextBox _txtWriteDeny = new();
+    private readonly ComboBox _cmbConfirm = new();
 
     private const string AutomaticLabel = "Automatic (by client: Claude all, Cursor/VS Code/Windsurf/Hermes core)";
 
@@ -174,6 +180,28 @@ internal sealed class SettingsDialog : Form
         _txtAllowed.Width = 460;
         AddRow(layout, row++, "Allowed NetIds", _txtAllowed);
         AddNote(layout, row++, "When set, runtime actions only on these systems. Empty = no allow list.");
+
+        _txtWriteAllow.Text = access.Window.AdsWriteAllow is { } writeAllow ? string.Join("; ", writeAllow.Order()) : string.Empty;
+        _txtWriteAllow.Width = 460;
+        AddRow(layout, row++, "Allowed variable writes", _txtWriteAllow);
+        AddNote(layout, row++, "When set, ADS and HMI writes and a snapshot restore reach only matching symbols, e.g. MAIN.stTest.*; GVL_Param.r*. " +
+                               "'*' is any text, '?' one character, case is ignored. Empty = no list (all symbols).");
+
+        _txtWriteDeny.Text = access.Window.AdsWriteDeny is { } writeDeny ? string.Join("; ", writeDeny.Order()) : string.Empty;
+        _txtWriteDeny.Width = 460;
+        AddRow(layout, row++, "Denied variable writes", _txtWriteDeny);
+        AddNote(layout, row++, "Never written, whatever the allowed list says, e.g. *.bEmergency*; GVL_Safety.*.");
+
+        _cmbConfirm.DropDownStyle = ComboBoxStyle.DropDownList;
+        _cmbConfirm.Items.AddRange(["default — remote",
+                                    "remote — a human confirms activate, restart, stop, ADS write and login on other systems",
+                                    "all — also activate, restart, stop and mode switches on this machine",
+                                    "off — nobody is asked"]);
+        _cmbConfirm.SelectedIndex = access.Window.Confirm switch { ConfirmMode.Remote => 1, ConfirmMode.All => 2, ConfirmMode.Off => 3, _ => 0 };
+        _cmbConfirm.Width = 460;
+        AddRow(layout, row++, "Human confirmation", _cmbConfirm);
+        AddNote(layout, row++, "A client that supports MCP elicitation asks the human in its own window; any other client gets a token " +
+                               "that you release in the Approvals tab here. The stricter of this and the environment applies.");
 
         if (access.Environment is { } envPolicy)
             AddNote(layout, row++, $"The environment sets {envPolicy.Summary()}; the stricter of both applies.");

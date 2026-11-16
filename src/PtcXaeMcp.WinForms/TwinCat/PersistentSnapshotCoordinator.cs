@@ -332,8 +332,11 @@ internal sealed class PersistentSnapshotCoordinator(
 
     // ---- restore -------------------------------------------------------------------------
 
+    /// <param name="symbolCheck">Answers with a refusal text when the access policy does not allow writing one of the
+    /// given symbols; the whole restore is then refused (also when the plan is rebuilt at confirmation).</param>
     public string Restore(string? snapshotPath, bool dryRun, string? planHash, string? pathMapJson,
-        IReadOnlyList<string>? include, string? amsNetId, int? adsPort)
+        IReadOnlyList<string>? include, string? amsNetId, int? adsPort,
+        Func<IEnumerable<string>, string?>? symbolCheck = null)
     {
         int port = adsPort ?? DefaultAdsPort;
         if (!SnapshotPathMap.TryParse(pathMapJson, out var map, out string mapError)) return "[Error] " + mapError;
@@ -343,6 +346,7 @@ internal sealed class PersistentSnapshotCoordinator(
 
         var (plan, planError, netId, plcPort) = BuildLivePlan(snap, map, includeList, amsNetId, port);
         if (plan is null) return planError!;
+        if (symbolCheck?.Invoke(plan.Writes.Select(w => w.Path)) is { } notAllowed) return notAllowed;
 
         if (dryRun)
         {
@@ -374,6 +378,9 @@ internal sealed class PersistentSnapshotCoordinator(
             () =>
             {
                 var (fresh, err, _, _) = BuildLivePlan(snap, map, includeList, amsNetId, port);
+                // The PLC may have changed since the proposal: a leaf that now differs is checked against the policy as well.
+                if (fresh is not null && symbolCheck?.Invoke(fresh.Writes.Select(w => w.Path)) is { } refused)
+                    return (null, refused);
                 return (fresh, err);
             });
         if (proposal is null) return proposeError!;

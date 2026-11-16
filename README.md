@@ -13,7 +13,7 @@ tools drive the same underlying TwinCAT session.
 
 Typical uses: read and write PLC source (POUs, GVLs, DUTs) and PLC visualizations,
 build a project and parse the compiler output, manage library references, drive online/login
-and download, read ADS variables, inspect EtherCAT/fieldbus topology, and
+and download, read ADS variables and wait for or record live signals, inspect EtherCAT/fieldbus topology, and
 more — see [docs/mcp-capabilities.md](docs/mcp-capabilities.md) for the full,
 generated list of tools with their parameters.
 
@@ -213,6 +213,21 @@ Besides tools the server offers **prompts** — step-by-step workflows you pick 
 `@ptc-xae:`): `ptc-xae://status`, `ptc-xae://plc/elements`, `ptc-xae://plc/element/{path}` (URI-encoded tree path),
 `ptc-xae://build/errors`, `ptc-xae://toolsets`.
 
+### Workflow tools
+
+Two tools run the chains that otherwise take four to six calls, with the order and the abort rules fixed:
+
+- **`twincat_deploy`** builds (PLC project, or the whole solution with `buildSolution`), checks `expectSymbols`, activates
+  the configuration with a restart of TwinCAT, checks over ADS that the target's system and the PLC runtime read Run
+  (and puts the PLC into Run when it does not) and, with `lifeSign` conditions, waits for a sign of life
+  (`twincat_ads_wait_until`). The first step that fails ends the run: build errors are never activated, and an
+  activation that cannot be shown to have taken effect is never followed by a PLC start. The answer is a step table
+  (`step`, `ok`, `durationMs`, `message`). A human is asked once for the whole run, and a `requestKey` makes a retry safe.
+- **`twincat_release_check`** (read-only) gives one traffic light per technical finding before a hand-over: Error List
+  against the newest PLC source, Check all objects, the last static-analysis report, libraries installed and pinned,
+  required licenses against the target, boot project, PLC runtime state, open XAE dialogs. What it cannot read without
+  building or saving is `unknown`, never green. It lists findings; whether a hand-over is ready stays a human's judgement.
+
 ### When the XAE shows a dialog
 
 A dialog the XAE opens blocks its automation. `twincat_xae_dialogs` lists the open dialogs with their buttons;
@@ -223,21 +238,27 @@ next call starts once it has returned (`PTC_XAE_MCP_DIALOG_WATCH=off` switches t
 
 ## Applying an IO schema (`twincat_apply_schema`)
 
-`twincat_apply_schema` builds an EtherCAT topology, a GVL and the variable links
-from a JSON schema. Through MCP it is **fail-closed by default**
-(`failClosed=true`):
+`twincat_apply_schema` builds an EtherCAT topology and links the IO points that
+name a PLC symbol, from a JSON schema. Through MCP it is **fail-closed by
+default** (`failClosed=true`):
 
 - the PLC project and the EtherCAT master must match by exact name — there is
   no fallback to the first PLC or master; the target master must be empty;
-- the GVL is written to exactly `TIPC^<plc>^<plc> Project^GVLs^<gvlName>`; a
-  missing or ambiguous `GVLs` folder is an error, never a fallback to another
-  folder or the PLC root;
-- a GVL that already exists at that path is an `[Error]` and nothing is deleted.
-  Pass `overwriteExistingGvl=true` (or set `twincat.overwriteExistingGvl` in the
-  schema) to replace exactly that GVL; its declarations and links are lost.
+- an IO point links to the `AT %I*` / `AT %Q*` variable named by
+  `ioPoints[].symbol`, the full PLC instance path
+  (`MAIN.fbCyl.LimitSwitchWorkingPosition`, `MAIN.aCyl[1].bOut`,
+  `MAIN.aGrid[2,1].bIn`). The symbol is looked up exactly in the process image
+  of the PLC's instance (inputs only for direction `I`, outputs only for `Q`);
+  a symbol that is not there, or is there twice, is reported and nothing is
+  linked for that point;
+- a point without `symbol` only builds the hardware and is counted as
+  `notLinked`;
+- the schema no longer creates a GVL: `twincat.gvlName`,
+  `twincat.overwriteExistingGvl` and the tool parameter `overwriteExistingGvl`
+  were removed (see the changelog for the migration).
 
-Pass `failClosed=false` for the lenient greenfield resolution. The GUI's Apply
-button keeps that lenient behaviour, but the GVL collision rule applies there too.
+Pass `failClosed=false` for the lenient greenfield resolution of PLC and
+master.
 
 ## Security model
 
@@ -257,12 +278,38 @@ authentication model beyond that token. Full threat model and details:
 | Access level | `read` (only tools that change nothing), `engineer` (also the project: PLC code, IO, mapping, libraries, build, save), `runtime` (also target systems: activate, login, PLC start/stop, ADS writes, routes, system mode, User Mode Runtime) | `PTC_XAE_MCP_ACCESS` |
 | Blocked NetIds | no runtime action on these systems; reading stays allowed | `PTC_XAE_MCP_BLOCKED_NETIDS` (`;`-separated) |
 | Allowed NetIds | runtime actions only on these systems | `PTC_XAE_MCP_ALLOWED_NETIDS` |
+| Allowed variable writes | variable writes (`twincat_write_ads_variable`, `twincat_hmi_write_symbol`, `twincat_write_init_symbol`, `twincat_persistent_snapshot_restore`) reach only symbols matching one of these patterns, e.g. `MAIN.stTest.*; GVL_Param.r*` (`*` any text, `?` one character, case ignored) | `PTC_XAE_MCP_ADS_WRITE_ALLOW` (`;`-separated) |
+| Denied variable writes | these symbols are never written, whatever the allowed list says | `PTC_XAE_MCP_ADS_WRITE_DENY` |
+| Human confirmation | `remote` (default): a human confirms activate, restart, PLC start/stop, system mode, login and ADS writes on systems other than this machine; `all`: also activate, restart, stop and mode switches on this machine; `off`: nobody is asked | `PTC_XAE_MCP_CONFIRM` |
 
 `local` in a list means this PC and its User Mode Runtimes. Without any setting everything is allowed, as before.
+The symbol lists keep an agent on the commissioning variables (test flags, parameters) of a customer machine while valves,
+axes and safety-related signals stay out of reach; a restore that would write one symbol outside the lists is refused as a
+whole. Of two sources (window and environment) the allowed lists are intersected and the denied lists added up.
 A refused call returns `[Error]` and does nothing; tools above the level are left out of the tool list. Emergency
 stops (`twincat_stop`, `twincat_shutdown`, `twincat_force_close_xae`, the IBN abort/disarm/release) always work. No
 tool can read the policy file or change the policy; `twincat_get_status` shows it, and the window title names a
 restricted level (`READ ONLY`, `ENGINEER`).
+
+**Human confirmation.** The tool parameters `confirm`, `autoConfirmRestart` and `autoConfirmLogin` are set by the agent
+and answer XAE dialogs; they are no consent. Before an action with effect on a target system the server asks a *human*:
+through MCP elicitation, so the client shows the question (tool, target, arguments) in its own window; a decline or a
+cancel does nothing. A client without elicitation gets `[Confirm]` and a token bound to that tool, those arguments and
+that target; a human presses *Release* in the *Approvals* tab of this window, and only then does the repeated call with
+`confirmationToken` run — once, within 180 s. With the default `remote` nothing is asked for this machine or its User
+Mode Runtimes, so local work and the live test suite run unchanged. Dry runs, reads, project changes, the emergency
+stops, HMI writes and snapshot restores (which a human already confirms in the window) are never asked.
+`twincat_doctor` and `twincat_get_client_info` report the mode and whether the client can be asked in-band.
+
+**Request keys.** A call to `twincat_deploy`, `twincat_activate_config`, `twincat_restart_runtime`, `twincat_activate_boot_project`,
+`twincat_persistent_snapshot_restore`, `twincat_write_ads_variable` or any other tool a human is asked about may carry a
+`requestKey` (a UUID). A client that timed out while the host went on, and then asks again, would otherwise run the action
+twice. With a key the same call never runs twice: a repeat returns the stored result (with a second line saying so), a
+request that is still running is reported as running, and a request the host never saw finish (restart, cancel, a call
+held by an XAE dialog) answers `[Warn] outcome_unknown` with the live ADS state of the target — it is never retried
+by itself; to run it again on purpose, use a new key. The same key with other arguments is an error.
+`twincat_receipt_get` shows the receipt. Receipts are kept for seven days in
+`%LOCALAPPDATA%\ptc-xae-mcp\receipts.jsonl` (no tool can read or write that file). Without a key everything works as before.
 
 **No telemetry.** The server makes no network connections of its own: no
 usage statistics, no license check, nothing is sent to Pneutronic or anyone

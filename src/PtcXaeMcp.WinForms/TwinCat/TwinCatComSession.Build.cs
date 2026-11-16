@@ -273,7 +273,7 @@ internal sealed partial class TwinCatComSession
             }
             return new ActivateResult(true,
                 $"Configuration activated and TwinCAT restarted (ActivateConfiguration + StartRestartTwinCAT): {outcome}. " +
-                $"Login modal: {loginModalHandled}. {dialogs}", loginModalHandled);
+                $"Login modal: {loginModalHandled}. {dialogs}", loginModalHandled, Restarted: true);
         }
 
         string msg = $"Configuration saved to registry only (ActivateConfiguration, no restart). The running PLC keeps the " +

@@ -106,10 +106,8 @@ internal static class BrownfieldGuard
     /// </summary>
     public static bool AllowFuzzyDeviceMatch(bool strict) => !strict;
 
-    // H3 — GVL-collision guard: superseded by issue #155 E-2. The guard is no longer a
-    // fail-closed-only check here; TwinCat/Apply/GvlWriter refuses an existing GVL at the exact
-    // target path in EVERY mode unless overwriteExistingGvl is set, and never deletes via a
-    // fuzzy search.
+    // H3 — GVL-collision guard: gone together with the GVL step of apply_schema. Links address
+    // the AT %I*/%Q* members the schema names (ioPoints[].symbol); apply_schema creates and deletes no PLC object.
 
     // H4 — Build controllable.
     //

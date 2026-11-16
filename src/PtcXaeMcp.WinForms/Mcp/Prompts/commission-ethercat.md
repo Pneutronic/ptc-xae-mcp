@@ -11,6 +11,8 @@ Commission the EtherCAT I/O of the open TwinCAT project. Master: {{master}}. Tar
    `twincat_get_mapping_info`.
 5. **Build** the solution (`twincat_build_solution`) and fix every error.
 6. **Activate** only when asked and only on the named target: `twincat_set_target`, then `twincat_activate_config`.
-   This changes a target system — the access policy must allow runtime actions on it.
+   This changes a target system — the access policy must allow runtime actions on it, and a person may be asked to
+   confirm it. Pass a fresh UUID as `requestKey`: after a timeout the same call with the same key never activates twice
+   (`twincat_receipt_get` shows what became of it).
 
 Report the topology before and after, every difference found in step 2, and what still needs a person on site.

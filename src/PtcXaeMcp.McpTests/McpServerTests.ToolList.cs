@@ -165,4 +165,28 @@ public partial class McpServerTests
         Assert.Contains("twincat_safety_link_alias_device", names);
         Assert.Contains("twincat_safety_probe_create_alias", names);
     }
+
+    // apply_schema links IO points by member symbol; the central GVL and its parameter are gone.
+    [SkippableFact]
+    public async Task ApplySchema_HasNoGvlParameterOrWording()
+    {
+        SkipIfNotReachable();
+
+        var tools = await _client!.ListToolsAsync();
+        var apply = tools.Single(t => t.Name == "twincat_apply_schema");
+        var validate = tools.Single(t => t.Name == "twincat_validate_schema");
+
+        string schema = apply.JsonSchema.GetRawText();
+        Assert.DoesNotContain("overwriteExistingGvl", schema, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("gvl", schema, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("schemaPath", schema);
+        Assert.Contains("failClosed", schema);
+        Assert.Contains("autoBuild", schema);
+
+        string description = apply.Description ?? string.Empty;
+        Assert.Contains("links IO points that name a PLC symbol", description);
+        Assert.Contains("ioPoints[].symbol", description);
+        Assert.DoesNotContain("GVL", description, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("GVL_IO", validate.Description ?? string.Empty, StringComparison.Ordinal);
+    }
 }

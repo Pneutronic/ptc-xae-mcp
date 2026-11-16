@@ -80,8 +80,8 @@ internal sealed partial class TwinCatMcpTools
                  "deterministic. A condition compares the symbol's rendered value to the *Equals string. " +
                  "Returns JSON { success, elapsedMs, timedOut, message } or an [Error].")]
     public string MeasureSignalTransition(
-        [Description("Symbol whose condition starts the measurement, e.g. 'GVL_IO.bCyl1Cmd'.")] string startSymbol,
-        [Description("Symbol whose condition ends the measurement, e.g. 'GVL_IO.bCyl1Extended'.")] string endSymbol,
+        [Description("Symbol whose condition starts the measurement, e.g. 'MAIN.fbCyl.ValveWorkingPosition'.")] string startSymbol,
+        [Description("Symbol whose condition ends the measurement, e.g. 'MAIN.fbCyl.LimitSwitchWorkingPosition'.")] string endSymbol,
         [Description("Value the start symbol must equal to begin timing. Default 'true'.")] string? startEquals = null,
         [Description("Value the end symbol must equal to stop timing. Default 'true'.")] string? endEquals = null,
         [Description("Overall timeout in ms (default 5000, max 60000).")] int? timeoutMs = null,

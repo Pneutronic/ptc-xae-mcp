@@ -38,7 +38,13 @@ internal sealed record ActivateResult(
     string LoginModalHandled = "none",
     // Post-activation PLC online state (null when not probed, i.e. autoConfirmLogin off).
     bool? PlcOnline = null,
-    string? RunState = null);
+    string? RunState = null,
+    // True only when TwinCAT was restarted into the new configuration and the target's system read Run again; false
+    // for a registry-only activation and for every failure. Callers decide on this, never on the message text.
+    bool Restarted = false);
+
+/// <summary>What an activation answered: the tool text, and whether TwinCAT was restarted into the configuration.</summary>
+internal sealed record ActivationOutcome(string Text, bool Restarted);
 
 internal sealed record ErrorListClearResult(
     bool Success,

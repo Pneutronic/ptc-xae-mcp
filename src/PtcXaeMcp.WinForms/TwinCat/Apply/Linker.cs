@@ -4,23 +4,25 @@ using System.Globalization;
 
 namespace PtcXaeMcp.WinForms.TwinCat.Apply;
 
-/// <summary>Where the linker links: the resolved PLC, GVL and EtherCAT master of one apply run.</summary>
-/// <param name="Strict">Fail-closed mode: only the exact process-image symbol is linked.</param>
-/// <param name="GvlPath">Exact tree path of the run's GVL (lenient fallback only); empty when unknown.</param>
-internal sealed record LinkTarget(string PlcName, string GvlName, string MasterPath, bool Strict, string GvlPath = "");
+/// <summary>Where the linker links: the resolved PLC and EtherCAT master of one apply run.</summary>
+/// <param name="Strict">Fail-closed mode (terminal resolution): an ambiguous terminal name is an error, not a pick.</param>
+internal sealed record LinkTarget(string PlcName, string MasterPath, bool Strict);
 
-/// <summary>Outcome of <see cref="Linker.LinkAll"/>.</summary>
-internal sealed record LinkOutcome(List<LinkResult> Links, List<string> Unresolved, bool HadUnresolvedFailure);
+/// <summary>
+/// Outcome of <see cref="Linker.LinkAll"/>. <paramref name="NotLinked"/> counts the points without a
+/// <c>symbol</c> (topology only); they are neither linked nor a failure.
+/// </summary>
+internal sealed record LinkOutcome(List<LinkResult> Links, List<string> Unresolved, bool HadUnresolvedFailure, int NotLinked = 0);
 
 /// <summary>
 /// Links the schema's IO points on the <see cref="ISysManTree"/> seam (issue #155 step 6, R8).
 /// <list type="bullet">
-/// <item>E-3: a PLC variable is the exact process-image symbol <c>&lt;gvl&gt;.&lt;var&gt;</c> in the
-/// exact image folders of the resolved PLC's instance (<c>&lt;task&gt; Inputs/Outputs</c>). The former
-/// fuzzy scoring over the whole TIPC tree (<c>EndsWith("." + var)</c>, bare variable names) could
-/// link a same-named variable of another GVL, e.g. when the new GVL was not built into the process
-/// image yet; it is gone. Two hits are an ambiguity error, never a pick. Only in lenient mode
-/// (GUI) the variable node of the run's own GVL is a last resort.</item>
+/// <item>E-3: the PLC side of a point is the exact process-image symbol its <c>symbol</c> names
+/// (<c>&lt;instance&gt;^&lt;task&gt; Inputs/Outputs^&lt;symbol&gt;</c>), looked up flat in the exact image
+/// folders of the resolved PLC's instance, <c>I</c> only in input folders and <c>Q</c> only in output
+/// folders. An array element is a flat name too (<c>MAIN.aCyl[1].bIn</c>); there is no prefix or suffix
+/// matching, so <c>aCyl[1]</c> never reaches <c>aCyl[10]</c> or <c>aCyl[1].bIn2</c>. Two hits are an
+/// ambiguity error, never a pick. A point without a symbol is not linked (topology only).</item>
 /// <item>E-17: both sides are resolved by lookup and <c>LinkVariables</c> is called exactly once per
 /// point (it used to double as the probe and then run a second time).</item>
 /// <item>E-16: the master subtree (terminal names) and the task list are read once per run and
@@ -44,6 +46,7 @@ internal sealed class Linker
     private readonly HashSet<string> _ioddCheckedTerminals = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, List<string>>? _masterNameIndex;
     private List<(string Path, string Direction)>? _imageFolderCache;
+    private readonly Dictionary<string, TerminalPdoMap?> _pdoMapCache = new(StringComparer.OrdinalIgnoreCase);
 
     public Linker(
         ISysManTree tree,
@@ -71,19 +74,29 @@ internal sealed class Linker
     {
         var links = new List<LinkResult>();
         var unresolved = new List<string>();
+        int notLinked = 0;
         foreach (var point in points)
         {
             _cancellationToken.ThrowIfCancellationRequested();
             string direction = point.Direction.Trim().ToUpperInvariant();
+            if (!point.HasSymbol)
+            {
+                // Topology only (D2): the point builds hardware, nothing is linked, nothing fails.
+                notLinked++;
+                _info($"Not linked (no symbol): {point.Label} ({point.TerminalName} Ch{point.Channel} {direction})");
+                continue;
+            }
+
             try
             {
                 string ioPath = ResolveIoLeafPath(point);
-                string plcPath = ResolvePlcVariablePath(point.VarName, direction);
+                string plcPath = ResolvePlcSymbolPath(point.Symbol!, direction);
                 _tree.LinkVariables(plcPath, ioPath);
-                _info($"Linked: {point.VarName} <-> {ioPath}");
+                _info($"Linked: {point.Label} <-> {ioPath}");
                 links.Add(new LinkResult
                 {
-                    VarName = point.VarName,
+                    VarName = point.Label,
+                    Symbol = point.Symbol!.Trim(),
                     Direction = direction,
                     Type = string.IsNullOrWhiteSpace(point.Type) ? "BOOL" : point.Type!,
                     Terminal = point.TerminalName,
@@ -96,7 +109,7 @@ internal sealed class Linker
             }
             catch (Exception ex) when (ComCall.Recoverable(ex))
             {
-                string reason = $"{point.VarName} ({point.TerminalName} Ch{point.Channel} {direction}): {ex.Message}";
+                string reason = $"{point.Label} ({point.TerminalName} Ch{point.Channel} {direction}): {ex.Message}";
                 unresolved.Add(reason);
                 _warn(failIfUnresolved
                     ? $"Not resolved (failIfUnresolved=true, reported at the end of the run): {reason}"
@@ -104,30 +117,37 @@ internal sealed class Linker
             }
         }
 
-        _info($"Link summary: OK={links.Count}  skipped={unresolved.Count}");
-        return new LinkOutcome(links, unresolved, failIfUnresolved && unresolved.Count > 0);
+        _info($"Link summary: OK={links.Count}  skipped={unresolved.Count}  notLinked={notLinked}");
+        return new LinkOutcome(links, unresolved, failIfUnresolved && unresolved.Count > 0, notLinked);
     }
 
     // ---- PLC side --------------------------------------------------------------------------
 
     /// <summary>
-    /// Exact process-image path of <c>&lt;gvl&gt;.&lt;var&gt;</c> for <paramref name="direction"/>.
-    /// Throws naming every folder tried when it is not there (or is there twice).
+    /// Exact process-image path of <paramref name="symbol"/> (a full PLC instance path, e.g.
+    /// <c>MAIN.fbCyl.bIn</c> or <c>MAIN.aCyl[1].bIn</c>) for <paramref name="direction"/>: one flat lookup
+    /// <c>&lt;folder&gt;^&lt;symbol&gt;</c> per image folder of that direction; only when that misses, the
+    /// member of a STRUCT-typed AT variable as a child node (<c>MAIN.fbX.stIn.bB</c> →
+    /// <c>&lt;folder&gt;^MAIN.fbX.stIn^bB</c>). Throws naming every folder tried when it is not there (or
+    /// is there twice).
     /// </summary>
-    internal string ResolvePlcVariablePath(string varName, string direction)
+    internal string ResolvePlcSymbolPath(string symbol, string direction)
     {
+        symbol = symbol.Trim();
         string dir = direction.Trim().ToUpperInvariant();
-        string cacheKey = $"{varName}|{dir}";
+        string cacheKey = $"{symbol}|{dir}";
         if (_plcPathCache.TryGetValue(cacheKey, out string? cached)) return cached;
 
-        string symbol = LinkCandidates.GvlSymbol(_target.GvlName, varName);
+        string? invalid = PlcSymbolPath.Check(symbol);
+        if (invalid is not null)
+            throw new InvalidOperationException($"PLC symbol '{symbol}' {invalid}.");
+
         List<string> folders = ImageFolders(dir);
-        var hits = folders
-            .Select(folder => _tree.Lookup($"{folder}^{symbol}"))
-            .Where(node => node is not null)
-            .Select(node => node!.Path)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        List<string> hits = LookupAll(folders, [symbol]);
+        // A member of a STRUCT-typed AT variable is a child node of the flat variable
+        // (<folder>^MAIN.fbX.stIn^bB), not a flat name; tried only when the flat name is not there.
+        if (hits.Count == 0)
+            hits = LookupAll(folders, PlcSymbolPath.StructMemberCandidates(symbol));
 
         if (hits.Count > 1)
             throw new InvalidOperationException(
@@ -135,21 +155,26 @@ internal sealed class Linker
         if (hits.Count == 1) return _plcPathCache[cacheKey] = hits[0];
 
         string tried = folders.Count == 0 ? "<no image folder found>" : string.Join(", ", folders.Select(f => $"'{f}'"));
-        if (!_target.Strict)
-        {
-            string? declaration = FindGvlDeclarationNode(varName);
-            if (declaration is not null)
-            {
-                _warn($"PLC variable '{symbol}' is not in the process image ({tried}); linking its GVL declaration node '{declaration}' (lenient mode).");
-                return _plcPathCache[cacheKey] = declaration;
-            }
-        }
-
+        string arrayHint = symbol.Contains('[', StringComparison.Ordinal)
+            ? " An array element is looked up as written, flat (e.g. 'MAIN.aCyl[1].bIn'; two indexes as '[2,1]' without blanks)."
+            : string.Empty;
+        string structHint = symbol.Contains('.', StringComparison.Ordinal)
+            ? " A member of a STRUCT-typed AT variable was also tried as a child node ('MAIN.fbX.stIn.bB' as 'MAIN.fbX.stIn^bB')."
+            : string.Empty;
         throw new InvalidOperationException(
-            $"PLC variable '{symbol}' not found in the process image of PLC '{_target.PlcName}' (tried {tried}). " +
-            "Build the PLC so the GVL is in the process image (autoBuild=true, or twincat_build_plc), then link again. " +
-            "A same-named variable of another GVL is never used.");
+            $"PLC symbol '{symbol}' not found in the {(dir == "Q" ? "output" : "input")} process image of PLC '{_target.PlcName}' (tried {tried}). " +
+            "Declare it AT %I* / AT %Q* with the direction the point states, build the PLC " +
+            "(twincat_build_plc), then apply again. A same-named member of another instance is never used." + arrayHint + structHint);
     }
+
+    // Exact lookups of every spelling in every folder; distinct tree paths of the nodes found.
+    private List<string> LookupAll(List<string> folders, IReadOnlyList<string> spellings) =>
+        folders
+            .SelectMany(folder => spellings.Select(spelling => _tree.Lookup($"{folder}^{spelling}")))
+            .Where(node => node is not null)
+            .Select(node => node!.Path)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     // "<instance>^<task> Inputs"/"... Outputs" folders that exist, for every task under TIRT and
     // every instance of the resolved PLC. Read once per run (E-16).
@@ -197,17 +222,6 @@ internal sealed class Linker
         catch (Exception ex) when (ComCall.Recoverable(ex)) { return []; }
     }
 
-    // Lenient last resort: the variable's node inside the run's own GVL (exact name, one level).
-    private string? FindGvlDeclarationNode(string varName)
-    {
-        if (string.IsNullOrWhiteSpace(_target.GvlPath)) return null;
-        ITreeNode? gvl = _tree.Lookup(_target.GvlPath);
-        if (gvl is null) return null;
-        ITreeNode? node = _tree.Lookup($"{_target.GvlPath}^{varName}")
-            ?? SafeChildren(gvl).FirstOrDefault(c => string.Equals(c.Name, varName, StringComparison.OrdinalIgnoreCase));
-        return node is null ? null : node.Path.Length > 0 ? node.Path : $"{_target.GvlPath}^{varName}";
-    }
-
     // ---- IO side ---------------------------------------------------------------------------
 
     /// <summary>The IO leaf path of <paramref name="point"/>; throws naming every path tried.</summary>
@@ -216,6 +230,9 @@ internal sealed class Linker
         if (point.IsIoLink) return ResolveIoLinkLeafPath(point);
 
         var tried = new List<string>();
+        string? explicitLeaf = ResolveExplicitIoLeaf(point, tried);
+        if (explicitLeaf is not null) return explicitLeaf;
+
         foreach (string candidate in SchemaLeafCandidates(point.TerminalName, point.Channel, point.Direction))
         {
             if (Probe(candidate, tried)) return candidate;
@@ -229,14 +246,132 @@ internal sealed class Linker
             if (Probe(candidate, tried)) return candidate;
         }
 
-        string? leaf = FindIoLeafUnder(terminal, point.Channel, point.Direction, point.IoLeaf ?? string.Empty);
+        string? leaf = FindChannelInGroupFolders(terminal, point.Channel, point.Direction);
         if (leaf is not null) return leaf;
 
+        leaf = ResolveFromPdo(terminal, point, tried);
+        if (leaf is not null) return leaf;
+
+        leaf = ScanIoLeafUnder(terminal, point.Channel, point.Direction, point.IoLeaf ?? string.Empty);
+        if (leaf is not null) return leaf;
+
+        TerminalPdoMap? map = PdoMap(terminal);
+        string pdoHint = map is null || map.Active(point.Direction).Count == 0
+            ? string.Empty
+            : $" Active {(IsOutput(point.Direction) ? "output" : "input")} PDOs of this terminal: " +
+              string.Join(", ", map.Active(point.Direction).Select(p => $"'{p.Name}'")) + ".";
         throw new InvalidOperationException(
             $"IO leaf not found: terminal '{terminal.Path}', channel {point.Channel}, direction {point.Direction}. " +
             $"None of these paths exists: {string.Join(", ", tried.Select(t => $"'{t}'"))}. " +
             "Channel variables of a terminal are not listed as its tree children, only addressable by path — check " +
-            "the channel number, or pass the leaf name as ioLeaf.");
+            "the channel number, or pass the leaf name as ioLeaf." + pdoHint);
+    }
+
+    /// <summary>
+    /// Leaf of <paramref name="point"/> from the terminal's own PDO list (its ProduceXml): the PDO(s) of
+    /// the channel (<see cref="TerminalPdoMap.ForChannel"/>), then the one entry that fits — the entry an
+    /// <c>ioLeaf</c> name hint names, else the one entry whose bit width equals the point's type. The
+    /// built path <c>&lt;terminal&gt;^&lt;PDO name&gt;^&lt;entry&gt;</c> is confirmed by an exact lookup.
+    /// Null when the terminal names no PDO for the channel (the caller goes on); throws when PDOs exist
+    /// but no single entry fits, or the built path is not in the tree — never a guess.
+    /// </summary>
+    private string? ResolveFromPdo(ITreeNode terminal, IoPoint point, List<string> tried)
+    {
+        TerminalPdoMap? map = PdoMap(terminal);
+        if (map is null) return null;
+        IReadOnlyList<TerminalPdo> pdos = map.ForChannel(point.Channel, point.Direction);
+        if (pdos.Count == 0) return null;
+
+        var entries = pdos
+            .SelectMany(p => p.Entries.Where(e => !e.IsGap && e.Name.Length > 0).Select(e => (Pdo: p, Entry: e)))
+            .ToList();
+
+        string hint = point.IoLeaf?.Trim() ?? string.Empty;
+        string type = string.IsNullOrWhiteSpace(point.Type) ? "BOOL" : point.Type!.Trim();
+        int? width = TerminalPdoMap.BitWidth(type);
+        List<(TerminalPdo Pdo, PdoEntry Entry)> matches;
+        string rule;
+        if (hint.Length > 0)
+        {
+            matches = entries.Where(c => NamesEntry(c.Entry, hint)).ToList();
+            rule = $"named '{hint}' (ioLeaf)";
+        }
+        else
+        {
+            matches = width is null ? [] : entries.Where(c => c.Entry.BitLen == width.Value).ToList();
+            rule = width is null
+                ? $"for type '{type}' (no fixed bit width)"
+                : $"of {width.Value} bit{(width.Value == 1 ? string.Empty : "s")} for type '{type}'";
+        }
+
+        string pdoNames = string.Join(", ", pdos.Select(p => $"'{p.Name}'"));
+        if (matches.Count != 1)
+        {
+            string candidates = string.Join(", ", entries.Select(c =>
+                $"'{c.Pdo.Name}^{c.Entry.TreeName}' ({(c.Entry.DataType.Length > 0 ? c.Entry.DataType + ", " : string.Empty)}{c.Entry.BitLen} bit)"));
+            throw new InvalidOperationException(
+                $"Channel {point.Channel} of terminal '{terminal.Path}' is PDO {pdoNames}; " +
+                $"{(matches.Count == 0 ? "no" : matches.Count.ToString(CultureInfo.InvariantCulture))} entr{(matches.Count == 1 ? "y" : "ies")} {rule}. " +
+                $"Set ioLeaf to one of: {candidates}.");
+        }
+
+        (TerminalPdo pdo, PdoEntry entry) = matches[0];
+        string path = $"{terminal.Path}^{pdo.Name}^{entry.TreeName}";
+        if (Probe(path, tried)) return path;
+        string raw = $"{terminal.Path}^{pdo.Name}^{entry.Name}";
+        if (!string.Equals(raw, path, StringComparison.Ordinal) && Probe(raw, tried)) return raw;
+
+        throw new InvalidOperationException(
+            $"Channel {point.Channel} of terminal '{terminal.Path}' is PDO '{pdo.Name}' with entry '{entry.Name}', " +
+            $"but '{path}' is not in the tree. Check the PDO assignment of the terminal, or pass the leaf as ioLeaf.");
+    }
+
+    // An ioLeaf name hint names an entry by its ESI name ('Status__Error'), its tree path ('Status^Error')
+    // or the last segment ('Error').
+    private static bool NamesEntry(PdoEntry entry, string hint) =>
+        string.Equals(entry.Name, hint, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(entry.TreeName, hint, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(TreeNodeExtensions.Leaf(entry.TreeName), hint, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsOutput(string direction) =>
+        string.Equals(direction?.Trim(), "Q", StringComparison.OrdinalIgnoreCase);
+
+    // The terminal's PDO list, read once per terminal per run; null when it has none or cannot be read.
+    private TerminalPdoMap? PdoMap(ITreeNode terminal)
+    {
+        string key = terminal.Path;
+        if (_pdoMapCache.TryGetValue(key, out TerminalPdoMap? cached)) return cached;
+        TerminalPdoMap? map;
+        try { map = TerminalPdoMap.Parse(terminal.ProduceXml(false)); }
+        catch (Exception ex) when (ComCall.Recoverable(ex)) { map = null; }
+        return _pdoMapCache[key] = map;
+    }
+
+    /// <summary>
+    /// An <c>ioLeaf</c> that is a tree path is looked up exactly, before any channel-name candidate:
+    /// absolute (<c>TIID^…</c>) as written, otherwise relative to the terminal
+    /// (<c>"AI Standard Channel 1^Value"</c> → <c>&lt;terminal&gt;^AI Standard Channel 1^Value</c>). Channel
+    /// variables are not listed as tree children, so a leaf whose channel node is not called
+    /// <c>Channel N</c> (analog terminals name it after the PDO) is reachable only this way. A path that
+    /// does not exist is an error naming it, never a guess. A plain name (no <c>^</c>) is tried under the
+    /// terminal too; when it is not there it keeps its old role as a name hint for the leaf search.
+    /// </summary>
+    private string? ResolveExplicitIoLeaf(IoPoint point, List<string> tried)
+    {
+        string leaf = point.IoLeaf?.Trim() ?? string.Empty;
+        if (leaf.Length == 0) return null;
+
+        bool isPath = leaf.Contains('^', StringComparison.Ordinal);
+        string candidate = leaf.StartsWith("TIID^", StringComparison.OrdinalIgnoreCase)
+            ? leaf
+            : $"{FindTerminal(point.TerminalName).Path}^{leaf}";
+        if (Probe(candidate, tried)) return candidate;
+        if (!isPath) return null;
+
+        throw new InvalidOperationException(
+            $"IO leaf '{leaf}' (ioLeaf) not found: '{candidate}' does not exist. An ioLeaf path is used exactly as " +
+            "given, relative to the terminal or absolute from TIID^; check it with twincat_get_mapping_info or the " +
+            "XAE tree (e.g. 'AI Standard Channel 1^Value' for an analog input).");
     }
 
     private bool Probe(string path, List<string> tried)
@@ -304,9 +439,8 @@ internal sealed class Linker
         return index;
     }
 
-    // Channel node by name in the terminal's IO group folders, then a bounded scored scan of the
-    // terminal's own subtree (never outside it).
-    private string? FindIoLeafUnder(ITreeNode terminal, int channel, string direction, string ioLeafOverride)
+    // Channel node by name in the terminal's IO group folders.
+    private string? FindChannelInGroupFolders(ITreeNode terminal, int channel, string direction)
     {
         string[] channelNames = [$"Channel {channel}", $"Kanal {channel}"];
         foreach (string folderName in LinkCandidates.IoGroupFolderNames(direction))
@@ -317,7 +451,12 @@ internal sealed class Linker
                 if (hit is not null) return hit.Path;
             }
         }
+        return null;
+    }
 
+    // Last resort: a bounded scored scan of the terminal's own subtree (never outside it).
+    private string? ScanIoLeafUnder(ITreeNode terminal, int channel, string direction, string ioLeafOverride)
+    {
         string dir = direction.Trim().ToUpperInvariant();
         string? best = null;
         int bestScore = -1;
@@ -361,7 +500,7 @@ internal sealed class Linker
         if (!string.IsNullOrWhiteSpace(point.IoLeaf) && _tree.Lookup(point.IoLeaf) is not null) return point.IoLeaf!;
 
         throw new InvalidOperationException(
-            $"IO-Link PDO leaf not found for '{point.VarName}': port {point.IoLinkPort?.ToString(CultureInfo.InvariantCulture) ?? "?"} " +
+            $"IO-Link PDO leaf not found for '{point.Label}': port {point.IoLinkPort?.ToString(CultureInfo.InvariantCulture) ?? "?"} " +
             $"channel '{point.IoLinkChannel}' under terminal '{point.TerminalName}' (tried {string.Join(", ", tried.Select(t => $"'{t}'"))}). " +
             "Is the device assigned to the port and the IODD broken down?");
     }

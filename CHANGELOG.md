@@ -10,6 +10,116 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-11-16
+
+Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migration table below.
+
+### Breaking
+- **`twincat_apply_schema` no longer creates a GVL.** The central GVL (`twincat.gvlName`, one `AT %I*/%Q*` variable per
+  IO point) is removed; an IO point names the PLC member it links to instead. Component-based PLC code declares its IO
+  as `AT %I*/%Q*` members inside the component FBs (often directly instantiated library FBs, also arrays of them), and
+  a caller had to skip the GVL and link every member by hand with `twincat_link_variables`.
+
+  | Removed | Use instead |
+  |---|---|
+  | schema `twincat.gvlName`, `twincat.overwriteExistingGvl` and the tool parameter `overwriteExistingGvl` | declare the `AT %I*/%Q*` variables in the component and set `ioPoints[].symbol` to the member's full instance path |
+  | a schema that still carries one of the two fields | `twincat_validate_schema` and the apply run report an `[Error]` naming the field and this migration; nothing is ignored silently |
+  | `ioPoints[].varName` as the PLC variable name (it was the GVL member) | `varName` is an optional label for log, report and CSV; default: the `symbol`, else `<terminalName> Ch<channel>` |
+  | the duplicate-`varName` check | a duplicate `symbol` is an error (two points would link the same variable) |
+  | CSV export first column `varName` | `symbol;varName;direction;type;terminal;channel;group;description;plcPath;ioPath` |
+
+### Added
+- **Symbol lists for variable writes in the access policy.** `policy.json` (`adsWriteAllow`, `adsWriteDeny`), the
+  environment (`PTC_XAE_MCP_ADS_WRITE_ALLOW`, `PTC_XAE_MCP_ADS_WRITE_DENY`) and *Settings…* take glob patterns on the
+  full symbol path (`MAIN.stTest.*`, `GVL_Param.r*`; case ignored). With an allowed list `twincat_write_ads_variable`,
+  `twincat_hmi_write_symbol` (ADS domain, by its PLC path) and `twincat_write_init_symbol` write only matching
+  symbols; a denied pattern wins. `twincat_persistent_snapshot_restore` is refused as a whole, naming the symbols,
+  when one symbol it would write does not match (use `include` to narrow it). An empty allowed list allows nothing;
+  without lists everything is allowed as before. Merging two sources intersects the allowed lists and unites the denied
+  lists. No tool can read or change them; `twincat_get_status` shows them.
+- **A human confirms actions with effect on a target system.** Before `twincat_activate_config`,
+  `twincat_restart_runtime`, `twincat_set_system_mode`, `twincat_plc_stop`, `twincat_activate_boot_project` (not a dry
+  run), `twincat_umr_set_mode`, `twincat_plc_start`, `twincat_login` (not `login_without_change`),
+  `twincat_write_ads_variable` and `twincat_add_route` the server asks a person, not the agent: through MCP
+  elicitation (tool, target and arguments in the client's own window), or, for a client that cannot be asked, a
+  `[Confirm]` answer with a `confirmationToken` that a human releases with a *Release* button in the *Approvals* tab
+  (bound to tool, arguments and target; valid 180 s; works once). `PTC_XAE_MCP_CONFIRM` / `confirm` in `policy.json` /
+  *Settings…*: `remote` (default: only systems other than this machine and its User Mode Runtimes — local work and the
+  live suite are not asked), `all` (also activate, restart, stop and mode switches on this machine), `off`; the stricter
+  of window and environment applies. A call the access policy refuses is not asked about. `twincat_doctor` and
+  `twincat_get_client_info` report the mode and whether the client can be asked in-band. The existing `confirm`,
+  `autoConfirmRestart` and `autoConfirmLogin` parameters still answer XAE dialogs and are no consent. Snapshot restores
+  and HMI writes keep their confirmation popup in the window and are not asked twice.
+- **`requestKey` and receipts: a request runs once.** Every tool a human is asked about, and
+  `twincat_persistent_snapshot_restore`, take an optional `requestKey` (UUID). The same key with the same arguments
+  and target never runs twice: a repeat returns the stored result plus a note, a request still running answers
+  `[Receipt] running`, and a request the host never saw finish (restart, cancel, a call held by an XAE dialog) answers
+  `[Warn] outcome_unknown` with the live ADS state of the target and is never retried by itself (use a new key). The same
+  key with other arguments is an `[Error]`; a refusal that did nothing (access policy, a confirmation request, a busy
+  host) leaves the key free. Receipts go to `%LOCALAPPDATA%\ptc-xae-mcp\receipts.jsonl`, append-only, kept 7 days; no
+  tool can read or write the file. New tool **`twincat_receipt_get(requestKey)`** (read-only, toolset `meta`). Without a
+  key nothing changes. The built-in workflow prompts recommend a key for activation.
+- **`ioPoints[].symbol`** (optional): the full PLC instance path of an `AT %I*/%Q*` variable, e.g.
+  `MAIN.fbCyl.LimitSwitchWorkingPosition` or `MAIN.aCyl[1].bOut`. Grammar: identifiers separated by `.`, each
+  optionally followed by index groups of signed integers — `[1]`, `[0]`, `[-1]`, `[2,3]`, `[2][3]`,
+  `MAIN.aStation[2].aCyl[1].fbValve.bOut`. Not accepted: `^`, blanks (`[2, 1]` does not resolve in the process image, write
+  `[2,1]`), `[01]`, `[]`, constants or expressions as an index, ranges.
+- **Linking is exact.** A point with a symbol links to `<instance>^<task> Inputs|Outputs^<symbol>`, an input point only
+  in the input folders and an output point only in the output folders. An array element is a flat name of the process
+  image (`MAIN.aCyl[1].bIn`), so `aCyl[1]` never reaches `aCyl[10]` or `aCyl[1].bIn2`. Nothing found names the folders
+  tried and says to build the PLC (`twincat_build_plc`) and apply again; the same symbol in two tasks is an
+  ambiguity error and nothing is linked. A member of a STRUCT-typed `AT` variable (`MAIN.fbX.stIn.bB`, with
+  `stIn AT %I* : ST_In`) is a child node of the variable in the process image; when the flat name is not there, the
+  symbol is looked up that way (`…^MAIN.fbX.stIn^bB`), still exactly.
+- **A point without `symbol` only builds the hardware** and is counted as `notLinked` in the result (information, not a
+  failure), so a schema can build the EtherCAT tree first and link later. The PLC build before linking runs only when
+  linking is enabled and at least one point has a symbol.
+- **Signal testbench: four read-only ADS tools that watch live values by notification, not polling.**
+  `twincat_ads_wait_until` waits until up to 8 conditions (`<symbol> == != < <= > >= <value>`, or `<symbol> changed`)
+  hold, all or any, for at most 300 s. `twincat_ads_expect` checks a window: `stable` (no value changes), `within` (the
+  conditions hold inside the window) or `never` (they do not); a violation ends it at once and is named in
+  `firstViolation`; a runtime that stops during the window is an error, not a pass. `twincat_ads_record` records 1 to 32
+  scalar symbols for at most 120 s and answers min/max/time-weighted mean, edge counts, pulse widths, periods and change
+  intervals, with the runtime's own time stamps (exact to a task cycle) and a CSV of every change (default
+  `%TEMP%\ptc-xae-mcp\rec`, older than 7 days removed). `twincat_ads_snapshot_compare` compares any symbols (structs and
+  arrays leaf by leaf, input-mapped variables included) with a snapshot file or an inline baseline, with a tolerance, or
+  captures them to a file readable by `twincat_persistent_snapshot_compare`. The limits are fixed in code and refused with
+  their value when exceeded. None of them writes to the PLC. The long calls hold the dispatcher lock only while the
+  notifications are registered.
+- **Two workflow tools replace the chains an agent assembled from four to six single tools** (toolset `build`).
+  **`twincat_deploy`** runs, in a fixed order, the build (the PLC project, or the whole solution with `buildSolution`),
+  `expectSymbols`, a check of the project's target, `twincat_activate_config` with a restart of TwinCAT into the new
+  configuration, a check over ADS that the target's system reads Run, a check that the PLC runtime reads Run (put into Run
+  over ADS when it does not, unless `startPlc=false`) and, with `lifeSign` conditions (those of `twincat_ads_wait_until`),
+  a wait for a sign of life. The first step that fails ends the run and nothing after it starts: a build with errors is never
+  activated, and an activation that cannot be shown to have taken effect is never followed by a PLC start. The answer is a
+  step table `{ step, ok, durationMs, message }` (a failure: `[Error] twincat_deploy stopped at step '…'` and the same JSON
+  with `notRun`). The human confirmation and the request key apply to the call as a whole (class *always*, a runtime action
+  on the project's target): a human is asked once, not per step, and a retry with the same `requestKey` answers from the
+  receipt. A failure before the activation says that nothing was done on the target, so its key stays free.
+  **`twincat_release_check`** (read-only) answers one traffic light per technical finding before a hand-over: Error List
+  against the newest PLC source, Check all objects, the last static-analysis report, libraries installed and pinned,
+  required licenses against the target, boot project (files), PLC runtime state, open XAE dialogs. It never builds, saves or
+  starts anything; what it cannot read without doing so (Check all objects and a new static analysis compile and save) is
+  `unknown`, never green, and names the tool that would show it. `overall` is the worst item (red, then unknown, then yellow).
+
+### Fixed
+- **Analog channels can be linked by `apply_schema`** — an analog terminal names its channel after the PDO
+  (EL3174: `AI Standard Channel 1^Value`), not `Channel 1`, and channel variables are not listed as tree children, so
+  the point was unresolved even with `ioLeaf`. An `ioLeaf` that is a tree path is now looked up exactly before any
+  channel-name candidate: relative to the terminal (`"ioLeaf": "AI Standard Channel 1^Value"`) or absolute from
+  `TIID^`. A path that does not exist is an error naming it, never a guess; a plain name keeps its old role.
+- **Analog channels are found without `ioLeaf`.** When a terminal has no `Channel N` node, `apply_schema` reads the
+  terminal's PDO list: the PDO of the channel (from the selected PDO assignment, else the active PDO named
+  `… Channel N`, so channel 1 never hits channel 10) and in it the one entry whose bit width fits the point's `type`
+  (`INT` on an EL3174 → `AI Standard Channel 1^Value`, on an EL4004 output → `AO Outputs Channel 1^Analog output`).
+  No entry or several (a `BOOL` on an analog input: eight status bits) is an error listing the entries as ready
+  `ioLeaf` values (`AI Standard Channel 1^Status^Error`); a plain `ioLeaf` name (`Error`) picks that entry. The built
+  path is confirmed in the tree; excluded alternative PDOs (`AI Compact Channel 1`) are never used. Digital terminals
+  keep their `Channel N^Input` path.
+- **`twincat_build_plc(expectSymbols)` keeps `PRG.aGrid[2,1].bOut` as one name** — the list was split at every comma,
+  also inside the brackets of a multi-dimensional index.
+
 ## [3.2.2] - 2026-11-16
 
 ### Changed
@@ -649,7 +759,10 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.0.0
+[3.2.2]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.2
+[3.2.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.1
 [3.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.0
 [3.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.1.0
 [3.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.0.0

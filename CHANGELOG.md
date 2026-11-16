@@ -10,6 +10,8 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [3.2.2] - 2026-11-16
+
 ### Changed
 - **Shorter tool descriptions.** tools/list costs about 30 % fewer tokens: about 45 000 instead of 65 000 for all
   tools, about 26 000 instead of 35 000 for the `core` profile; the HMI tools are halved (about 5 200 instead of

@@ -8,31 +8,24 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_get_error_list", ReadOnly = true)]
-    [Description("Error List: read-only snapshot of the XAE Error List window (the 'Fehlerliste' tool window) — " +
-                 "severity, description, file, line per entry. " +
-                 "Does NOT trigger a build and does NOT clear anything — unlike twincat_clear_error_list, whose " +
-                 "cleared-count was previously the only way to learn how many entries existed. " +
-                 "Identical entries (same level, text, file and line) are listed once with a '(2× in the Error List)' note; " +
-                 "the first line gives both the total and the distinct count. " +
-                 "The Error List also shows runtime EventLogger events, sometimes twice; " +
-                 "for alarm diagnosis use twincat_read_event_logger, which is authoritative. " +
-                 "minLevel keeps only errors ('error') or errors and warnings ('warning'); limit/offset page through a long list " +
-                 "(the last line then gives total, has_more and next_offset). " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Read the XAE Error List: severity, text, file and line per entry. " +
+                 "Does not build or clear (that is twincat_clear_error_list). Identical entries are listed once with a " +
+                 "'(2× in the Error List)' note; the first line gives total and distinct count. " +
+                 "The list also shows runtime EventLogger events, sometimes twice; for alarm diagnosis use " +
+                 "twincat_read_event_logger. When paging, the last line gives total, has_more and next_offset. " +
+                 "Needs an open solution.")]
     public string GetErrorList(
-        [Description("'error', 'warning' or 'message' (default: everything).")] string? minLevel = null,
-        [Description("Most (distinct) entries to return; 0 (default) returns all.")] int limit = 0,
-        [Description("Entries to skip, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
+        [Description("Lowest severity kept: 'error', 'warning' or 'message'. Default: all.")] string? minLevel = null,
+        [Description("Max distinct entries; 0 (default) = all.")] int limit = 0,
+        [Description("Entries to skip (next_offset of the previous page). Default 0.")] int offset = 0,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_error_list", new { minLevel, limit, offset }, () =>
             Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
                 new BuildCoordinator(bridge.Dispatcher.Session).GetErrorList(minLevel, limit, offset)), cancellationToken);
 
     [McpServerTool(Name = "twincat_clear_error_list", ReadOnly = false, Destructive = false)]
-    [Description("Clear all entries in the XAE Error List window (the 'Löschen' / 'Clear' toolbar action). " +
-                 "Useful before a new build to remove accumulated stale diagnostics that would otherwise " +
-                 "obscure the current build output. Returns the cleared-entry count (best-effort; -1 if unavailable) " +
-                 "and a status string. Requires XAE running.")]
+    [Description("Clear all entries of the XAE Error List, for instance before a build. " +
+                 "Returns the cleared count (-1 if unknown). Needs a running XAE.")]
     public string ClearErrorList(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_clear_error_list", null, () =>
             bridge.Dispatcher.Run(() =>
@@ -42,86 +35,72 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_build_plc", ReadOnly = false, Destructive = false)]
-    [Description("Compile only the PLC project via DTE.Solution.SolutionBuild.BuildProject. " +
-                 "Faster than a full solution build for PLC-code-only changes. " +
-                 "Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. " +
-                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.")]
+    [Description("Compile only the PLC project, faster than a full solution build. " +
+                 "Returns { success, failedProjects, errors[] }. Library references are checked first (missing or wrong " +
+                 "version: '[Warn] Build result not conclusive', the build still runs). PLC files changed on disk outside the " +
+                 "XAE since loading refuse the build with [Error] (it would compile the stale in-memory state and saving could " +
+                 "overwrite the change): reload with twincat_open_project(closeCurrentFirst=true) or set ignoreStaleFiles. " +
+                 "With expectSymbols a name missing from the compiled PLC makes the result an [Error] that says why (only " +
+                 "objects a task's program reaches are compiled). Needs an open solution.")]
     public string BuildPlc(
-        [Description("Name of the PLC project to build (e.g. 'PLC'). " +
-                     "Leave empty to auto-detect the first .plcproj in the solution.")] string? plcProjectName = null,
-        [Description("Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
-        [Description("Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check.")] string[]? expectSymbols = null,
+        [Description("PLC project name (e.g. 'PLC'). Empty = first .plcproj.")] string? plcProjectName = null,
+        [Description("Build despite PLC files changed on disk outside the XAE (builds the in-memory state; result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
+        [Description("Names that must exist in the compiled PLC, checked case-insensitively in its .tmc, e.g. ['MAIN.fbAxis', 'GVL_Recipe.nCount', 'ST_Recipe']: symbol paths (also members), data types, or a program/GVL name. Functions and FB types without an instance never appear. Omit to skip.")] string[]? expectSymbols = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_build_plc", new { plcProjectName, ignoreStaleFiles, expectSymbols }, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).BuildPlc(plcProjectName, ignoreStaleFiles, expectSymbols)), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_check_all_objects", ReadOnly = false, Destructive = false)]
-    [Description("'Check all objects' of a PLC project (the XAE's Build menu): compiles EVERY object, also functions, FBs and GVLs " +
-                 "no task's program reaches. twincat_build_plc compiles only what a task reaches, so an uncalled object with errors " +
-                 "builds with 0 errors — in a library project (no task) nothing is checked at all. Use this to verify a library or " +
-                 "code that is not called yet. The Error List is cleared first (it keeps every message since the XAE started). The check " +
-                 "runs through the Automation Interface (ITcPlcIECProject2.CheckAllObjects) and leaves the XAE behind the user's work; " +
-                 "only an XAE without that call needs the XAE command, which selects the PLC project in the Solution Explorer and so " +
-                 "brings the XAE to the front — that way runs only with bringToFront=true, otherwise it is an [Error]. The result says " +
-                 "which way ran. Runs the same preflights as twincat_build_plc (stale files refuse, library references warn). No errors: " +
-                 "'Check all objects: no errors'; otherwise '[Error] Check all objects failed.' with the reason and the errors with file " +
-                 "and line. Requires XAE running with a solution open.")]
+    [Description("Run 'Check all objects': compile every PLC object, also ones no task reaches. " +
+                 "twincat_build_plc compiles only what a task reaches, so errors in uncalled code (or a whole library project) " +
+                 "go unnoticed; use this to verify a library or code not called yet. Clears the Error List first. Same preflights " +
+                 "as twincat_build_plc (stale files refuse, library references warn). An XAE lacking the automation call needs " +
+                 "the menu command, which brings the XAE to the front: only with bringToFront=true, else [Error]; the result " +
+                 "says which way ran. Result: 'Check all objects: no errors' or '[Error] Check all objects failed.' with the " +
+                 "errors and file/line. Needs an open solution.")]
     public string PlcCheckAllObjects(
-        [Description("Name of the PLC (e.g. 'PLC') or of its project. Leave empty for the first PLC project in the solution.")] string? plcProjectName = null,
-        [Description("Check even when PLC source files changed on disk outside the XAE (the in-memory state is checked; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
-        [Description("Allow the XAE to come to the front when this XAE needs the 'Check all objects' command (no ITcPlcIECProject2.CheckAllObjects). Default false.")] bool bringToFront = false,
+        [Description("PLC name (e.g. 'PLC') or its project name. Empty = first PLC project.")] string? plcProjectName = null,
+        [Description("Check despite PLC files changed on disk outside the XAE (checks the in-memory state; result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
+        [Description("Allow the XAE to come to the front if the menu-command fallback is needed. Default false.")] bool bringToFront = false,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_check_all_objects", new { plcProjectName, ignoreStaleFiles, bringToFront }, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).CheckAllObjects(plcProjectName, ignoreStaleFiles, bringToFront)), cancellationToken);
 
     [McpServerTool(Name = "twincat_build_solution", ReadOnly = false, Destructive = false)]
-    [Description("Trigger a full solution build via DTE.Solution.SolutionBuild.Build. " +
-                 "Compiles PLC code and IO mapping. " +
-                 "Returns { success, failedProjects, errors[] } where success is derived from LastBuildInfo==0. " +
-                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.")]
+    [Description("Build the whole solution: PLC code and IO mapping. " +
+                 "Returns { success, failedProjects, errors[] }. Library references are checked first (missing or wrong " +
+                 "version: '[Warn] Build result not conclusive', the build still runs). PLC files changed on disk outside the " +
+                 "XAE since loading refuse the build with [Error] (it would compile the stale in-memory state and saving could " +
+                 "overwrite the change): reload with twincat_open_project(closeCurrentFirst=true) or set ignoreStaleFiles. " +
+                 "With expectSymbols a name missing from the compiled PLC makes the result an [Error] that says why (only " +
+                 "objects a task's program reaches are compiled). Needs an open solution.")]
     public string BuildSolution(
-        [Description("Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
-        [Description("Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check.")] string[]? expectSymbols = null,
+        [Description("Build despite PLC files changed on disk outside the XAE (builds the in-memory state; result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
+        [Description("Names that must exist in the compiled PLC, checked case-insensitively in its .tmc, e.g. ['MAIN.fbAxis', 'GVL_Recipe.nCount', 'ST_Recipe']: symbol paths (also members), data types, or a program/GVL name. Functions and FB types without an instance never appear. Omit to skip.")] string[]? expectSymbols = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_build_solution", new { ignoreStaleFiles, expectSymbols }, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).BuildSolution(ignoreStaleFiles, expectSymbols)), cancellationToken);
 
     [McpServerTool(Name = "twincat_activate_config", ReadOnly = false, Destructive = true)]
-    [Description("Activate the TwinCAT configuration: ITcSysManager::CheckAllObjects() then ActivateConfiguration(). " +
-                 "IMPORTANT: ActivateConfiguration() alone is only 'Save To Registry' — it does NOT physically run the new " +
-                 "config, so the PLC keeps the OLD code (root cause of issue #136). Set autoConfirmRestart=true to also call " +
-                 "StartRestartTwinCAT() so the runtime reboots into the new config + boot project (this IS the deploy for the " +
-                 "'neu aktivieren' path; it forcibly restarts the PLC). Without it, only the registry is written. " +
-                 "With autoConfirmRestart the result is 'Activated' ONLY when the target's TwinCAT system reads Run afterwards: " +
-                 "an ADS ReadState on port 10000 of the project's target NetId (the local NetId for a Local target) that reads " +
-                 "Run once the restart has taken effect (the target was not in Run, or was seen leaving it) and holds it for 1 s, " +
-                 "within runTimeoutSeconds (default 60). The restart call returning is not success. " +
-                 "An XAE box raised meanwhile (e.g. 'Zielsystem meldet fatalen Fehler' / " +
-                 "'target reports fatal error') ends the wait with '[Error] Activation failed: <box text> …'. An OK-only box is " +
-                 "closed with its OK button ('(the XAE box was closed)'), so the XAE is never left modal; a box that asks a " +
-                 "question is never answered and stays open. A deadline without Run returns an [Error] with the last state read. " +
-                 "The target is the project's: call twincat_set_target first to activate on a specific runtime. " +
-                 "Set autoGenerateLicenses=true to answer the trial-license prompt with 'Ja'; the following security-code " +
-                 "dialog is typed only when its code is machine-readable — on TC 4026.x it is not, so the dialog is captured " +
-                 "once and CANCELLED (activation must never hang) and the result is an [Error] that names the three-step flow " +
-                 "(twincat_open_license_manager_and_request_trial → twincat_generate_trial_licenses → twincat_submit_security_code). " +
-                 "Without autoGenerateLicenses an unexpected trial-license prompt is declined and reported as an [Error]. " +
-                 "Dialog automation only ever touches windows of the attached XAE, never other applications. " +
-                 "Set autoConfirmLogin=true to auto-confirm the 'Applikation … seit dem letzten Download geändert' login modal " +
-                 "if it appears (loginMode = 'online_change' | 'download' | 'login_without_change'; updateBootProject ticks " +
-                 "'Bootapplikation aktualisieren'). If online change is not possible for the change, the modal is cancelled and " +
-                 "the result is an [Error] unless allowDownloadFallback=true (a download stops the running PLC). To deploy to an ALREADY-RUNNING PLC without a full restart, prefer " +
-                 "twincat_login (online-change/download). The system reading Run does not prove the PLC application is up " +
-                 "on its own port: verify the new code via an ADS symbol probe (twincat_read_ads_variable with amsNetId). " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Activate the TwinCAT configuration on the project's target. " +
+                 "Call twincat_set_target first to choose another runtime. Without autoConfirmRestart only the registry is " +
+                 "written: nothing is deployed and the PLC keeps its OLD code. With it TwinCAT restarts into the new config and " +
+                 "boot project (forcibly restarting the PLC); the result is 'Activated' only when the target's system state " +
+                 "(ADS port 10000) reads Run after the restart and holds it 1 s within runTimeoutSeconds, else an [Error] with " +
+                 "the last state. An XAE error box meanwhile (e.g. 'Zielsystem meldet fatalen Fehler') ends the wait with " +
+                 "'[Error] Activation failed: <box text>'; OK-only boxes are closed with OK, boxes that ask a question are never " +
+                 "answered. A trial-license prompt is declined with [Error] unless autoGenerateLicenses. Only windows of the " +
+                 "attached XAE are touched. To deploy to an already running PLC without a restart prefer twincat_login. Run " +
+                 "does not prove the PLC application is up: verify with twincat_read_ads_variable (amsNetId). " +
+                 "Needs an open solution.")]
     public string ActivateConfig(
-        [Description("Also call StartRestartTwinCAT() to physically restart TwinCAT into the new config (forcibly restarts the PLC) and confirm the restart dialog. Success then requires the target's system state to read Run (see runTimeoutSeconds). Default false (registry only — no deploy).")] bool autoConfirmRestart = false,
-        [Description("Answer the trial-license prompt with 'Ja'. An unreadable security code (TC 4026.x) is never guessed: the dialog is cancelled and the three-step licence flow is named in the [Error]. Default false.")]   bool autoGenerateLicenses = false,
-        [Description("Automatically confirm the 'application changed since last download' login modal if it appears. Default false.")] bool autoConfirmLogin = false,
-        [Description("Login strategy when the app-changed modal appears: 'online_change' | 'download' | 'login_without_change'. Default 'online_change'.")] string loginMode = "online_change",
-        [Description("When confirming via download, also tick 'Bootapplikation aktualisieren' so the new code survives a runtime restart. Default true.")] bool updateBootProject = true,
-        [Description("loginMode='online_change' only: when online change is not possible, confirm a full download instead (stops the running PLC). Default false — the modal is cancelled and an [Error] returned.")] bool allowDownloadFallback = false,
-        [Description("autoConfirmRestart only: seconds to wait after the restart for the target's TwinCAT system (ADS port 10000) to read Run. Default 60, clamped to 5..300.")] int? runTimeoutSeconds = null,
+        [Description("Restart TwinCAT into the new config (forcibly restarts the PLC; confirms the restart dialog). Default false = registry only, no deploy.")] bool autoConfirmRestart = false,
+        [Description("Answer the trial-license prompt with 'Ja'. An unreadable security code (TC 4026.x) is never guessed: the dialog is cancelled and the [Error] names the flow twincat_open_license_manager_and_request_trial → twincat_generate_trial_licenses → twincat_submit_security_code. Default false.")]   bool autoGenerateLicenses = false,
+        [Description("Confirm the 'Applikation … seit dem letzten Download geändert' login modal if it appears. Default false.")] bool autoConfirmLogin = false,
+        [Description("Answer for that modal: 'online_change' (default) | 'download' | 'login_without_change'.")] string loginMode = "online_change",
+        [Description("On download, tick 'Bootapplikation aktualisieren' so the code survives a runtime restart. Default true.")] bool updateBootProject = true,
+        [Description("loginMode='online_change' only: if online change is impossible, download instead (stops the running PLC). Default false cancels the modal with [Error].")] bool allowDownloadFallback = false,
+        [Description("autoConfirmRestart only: seconds to wait for Run. Default 60, clamped to 5..300.")] int? runTimeoutSeconds = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_activate_config",
             new { autoConfirmRestart, autoGenerateLicenses, autoConfirmLogin, loginMode, updateBootProject, allowDownloadFallback, runTimeoutSeconds }, () =>
@@ -142,78 +121,58 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_get_license_info", ReadOnly = true)]
-    [Description("Read the licenses of the project's TARGET system from its TwinCAT license server over ADS (AMS port 30) — " +
-                 "what the XAE's License editor shows. Returns per license: status (Present / Trial / Expired / Missing / Unknown), " +
-                 "order number, name, id, expiry and used/count. The target must answer over ADS (a Local target is this PC). " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Read the licenses of the project's target system over ADS (AMS port 30). " +
+                 "As the License editor shows them: status (Present / Trial / Expired / Missing / Unknown), order number, name, " +
+                 "id, expiry, used/count. The target must answer over ADS (Local = this PC). Needs an open solution.")]
     public string GetLicenseInfo(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_license_info", null, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).GetLicenseInfo()), cancellationToken);
 
     [McpServerTool(Name = "twincat_list_required_licenses", ReadOnly = true)]
-    [Description("List the licenses currently marked as required in the TIRC^License node " +
-                 "(the 'Manage Licenses' / LicenseRequest section). " +
-                 "These are the licenses that will be included in the next trial-license generation. " +
-                 "Use twincat_add_required_license to add a license before calling " +
-                 "twincat_open_license_manager_and_request_trial. " +
-                 "Requires XAE running with a solution open.")]
+    [Description("List the licenses marked as required for the next trial-license generation. " +
+                 "Add one with twincat_add_required_license before twincat_open_license_manager_and_request_trial. " +
+                 "Needs an open solution.")]
     public string ListRequiredLicenses(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_list_required_licenses", null, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).ListRequiredLicenses()), cancellationToken);
 
     [McpServerTool(Name = "twincat_add_required_license", ReadOnly = false, Destructive = false)]
-    [Description("Mark a license as required in the TIRC^License node so it is included in " +
-                 "the next trial-license generation. " +
-                 "Provide licenseId as a GUID (e.g. '{854588BA-345B-43F2-9354-0CF7AFF76EA3}') — required; an " +
-                 "orderNo alone is rejected because the .tsproj <ManualSelect> list only takes GUIDs. A missing " +
-                 "<Licenses><Target> section is created; the entry is read back from the .tsproj after the reload. " +
-                 "Idempotent: already-present licenses return success without change. " +
-                 "Call twincat_open_license_manager_and_request_trial after to generate the trial. " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Mark a license as required so the next trial-license generation includes it. " +
+                 "licenseId is required; an orderNo alone is rejected. Writes the .tsproj license list (created if missing) and " +
+                 "reads it back. Idempotent. Then call twincat_open_license_manager_and_request_trial. Needs an open solution.")]
     public string AddRequiredLicense(
         [Description("License GUID, e.g. '{854588BA-345B-43F2-9354-0CF7AFF76EA3}'. Required.")] string? licenseId = null,
-        [Description("Order number, e.g. 'SAMPLE-001'. Not sufficient on its own (cannot be resolved to a GUID).")] string? orderNo = null,
+        [Description("Order number, e.g. 'SAMPLE-001'. Not sufficient on its own.")] string? orderNo = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_add_required_license", new { licenseId, orderNo }, () =>
             bridge.Dispatcher.Run(() =>
                 new BuildCoordinator(bridge.Dispatcher.Session).AddRequiredLicense(licenseId, orderNo)), cancellationToken);
 
     [McpServerTool(Name = "twincat_remove_required_license", ReadOnly = false, Destructive = true)]
-    [Description("Remove a license from the required list in the TIRC^License node. " +
-                 "Provide licenseId (GUID) or orderNo — at least one is required. " +
-                 "Idempotent: absent licenses return success without change. " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Remove a license from the required-license list. " +
+                 "Give licenseId or orderNo. Idempotent. Needs an open solution.")]
     public string RemoveRequiredLicense(
-        [Description("License GUID to remove. Optional if orderNo is supplied.")] string? licenseId = null,
-        [Description("Order number to remove, e.g. 'SAMPLE-001'. Optional if licenseId is supplied.")] string? orderNo = null,
+        [Description("License GUID. Optional if orderNo is given.")] string? licenseId = null,
+        [Description("Order number, e.g. 'SAMPLE-001'. Optional if licenseId is given.")] string? orderNo = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_remove_required_license", new { licenseId, orderNo }, () =>
             bridge.Dispatcher.Run(() =>
                 new BuildCoordinator(bridge.Dispatcher.Session).RemoveRequiredLicense(licenseId, orderNo)), cancellationToken);
 
     [McpServerTool(Name = "twincat_open_license_manager_and_request_trial", ReadOnly = false, Destructive = true)]
-    [Description("Navigate to SYSTEM > License in TwinCAT XAE via the COM Automation Interface, " +
-                 "then click the 'Aktiviere 7 Tage Testlizenz' / '7 Days Trial License...' button. " +
-                 "Uses Win32 child-window search — works for Win32/WinForms License Manager controls. " +
-                 "If the button is in a WPF view without a native HWND the click will not land and the " +
-                 "response explains what to do manually. " +
-                 "After a successful click call twincat_generate_trial_licenses to handle " +
-                 "the confirmation and security-code dialogs. " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Open SYSTEM > License in the XAE and click the 7-day trial license button. " +
+                 "If the click cannot land (WPF view), the result says what to do by hand. Then call " +
+                 "twincat_generate_trial_licenses for the confirmation and security-code dialogs. Needs an open solution.")]
     public string OpenLicenseManagerAndRequestTrial(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_open_license_manager_and_request_trial", null, () =>
             bridge.Dispatcher.Run(() =>
                 new BuildCoordinator(bridge.Dispatcher.Session).OpenLicenseManagerAndRequestTrial()), cancellationToken);
 
     [McpServerTool(Name = "twincat_generate_trial_licenses", ReadOnly = false, Destructive = true)]
-    [Description("Handle the 'Some required runtime licenses missing — Generate trial licenses?' dialog. " +
-                 "Step 1: clicks 'Ja' (Yes) on the trial-license confirmation dialog. " +
-                 "Step 2: waits up to 10 s for the 'Sicherheitscode eingeben' security-code dialog " +
-                 "and returns a screenshot of it as an embedded PNG image. " +
-                 "Read the displayed 5-character code from the image, then call twincat_submit_security_code(code). " +
-                 "Does NOT require a COM session — all interaction is Win32-only. " +
-                 "Call twincat_open_license_manager_and_request_trial first if the confirmation dialog " +
-                 "is not yet visible.")]
+    [Description("Answer the trial-license prompt with 'Ja' and screenshot the security code. " +
+                 "Waits up to 10 s for the 'Sicherheitscode eingeben' dialog and returns it as a PNG image; read the " +
+                 "5-character code and call twincat_submit_security_code(code). Needs no open solution. If the prompt is not " +
+                 "visible yet, call twincat_open_license_manager_and_request_trial first.")]
     public IEnumerable<ContentBlock> GenerateTrialLicenses(CancellationToken cancellationToken = default)
     {
         // Dispatcher bypass (issue #150, C-6): pure Win32, traced; allow-listed in McpToolResultContractTests.
@@ -231,28 +190,21 @@ internal sealed partial class TwinCatMcpTools
     }
 
     [McpServerTool(Name = "twincat_submit_security_code", ReadOnly = false, Destructive = true)]
-    [Description("Enter a known security code into the open 'Sicherheitscode eingeben' dialog and click OK. " +
-                 "Use this after twincat_generate_trial_licenses returns an image: " +
-                 "read the displayed 5-character code from the embedded PNG, then pass it here. " +
-                 "Waits up to 2 s for the post-activation success popup and dismisses it automatically. " +
-                 "The dialog must already be visible on screen. " +
-                 "Does NOT require a COM session — pure Win32.")]
+    [Description("Enter the trial-license security code into its open dialog and click OK. " +
+                 "The 'Sicherheitscode eingeben' dialog must be visible; take the code from the twincat_generate_trial_licenses " +
+                 "image. Closes the success popup that follows (waits up to 2 s). Needs no open solution.")]
     public string SubmitSecurityCode(
-        [Description("The 5-character code shown in the security-code dialog (e.g. 'bW5Rm').")] string code,
+        [Description("The 5-character code, e.g. 'bW5Rm'.")] string code,
         CancellationToken cancellationToken = default)
         // Dispatcher bypass (issue #150, C-6): pure Win32, traced; allow-listed in McpToolResultContractTests.
         => bridge.Activity.Trace("twincat_submit_security_code", new { code }, () =>
             new BuildCoordinator(bridge.Dispatcher.Session).SubmitSecurityCode(code), cancellationToken);
 
     [McpServerTool(Name = "twincat_dismiss_security_dialog", ReadOnly = false, Destructive = true)]
-    [Description("Locate the open 'Sicherheitscode eingeben' (security-code entry) dialog, " +
-                 "read the displayed 5-character code from child window texts, type it into the edit field, and click OK. " +
-                 "NOTE: on TC3 4026.22 the code is custom-drawn and NOT extractable from child texts — " +
-                 "use twincat_generate_trial_licenses (which takes a screenshot) followed by " +
-                 "twincat_submit_security_code(code) instead. " +
-                 "Does NOT require a COM session — pure Win32, and it deliberately does not wait for the " +
-                 "operation lock: the dialog it answers is what a running activation is blocked on. " +
-                 "Requires the dialog to already be visible on screen.")]
+    [Description("Read, type and confirm the code of the open security-code dialog. " +
+                 "Works only when the 'Sicherheitscode eingeben' dialog shows the code as window text; on TC3 4026.22 it is " +
+                 "drawn and cannot be read — use twincat_generate_trial_licenses, then twincat_submit_security_code. Does not " +
+                 "wait for other calls, so it works while an activation is blocked on the dialog. The dialog must be visible.")]
     public string DismissSecurityDialog(CancellationToken cancellationToken = default)
         // Dispatcher bypass (issue #150, C-6): pure Win32 — must be callable while activate_config holds the lock.
         => bridge.Activity.Trace("twincat_dismiss_security_dialog", null, () =>

@@ -36,6 +36,7 @@ public class ToolProfilesTests
     [InlineData("Visual Studio Code", "core")]
     [InlineData("GitHub Copilot", "core")]
     [InlineData("windsurf-client", "core")]
+    [InlineData("hermes-agent", "core")]
     public void ClientRules_MatchAPartOfTheName(string client, string profile) =>
         Assert.Equal(profile, ToolProfiles.Resolve(null, null, client).Name);
 

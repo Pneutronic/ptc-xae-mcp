@@ -10,6 +10,24 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [3.2.2] - 2026-11-16
+
+### Changed
+- **Shorter tool descriptions.** tools/list costs about 30 % fewer tokens: about 45 000 instead of 65 000 for all
+  tools, about 26 000 instead of 35 000 for the `core` profile; the HMI tools are halved (about 5 200 instead of
+  10 700). The descriptions keep what a caller needs
+  (purpose, preconditions, side effects, confirmations, limits, which tool to use instead, parameter formats) and
+  drop COM interface names, history and repetition. Every first sentence fits in 80 characters, so clients that
+  list only the first sentence (Hermes Agent) show it whole. Tool names, parameters and defaults are unchanged.
+- **Leaner input schemas.** An optional parameter is listed without the `"null"` type and the `default: null` the
+  SDK generates; a parameter that `required` does not name is optional anyway. Arguments bind as before.
+
+### Fixed
+- **Hermes Agent sees tool descriptions** (#40) — Hermes lists MCP tools in a tool-search catalog of about 4000
+  tokens. With all 202 tools only the names fit, so the model saw no descriptions and no parameters until it called
+  `tool_describe`. Hermes (client name containing "hermes") now gets the `core` profile, whose 108 tools are listed
+  with the first sentence of their description. The README explains the Hermes settings for more toolsets.
+
 ## [3.2.1] - 2026-11-13
 
 ### Fixed

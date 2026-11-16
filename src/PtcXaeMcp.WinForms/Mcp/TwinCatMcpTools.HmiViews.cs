@@ -10,13 +10,10 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     private const string HmiPathParam =
-        "Project-relative path with '/' separators, e.g. 'UserControls/PtcCamCurve/PtcCamCurve.usercontrol' " +
-        "or 'Functions/PtcCamCurve.js'. No drive, no leading '/', no '..'.";
+        "Project-relative path with '/', e.g. 'UserControls/Foo/Foo.usercontrol'.";
 
     [McpServerTool(Name = "twincat_hmi_read_file", ReadOnly = true)]
-    [Description("Read the source text of a file of a TwinCAT HMI project (view, content, user control, " +
-                 ".usercontrol.json, function .js/.function.json, CSS …) via ITcHmiFile.GetSource. Read-only. " +
-                 "Result: one-line summary + indented JSON { path, length, lines, source }.")]
+    [Description("Read the source text of a file in an HMI project.")]
     public string HmiReadFile(
         [Description(HmiPathParam)] string path,
         [Description(HmiProjectParam)] string? hmiProject = null,
@@ -26,19 +23,14 @@ internal sealed partial class TwinCatMcpTools
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ReadFile(hmiProject, path))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_add_item", ReadOnly = false, Destructive = false)]
-    [Description("Create a new file in a TwinCAT HMI project from a TE2000 item template (ITcHmiItem.AddItem), " +
-                 "creating missing folders. kind: view, content, usercontrol (creates .usercontrol + .usercontrol.json), " +
-                 "function_js / function_ts (creates .js/.ts + .function.json, namespace = project name), codebehind_js, " +
-                 "codebehind_ts, css, html, js, json, ts, text (.txt), xml. html, view and text are created by importing " +
-                 "a correctly named file (empty; view = the vendor view skeleton) because their TE2000 templates misname " +
-                 "the file (x.html.html, x.view.view, x.text.txt). Refuses when the file exists. " +
-                 ConfirmNote + " Result: one-line summary + indented JSON (created paths).")]
+    [Description("Create a file in an HMI project from a TE2000 item template. Refuses an existing file. kind: " +
+                 "view, content, usercontrol, function_js, function_ts, codebehind_js, codebehind_ts, css, html, js, " +
+                 "json, ts, text, xml (usercontrol and function_* also create their .json). " + ConfirmNote)]
     public string HmiAddItem(
-        [Description("Template kind, see description.")] string kind,
-        [Description("Target folder, project-relative with '/', e.g. 'UserControls/PtcCamCurve'. The parameter must be " +
-                     "passed, but its value may be null or empty — both mean the project root.")]
+        [Description("Template kind (see the tool description).")] string kind,
+        [Description("Target folder, project-relative, e.g. 'UserControls/Foo'; empty = project root.")]
         string? folder,
-        [Description("File name without folder; the template's extension is added, e.g. 'PtcCamCurve'.")] string name,
+        [Description("File name without extension.")] string name,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
         CancellationToken cancellationToken = default)
@@ -48,16 +40,13 @@ internal sealed partial class TwinCatMcpTools
                     .AddItem(hmiProject, folder, name, kind, confirmTimeoutSeconds))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_write_file", ReadOnly = false, Destructive = true)]
-    [Description("Replace the source text of an EXISTING file of a TwinCAT HMI project (ITcHmiFile.SetSource), then " +
-                 "save and verify by read-back. Pass the text as 'source' or an absolute 'sourceFile' (max 5 MB). For JSON " +
-                 "files the project's own \"$schema\" value is kept (keepSchema, default true) because it points into the " +
-                 "project's Packages folder. Identical content → 'Nothing to do' without a popup. " + ConfirmNote +
-                 " Result: one-line summary + indented JSON.")]
+    [Description("Replace the source text of an existing file in an HMI project. Identical content = 'Nothing to " +
+                 "do'. " + ConfirmNote)]
     public string HmiWriteFile(
         [Description(HmiPathParam)] string path,
-        [Description("The complete new file content. Alternative to sourceFile.")] string? source = null,
-        [Description("Absolute path of a local file whose content is written. Alternative to source.")] string? sourceFile = null,
-        [Description("Keep the existing \"$schema\" value of a JSON file. Default true.")] bool keepSchema = true,
+        [Description("Complete new content. Or sourceFile.")] string? source = null,
+        [Description("Absolute path of a local file (max 5 MB) to write. Or source.")] string? sourceFile = null,
+        [Description("Keep a JSON file's existing \"$schema\".")] bool keepSchema = true,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
         CancellationToken cancellationToken = default)
@@ -68,17 +57,12 @@ internal sealed partial class TwinCatMcpTools
                     .WriteFile(hmiProject, path, source, sourceFile, keepSchema, confirmTimeoutSeconds))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_import_file", ReadOnly = false, Destructive = false)]
-    [Description("Copy an external file (e.g. an HTML document, image, PDF, JavaScript library) into a TwinCAT HMI project " +
-                 "(ITcHmiItem.AddExistingItem), creating the folder when missing. Refuses when the target exists. " +
-                 "When TE2000 raises an error although the file was added (seen for .js), the import counts only if the " +
-                 "copy on disk is byte-identical (engineError, verifiedOnDisk). For .js/.css the result says how " +
-                 "Properties/tchmiconfig.json lists it in dependencyFiles (dependencyType); run twincat_hmi_build afterwards " +
-                 "so the live view loads it. " +
-                 ConfirmNote + " Result: one-line summary + indented JSON.")]
+    [Description("Import an external file (HTML, image, PDF, JS library) into an HMI project. Refuses an existing " +
+                 "target. For .js/.css run twincat_hmi_build afterwards so the live view loads it. " + ConfirmNote)]
     public string HmiImportFile(
         [Description("Absolute path of the file to import.")] string sourcePath,
-        [Description("Target folder, project-relative with '/'. Empty = project root.")] string? folder = null,
-        [Description("Target file name. Default: the source file name.")] string? name = null,
+        [Description("Target folder, project-relative; empty = project root.")] string? folder = null,
+        [Description("Target file name. Default: the source name.")] string? name = null,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
         CancellationToken cancellationToken = default)
@@ -88,9 +72,8 @@ internal sealed partial class TwinCatMcpTools
                     .ImportFile(hmiProject, sourcePath, folder, name, confirmTimeoutSeconds))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_build", ReadOnly = false, Destructive = false)]
-    [Description("Build a TwinCAT HMI project (ITcHmiProject.Build) so new user controls, functions and contents reach " +
-                 "the engineering server's live view. Changes no source file (no popup). On failure see " +
-                 "twincat_get_error_list. Result: one-line summary + indented JSON.")]
+    [Description("Build an HMI project so changes reach the server's live view. Needed for new user controls, " +
+                 "functions, contents. On failure see twincat_get_error_list.")]
     public string HmiBuild(
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description("Solution configuration. Default 'Debug'.")] string? configuration = null,
@@ -100,15 +83,11 @@ internal sealed partial class TwinCatMcpTools
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).Build(hmiProject, configuration))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_apply_bundle", ReadOnly = false, Destructive = true)]
-    [Description("Create/write a whole package of HMI files from a manifest with ONE engineer confirmation — e.g. a user " +
-                 "control with its .usercontrol.json and function. Manifest (JSON): { \"name\": \"…\", \"entries\": " +
-                 "[ { \"path\": \"UserControls/X/X.usercontrol\", \"kind\": \"usercontrol\", \"source\": \"X.usercontrol\" }, " +
-                 "{ \"path\": \"UserControls/X/X.usercontrol.json\", \"source\": \"X.usercontrol.json\" } ] } — 'source' " +
-                 "relative to the manifest; existing files are written, missing ones created from 'kind' first; a " +
-                 "dependent file (.usercontrol.json, .function.json) needs no kind when an earlier entry's template creates " +
-                 "it. JSON files keep the project's \"$schema\". Everything is validated before the popup; afterwards the " +
-                 "entries run in order and stop at the first error (reporting what was already written). " + ConfirmNote +
-                 " Result: one-line summary + indented JSON.")]
+    [Description("Write a package of HMI files from a manifest with one confirmation. Manifest: { \"name\": \"…\", " +
+                 "\"entries\": [ { \"path\": \"UserControls/X/X.usercontrol\", \"kind\": \"usercontrol\", \"source\": " +
+                 "\"X.usercontrol\" } ] }; 'source' is relative to the manifest. Existing files are replaced, missing " +
+                 "ones created from 'kind' (not needed for a file an earlier entry's template creates). Validated " +
+                 "before the popup; stops at the first error. " + ConfirmNote)]
     public string HmiApplyBundle(
         [Description("Absolute path of the bundle manifest (JSON).")] string manifestPath,
         [Description(HmiProjectParam)] string? hmiProject = null,
@@ -120,11 +99,8 @@ internal sealed partial class TwinCatMcpTools
                     .ApplyBundle(hmiProject, manifestPath, confirmTimeoutSeconds))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_delete_item", ReadOnly = false, Destructive = true)]
-    [Description("Delete a file or folder of a TwinCAT HMI project (ITcHmiItem.DeleteChild) — removed from the project AND " +
-                 "from the disk, no recycle bin. Refused without a popup: the project infrastructure (Server, Properties, " +
-                 "Packages), the startup view and folders containing it; a missing item is reported without a popup. The " +
-                 "popup shows file or folder and how many items lie below it. " + ConfirmNote + " Success only when the " +
-                 "item is gone afterwards. Result: one-line summary + indented JSON.")]
+    [Description("Delete a file or folder of an HMI project from project AND disk. No recycle bin. Refuses " +
+                 "project infrastructure (Server, Properties, Packages) and the startup view. " + ConfirmNote)]
     public string HmiDeleteItem(
         [Description(HmiPathParam)] string path,
         [Description(HmiProjectParam)] string? hmiProject = null,

@@ -12,15 +12,14 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_plc_list_entries", ReadOnly = true)]
-    [Description("List the entries of an element's declaration, structured: STRUCT/UNION fields, ENUM values, GVL variables, and the variables of a POU or " +
-                 "MEMBER (METHOD, Get/Set) per section (VAR_INPUT, VAR_OUTPUT, VAR_IN_OUT, VAR, VAR_STAT, VAR_TEMP, VAR_INST, VAR_GLOBAL, each optionally " +
-                 "CONSTANT, RETAIN or PERSISTENT). One line per entry: line number, section, name, AT address, type, initial value, trailing comment, " +
-                 "attributes ({attribute '…'} pragmas). An entry the editor cannot change safely (several names in one entry, several entries on one " +
-                 "line, no ';') is listed with a note. section filters to one section. DUT ALIAS, INTERFACE bodies and ACTION/TRANSITION have no entries. " +
-                 "kind is checked against the node's real type. " + PlcKindHelp)]
+    [Description("List the declaration entries (fields, enum values, variables) of a PLC element. Covers STRUCT/UNION fields, " +
+                 "ENUM values, GVL variables and POU/MEMBER variables per section (VAR_INPUT … VAR_GLOBAL, optionally CONSTANT/RETAIN/" +
+                 "PERSISTENT). One line per entry: line number, section, name, AT address, type, initial value, comment, attribute pragmas. " +
+                 "Entries twincat_plc_edit_entries cannot change safely (several names in one entry, several entries on one line, no ';') " +
+                 "carry a note. DUT ALIAS, INTERFACE and ACTION/TRANSITION have no entries. " + PlcKindHelp)]
     public string PlcListEntries(
-        [Description("Caret-separated tree path of the element (DUT, GVL, POU or MEMBER).")] string path,
-        [Description("Element kind the node must have: DUT, GVL, POU or MEMBER.")] string kind,
+        [Description("Caret-separated tree path of a DUT, GVL, POU or MEMBER.")] string path,
+        [Description("Kind the node must have: DUT, GVL, POU or MEMBER.")] string kind,
         [Description("Optional section filter, e.g. VAR_INPUT or 'VAR_GLOBAL PERSISTENT'.")] string? section = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_list_entries", new { path, kind, section }, () =>
@@ -48,33 +47,28 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_edit_entries", ReadOnly = false, Destructive = true)]
-    [Description("Add, change or remove ONE entry of an element's declaration, leaving the rest of the text byte-identical. op is add, set or remove. " +
-                 "Entries: STRUCT/UNION fields, ENUM values (use value; the base type and attributes stay untouched), GVL variables (NORMAL and PARAMLIST), " +
-                 "and the variables of a POU or MEMBER per section — a missing section is created by op=add. section (e.g. VAR_INPUT, 'VAR_GLOBAL PERSISTENT', " +
-                 "'VAR RETAIN') is required when it is ambiguous. add: name and type (not for enum values); afterName inserts after that entry instead of at " +
-                 "the end of the section. set: pass what changes — type, initialValue (\"\" removes it), value (enum, \"\" removes it), address (AT address such " +
-                 "as %I*, \"\" removes it), comment (\"\" removes it), newName; attributes replaces the entry's attribute pragmas (a name such as hide, " +
-                 "\"attribute 'hide'\" or a full {attribute 'hide'}), an empty list removes them, null leaves them unchanged. remove: name only; the entry's " +
-                 "attribute lines go with it. Refused with an [Error], before the automatic logout and without a change: an unknown kind, a duplicate name, " +
-                 "several names in one entry or several entries on one line, DUT ALIAS and INTERFACE bodies, a parameter that does not apply. The write is " +
-                 "verified by read-back. With expectedRevision (from twincat_plc_read) the edit is refused, before the logout, when the element " +
-                 "changed since that read; the result ends with the new 'Revision: …'. Renamed or removed entries break code and ADS callers — " +
-                 "follow with twincat_rebuild_plc. " + PlcKindHelp)]
+    [Description("Add, change or remove one declaration entry, leaving the rest byte-identical. Works on STRUCT/UNION fields, ENUM " +
+                 "values (via value; base type and attributes untouched), GVL variables (NORMAL, PARAMLIST) and POU/MEMBER variables per " +
+                 "section; op=add creates a missing section. add: name + type (not for enum values). set: pass only what changes. " +
+                 "remove: name only; its attribute lines go with it. Refused with [Error] before the logout, nothing changed: wrong kind, " +
+                 "duplicate name, several names in one entry or several entries on one line, DUT ALIAS and INTERFACE, a parameter that does " +
+                 "not apply, a stale expectedRevision. Logs the XAE out first (refused if that fails); verified by read-back; the result ends " +
+                 "with the new 'Revision: …'. Renamed or removed entries break code and ADS callers — follow with twincat_rebuild_plc. " + PlcKindHelp)]
     public string PlcEditEntries(
-        [Description("Caret-separated tree path of the element (DUT, GVL, POU or MEMBER).")] string path,
-        [Description("Element kind the node must have: DUT, GVL, POU or MEMBER.")] string kind,
-        [Description("Operation: add, set or remove.")] string op,
-        [Description("Name of the entry (for add: the new entry).")] string name,
-        [Description("Section of a POU/MEMBER/GVL declaration, e.g. VAR_INPUT or 'VAR_GLOBAL PERSISTENT'. Required when ambiguous; add creates a missing one.")] string? section = null,
-        [Description("Data type, e.g. INT, ARRAY[0..3] OF REAL, POINTER TO BYTE. Required for add (not for enum values).")] string? type = null,
-        [Description("Enum value (only for ENUM entries). Empty string removes an explicit value.")] string? value = null,
-        [Description("Initial value (not for enum values). Empty string removes it.")] string? initialValue = null,
-        [Description("AT address such as %I* or %QX0.0 (not for enum values). Empty string removes it.")] string? address = null,
-        [Description("Trailing comment text. Empty string removes it.")] string? comment = null,
-        [Description("op=add: insert after this existing entry instead of at the end of the section.")] string? afterName = null,
-        [Description("op=set: new name for the entry.")] string? newName = null,
-        [Description("Attribute pragmas of the entry. Each is a name (hide), \"attribute 'hide'\" or {attribute 'hide'}. Null leaves them unchanged, an empty array removes them.")] string[]? attributes = null,
-        [Description("Revision twincat_plc_read reported for this element. When given, a different current revision refuses the edit (someone else changed it). Omit to edit unconditionally.")] string? expectedRevision = null,
+        [Description("Caret-separated tree path of a DUT, GVL, POU or MEMBER.")] string path,
+        [Description("Kind the node must have: DUT, GVL, POU or MEMBER.")] string kind,
+        [Description("add, set or remove.")] string op,
+        [Description("Entry name (for add: the new entry).")] string name,
+        [Description("Section, e.g. VAR_INPUT, 'VAR_GLOBAL PERSISTENT', 'VAR RETAIN'. Required when ambiguous; add creates a missing one.")] string? section = null,
+        [Description("Data type, e.g. ARRAY[0..3] OF REAL. Required for add (not for enum values).")] string? type = null,
+        [Description("ENUM entries only: the value; \"\" removes it.")] string? value = null,
+        [Description("Initial value (not for enum values); \"\" removes it.")] string? initialValue = null,
+        [Description("AT address, e.g. %I* or %QX0.0 (not for enum values); \"\" removes it.")] string? address = null,
+        [Description("Trailing comment; \"\" removes it.")] string? comment = null,
+        [Description("op=add: insert after this entry instead of at the section end.")] string? afterName = null,
+        [Description("op=set: new entry name.")] string? newName = null,
+        [Description("Replaces the attribute pragmas; each hide, \"attribute 'hide'\" or {attribute 'hide'}. null keeps, [] removes them.")] string[]? attributes = null,
+        [Description("Revision from twincat_plc_read; a different current revision refuses the edit. Omit to edit unconditionally.")] string? expectedRevision = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_edit_entries",
             new { path, kind, op, name, section, type, value, initialValue, address, comment, afterName, newName, attributes, expectedRevision }, () =>

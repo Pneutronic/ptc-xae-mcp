@@ -8,16 +8,13 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_get_iolink_config", ReadOnly = true)]
-    [Description("Read back the IO-Link configuration of a master terminal (e.g. EL6224) by tree path. " +
-                 "Read-only. Requires XAE running with a solution open. " +
-                 "Returns, per IO-Link port (1..4): the assigned device (name, vendor, product id, IODD file) " +
-                 "and its named process data (e.g. 'Valve 1 solenoid 00'). " +
-                 "Result body is a one-line summary followed by indented JSON. " +
-                 "The fieldbus topology does not descend into IO-Link ports, so pass the EL6224's own tree path here.")]
+    [Description("Read the IO-Link configuration of a master terminal (e.g. EL6224). " +
+                 "Read-only; needs an open solution. Per port (1..4): the assigned device (name, vendor, product id, " +
+                 "IODD file) and its named process data (e.g. 'Valve 1 solenoid 00'). Result: summary line + JSON. " +
+                 "The fieldbus topology does not descend into IO-Link ports, so pass the master's own tree path.")]
     public string GetIoLinkConfig(
-        [Description("Caret-separated tree path of the IO-Link master under TIID, e.g. " +
-                     "'TIID^Device 1 (EtherCAT)^+CAB1-A1 (EK1200)^Term 28 (EL6224)'. " +
-                     "Find it via twincat_get_fieldbus_topology.")]
+        [Description("Tree path of the IO-Link master, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1200)^Term 28 (EL6224)'. " +
+                     "From twincat_get_fieldbus_topology.")]
         string treePath,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_iolink_config", new { treePath }, () =>
@@ -31,18 +28,15 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_import_iodd", ReadOnly = false, Destructive = true)]
-    [Description("Register an IO-Link device description (IODD .xml) into TwinCAT's IODD folder " +
-                 "(…\\Config\\Io\\IOLink) so an IO-Link master (e.g. EL6224) can break the device down " +
-                 "into named process data. Reads the device identity (vendorId/deviceId/productId) from the " +
-                 "IODD and reports it. Idempotent (skips an identical already-registered file). " +
-                 "Does NOT require an open solution — it writes the TwinCAT IODD library, not the project. " +
-                 "TwinCAT picks the file up on its next IODD rescan.")]
+    [Description("Register an IO-Link device description (IODD .xml) in TwinCAT's IODD folder. " +
+                 "An IO-Link master (e.g. EL6224) then breaks the device down into named process data. Writes the TwinCAT " +
+                 "IODD library, not the project; no open solution needed. Reports the device identity (vendorId/deviceId/" +
+                 "productId). Idempotent: an identical registered file is skipped. TwinCAT picks the file up on its next " +
+                 "IODD rescan.")]
     public string ImportIodd(
-        [Description("Full path to the IODD .xml file to register, e.g. " +
-                     "'C:\\\\downloads\\\\Festo-VABX-A-P-EL-20230815-IODD1.1.xml'.")]
+        [Description("Full path of the IODD .xml file, e.g. 'C:\\\\temp\\\\Vendor-Device-20230815-IODD1.1.xml'.")]
         string sourcePath,
-        [Description("Optional override of the target IODD folder. Leave empty to use the TwinCAT default " +
-                     "(…\\Config\\Io\\IOLink).")]
+        [Description("Override of the IODD folder. Empty = TwinCAT default (…\\Config\\Io\\IOLink).")]
         string? targetFolder = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_import_iodd", new { sourcePath, targetFolder }, () =>
@@ -54,22 +48,20 @@ internal sealed partial class TwinCatMcpTools
             ?? new IoddImportCoordinator().ImportIodd(sourcePath, targetFolder));
 
     [McpServerTool(Name = "twincat_check_iodd_present", ReadOnly = true)]
-    [Description("Check whether the IODD (IO-Link device description) for a device is installed in TwinCAT's " +
-                 "IODD folder (…\\Config\\Io\\IOLink) — the IO-Link analogue of checking an EtherCAT ESI is present. " +
-                 "Identify the device by productId (e.g. 'VABX-A-P-EL-E12-IOS'), by ioddFileName, or by vendorId+deviceId. " +
-                 "Returns 'IODD present: …' or a fail-closed '[Error] Missing IODD — STOP…' report instructing the user " +
-                 "to obtain it. Run this before configuring/linking an IO-Link device so the workflow stops instead of " +
-                 "configuring blind. Does NOT require an open solution.")]
+    [Description("Check whether a device's IODD is installed in TwinCAT's IODD folder. " +
+                 "Identify the device by productId, ioddFileName or vendorId+deviceId. Returns 'IODD present: …' or a " +
+                 "fail-closed '[Error] Missing IODD — STOP…' telling the user to obtain it. Run it before configuring or " +
+                 "linking an IO-Link device. No open solution needed.")]
     public string CheckIoddPresent(
-        [Description("Device product id from the IODD's device-variant, e.g. 'VABX-A-P-EL-E12-IOS'. Optional.")]
+        [Description("Product id from the IODD's device variant, e.g. 'VABX-A-P-EL-E12-IOS'.")]
         string? productId = null,
-        [Description("Exact IODD filename, e.g. 'Festo-VABX-A-P-EL-20230815-IODD1.1.xml'. Optional.")]
+        [Description("Exact IODD file name, e.g. 'Vendor-Device-20230815-IODD1.1.xml'.")]
         string? ioddFileName = null,
-        [Description("IO-Link vendor id (use together with deviceId). Optional.")]
+        [Description("IO-Link vendor id (with deviceId).")]
         int? vendorId = null,
-        [Description("IO-Link device id (use together with vendorId). Optional.")]
+        [Description("IO-Link device id (with vendorId).")]
         int? deviceId = null,
-        [Description("Optional override of the IODD folder. Leave empty for the TwinCAT default (…\\Config\\Io\\IOLink).")]
+        [Description("Override of the IODD folder. Empty = TwinCAT default (…\\Config\\Io\\IOLink).")]
         string? targetFolder = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_check_iodd_present",

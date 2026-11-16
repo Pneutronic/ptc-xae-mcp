@@ -11,31 +11,28 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     private const string VisuPathHelp =
-        "Caret-separated tree path of the visualization, e.g. 'TIPC^Plc^Plc Project^VISUs^VISU_Overview' (twincat_plc_list kind=VISU shows them).";
+        "Caret-separated tree path of the visualization (twincat_plc_list kind=VISU), e.g. 'TIPC^Plc^Plc Project^VISUs^VISU_Main'.";
 
-    private const string VisuKindHelp = "Element kind the node must have: VISU. Checked against the node's real type before anything else happens.";
+    private const string VisuKindHelp = "Must be VISU; checked against the node's real type first.";
 
     private const string VisuWriteRules =
-        "kind is checked against the node's real type, the request and the file format are checked, and the PLC project must have a " +
-        "visualization manager (twincat_plc_create kind=VISU subtype=MANAGER creates one) — all before the automatic logout; a refusal changes " +
-        "nothing. Then the open editor of the visualization is closed, the object is deleted and the new file imported under the same name " +
-        "(object id kept), and the project file is read back. The previous file is kept under %LOCALAPPDATA%\\ptc-xae-mcp\\visu and imported " +
-        "again when XAE refuses the new one. Not saved — twincat_save_project afterwards. With expectedRevision (from twincat_visu_read) the " +
-        "write is refused when the file changed since. Elements the tools do not support are kept unchanged. The result ends with 'Revision: …'.";
+        "Checked before the logout, nothing changed on refusal: kind, request, file format, and that the PLC project has a visualization " +
+        "manager (create one with twincat_plc_create kind=VISU subtype=MANAGER). Logs the XAE out first (refused if that fails), closes " +
+        "the visualization's editor, deletes the object and imports the new file under the same name (object id kept). The previous file " +
+        "is kept under %LOCALAPPDATA%\\ptc-xae-mcp\\visu and re-imported if XAE refuses the new one. A stale expectedRevision refuses the " +
+        "write. Not saved — call twincat_save_project afterwards. The result ends with 'Revision: …'.";
 
     [McpServerTool(Name = "twincat_visu_list_element_types", ReadOnly = true)]
-    [Description("List the PLC visualization element types and properties the visu tools read and write, as JSON: per type whether it can be " +
-                 "created, its properties (name, kind integer/text/expression/color, meaning), and what is not supported. Needs no XAE.")]
+    [Description("List the visu element types and properties the visu tools support, as JSON. Per type: whether it can " +
+                 "be created, its properties (name, kind integer/text/expression/color, meaning) and what is not supported. Needs no XAE.")]
     public string VisuListElementTypes(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_visu_list_element_types", new { }, VisuJson.Catalog, cancellationToken);
 
     [McpServerTool(Name = "twincat_visu_read", ReadOnly = true)]
-    [Description("Read a PLC visualization (.TcVIS) structured, as JSON: name, file, interface (the VAR_IN_OUT declaration), extent, revision, " +
-                 "whether the tools may write the file, and every element with id, type, position, size, text and text variable, colours, " +
-                 "toggle-colour, colour, invisible, movement and rotation variables, tap and toggle variables, a Frame's referenced visualizations " +
-                 "and parameters, and its other " +
-                 "input actions. An element the tools do not support appears with type, id and supported=false and is never changed. Properties " +
-                 "absent from an element use XAE's default. kind must be VISU.")]
+    [Description("Read a PLC visualization (.TcVIS) as structured JSON. Returns name, file, interface (VAR_IN_OUT declaration), " +
+                 "extent, revision, whether the tools may write it, and every element with id, type, position, size, texts, colours, " +
+                 "colour/invisible/movement/rotation/tap/toggle variables, input actions and a Frame's visualizations and parameters. " +
+                 "Unsupported elements show type, id and supported=false and are never changed. Absent properties use XAE's default.")]
     public string VisuRead(
         [Description(VisuPathHelp)] string path,
         [Description(VisuKindHelp)] string kind = "",
@@ -44,23 +41,22 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() => new VisuCoordinator(bridge.Dispatcher.Session).Read(path, kind)), cancellationToken);
 
     [McpServerTool(Name = "twincat_visu_apply", ReadOnly = false, Destructive = true)]
-    [Description("Create a PLC visualization or replace its whole page from JSON: { \"interface\": \"VAR_IN_OUT … END_VAR\" (optional; kept when " +
-                 "omitted), \"elements\": [ { \"type\": \"Rectangle\", \"x\": 10, \"y\": 10, \"width\": 120, \"height\": 40, \"text\": \"Step %d\", " +
-                 "\"textVariable\": \"MAIN.fb.nStep\", \"fillColor\": \"#C0FFC0\", \"toggleVariable\": \"MAIN.bManual\" }, " +
+    [Description("Create a PLC visualization or replace its whole page from JSON. Page: { \"interface\": \"VAR_IN_OUT … END_VAR\" " +
+                 "(optional; kept when omitted), \"elements\": [ { \"type\": \"Rectangle\", \"x\": 10, \"y\": 10, \"width\": 120, \"height\": 40, " +
+                 "\"text\": \"Step %d\", \"textVariable\": \"MAIN.fb.nStep\", \"fillColor\": \"#C0FFC0\", \"toggleVariable\": \"MAIN.bManual\" }, " +
                  "{ \"type\": \"Frame\", \"x\": 10, \"y\": 60, \"width\": 160, \"height\": 70, \"visualization\": \"VISU_Station\", " +
                  "\"parameters\": { \"fb\": \"MAIN.fbStation1\" } }, … ] }. Types: Rectangle, RoundedRectangle, Ellipse, Line, Label, " +
-                 "TextField, Button, Frame (twincat_visu_list_element_types lists their properties); a new element needs x, y, width and height, " +
-                 "a Frame also the visualization it shows and a value for every VAR_IN_OUT of that visualization's interface. " +
-                 "{ \"copyFrom\": <id>, … } copies an element of one of these types as it was and applies the other properties. Polygons " +
-                 "and elements the tools do not support cannot be kept by this tool (twincat_visu_edit_elements keeps them). Every existing " +
-                 "element is replaced. When the path does not exist, the visualization is created there (parent: a folder or the PLC project node). " +
-                 "Element ids are assigned anew and listed in the result. " + VisuWriteRules)]
+                 "TextField, Button, Frame (properties: twincat_visu_list_element_types). A new element needs x, y, width, height; a Frame " +
+                 "also its visualization and a value for every VAR_IN_OUT of that visualization's interface. { \"copyFrom\": <id>, … } " +
+                 "copies an element of these types and applies the other properties. Every existing element is replaced — Polygons and " +
+                 "unsupported elements are lost (twincat_visu_edit_elements keeps them). A missing path creates the visualization (parent: " +
+                 "a folder or the PLC project node). Element ids are reassigned and listed in the result. " + VisuWriteRules)]
     public string VisuApply(
         [Description(VisuPathHelp + " The last part is the visualization's name.")] string path,
         [Description(VisuKindHelp)] string kind = "",
-        [Description("The page as JSON (see the tool description). Alternative to 'pageFile'.")] string? page = null,
-        [Description("Path to a file holding the page JSON. Alternative to 'page'.")] string? pageFile = null,
-        [Description("Revision twincat_visu_read reported. When given, a different current revision refuses the write.")] string? expectedRevision = null,
+        [Description("Page JSON (see the tool description). Or pageFile.")] string? page = null,
+        [Description("File holding the page JSON. Or page.")] string? pageFile = null,
+        [Description("Revision from twincat_visu_read; a different current revision refuses the write.")] string? expectedRevision = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_visu_apply", new { path, kind, page, pageFile, expectedRevision }, () =>
             bridge.Dispatcher.Run(() =>
@@ -75,19 +71,19 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_visu_edit_elements", ReadOnly = false, Destructive = true)]
-    [Description("Add, change or remove single elements of an existing PLC visualization; every other element (also one the tools do not " +
-                 "support) stays as it is. operations is a JSON array run in order, ids as twincat_visu_read reports them: " +
+    [Description("Add, change or remove single elements of an existing PLC visualization. Every other element, also unsupported " +
+                 "ones, stays as it is. operations is a JSON array run in order, ids from twincat_visu_read: " +
                  "{ \"op\": \"add\", \"element\": { \"type\": \"Label\", \"x\": 10, \"y\": 60, \"width\": 100, \"height\": 20, \"text\": \"Ready\" } }, " +
                  "{ \"op\": \"add\", \"element\": { \"copyFrom\": 4, \"x\": 300, \"parameters\": { \"fb\": \"MAIN.fbStation2\" } } }, " +
                  "{ \"op\": \"update\", \"id\": 3, \"set\": { \"fillColor\": \"#FF0000\", \"invisibleVariable\": \"NOT MAIN.bShow\" } } (null resets a " +
-                 "property to XAE's default), { \"op\": \"remove\", \"id\": 5 }. A Frame takes \"visualization\" and \"parameters\" like in twincat_visu_apply; a Polygon is read only: it can be removed, not changed. interface optionally replaces the VAR_IN_OUT declaration. " +
-                 "The whole request is validated before anything changes. " + VisuWriteRules)]
+                 "property to XAE's default), { \"op\": \"remove\", \"id\": 5 }. A Frame takes \"visualization\" and \"parameters\" as in " +
+                 "twincat_visu_apply; a Polygon can only be removed. The whole request is validated before anything changes. " + VisuWriteRules)]
     public string VisuEditElements(
         [Description(VisuPathHelp)] string path,
         [Description(VisuKindHelp)] string kind = "",
-        [Description("JSON array of operations (see the tool description). May be empty when only interface is given.")] string? operations = null,
-        [Description("Optional new interface declaration of the visualization, e.g. \"VAR_IN_OUT\\n\\tfb : FB_Station;\\nEND_VAR\".")] string? @interface = null,
-        [Description("Revision twincat_visu_read reported. When given, a different current revision refuses the write.")] string? expectedRevision = null,
+        [Description("JSON array of operations (see the tool description); may be empty when only interface is given.")] string? operations = null,
+        [Description("Optional new VAR_IN_OUT interface declaration, e.g. \"VAR_IN_OUT\\n\\tfb : FB_Station;\\nEND_VAR\".")] string? @interface = null,
+        [Description("Revision from twincat_visu_read; a different current revision refuses the write.")] string? expectedRevision = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_visu_edit_elements", new { path, kind, operations, @interface, expectedRevision }, () =>
             bridge.Dispatcher.Run(() =>

@@ -7,28 +7,18 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     internal const string BringToFrontHelp =
-        "Bring the XAE to the foreground. Only when a person asked to see it (e.g. 'where is that?'); default false — " +
-        "the XAE is never pulled in front of the user's work otherwise.";
+        "Bring the XAE to the foreground. Only when a person asked to see it (e.g. 'where is that?'). Default false.";
 
     [McpServerTool(Name = "twincat_open_object", ReadOnly = true)]
     [Description(
-        "Surface ANY Solution-Explorer node in the VISIBLE TwinCAT XAE so a live MCP-driven " +
-        "demo/video always shows which object is being worked on. treePath is the same caret-" +
-        "separated path as twincat_plc_read (e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' " +
-        "for a PLC object, or 'TIID^Device 1 (EtherCAT)' for an EtherCAT device). Two behaviours, " +
-        "because XAE treats the node families differently: a PLC source object (POU/GVL/DUT/" +
-        "INTERFACE) opens its OWN editor tab; a system-manager node (EtherCAT/IO, Motion/NC, " +
-        "TcCOM) and a Scope node are ACTIVATED in the Solution-Explorer tree (selected + Enter, like a " +
-        "double-click) — sysman nodes share ONE sysman editor (no per-node tab), and a Scope view opens " +
-        "on activation. Both bring the XAE to the foreground, so a system-manager or Scope node is shown only with " +
-        "bringToFront=true (otherwise an [Error], nothing selected); a PLC object opens its tab behind the user's work " +
-        "without it. For a Scope node pass the Solution-Explorer names, e.g. " +
-        "'<scope project>^<scope node>'. The read tools (read_pou, read_gvl, read_pou_member) auto-open. The headless write " +
-        "tools do NOT auto-open — call this explicitly before a write for full video coverage. Returns one line describing " +
-        "what happened (opened tab vs. selected node) and, with bringToFront, whether the XAE reached the " +
-        "foreground (Windows may refuse — reported, not an error).")]
+        "VISIBLE: show any Solution-Explorer node in the XAE editor or tree. A PLC source object " +
+        "(POU/GVL/DUT/INTERFACE) opens its own editor tab, behind the user's work unless bringToFront=true. A system-manager " +
+        "node (EtherCAT/IO, Motion/NC, TcCOM) or a Scope node is activated in the tree like a double-click (sysman nodes share " +
+        "one editor); that needs the foreground, so without bringToFront=true it is an [Error] and nothing is selected. " +
+        "Write tools do not open the editor; call this before a write to show it. Returns one line (tab opened or node " +
+        "selected) and, with bringToFront, whether the XAE reached the foreground (Windows may refuse; not an error).")]
     public string OpenObject(
-        [Description("Caret-separated tree path of the node to surface, e.g. 'TIPC^PLC^PLC Projekt^POUs^01_Application^MAIN' for a PLC object, or 'TIID^Device 1 (EtherCAT)' for an EtherCAT device.")] string treePath,
+        [Description("Caret-separated tree path, e.g. 'TIPC^PLC^PLC Projekt^POUs^MAIN' or 'TIID^Device 1 (EtherCAT)'; for Scope the Solution-Explorer names, '<scope project>^<scope node>'.")] string treePath,
         [Description(BringToFrontHelp)] bool bringToFront = false,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_open_object", new { treePath, bringToFront }, () =>
@@ -40,12 +30,10 @@ internal sealed partial class TwinCatMcpTools
 
     [McpServerTool(Name = "twincat_close_object", ReadOnly = false, Destructive = false)]
     [Description(
-        "Counterpart to twincat_open_object: tidy up a live demo. For a PLC source object, saves " +
-        "and closes its editor tab. For a system-manager node there is no per-node tab (one shared " +
-        "sysman editor), so this is a reported no-op, never an error. treePath is the same caret-" +
-        "separated path as twincat_open_object. Returns one line describing what happened.")]
+        "Save and close a PLC object's editor tab (counterpart of twincat_open_object). A system-manager node has no " +
+        "own tab: reported no-op, not an error. Returns one line.")]
     public string CloseObject(
-        [Description("Caret-separated tree path of the node to close, same as passed to twincat_open_object.")] string treePath,
+        [Description("Caret-separated tree path, as for twincat_open_object.")] string treePath,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_close_object", new { treePath }, () =>
             bridge.Dispatcher.Run(() =>

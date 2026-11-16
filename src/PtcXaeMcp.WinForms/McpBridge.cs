@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Reflection;
@@ -202,6 +203,9 @@ internal sealed class McpBridge : IDisposable
 
             var app = builder.Build();
             app.Urls.Add($"http://localhost:{Port}");
+
+            // Optional parameters lose the "null" type and the null default the SDK generates (see ToolSchemas).
+            ToolSchemas.SlimAll(app.Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection);
 
             // Localhost-only hardening (#156 item 7, SECURITY.md). Runs before
             // everything else: a request whose Host header is not one of the

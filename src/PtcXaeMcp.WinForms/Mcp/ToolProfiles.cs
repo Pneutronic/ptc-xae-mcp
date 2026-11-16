@@ -44,6 +44,9 @@ internal static class ToolProfiles
         ("visual studio code", Core),
         ("vscode", Core),
         ("copilot", Core),
+        // Hermes Agent defers every MCP tool behind its tool search and lists the deferred tools in a catalog of
+        // about 4000 tokens: with all tools only the names fit, with core each name keeps its first sentence.
+        ("hermes", Core),
     ];
 
     public static EffectiveProfile Resolve(string? environmentValue, string? guiValue, string? clientName)

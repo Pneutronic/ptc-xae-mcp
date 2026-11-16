@@ -10,18 +10,17 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     internal const string PlcProjectNameHelp =
-        "The PLC whose references are meant, by its name under PLC or its project name (e.g. 'PLC' or 'PLC Project'). " +
-        "Leave empty for the first PLC project; with several PLC projects in the solution, name the one you mean.";
+        "PLC name or its project name (e.g. 'PLC'). Empty = first PLC project; name it when there are several.";
 
     [McpServerTool(Name = "twincat_list_library_references", ReadOnly = true)]
-    [Description("List PLC library references for the open project. Reads the live XAE library manager when available and compares against the .plcproj on disk; falls back to the .plcproj alone when XAE is not ready. " +
-                 "Each reference also shows the concrete library it resolves to (resolvedName, resolvedVersion, resolvedDistributor) and how that was determined (resolution): " +
-                 "'effective' = the library manager's effective resolution of the placeholder (what the project compiles against), 'fixed' = the reference names a concrete version, " +
-                 "'newest-installed' = '*'/newest resolved to the highest installed version (a computed approximation, see warnings), 'unresolved' = no matching library. " +
-                 "format='text' (default): one line per reference with the suffix [resolved: <name> <version> (<distributor>), <resolution>]. " +
-                 "format='json': { success, summary, count, references [{ placeholder, name, version, publisher, source, filePinnedVersion, versionMatchesFile, resolvedName, resolvedVersion, resolvedDistributor, resolution }], warnings }.")]
+    [Description("List the open project's PLC library references and what each resolves to. " +
+                 "Reads the XAE library manager and compares with the .plcproj on disk (the .plcproj alone if the XAE is not " +
+                 "ready). resolution: 'effective' (what the project compiles against), 'fixed' (concrete version referenced), " +
+                 "'newest-installed' ('*' taken as the highest installed version, an approximation) or 'unresolved'. " +
+                 "JSON: { success, summary, count, references [{ placeholder, name, version, publisher, source, filePinnedVersion, " +
+                 "versionMatchesFile, resolvedName, resolvedVersion, resolvedDistributor, resolution }], warnings }.")]
     public string ListLibraryReferences(
-        [Description("Output format: 'text' (default) or 'json' (full records).")] string? format = null,
+        [Description("'text' (default, one line per reference) or 'json' (full records).")] string? format = null,
         [Description(PlcProjectNameHelp)] string? plcProjectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_list_library_references", new { format, plcProjectName }, () =>
@@ -38,7 +37,7 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_list_installed_libraries", ReadOnly = true)]
-    [Description("List libraries installed in the local TwinCAT XAE library repository (requires XAE running with a solution open).")]
+    [Description("List the libraries installed in the local XAE library repository. Needs an open solution.")]
     public string ListInstalledLibraries(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_list_installed_libraries", null, () =>
             bridge.Dispatcher.Run(() =>
@@ -58,7 +57,8 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_check_libraries_installed", ReadOnly = true)]
-    [Description("Check whether every PLC library reference of the open project is installed in the local XAE repository. Reports each reference as Installed, Missing, or VersionMismatch. Reference version '*' is satisfied by any installed version with the same name.")]
+    [Description("Check that every PLC library reference is installed in the local repository. " +
+                 "Each one is Installed, Missing or VersionMismatch; version '*' matches any installed version of that name.")]
     public string CheckLibrariesInstalled(
         [Description(PlcProjectNameHelp)] string? plcProjectName = null,
         CancellationToken cancellationToken = default)
@@ -84,17 +84,14 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_add_library_reference", ReadOnly = false, Destructive = false)]
-    [Description("Add a PLC library (or placeholder) reference to the open project's References node. " +
-                 "name: library name (required). version: pinned version or '*' for latest (default '*'). " +
-                 "company: distributor name (optional). asPlaceholder: add as a placeholder reference (default false). " +
-                 "force: bypass the install-guard and add even if the library is not installed (default false). " +
-                 "Returns the updated reference list.")]
+    [Description("Add a PLC library or placeholder reference to the open project. " +
+                 "A library that is not installed is refused with [Error] unless force=true. Returns the updated reference list.")]
     public string AddLibraryReference(
         [Description("Library name, e.g. 'Tc2_MC2'.")] string name,
-        [Description("Version string or '*' for latest.")] string version = "*",
-        [Description("Distributor/company, e.g. 'Beckhoff Automation GmbH'.")] string? company = null,
-        [Description("Add as placeholder reference instead of a direct library reference.")] bool asPlaceholder = false,
-        [Description("Add even if the library is not installed in the local XAE repository.")] bool force = false,
+        [Description("Version or '*' for latest (default).")] string version = "*",
+        [Description("Distributor, e.g. 'Beckhoff Automation GmbH'. Optional.")] string? company = null,
+        [Description("Add as placeholder instead of a direct library reference. Default false.")] bool asPlaceholder = false,
+        [Description("Add even if the library is not installed locally. Default false.")] bool force = false,
         [Description(PlcProjectNameHelp)] string? plcProjectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_add_library_reference",
@@ -114,8 +111,8 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_remove_library_reference", ReadOnly = false, Destructive = true)]
-    [Description("Remove a PLC library or placeholder reference from the open project by name. " +
-                 "No-op if the reference is not present. Returns the updated reference list.")]
+    [Description("Remove a PLC library or placeholder reference by name. " +
+                 "No-op if absent. Returns the updated reference list.")]
     public string RemoveLibraryReference(
         [Description("Library or placeholder name to remove, e.g. 'Tc2_MC2'.")] string name,
         [Description(PlcProjectNameHelp)] string? plcProjectName = null,
@@ -140,8 +137,8 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_install_library", ReadOnly = false, Destructive = true)]
-    [Description("Install a .library/.compiled-library file into the local XAE library repository " +
-                 "(repository 'System'). Requires XAE running with a solution open.")]
+    [Description("Install a .library/.compiled-library file into the local 'System' repository. " +
+                 "Needs an open solution.")]
     public string InstallLibrary(
         [Description("Absolute path to the .library/.compiled-library file.")] string libraryPath,
         [Description("Overwrite if the same version is already installed. Default false.")] bool overwrite = false,
@@ -160,19 +157,16 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_save_as_library", ReadOnly = false, Destructive = true)]
-    [Description("Save as library / Save as compiled library (optionally install): export the open PLC project as a library " +
-                 "file — the counterpart to twincat_install_library. The extension of outputPath selects the format: " +
-                 "'.library' (source library, ITcPlcIECProject.SaveAsLibrary) or '.compiled-library' (compiled library, " +
-                 "ITcPlcIECProject6.SaveAsLibrary2); any other extension is refused. install: also register it in the local XAE " +
-                 "library repository (default false). overwrite: replace an existing file (default false: an existing file is refused). " +
-                 "encrypt: encrypt a .compiled-library (needs software protection on the project; refused for .library). " +
-                 "The PLC project's Title (Project Information) must be set. Read-back: the file exists and is not empty (size reported); " +
-                 "with install the installed-library list must show it. Requires XAE running with a solution open; the target directory must already exist.")]
+    [Description("Export the open PLC project as a library file, optionally installing it. " +
+                 "The outputPath extension selects '.library' (source) or '.compiled-library' (compiled); others are refused. " +
+                 "The PLC project's Title (Project Information) must be set and the target directory must exist. Verified by " +
+                 "the file existing and not being empty (size reported) and, with install, by the installed-library list. " +
+                 "Needs an open solution.")]
     public string SaveAsLibrary(
-        [Description("Absolute path of the library file, ending in .library or .compiled-library, e.g. 'C:\\Libs\\PTC_Library.compiled-library'.")] string outputPath,
+        [Description("Absolute path ending in .library or .compiled-library, e.g. 'C:\\Libs\\PTC_Library.compiled-library'.")] string outputPath,
         [Description("Also install into the local XAE library repository. Default false.")] bool install = false,
-        [Description("Replace an existing file at outputPath. Default false (an existing file is refused).")] bool overwrite = false,
-        [Description("Encrypt the compiled library (.compiled-library only). Default false.")] bool encrypt = false,
+        [Description("Replace an existing file at outputPath. Default false refuses.")] bool overwrite = false,
+        [Description("Encrypt the compiled library (.compiled-library only; needs software protection on the project). Default false.")] bool encrypt = false,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_save_as_library", new { outputPath, install, overwrite, encrypt }, () =>
             bridge.Dispatcher.Run(() =>
@@ -180,19 +174,17 @@ internal sealed partial class TwinCatMcpTools
                 ?? new LibraryCoordinator(bridge.Dispatcher.Session).SaveAsLibrary(outputPath, install, overwrite, encrypt)), cancellationToken);
 
     [McpServerTool(Name = "twincat_library_signatures", ReadOnly = true)]
-    [Description("The public API of the libraries the PLC project references — function blocks, functions, types and global lists with " +
-                 "their inputs, outputs and constants — as the XAE serialises it (ITcPlcLibraryManager2.ProduceAllLibrarySignatures). Use it " +
-                 "before calling a library FB instead of guessing its inputs: compiled vendor libraries (Tc2_MC2, Tc3_EventLogger, …) have no " +
-                 "readable source. Writes the XML to outputPath (default: <LOCALAPPDATA>\\ptc-xae-mcp\\library-signatures\\<solution>." +
-                 "library-signatures.xml, outside the project) and returns per library name, version, distributor and the count of types per " +
-                 "kind; typeName (e.g. MC_MoveAbsolute, case-insensitive) adds that type's inputs, outputs and constants. library narrows to one " +
-                 "library (name or placeholder). Referenced libraries that are missing from the export (not resolved) are named. Changes " +
-                 "nothing in the project. Methods and properties of an FB are probably not part of the export.")]
+    [Description("Read the public API (FBs, functions, types) of the referenced PLC libraries. " +
+                 "Use it before calling a library FB instead of guessing its inputs; compiled vendor libraries (Tc2_MC2, " +
+                 "Tc3_EventLogger, …) have no readable source. Writes the XML to outputPath (outside the project) and returns per " +
+                 "library name, version, distributor and type counts per kind; typeName adds that type's inputs, outputs and " +
+                 "constants. Unresolved referenced libraries are named. Changes nothing in the project. FB methods and " +
+                 "properties are probably not included.")]
     public string LibrarySignatures(
-        [Description("Optional library name or placeholder, e.g. Tc2_MC2. Omit for every referenced library.")] string? library = null,
-        [Description("Optional path of the XML file to write. Default under %LOCALAPPDATA%\\ptc-xae-mcp\\library-signatures.")] string? outputPath = null,
-        [Description("Optional type name whose inputs/outputs/constants are returned inline, e.g. TON or MC_MoveAbsolute.")] string? typeName = null,
-        [Description("Name of the PLC (or its project) whose libraries are meant. Leave empty for the first PLC project.")] string? plcProjectName = null,
+        [Description("Library name or placeholder, e.g. Tc2_MC2. Omit for all referenced libraries.")] string? library = null,
+        [Description("Path of the XML file to write. Default %LOCALAPPDATA%\\ptc-xae-mcp\\library-signatures\\<solution>.library-signatures.xml.")] string? outputPath = null,
+        [Description("Type whose inputs/outputs/constants are returned inline, case-insensitive, e.g. MC_MoveAbsolute.")] string? typeName = null,
+        [Description("PLC name or its project name. Empty = first PLC project.")] string? plcProjectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_library_signatures", new { library, outputPath, typeName, plcProjectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -200,9 +192,8 @@ internal sealed partial class TwinCatMcpTools
                 ?? new LibrarySignatureCoordinator(bridge.Dispatcher.Session).Export(library, outputPath, typeName, plcProjectName)), cancellationToken);
 
     [McpServerTool(Name = "twincat_get_library_parameters", ReadOnly = true)]
-    [Description("List the parameter-list overrides of a referenced PLC library placeholder " +
-                 "(e.g. GVL_PARAMETER constants like NUMBER_OF_ITEMS), as persisted in the .plcproj. " +
-                 "No overrides means the library defaults apply.")]
+    [Description("List the parameter-list overrides of a referenced PLC library placeholder. " +
+                 "Such as GVL_PARAMETER constants like NUMBER_OF_ITEMS, as stored in the .plcproj; none = library defaults apply.")]
     public string GetLibraryParameters(
         [Description("Library or placeholder name, e.g. 'Sample-Library'.")] string library,
         CancellationToken cancellationToken = default)
@@ -222,10 +213,8 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_set_library_parameter", ReadOnly = false, Destructive = true)]
-    [Description("Set (or add) one parameter-list override on a referenced PLC library placeholder — " +
-                 "e.g. GVL_PARAMETER/NUMBER_OF_ITEMS = 101 on 'Sample-Library'. Writes via the XAE " +
-                 "References node (ProduceXml→ConsumeXml), saves, and verifies the value persisted " +
-                 "to the .plcproj. Returns the updated override list.")]
+    [Description("Set or add one parameter-list override on a referenced PLC library placeholder. " +
+                 "Saves and verifies the value in the .plcproj. Returns the updated override list.")]
     public string SetLibraryParameter(
         [Description("Library or placeholder name, e.g. 'Sample-Library'.")] string library,
         [Description("Parameter list name, e.g. 'GVL_PARAMETER'.")] string listName,
@@ -249,8 +238,7 @@ internal sealed partial class TwinCatMcpTools
 
     [McpServerTool(Name = "twincat_set_library_version", ReadOnly = false, Destructive = true)]
     [Description("Change the pinned version of an existing PLC library reference. " +
-                 "name: library name (required). version: new version string or '*' (required). " +
-                 "company: distributor override (optional). Returns the updated reference list.")]
+                 "Returns the updated reference list.")]
     public string SetLibraryVersion(
         [Description("Library name, e.g. 'Tc2_MC2'.")] string name,
         [Description("New version string, e.g. '3.3.73.0' or '*'.")] string version,

@@ -7,7 +7,8 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_get_active_project", ReadOnly = true)]
-    [Description("Get the currently active TwinCAT project. Returns { solutionOpen, solutionPath, solutionName } so agents can verify the expected project is loaded before mutating operations.")]
+    [Description("Get the open TwinCAT solution: { solutionOpen, solutionPath, solutionName }. " +
+                 "Check it before changing anything.")]
     public string GetActiveProject(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_active_project", null, () =>
             bridge.Dispatcher.Run(() =>

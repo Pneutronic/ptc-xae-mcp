@@ -10,16 +10,18 @@ internal sealed partial class TwinCatMcpTools
     private ServerHost ServerHost => host;
 
     [McpServerTool(Name = "twincat_open_project", ReadOnly = false, Destructive = true)]
-    [Description("Open a TwinCAT solution in the running XAE instance, launching XAE if needed. Takes a .sln or directly a project file (.tsproj / .tspproj / .hmiproj; a temporary .sln is generated for it). Optionally closes the currently-open solution first. " +
-                 "Before the XAE loads anything, every independent project file a .tsproj references (File=\"….xti\": devices, boxes, axes, PLC projects) must exist: " +
-                 "a missing one (e.g. after IO nodes were renamed outside the XAE) refuses the open with [Error] listing them, because the XAE would load a broken configuration and saving it damages the .tsproj. " +
-                 "allowMissingReferences=true opens anyway with [Warn]; save_project and close_project(saveFirst=true) then repeat the warning. " +
-                 "The result names the XAE host the project's TcVersion selects (32-bit for builds below 4026, otherwise 64-bit) and warns when the project resolves to the 32-bit XAE although the 64-bit XAE is installed, or when the running XAE is not the selected one.")]
+    [Description("Open a TwinCAT solution or project in the XAE, launching the XAE if needed. " +
+                 "A project file (.tsproj / .tspproj / .hmiproj) gets a temporary .sln. If a .tsproj references .xti files " +
+                 "(devices, boxes, axes, PLC projects) that are missing, the open is refused with [Error] listing them, since " +
+                 "loading and saving would damage the .tsproj; allowMissingReferences opens anyway with [Warn], and " +
+                 "twincat_save_project / twincat_close_project(saveFirst=true) repeat it. The result names the XAE host the " +
+                 "TcVersion selects (32-bit below 4026, else 64-bit) and warns when it picks 32-bit although the 64-bit XAE " +
+                 "is installed, or when the running XAE is not the selected one.")]
     public async Task<string> OpenProject(
-        [Description("Absolute path to the .sln, .tsproj, .tspproj or .hmiproj file to open")] string slnPath,
-        [Description("Close the currently-open solution first (no save). Default false.")] bool closeCurrentFirst = false,
-        [Description("Open even when referenced .xti files are missing (the result starts with [Warn]). Default false refuses.")] bool allowMissingReferences = false,
-        [Description("XAE host: auto (default, the one the project's TcVersion selects), 64 (TcXaeShell 64-bit) or 32 (32-bit). 64 opens an older project on purpose in the 64-bit XAE; the TcVersion in the .tsproj is never rewritten. Refused when the requested XAE is not installed or an XAE of the other bitness is already running.")] string host = "auto",
+        [Description("Absolute path to the .sln, .tsproj, .tspproj or .hmiproj.")] string slnPath,
+        [Description("Close the open solution first, without saving. Default false.")] bool closeCurrentFirst = false,
+        [Description("Open despite missing .xti files (result starts with [Warn]). Default false refuses.")] bool allowMissingReferences = false,
+        [Description("XAE host: 'auto' (default, selected by TcVersion), '64' or '32'. '64' opens an older project in the 64-bit XAE; the .tsproj TcVersion is never rewritten. Refused if that XAE is not installed or one of the other bitness is running.")] string host = "auto",
         CancellationToken cancellationToken = default)
         => await bridge.Activity.TraceAsync("twincat_open_project",
             new { slnPath, closeCurrentFirst, allowMissingReferences, host }, async () =>
@@ -46,17 +48,17 @@ internal sealed partial class TwinCatMcpTools
         }, cancellationToken);
 
     [McpServerTool(Name = "twincat_save_project", ReadOnly = false, Destructive = false)]
-    [Description("Save all dirty documents and the solution in the running TwinCAT XAE instance (equivalent to File > Save All).")]
+    [Description("Save all modified documents and the solution (File > Save All).")]
     public string SaveProject(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_save_project", null, () =>
             bridge.Dispatcher.Run(() => new LifecycleCoordinator(bridge.Dispatcher.Session).SaveProject()), cancellationToken);
 
     [McpServerTool(Name = "twincat_shutdown", ReadOnly = false, Destructive = true)]
-    [Description("Shut down the Pneutronic XAE MCP server and exit the host application. Returns immediately; the process terminates ~200 ms later so this response can flush. " +
-        "Side effects: closing the host form kills a running Usermode Runtime (UMR) instance and panic-aborts an armed IbnLive session (writes the abort bit and drops bEnable). " +
-        "Refuses while a UMR instance is running unless force=true is passed, since that stops the runtime out from under whatever is using it.")]
+    [Description("Shut down this MCP server and exit its host application. " +
+        "Returns at once; the process exits ~200 ms later. Exiting kills a running Usermode Runtime (UMR) and aborts an " +
+        "armed IbnLive session (writes the abort bit, drops bEnable). Refuses while a UMR is running unless force=true.")]
     public string Shutdown(
-        [Description("Shut down even while a UMR instance is running (see side effects above). Default false refuses in that case.")] bool force = false,
+        [Description("Shut down even while a UMR instance is running. Default false.")] bool force = false,
         CancellationToken cancellationToken = default) =>
         // Reentrancy: shutdown must return immediately and never block on the
         // gate or a log flush in the critical path (spec). Recording is
@@ -80,9 +82,9 @@ internal sealed partial class TwinCatMcpTools
         }, cancellationToken, bypassGate: true);
 
     [McpServerTool(Name = "twincat_close_project", ReadOnly = false, Destructive = true)]
-    [Description("Close the currently open solution in the TwinCAT XAE instance. By default saves first; set saveFirst=false to discard unsaved changes.")]
+    [Description("Close the open solution in the XAE; saveFirst=false discards unsaved changes.")]
     public string CloseProject(
-        [Description("Save dirty documents before closing. Default true.")] bool saveFirst = true,
+        [Description("Save modified documents first. Default true.")] bool saveFirst = true,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_close_project", new { saveFirst },
             () => bridge.Dispatcher.Run(

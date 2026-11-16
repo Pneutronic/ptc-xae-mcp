@@ -213,6 +213,21 @@ Besides tools the server offers **prompts** — step-by-step workflows you pick 
 `@ptc-xae:`): `ptc-xae://status`, `ptc-xae://plc/elements`, `ptc-xae://plc/element/{path}` (URI-encoded tree path),
 `ptc-xae://build/errors`, `ptc-xae://toolsets`.
 
+### Workflow tools
+
+Two tools run the chains that otherwise take four to six calls, with the order and the abort rules fixed:
+
+- **`twincat_deploy`** builds (PLC project, or the whole solution with `buildSolution`), checks `expectSymbols`, activates
+  the configuration with a restart of TwinCAT, checks over ADS that the target's system and the PLC runtime read Run
+  (and puts the PLC into Run when it does not) and, with `lifeSign` conditions, waits for a sign of life
+  (`twincat_ads_wait_until`). The first step that fails ends the run: build errors are never activated, and an
+  activation that cannot be shown to have taken effect is never followed by a PLC start. The answer is a step table
+  (`step`, `ok`, `durationMs`, `message`). A human is asked once for the whole run, and a `requestKey` makes a retry safe.
+- **`twincat_release_check`** (read-only) gives one traffic light per technical finding before a hand-over: Error List
+  against the newest PLC source, Check all objects, the last static-analysis report, libraries installed and pinned,
+  required licenses against the target, boot project, PLC runtime state, open XAE dialogs. What it cannot read without
+  building or saving is `unknown`, never green. It lists findings; whether a hand-over is ready stays a human's judgement.
+
 ### When the XAE shows a dialog
 
 A dialog the XAE opens blocks its automation. `twincat_xae_dialogs` lists the open dialogs with their buttons;
@@ -286,7 +301,7 @@ Mode Runtimes, so local work and the live test suite run unchanged. Dry runs, re
 stops, HMI writes and snapshot restores (which a human already confirms in the window) are never asked.
 `twincat_doctor` and `twincat_get_client_info` report the mode and whether the client can be asked in-band.
 
-**Request keys.** A call to `twincat_activate_config`, `twincat_restart_runtime`, `twincat_activate_boot_project`,
+**Request keys.** A call to `twincat_deploy`, `twincat_activate_config`, `twincat_restart_runtime`, `twincat_activate_boot_project`,
 `twincat_persistent_snapshot_restore`, `twincat_write_ads_variable` or any other tool a human is asked about may carry a
 `requestKey` (a UUID). A client that timed out while the host went on, and then asks again, would otherwise run the action
 twice. With a key the same call never runs twice: a repeat returns the stored result (with a second line saying so), a

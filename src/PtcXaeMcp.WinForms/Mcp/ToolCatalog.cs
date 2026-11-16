@@ -73,6 +73,7 @@ internal static class ToolCatalog
             "twincat_build_plc", "twincat_build_solution", "twincat_rebuild_plc", "twincat_rebuild_solution",
             "twincat_clean_solution", "twincat_get_error_list", "twincat_clear_error_list",
             "twincat_plc_check_all_objects", "twincat_plc_static_analysis", "twincat_activate_config",
+            "twincat_deploy", "twincat_release_check",
         ]),
         (Toolset.Plc,
         [
@@ -154,6 +155,7 @@ internal static class ToolCatalog
     private static readonly Dictionary<string, TargetRule> RuntimeActions = new(StringComparer.Ordinal)
     {
         ["twincat_activate_config"] = TargetRule.Project,
+        ["twincat_deploy"] = TargetRule.Project,
         ["twincat_activate_boot_project"] = TargetRule.Project,
         ["twincat_restart_runtime"] = TargetRule.Project,
         ["twincat_login"] = TargetRule.Project,
@@ -193,6 +195,7 @@ internal static class ToolCatalog
     private static readonly Dictionary<string, ConfirmClass> ConfirmClasses = new(StringComparer.Ordinal)
     {
         ["twincat_activate_config"] = ConfirmClass.Always,
+        ["twincat_deploy"] = ConfirmClass.Always,
         ["twincat_restart_runtime"] = ConfirmClass.Always,
         ["twincat_set_system_mode"] = ConfirmClass.Always,
         ["twincat_plc_stop"] = ConfirmClass.Always,

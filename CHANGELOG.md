@@ -86,6 +86,22 @@ Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migrati
   captures them to a file readable by `twincat_persistent_snapshot_compare`. The limits are fixed in code and refused with
   their value when exceeded. None of them writes to the PLC. The long calls hold the dispatcher lock only while the
   notifications are registered.
+- **Two workflow tools replace the chains an agent assembled from four to six single tools** (toolset `build`).
+  **`twincat_deploy`** runs, in a fixed order, the build (the PLC project, or the whole solution with `buildSolution`),
+  `expectSymbols`, a check of the project's target, `twincat_activate_config` with a restart of TwinCAT into the new
+  configuration, a check over ADS that the target's system reads Run, a check that the PLC runtime reads Run (put into Run
+  over ADS when it does not, unless `startPlc=false`) and, with `lifeSign` conditions (those of `twincat_ads_wait_until`),
+  a wait for a sign of life. The first step that fails ends the run and nothing after it starts: a build with errors is never
+  activated, and an activation that cannot be shown to have taken effect is never followed by a PLC start. The answer is a
+  step table `{ step, ok, durationMs, message }` (a failure: `[Error] twincat_deploy stopped at step '…'` and the same JSON
+  with `notRun`). The human confirmation and the request key apply to the call as a whole (class *always*, a runtime action
+  on the project's target): a human is asked once, not per step, and a retry with the same `requestKey` answers from the
+  receipt. A failure before the activation says that nothing was done on the target, so its key stays free.
+  **`twincat_release_check`** (read-only) answers one traffic light per technical finding before a hand-over: Error List
+  against the newest PLC source, Check all objects, the last static-analysis report, libraries installed and pinned,
+  required licenses against the target, boot project (files), PLC runtime state, open XAE dialogs. It never builds, saves or
+  starts anything; what it cannot read without doing so (Check all objects and a new static analysis compile and save) is
+  `unknown`, never green, and names the tool that would show it. `overall` is the worst item (red, then unknown, then yellow).
 
 ### Fixed
 - **Analog channels can be linked by `apply_schema`** — an analog terminal names its channel after the PDO

@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-216 tools, generated from the source attributes — one section per
+218 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -59,6 +59,7 @@
 - [VariantManagement](#variantmanagement) (2)
 - [VisibleEditor](#visibleeditor) (2)
 - [Visu](#visu) (4)
+- [Workflow](#workflow) (2)
 - [XaeDialogs](#xaedialogs) (2)
 
 ## ActiveProject
@@ -2248,6 +2249,36 @@ Add, change or remove single elements of an existing PLC visualization. Every ot
 | `operations` | `string?` | `null` | JSON array of operations (see the tool description); may be empty when only interface is given. |
 | `@interface` | `string?` | `null` | Optional new VAR_IN_OUT interface declaration, e.g. "VAR_IN_OUT\ \tfb : FB_Station;\ END_VAR". |
 | `expectedRevision` | `string?` | `null` | Revision from twincat_visu_read; a different current revision refuses the write. |
+
+## Workflow
+
+### `twincat_deploy`
+
+Build, activate and check in one call. Fixed order: build (PLC project, or the whole solution with buildSolution), expectSymbols, target check, twincat_activate_config with a restart of TwinCAT into the new configuration, an ADS check that the target's system reads Run, the PLC runtime reads Run (put into Run over ADS when it does not and startPlc is true), then optionally lifeSign conditions (as twincat_ads_wait_until). The first step that fails ends the run and nothing after it starts: build errors are never activated, and an activation that cannot be shown to have taken effect is never followed by a PLC start. A human is asked once for the whole run, not per step; requestKey makes a retry after a timeout safe. Returns JSON { success, amsNetId, steps: [{ step, ok, durationMs, message }], warnings }; a failure answers '[Error] twincat_deploy stopped at step …' followed by the same JSON with notRun. With restart=false only the registry is written (a warning says the PLC keeps its old code). The target is the open solution's. Needs an open solution.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `plcProjectName` | `string?` | `null` | PLC project name (e.g. 'PLC') for the PLC build. Empty = first .plcproj. Not together with buildSolution. |
+| `buildSolution` | `bool` | `false` | Build the whole solution (PLC code and IO mapping) instead of the PLC project only. Default false. |
+| `ignoreStaleFiles` | `bool` | `false` | Build despite PLC files changed on disk outside the XAE (as in twincat_build_plc). Default false refuses. |
+| `expectSymbols` | `string[]?` | `null` | Names that must exist in the compiled PLC (as in twincat_build_plc), e.g. ['MAIN.fbAxis']. A missing name ends the run before the activation. |
+| `restart` | `bool` | `true` | Restart TwinCAT into the new configuration (forcibly restarts the PLC; the activation's dialog watcher confirms the restart prompt). Default true. False: registry only, no deploy. |
+| `autoGenerateLicenses` | `bool` | `false` | Answer the trial-license prompt with 'Ja' (as in twincat_activate_config). Default false. |
+| `autoConfirmLogin` | `bool` | `false` | Confirm the 'application changed since the last download' login modal (as in twincat_activate_config). Default false. |
+| `loginMode` | `string` | `"online_change"` | Answer for that modal: 'online_change' (default) \| 'download' \| 'login_without_change'. |
+| `updateBootProject` | `bool` | `true` | On download, tick 'Bootapplikation aktualisieren'. Default true. |
+| `allowDownloadFallback` | `bool` | `false` | loginMode='online_change' only: download instead if online change is impossible (stops the PLC). Default false. |
+| `runTimeoutSeconds` | `int?` | `null` | Seconds to wait for the system to read Run after the restart. Default 60, clamped to 5..300. |
+| `startPlc` | `bool` | `true` | Put the PLC runtime into Run over ADS when it does not read Run after the activation. Default true; false makes that a failed step. |
+| `adsPort` | `int` | `851` | ADS port of the PLC runtime for the state check and the life sign. Default 851. |
+| `lifeSign` | `string[]?` | `null` | Conditions that prove the PLC program runs, as twincat_ads_wait_until takes them, e.g. ['MAIN.nCycle changed']. Up to 8. Omit to skip. |
+| `lifeSignTimeoutMs` | `int` | `10000` | How long the lifeSign conditions may take, in ms. Default 10000, at most 300000. |
+
+### `twincat_release_check`
+
+Read-only release checklist: one traffic light per technical finding. Items: build state (Error List against the newest PLC source), Check all objects, static analysis (last report), libraries installed and pinned, required licenses against the target, boot project (files), PLC runtime state, open XAE dialogs. It never builds, saves or starts anything. What cannot be read without doing so is 'unknown' (never green) and names the tool that would show it: Check all objects and the static analysis compile and save, so only a report left by an earlier run is read. Returns JSON { success, overall, green, yellow, red, unknown, solution, items: [{ id, title, status, summary, details }] }; overall is the worst item (red, then unknown, then yellow). It lists findings, it does not judge the hand-over. Needs an open solution; with an XAE dialog blocking, the reads that need the XAE are unknown.
+
+_No parameters._
 
 ## XaeDialogs
 

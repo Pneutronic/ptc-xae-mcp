@@ -494,6 +494,14 @@ internal interface ITwinCatSession : IDisposable
         int timeoutMs, string? amsNetId, int adsPort);
 
     /// <summary>
+    /// Registers ADS on-change notifications for scalar symbols (BOOL, numbers, time types, STRING, ENUM) and returns
+    /// the open watch: its values as of now, and the changes that follow, with the runtime's own time stamps.
+    /// Only the registration needs the session; the caller waits on the watch afterwards, off the dispatcher.
+    /// Any symbol that is missing or not a scalar fails the call, naming it. The caller disposes the watch.
+    /// </summary>
+    AdsWatchOpenResult OpenAdsWatch(IReadOnlyList<string> symbols, string? amsNetId, int adsPort, int cycleMs);
+
+    /// <summary>
     /// READ-ONLY diagnostic: dumps an FB/struct instance's MemberInstances
     /// (name, IsProperty, type, size, offset when available) plus any
     /// RPC-callable methods (e.g. __getX/__setX -- only present when the

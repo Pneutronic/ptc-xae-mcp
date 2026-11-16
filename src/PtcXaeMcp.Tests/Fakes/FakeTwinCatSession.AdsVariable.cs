@@ -79,6 +79,19 @@ internal sealed partial class FakeTwinCatSession
         return FakeMeasureSignalTransitionResult;
     }
 
+    // ---- signal testbench ----
+    /// <summary>The watch <see cref="OpenAdsWatch"/> hands out; null answers "symbol not in the PLC symbol table".</summary>
+    public IAdsWatch? FakeAdsWatch { get; set; }
+    public string? OpenAdsWatchFails { get; set; }
+
+    public AdsWatchOpenResult OpenAdsWatch(IReadOnlyList<string> symbols, string? amsNetId, int adsPort, int cycleMs)
+    {
+        CallLog.Add($"OpenAdsWatch(n={symbols.Count}, syms=[{string.Join(",", symbols)}], cycle={cycleMs}, net={amsNetId ?? "<null>"}, port={adsPort})");
+        if (OpenAdsWatchFails is not null) return new(false, null, "1.2.3.4.1.1", adsPort, OpenAdsWatchFails);
+        if (FakeAdsWatch is null) return new(false, null, "1.2.3.4.1.1", adsPort, "[Error] '" + symbols[0] + "' is not in the PLC symbol table.");
+        return new(true, FakeAdsWatch, "1.2.3.4.1.1", adsPort, "OK");
+    }
+
     // ---- diagnostics: fb-instance-inspect ----
     public InspectFbInstanceResult FakeInspectFbInstanceResult { get; set; } =
         new InspectFbInstanceResult(true, "MAIN.fbMachine", "FB_Machine",

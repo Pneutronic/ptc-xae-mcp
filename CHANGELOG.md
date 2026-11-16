@@ -74,6 +74,18 @@ Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migrati
 - **A point without `symbol` only builds the hardware** and is counted as `notLinked` in the result (information, not a
   failure), so a schema can build the EtherCAT tree first and link later. The PLC build before linking runs only when
   linking is enabled and at least one point has a symbol.
+- **Signal testbench: four read-only ADS tools that watch live values by notification, not polling.**
+  `twincat_ads_wait_until` waits until up to 8 conditions (`<symbol> == != < <= > >= <value>`, or `<symbol> changed`)
+  hold, all or any, for at most 300 s. `twincat_ads_expect` checks a window: `stable` (no value changes), `within` (the
+  conditions hold inside the window) or `never` (they do not); a violation ends it at once and is named in
+  `firstViolation`; a runtime that stops during the window is an error, not a pass. `twincat_ads_record` records 1 to 32
+  scalar symbols for at most 120 s and answers min/max/time-weighted mean, edge counts, pulse widths, periods and change
+  intervals, with the runtime's own time stamps (exact to a task cycle) and a CSV of every change (default
+  `%TEMP%\ptc-xae-mcp\rec`, older than 7 days removed). `twincat_ads_snapshot_compare` compares any symbols (structs and
+  arrays leaf by leaf, input-mapped variables included) with a snapshot file or an inline baseline, with a tolerance, or
+  captures them to a file readable by `twincat_persistent_snapshot_compare`. The limits are fixed in code and refused with
+  their value when exceeded. None of them writes to the PLC. The long calls hold the dispatcher lock only while the
+  notifications are registered.
 
 ### Fixed
 - **Analog channels can be linked by `apply_schema`** — an analog terminal names its channel after the PDO

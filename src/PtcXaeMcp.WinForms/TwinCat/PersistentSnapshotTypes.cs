@@ -34,7 +34,8 @@ internal sealed record SnapshotDocument(SnapshotMeta Meta, IReadOnlyDictionary<s
 
 /// <param name="Paths">Symbol paths whose subtrees are flattened into leaves (a scalar path is its own leaf).</param>
 /// <param name="AdsPersistentRoots">Also add every symbol the runtime flags IsPersistent (selection source "ads").</param>
-internal sealed record SnapshotReadRequest(IReadOnlyList<string> Paths, bool AdsPersistentRoots = false);
+/// <param name="Observe">Read for comparison only: input-mapped and read-only leaves are read too (a restore must skip them).</param>
+internal sealed record SnapshotReadRequest(IReadOnlyList<string> Paths, bool AdsPersistentRoots = false, bool Observe = false);
 
 internal sealed record SnapshotReadResult(
     bool Success,

@@ -99,6 +99,7 @@ internal static class ToolCatalog
             "twincat_persistent_snapshot_restore_status", "twincat_persistent_snapshot_test_confirm",
             "twincat_read_event_logger", "twincat_confirm_event_logger", "twincat_coredump_list",
             "twincat_coredump_analyze", "twincat_coredump_read_callstack",
+            "twincat_ads_wait_until", "twincat_ads_expect", "twincat_ads_record", "twincat_ads_snapshot_compare",
         ]),
         (Toolset.Runtime,
         [

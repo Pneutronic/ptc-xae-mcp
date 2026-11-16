@@ -59,6 +59,8 @@ Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migrati
   `ioLeaf` values (`AI Standard Channel 1^Status^Error`); a plain `ioLeaf` name (`Error`) picks that entry. The built
   path is confirmed in the tree; excluded alternative PDOs (`AI Compact Channel 1`) are never used. Digital terminals
   keep their `Channel N^Input` path.
+- **`twincat_build_plc(expectSymbols)` keeps `PRG.aGrid[2,1].bOut` as one name** — the list was split at every comma,
+  also inside the brackets of a multi-dimensional index.
 
 ## [3.2.2] - 2026-11-16
 

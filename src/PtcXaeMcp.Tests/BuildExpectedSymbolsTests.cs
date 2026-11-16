@@ -71,6 +71,14 @@ public sealed class BuildExpectedSymbolsTests : IDisposable
         Assert.Contains("MAIN.fbAxis (symbol)", result);
     }
 
+    [Theory]
+    [InlineData("PRG.aGrid[2,1].bOut, GVL.b", new[] { "PRG.aGrid[2,1].bOut", "GVL.b" })]
+    [InlineData("PRG.aGrid[2, 1].bOut;GVL.b\nGVL.c", new[] { "PRG.aGrid[2, 1].bOut", "GVL.b", "GVL.c" })]
+    [InlineData("PRG.a[1][2,3]", new[] { "PRG.a[1][2,3]" })]
+    [InlineData(" , GVL.b,,", new[] { "GVL.b" })]
+    public void TheListIsSplitOnlyOutsideBrackets(string raw, string[] expected) =>
+        Assert.Equal(expected, CompiledSymbolCheck.Normalize([raw]));
+
     [Fact]
     public void SubItemNamesOfATypeAreNotTakenForTypes()
     {

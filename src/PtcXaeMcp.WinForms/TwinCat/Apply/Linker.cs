@@ -125,8 +125,10 @@ internal sealed class Linker
     /// <summary>
     /// Exact process-image path of <paramref name="symbol"/> (a full PLC instance path, e.g.
     /// <c>MAIN.fbCyl.bIn</c> or <c>MAIN.aCyl[1].bIn</c>) for <paramref name="direction"/>: one flat lookup
-    /// <c>&lt;folder&gt;^&lt;symbol&gt;</c> per image folder of that direction. Throws naming every folder
-    /// tried when it is not there (or is there twice).
+    /// <c>&lt;folder&gt;^&lt;symbol&gt;</c> per image folder of that direction; only when that misses, the
+    /// member of a STRUCT-typed AT variable as a child node (<c>MAIN.fbX.stIn.bB</c> →
+    /// <c>&lt;folder&gt;^MAIN.fbX.stIn^bB</c>). Throws naming every folder tried when it is not there (or
+    /// is there twice).
     /// </summary>
     internal string ResolvePlcSymbolPath(string symbol, string direction)
     {
@@ -140,12 +142,11 @@ internal sealed class Linker
             throw new InvalidOperationException($"PLC symbol '{symbol}' {invalid}.");
 
         List<string> folders = ImageFolders(dir);
-        var hits = folders
-            .Select(folder => _tree.Lookup($"{folder}^{symbol}"))
-            .Where(node => node is not null)
-            .Select(node => node!.Path)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        List<string> hits = LookupAll(folders, [symbol]);
+        // A member of a STRUCT-typed AT variable is a child node of the flat variable
+        // (<folder>^MAIN.fbX.stIn^bB), not a flat name; tried only when the flat name is not there.
+        if (hits.Count == 0)
+            hits = LookupAll(folders, PlcSymbolPath.StructMemberCandidates(symbol));
 
         if (hits.Count > 1)
             throw new InvalidOperationException(
@@ -156,11 +157,23 @@ internal sealed class Linker
         string arrayHint = symbol.Contains('[', StringComparison.Ordinal)
             ? " An array element is looked up as written, flat (e.g. 'MAIN.aCyl[1].bIn'; two indexes as '[2,1]' without blanks)."
             : string.Empty;
+        string structHint = symbol.Contains('.', StringComparison.Ordinal)
+            ? " A member of a STRUCT-typed AT variable was also tried as a child node ('MAIN.fbX.stIn.bB' as 'MAIN.fbX.stIn^bB')."
+            : string.Empty;
         throw new InvalidOperationException(
             $"PLC symbol '{symbol}' not found in the {(dir == "Q" ? "output" : "input")} process image of PLC '{_target.PlcName}' (tried {tried}). " +
             "Declare it AT %I* / AT %Q* with the direction the point states, build the PLC " +
-            "(twincat_build_plc), then apply again. A same-named member of another instance is never used." + arrayHint);
+            "(twincat_build_plc), then apply again. A same-named member of another instance is never used." + arrayHint + structHint);
     }
+
+    // Exact lookups of every spelling in every folder; distinct tree paths of the nodes found.
+    private List<string> LookupAll(List<string> folders, IReadOnlyList<string> spellings) =>
+        folders
+            .SelectMany(folder => spellings.Select(spelling => _tree.Lookup($"{folder}^{spelling}")))
+            .Where(node => node is not null)
+            .Select(node => node!.Path)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     // "<instance>^<task> Inputs"/"... Outputs" folders that exist, for every task under TIRT and
     // every instance of the resolved PLC. Read once per run (E-16).

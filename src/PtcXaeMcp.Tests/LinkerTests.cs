@@ -272,6 +272,56 @@ public class LinkerTests
     }
 
     [Fact]
+    public void AMemberOfAStructAtVariable_IsLinkedAsAChildNodeOfTheFlatVariable()
+    {
+        // TwinCAT 3.1.4026: 'stIn AT %I* : ST_In' is listed flat, its member bB as a child node
+        // (<folder>^MAIN.aWrap[1].stIn^bB); the mapping stores 'PlcTask Inputs^MAIN.aWrap[1].stIn^bB'.
+        var tree = Tree("MAIN.aWrap[1].stIn");
+        tree.Add($"{Inputs}^MAIN.aWrap[1].stIn^bB", itemType: 7);
+
+        LinkOutcome outcome = Create(tree).LinkAll([Point("MAIN.aWrap[1].stIn.bB")], failIfUnresolved: true);
+
+        outcome.HadUnresolvedFailure.Should().BeFalse();
+        outcome.Links.Should().ContainSingle().Which.PlcPath.Should().Be($"{Inputs}^MAIN.aWrap[1].stIn^bB");
+    }
+
+    [Fact]
+    public void ANestedStructMember_IsLinkedAsAGrandchild()
+    {
+        var tree = Tree("MAIN.fbX.stIn");
+        tree.Add($"{Inputs}^MAIN.fbX.stIn^stSub", itemType: 7);
+        tree.Add($"{Inputs}^MAIN.fbX.stIn^stSub^bX", itemType: 7);
+
+        LinkOutcome outcome = Create(tree).LinkAll([Point("MAIN.fbX.stIn.stSub.bX")], failIfUnresolved: true);
+
+        outcome.Links.Should().ContainSingle().Which.PlcPath.Should().Be($"{Inputs}^MAIN.fbX.stIn^stSub^bX");
+    }
+
+    [Fact]
+    public void TheFlatNameWins_TheStructSpellingIsNotTriedWhenTheFlatOneExists()
+    {
+        var tree = Tree("MAIN.fbX.stIn.bB");
+        tree.Add($"{Inputs}^MAIN.fbX.stIn^bB", itemType: 7);
+
+        LinkOutcome outcome = Create(tree).LinkAll([Point("MAIN.fbX.stIn.bB")], failIfUnresolved: true);
+
+        outcome.Links.Should().ContainSingle().Which.PlcPath.Should().Be($"{Inputs}^MAIN.fbX.stIn.bB");
+    }
+
+    [Fact]
+    public void TwoStructSpellingsThatBothExist_AreAnAmbiguityError()
+    {
+        var tree = Tree();
+        tree.Add($"{Inputs}^MAIN.fbX.stIn^bB", itemType: 7);
+        tree.Add($"{Inputs}^MAIN.fbX^stIn^bB", itemType: 7);
+
+        LinkOutcome outcome = Create(tree).LinkAll([Point("MAIN.fbX.stIn.bB")], failIfUnresolved: true);
+
+        outcome.Unresolved.Should().ContainSingle().Which.Should().Contain("ambiguous");
+        tree.Mutations.Should().BeEmpty();
+    }
+
+    [Fact]
     public void AnElementInTwoTasks_IsAnAmbiguityError()
     {
         var tree = Tree("MAIN.aCyl[1].bIn");

@@ -58,6 +58,25 @@ internal static class PlcSymbolPath
         return "is not a PLC instance path (identifiers separated by '.', e.g. MAIN.fbCyl.bIn or MAIN.aCyl[1].bIn)";
     }
 
+    /// <summary>
+    /// Tree-path spellings of a valid <paramref name="symbol"/> whose tail is a member of a STRUCT-typed
+    /// <c>AT</c> variable. The process image lists the variable flat (<c>MAIN.fbX.stIn</c>) and its
+    /// members as child nodes by their own name (<c>MAIN.fbX.stIn^bB</c>, nested <c>…stIn^stSub^bX</c>),
+    /// so the symbol <c>MAIN.fbX.stIn.bB</c> is tried as <c>MAIN.fbX.stIn^bB</c>, then
+    /// <c>MAIN.fbX^stIn^bB</c>, … (longest flat prefix first). Only used when the flat lookup misses;
+    /// each spelling is an exact lookup. Empty for a single-segment symbol.
+    /// </summary>
+    internal static IReadOnlyList<string> StructMemberCandidates(string symbol)
+    {
+        // A valid symbol has no '.' inside an index (integer literals only), so a plain split
+        // yields exactly its segments.
+        string[] segments = symbol.Split('.');
+        var result = new List<string>();
+        for (int k = segments.Length - 1; k >= 1; k--)
+            result.Add(string.Join('.', segments[..k]) + "^" + string.Join('^', segments[k..]));
+        return result;
+    }
+
     private static bool InsideBrackets(string symbol)
     {
         int depth = 0;

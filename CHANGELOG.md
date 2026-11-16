@@ -36,7 +36,9 @@ Breaking change; the next release is 4.0.0.
   in the input folders and an output point only in the output folders. An array element is a flat name of the process
   image (`MAIN.aCyl[1].bIn`), so `aCyl[1]` never reaches `aCyl[10]` or `aCyl[1].bIn2`. Nothing found names the folders
   tried and says to build the PLC (`twincat_build_plc`) and apply again; the same symbol in two tasks is an
-  ambiguity error and nothing is linked.
+  ambiguity error and nothing is linked. A member of a STRUCT-typed `AT` variable (`MAIN.fbX.stIn.bB`, with
+  `stIn AT %I* : ST_In`) is a child node of the variable in the process image; when the flat name is not there, the
+  symbol is looked up that way (`…^MAIN.fbX.stIn^bB`), still exactly.
 - **A point without `symbol` only builds the hardware** and is counted as `notLinked` in the result (information, not a
   failure), so a schema can build the EtherCAT tree first and link later. The PLC build before linking runs only when
   linking is enabled and at least one point has a symbol.

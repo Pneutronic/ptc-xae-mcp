@@ -63,4 +63,17 @@ public class PlcSymbolPathTests
 
     [Fact]
     public void Null_IsInvalid() => PlcSymbolPath.IsValid(null).Should().BeFalse();
+
+    [Fact]
+    public void StructMemberCandidates_LongestFlatPrefixFirst_IndexesKept()
+    {
+        PlcSymbolPath.StructMemberCandidates("MAIN.aWrap[2,1].stIn.bB").Should().Equal(
+            "MAIN.aWrap[2,1].stIn^bB",
+            "MAIN.aWrap[2,1]^stIn^bB",
+            "MAIN^aWrap[2,1]^stIn^bB");
+    }
+
+    [Fact]
+    public void StructMemberCandidates_SingleSegment_IsEmpty() =>
+        PlcSymbolPath.StructMemberCandidates("bIn").Should().BeEmpty();
 }

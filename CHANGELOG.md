@@ -43,6 +43,13 @@ Breaking change; the next release is 4.0.0.
   failure), so a schema can build the EtherCAT tree first and link later. The PLC build before linking runs only when
   linking is enabled and at least one point has a symbol.
 
+### Fixed
+- **Analog channels can be linked by `apply_schema`** — an analog terminal names its channel after the PDO
+  (EL3174: `AI Standard Channel 1^Value`), not `Channel 1`, and channel variables are not listed as tree children, so
+  the point was unresolved even with `ioLeaf`. An `ioLeaf` that is a tree path is now looked up exactly before any
+  channel-name candidate: relative to the terminal (`"ioLeaf": "AI Standard Channel 1^Value"`) or absolute from
+  `TIID^`. A path that does not exist is an error naming it, never a guess; a plain name keeps its old role.
+
 ## [3.2.2] - 2026-11-16
 
 ### Changed

@@ -229,6 +229,9 @@ internal sealed class Linker
         if (point.IsIoLink) return ResolveIoLinkLeafPath(point);
 
         var tried = new List<string>();
+        string? explicitLeaf = ResolveExplicitIoLeaf(point, tried);
+        if (explicitLeaf is not null) return explicitLeaf;
+
         foreach (string candidate in SchemaLeafCandidates(point.TerminalName, point.Channel, point.Direction))
         {
             if (Probe(candidate, tried)) return candidate;
@@ -250,6 +253,33 @@ internal sealed class Linker
             $"None of these paths exists: {string.Join(", ", tried.Select(t => $"'{t}'"))}. " +
             "Channel variables of a terminal are not listed as its tree children, only addressable by path — check " +
             "the channel number, or pass the leaf name as ioLeaf.");
+    }
+
+    /// <summary>
+    /// An <c>ioLeaf</c> that is a tree path is looked up exactly, before any channel-name candidate:
+    /// absolute (<c>TIID^…</c>) as written, otherwise relative to the terminal
+    /// (<c>"AI Standard Channel 1^Value"</c> → <c>&lt;terminal&gt;^AI Standard Channel 1^Value</c>). Channel
+    /// variables are not listed as tree children, so a leaf whose channel node is not called
+    /// <c>Channel N</c> (analog terminals name it after the PDO) is reachable only this way. A path that
+    /// does not exist is an error naming it, never a guess. A plain name (no <c>^</c>) is tried under the
+    /// terminal too; when it is not there it keeps its old role as a name hint for the leaf search.
+    /// </summary>
+    private string? ResolveExplicitIoLeaf(IoPoint point, List<string> tried)
+    {
+        string leaf = point.IoLeaf?.Trim() ?? string.Empty;
+        if (leaf.Length == 0) return null;
+
+        bool isPath = leaf.Contains('^', StringComparison.Ordinal);
+        string candidate = leaf.StartsWith("TIID^", StringComparison.OrdinalIgnoreCase)
+            ? leaf
+            : $"{FindTerminal(point.TerminalName).Path}^{leaf}";
+        if (Probe(candidate, tried)) return candidate;
+        if (!isPath) return null;
+
+        throw new InvalidOperationException(
+            $"IO leaf '{leaf}' (ioLeaf) not found: '{candidate}' does not exist. An ioLeaf path is used exactly as " +
+            "given, relative to the terminal or absolute from TIID^; check it with twincat_get_mapping_info or the " +
+            "XAE tree (e.g. 'AI Standard Channel 1^Value' for an analog input).");
     }
 
     private bool Probe(string path, List<string> tried)

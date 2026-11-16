@@ -336,6 +336,55 @@ public class LinkerTests
 
     // ---- IO side, caching, terminals --------------------------------------------------------
 
+    private static IoPoint AnalogPoint(string ioLeaf) => new()
+    {
+        TerminalName = "K2 (EL1008)",
+        Channel = 1,
+        Direction = "I",
+        Type = "INT",
+        Symbol = Cyl,
+        IoLeaf = ioLeaf,
+    };
+
+    [Fact]
+    public void AnIoLeafPath_IsLookedUpExactlyUnderTheTerminal()
+    {
+        // An analog terminal names its channel after the PDO ('AI Standard Channel 1^Value'), not
+        // 'Channel 1'; the leaf is addressable by path only.
+        var tree = Tree(Cyl);
+        tree.Add(Terminal + "^AI Standard Channel 1", enumerable: false);
+        tree.Add(Terminal + "^AI Standard Channel 1^Value", enumerable: false);
+
+        LinkOutcome outcome = Create(tree).LinkAll([AnalogPoint("AI Standard Channel 1^Value")], failIfUnresolved: true);
+
+        outcome.HadUnresolvedFailure.Should().BeFalse();
+        outcome.Links.Should().ContainSingle().Which.IoPath.Should().Be(Terminal + "^AI Standard Channel 1^Value");
+    }
+
+    [Fact]
+    public void AnAbsoluteIoLeafPath_IsUsedAsWritten()
+    {
+        var tree = Tree(Cyl);
+        tree.Add(Terminal + "^AI Standard Channel 1^Value", enumerable: false);
+
+        LinkOutcome outcome = Create(tree).LinkAll([AnalogPoint(Terminal + "^AI Standard Channel 1^Value")], failIfUnresolved: true);
+
+        outcome.Links.Should().ContainSingle().Which.IoPath.Should().Be(Terminal + "^AI Standard Channel 1^Value");
+    }
+
+    [Fact]
+    public void AnIoLeafPathThatDoesNotExist_IsUnresolved_NeverAChannelGuess()
+    {
+        // 'Channel 1^Input' exists, but the explicit path wins and is not replaced by a guess.
+        var tree = Tree(Cyl);
+
+        LinkOutcome outcome = Create(tree).LinkAll([AnalogPoint("AI Standard Channel 1^Value")], failIfUnresolved: true);
+
+        outcome.Links.Should().BeEmpty();
+        outcome.Unresolved.Should().ContainSingle().Which.Should().Contain("'AI Standard Channel 1^Value' (ioLeaf) not found");
+        tree.Mutations.Should().BeEmpty();
+    }
+
     [Fact]
     public void MissingLeaf_ReasonNamesTheTriedPaths_NotAChildCount()
     {

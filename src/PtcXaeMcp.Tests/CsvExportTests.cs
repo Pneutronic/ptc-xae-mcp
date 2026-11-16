@@ -14,7 +14,7 @@ public class CsvExportTests
     {
         string csv = CsvExport.BuildMappingCsv([]);
 
-        csv.TrimEnd().Should().Be("varName;direction;type;terminal;channel;group;description;plcPath;ioPath");
+        csv.TrimEnd().Should().Be("symbol;varName;direction;type;terminal;channel;group;description;plcPath;ioPath");
     }
 
     [Fact]
@@ -22,6 +22,7 @@ public class CsvExportTests
     {
         var row = new LinkResult
         {
+            Symbol = "MAIN.aCyl[1].bIn",
             VarName = "x",
             Direction = "I",
             Type = "BOOL",
@@ -35,7 +36,17 @@ public class CsvExportTests
 
         string csv = CsvExport.BuildMappingCsv([row]);
 
-        csv.Should().Contain("\"x\";\"I\";\"BOOL\";\"T1\";2;\"G\";\"d\";\"p\";\"i\"");
+        csv.Should().Contain("\"MAIN.aCyl[1].bIn\";\"x\";\"I\";\"BOOL\";\"T1\";2;\"G\";\"d\";\"p\";\"i\"");
+    }
+
+    [Fact]
+    public void BuildMappingCsv_SymbolIsTheFirstColumn_VarNameTheSecond()
+    {
+        string csv = CsvExport.BuildMappingCsv([new LinkResult { Symbol = "MAIN.fbCyl.bIn", VarName = "Cyl 1 in" }]);
+
+        string[] lines = csv.TrimEnd().Split(Environment.NewLine);
+        lines[0].Split(';')[..2].Should().Equal("symbol", "varName");
+        lines[1].Split(';')[..2].Should().Equal("\"MAIN.fbCyl.bIn\"", "\"Cyl 1 in\"");
     }
 
     [Fact]

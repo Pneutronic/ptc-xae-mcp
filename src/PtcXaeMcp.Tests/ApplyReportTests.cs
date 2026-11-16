@@ -98,6 +98,16 @@ public class ApplyReportTests
     }
 
     [Fact]
+    public void NotLinkedPoints_AreCountedAsInformation_NeverAFailure()
+    {
+        var report = ApplyReport.Build([], [new LinkResult { VarName = "x" }], [], hadUnresolvedLinkFailure: false, notLinked: 3);
+
+        report.Ok.Should().BeTrue();
+        report.NotLinked.Should().Be(3);
+        report.Summarize().Should().Contain("Links: 1 ok, 0 unresolved, 3 notLinked");
+    }
+
+    [Fact]
     public void Describe_NamesDirectFailuresAndUnresolvedLinks()
     {
         var missing = new List<MissingEthercatNodeInfo>

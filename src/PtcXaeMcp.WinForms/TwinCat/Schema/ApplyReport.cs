@@ -25,6 +25,12 @@ internal sealed class ApplyReport
     /// <summary>One line per IO point that could not be linked ("var (terminal ChN dir): reason").</summary>
     public IReadOnlyList<string> UnresolvedLinks { get; init; } = [];
 
+    /// <summary>
+    /// IO points without a <c>symbol</c>: they build hardware only and are not linked. Information,
+    /// never a failure (a schema may build the hardware first and link later).
+    /// </summary>
+    public int NotLinked { get; init; }
+
     /// <summary>Every XAE dialog the run answered (issue #155 step 8), like activate_config reports them.</summary>
     public IReadOnlyList<string> DialogsAnswered { get; init; } = [];
 
@@ -38,7 +44,8 @@ internal sealed class ApplyReport
         IReadOnlyList<string> warnings,
         bool hadUnresolvedLinkFailure,
         IReadOnlyList<string>? unresolvedLinks = null,
-        IReadOnlyList<string>? dialogsAnswered = null)
+        IReadOnlyList<string>? dialogsAnswered = null,
+        int notLinked = 0)
     {
         bool hasDirectTopologyFailure = missingNodes.Any(n => n.IsDirectFailure);
         bool ok = !hasDirectTopologyFailure && !hadUnresolvedLinkFailure;
@@ -51,6 +58,7 @@ internal sealed class ApplyReport
             Warnings = warnings,
             UnresolvedLinks = unresolvedLinks ?? [],
             DialogsAnswered = dialogsAnswered ?? [],
+            NotLinked = notLinked,
         };
     }
 
@@ -60,7 +68,7 @@ internal sealed class ApplyReport
         int directFailures = MissingNodes.Count(n => n.IsDirectFailure);
         int skipped = MissingNodes.Count - directFailures;
         return $"Ok={Ok} | EtherCAT: {directFailures} directly failed, {skipped} skipped | " +
-               $"Links: {Links.Count} ok, {UnresolvedLinks.Count} unresolved | Warnings: {Warnings.Count}";
+               $"Links: {Links.Count} ok, {UnresolvedLinks.Count} unresolved, {NotLinked} notLinked | Warnings: {Warnings.Count}";
     }
 
     /// <summary>"XAE dialogs answered: none." or the list, as activate_config words it.</summary>

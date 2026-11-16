@@ -5,7 +5,7 @@ using PtcXaeMcp.WinForms.TwinCat.Apply;
 namespace PtcXaeMcp.Tests;
 
 /// <summary>
-/// Issue #155 step 4, E-15: the PLC and its GVL folder are resolved exactly; ambiguity or a
+/// Issue #155 step 4, E-15: the PLC is resolved exactly; ambiguity or a
 /// miss is an error naming the candidates, never a silent pick of the first match or the PLC root.
 /// </summary>
 public class ApplyTargetResolverTests
@@ -97,90 +97,11 @@ public class ApplyTargetResolverTests
         tree.Add("TIPC");
         tree.Add("TIPC^PLC", itemType: 56);
         tree.Add("TIPC^PLC^PLC Projekt", itemType: PlcItemType.PlcApp, enumerable: false);
-        tree.Add("TIPC^PLC^PLC Projekt^GVLs", itemType: PlcItemType.Folder);
 
         var resolver = new ApplyTargetResolver(tree);
         var plc = resolver.ResolvePlc("PLC", strict: true);
 
         plc.ProjectNodePath.Should().Be("TIPC^PLC^PLC Projekt");
-        resolver.ResolveGvlFolder(plc).Should().Be("TIPC^PLC^PLC Projekt^GVLs");
-    }
-
-    [Fact]
-    public void ResolveGvlFolder_IsTheExactGvlsChildOfTheProjectNode()
-    {
-        var tree = OnePlc();
-        AddPlc(tree, "Other");
-        var resolver = new ApplyTargetResolver(tree);
-
-        var target = resolver.ResolveGvlTarget("Other", "GVL_IO", strict: true);
-
-        target.FolderPath.Should().Be("TIPC^Other^Other Project^GVLs");
-        target.GvlPath.Should().Be("TIPC^Other^Other Project^GVLs^GVL_IO");
-    }
-
-    [Fact]
-    public void ResolveGvlFolder_Ambiguous_ThrowsWithCandidates()
-    {
-        var tree = OnePlc();
-        tree.Add("TIPC^Plc^Plc Project^gvls", itemType: PlcItemType.Folder);
-        var resolver = new ApplyTargetResolver(tree);
-        var plc = resolver.ResolvePlc("Plc", strict: true);
-
-        resolver.Invoking(r => r.ResolveGvlFolder(plc))
-            .Should().Throw<InvalidOperationException>()
-            .WithMessage("*ambiguous*")
-            .WithMessage("*'TIPC^Plc^Plc Project^GVLs'*")
-            .WithMessage("*'TIPC^Plc^Plc Project^gvls'*");
-    }
-
-    [Fact]
-    public void ResolveGvlFolder_Missing_NoFallbackToAnotherFolderOrThePlcRoot()
-    {
-        var tree = new FakeSysManTree();
-        tree.Add("TIPC");
-        tree.Add("TIPC^Plc", itemType: 56);
-        tree.Add("TIPC^Plc^Plc Project", itemType: PlcItemType.PlcApp);
-        tree.Add("TIPC^Plc^Plc Project^POUs", itemType: PlcItemType.Folder);
-        tree.Add("TIPC^Plc^Plc Project^MyGVLs", itemType: PlcItemType.Folder);
-        // A GVLs folder of ANOTHER PLC must not be used either (the old TIPC-wide search did).
-        AddPlc(tree, "Other");
-        var resolver = new ApplyTargetResolver(tree);
-        var plc = resolver.ResolvePlc("Plc", strict: true);
-
-        resolver.Invoking(r => r.ResolveGvlFolder(plc))
-            .Should().Throw<InvalidOperationException>()
-            .WithMessage("*No 'GVLs' folder directly under 'TIPC^Plc^Plc Project'*")
-            .WithMessage("*'POUs', 'MyGVLs'*");
-    }
-
-    [Fact]
-    public void ResolveGvlFolder_AGvlNamedGvlsIsNotAFolder()
-    {
-        var tree = new FakeSysManTree();
-        tree.Add("TIPC");
-        tree.Add("TIPC^Plc", itemType: 56);
-        tree.Add("TIPC^Plc^Plc Project", itemType: PlcItemType.PlcApp);
-        tree.Add("TIPC^Plc^Plc Project^GVLs", itemType: PlcItemType.Gvl);
-        var resolver = new ApplyTargetResolver(tree);
-
-        resolver.Invoking(r => r.ResolveGvlFolder(resolver.ResolvePlc("Plc", strict: true)))
-            .Should().Throw<InvalidOperationException>().WithMessage("*No 'GVLs' folder*");
-    }
-
-    [Fact]
-    public void ResolveGvlFolder_PlcWithoutSourceProject_Throws()
-    {
-        var tree = new FakeSysManTree();
-        tree.Add("TIPC");
-        tree.Add("TIPC^BinaryPlc", itemType: 56);
-        tree.Add("TIPC^BinaryPlc^BinaryPlc Instance", itemType: 58);
-        var resolver = new ApplyTargetResolver(tree);
-        var plc = resolver.ResolvePlc("BinaryPlc", strict: true);
-
-        plc.ProjectNodePath.Should().BeEmpty();
-        resolver.Invoking(r => r.ResolveGvlFolder(plc))
-            .Should().Throw<InvalidOperationException>().WithMessage("*no PLC source-project node*");
     }
 
     [Fact]

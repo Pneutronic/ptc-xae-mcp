@@ -173,8 +173,7 @@ internal sealed class ServerHost : IDisposable
         CancellationToken mcpToken,
         string? targetMasterPath = null,
         bool failClosed = false,
-        bool autoBuild = true,
-        bool overwriteExistingGvl = false)
+        bool autoBuild = true)
     {
         if (!Dispatcher.TryAcquire())
             throw McpDispatcher.Busy();
@@ -189,7 +188,6 @@ internal sealed class ServerHost : IDisposable
                 AutoConfirmBuild = true,
                 PlcProjectNameOverride = plcOverride ?? string.Empty,
                 MasterNameOverride = masterOverride ?? string.Empty,
-                OverwriteExistingGvl = overwriteExistingGvl,
                 // brownfield-guard: fail-safe knobs of the MCP tool.
                 TargetMasterPath = targetMasterPath ?? string.Empty,
                 FailClosed = failClosed,

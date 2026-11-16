@@ -4,23 +4,25 @@ using System.Globalization;
 
 namespace PtcXaeMcp.WinForms.TwinCat.Apply;
 
-/// <summary>Where the linker links: the resolved PLC, GVL and EtherCAT master of one apply run.</summary>
-/// <param name="Strict">Fail-closed mode: only the exact process-image symbol is linked.</param>
-/// <param name="GvlPath">Exact tree path of the run's GVL (lenient fallback only); empty when unknown.</param>
-internal sealed record LinkTarget(string PlcName, string GvlName, string MasterPath, bool Strict, string GvlPath = "");
+/// <summary>Where the linker links: the resolved PLC and EtherCAT master of one apply run.</summary>
+/// <param name="Strict">Fail-closed mode (terminal resolution): an ambiguous terminal name is an error, not a pick.</param>
+internal sealed record LinkTarget(string PlcName, string MasterPath, bool Strict);
 
-/// <summary>Outcome of <see cref="Linker.LinkAll"/>.</summary>
-internal sealed record LinkOutcome(List<LinkResult> Links, List<string> Unresolved, bool HadUnresolvedFailure);
+/// <summary>
+/// Outcome of <see cref="Linker.LinkAll"/>. <paramref name="NotLinked"/> counts the points without a
+/// <c>symbol</c> (topology only); they are neither linked nor a failure.
+/// </summary>
+internal sealed record LinkOutcome(List<LinkResult> Links, List<string> Unresolved, bool HadUnresolvedFailure, int NotLinked = 0);
 
 /// <summary>
 /// Links the schema's IO points on the <see cref="ISysManTree"/> seam (issue #155 step 6, R8).
 /// <list type="bullet">
-/// <item>E-3: a PLC variable is the exact process-image symbol <c>&lt;gvl&gt;.&lt;var&gt;</c> in the
-/// exact image folders of the resolved PLC's instance (<c>&lt;task&gt; Inputs/Outputs</c>). The former
-/// fuzzy scoring over the whole TIPC tree (<c>EndsWith("." + var)</c>, bare variable names) could
-/// link a same-named variable of another GVL, e.g. when the new GVL was not built into the process
-/// image yet; it is gone. Two hits are an ambiguity error, never a pick. Only in lenient mode
-/// (GUI) the variable node of the run's own GVL is a last resort.</item>
+/// <item>E-3: the PLC side of a point is the exact process-image symbol its <c>symbol</c> names
+/// (<c>&lt;instance&gt;^&lt;task&gt; Inputs/Outputs^&lt;symbol&gt;</c>), looked up flat in the exact image
+/// folders of the resolved PLC's instance, <c>I</c> only in input folders and <c>Q</c> only in output
+/// folders. An array element is a flat name too (<c>MAIN.aCyl[1].bIn</c>); there is no prefix or suffix
+/// matching, so <c>aCyl[1]</c> never reaches <c>aCyl[10]</c> or <c>aCyl[1].bIn2</c>. Two hits are an
+/// ambiguity error, never a pick. A point without a symbol is not linked (topology only).</item>
 /// <item>E-17: both sides are resolved by lookup and <c>LinkVariables</c> is called exactly once per
 /// point (it used to double as the probe and then run a second time).</item>
 /// <item>E-16: the master subtree (terminal names) and the task list are read once per run and
@@ -71,19 +73,29 @@ internal sealed class Linker
     {
         var links = new List<LinkResult>();
         var unresolved = new List<string>();
+        int notLinked = 0;
         foreach (var point in points)
         {
             _cancellationToken.ThrowIfCancellationRequested();
             string direction = point.Direction.Trim().ToUpperInvariant();
+            if (!point.HasSymbol)
+            {
+                // Topology only (D2): the point builds hardware, nothing is linked, nothing fails.
+                notLinked++;
+                _info($"Not linked (no symbol): {point.Label} ({point.TerminalName} Ch{point.Channel} {direction})");
+                continue;
+            }
+
             try
             {
                 string ioPath = ResolveIoLeafPath(point);
-                string plcPath = ResolvePlcVariablePath(point.VarName, direction);
+                string plcPath = ResolvePlcSymbolPath(point.Symbol!, direction);
                 _tree.LinkVariables(plcPath, ioPath);
-                _info($"Linked: {point.VarName} <-> {ioPath}");
+                _info($"Linked: {point.Label} <-> {ioPath}");
                 links.Add(new LinkResult
                 {
-                    VarName = point.VarName,
+                    VarName = point.Label,
+                    Symbol = point.Symbol!.Trim(),
                     Direction = direction,
                     Type = string.IsNullOrWhiteSpace(point.Type) ? "BOOL" : point.Type!,
                     Terminal = point.TerminalName,
@@ -96,7 +108,7 @@ internal sealed class Linker
             }
             catch (Exception ex) when (ComCall.Recoverable(ex))
             {
-                string reason = $"{point.VarName} ({point.TerminalName} Ch{point.Channel} {direction}): {ex.Message}";
+                string reason = $"{point.Label} ({point.TerminalName} Ch{point.Channel} {direction}): {ex.Message}";
                 unresolved.Add(reason);
                 _warn(failIfUnresolved
                     ? $"Not resolved (failIfUnresolved=true, reported at the end of the run): {reason}"
@@ -104,23 +116,29 @@ internal sealed class Linker
             }
         }
 
-        _info($"Link summary: OK={links.Count}  skipped={unresolved.Count}");
-        return new LinkOutcome(links, unresolved, failIfUnresolved && unresolved.Count > 0);
+        _info($"Link summary: OK={links.Count}  skipped={unresolved.Count}  notLinked={notLinked}");
+        return new LinkOutcome(links, unresolved, failIfUnresolved && unresolved.Count > 0, notLinked);
     }
 
     // ---- PLC side --------------------------------------------------------------------------
 
     /// <summary>
-    /// Exact process-image path of <c>&lt;gvl&gt;.&lt;var&gt;</c> for <paramref name="direction"/>.
-    /// Throws naming every folder tried when it is not there (or is there twice).
+    /// Exact process-image path of <paramref name="symbol"/> (a full PLC instance path, e.g.
+    /// <c>MAIN.fbCyl.bIn</c> or <c>MAIN.aCyl[1].bIn</c>) for <paramref name="direction"/>: one flat lookup
+    /// <c>&lt;folder&gt;^&lt;symbol&gt;</c> per image folder of that direction. Throws naming every folder
+    /// tried when it is not there (or is there twice).
     /// </summary>
-    internal string ResolvePlcVariablePath(string varName, string direction)
+    internal string ResolvePlcSymbolPath(string symbol, string direction)
     {
+        symbol = symbol.Trim();
         string dir = direction.Trim().ToUpperInvariant();
-        string cacheKey = $"{varName}|{dir}";
+        string cacheKey = $"{symbol}|{dir}";
         if (_plcPathCache.TryGetValue(cacheKey, out string? cached)) return cached;
 
-        string symbol = LinkCandidates.GvlSymbol(_target.GvlName, varName);
+        string? invalid = PlcSymbolPath.Check(symbol);
+        if (invalid is not null)
+            throw new InvalidOperationException($"PLC symbol '{symbol}' {invalid}.");
+
         List<string> folders = ImageFolders(dir);
         var hits = folders
             .Select(folder => _tree.Lookup($"{folder}^{symbol}"))
@@ -135,20 +153,13 @@ internal sealed class Linker
         if (hits.Count == 1) return _plcPathCache[cacheKey] = hits[0];
 
         string tried = folders.Count == 0 ? "<no image folder found>" : string.Join(", ", folders.Select(f => $"'{f}'"));
-        if (!_target.Strict)
-        {
-            string? declaration = FindGvlDeclarationNode(varName);
-            if (declaration is not null)
-            {
-                _warn($"PLC variable '{symbol}' is not in the process image ({tried}); linking its GVL declaration node '{declaration}' (lenient mode).");
-                return _plcPathCache[cacheKey] = declaration;
-            }
-        }
-
+        string arrayHint = symbol.Contains('[', StringComparison.Ordinal)
+            ? " An array element is looked up as written, flat (e.g. 'MAIN.aCyl[1].bIn'; two indexes as '[2,1]' without blanks)."
+            : string.Empty;
         throw new InvalidOperationException(
-            $"PLC variable '{symbol}' not found in the process image of PLC '{_target.PlcName}' (tried {tried}). " +
-            "Build the PLC so the GVL is in the process image (autoBuild=true, or twincat_build_plc), then link again. " +
-            "A same-named variable of another GVL is never used.");
+            $"PLC symbol '{symbol}' not found in the {(dir == "Q" ? "output" : "input")} process image of PLC '{_target.PlcName}' (tried {tried}). " +
+            "Declare it AT %I* / AT %Q* with the direction the point states, build the PLC " +
+            "(twincat_build_plc), then apply again. A same-named member of another instance is never used." + arrayHint);
     }
 
     // "<instance>^<task> Inputs"/"... Outputs" folders that exist, for every task under TIRT and
@@ -195,17 +206,6 @@ internal sealed class Linker
     {
         try { return node.Children().ToList(); }
         catch (Exception ex) when (ComCall.Recoverable(ex)) { return []; }
-    }
-
-    // Lenient last resort: the variable's node inside the run's own GVL (exact name, one level).
-    private string? FindGvlDeclarationNode(string varName)
-    {
-        if (string.IsNullOrWhiteSpace(_target.GvlPath)) return null;
-        ITreeNode? gvl = _tree.Lookup(_target.GvlPath);
-        if (gvl is null) return null;
-        ITreeNode? node = _tree.Lookup($"{_target.GvlPath}^{varName}")
-            ?? SafeChildren(gvl).FirstOrDefault(c => string.Equals(c.Name, varName, StringComparison.OrdinalIgnoreCase));
-        return node is null ? null : node.Path.Length > 0 ? node.Path : $"{_target.GvlPath}^{varName}";
     }
 
     // ---- IO side ---------------------------------------------------------------------------
@@ -361,7 +361,7 @@ internal sealed class Linker
         if (!string.IsNullOrWhiteSpace(point.IoLeaf) && _tree.Lookup(point.IoLeaf) is not null) return point.IoLeaf!;
 
         throw new InvalidOperationException(
-            $"IO-Link PDO leaf not found for '{point.VarName}': port {point.IoLinkPort?.ToString(CultureInfo.InvariantCulture) ?? "?"} " +
+            $"IO-Link PDO leaf not found for '{point.Label}': port {point.IoLinkPort?.ToString(CultureInfo.InvariantCulture) ?? "?"} " +
             $"channel '{point.IoLinkChannel}' under terminal '{point.TerminalName}' (tried {string.Join(", ", tried.Select(t => $"'{t}'"))}). " +
             "Is the device assigned to the port and the IODD broken down?");
     }

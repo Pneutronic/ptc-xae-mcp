@@ -7,8 +7,8 @@ namespace PtcXaeMcp.Tests;
 
 /// <summary>
 /// Issue #155 step 7: the smaller runner pieces moved onto testable seams — export paths (E-25),
-/// the diagnostics folder (E-22), the exact LinkAlways write, and "explicit > schema > GUI
-/// default" (a stale GUI selection never overrides the schema).
+/// the diagnostics folder (E-22), "explicit > schema > GUI default" (a stale GUI selection never
+/// overrides the schema) and when the process image is refreshed before linking.
 /// </summary>
 public class ApplyRunnerPiecesTests
 {
@@ -48,38 +48,29 @@ public class ApplyRunnerPiecesTests
         ApplyFiles.DiagnosticsFolder.Should().NotStartWith(AppContext.BaseDirectory);
     }
 
-    private const string GvlPath = "TIPC^Plc^Plc Project^GVLs^GVL_IO";
-
-    private static string GvlXml(string linkAlways) =>
-        "<TreeItem><ItemName>GVL_IO</ItemName><VSProperties><VSProperty category=\"Advanced\"><Name>LinkAlways</Name>" +
-        $"<Value>{linkAlways}</Value></VSProperty><VSProperty category=\"Advanced\"><Name>Exclude</Name><Value>False</Value></VSProperty>" +
-        "</VSProperties></TreeItem>";
+    private static SchemaConfig Config(bool linkingEnabled, params string?[] symbols) => new()
+    {
+        TwinCat = new TwinCatConfig { Linking = new LinkingConfig { Enabled = linkingEnabled } },
+        IoPoints = symbols.Select((s, i) => new IoPoint { TerminalName = "T1", Channel = i, Direction = "I", Symbol = s }).ToList(),
+    };
 
     [Fact]
-    public void SetAlwaysBind_WritesAndVerifiesTheExactGvlOnly()
+    public void ProcessImageRefresh_OnlyWhenLinkingIsEnabledAndAPointNamesASymbol()
     {
-        var tree = new FakeSysManTree();
-        tree.Add(GvlPath, itemType: PlcItemType.Gvl).Xml = GvlXml("False");
-        tree.Add("TIPC^Other^Other Project^GVLs^GVL_IO", itemType: PlcItemType.Gvl).Xml = GvlXml("False");
-
-        AlwaysBindOutcome outcome = new GvlWriter(tree).SetAlwaysBind(GvlPath);
-
-        outcome.Verified.Should().BeTrue();
-        tree.Mutations.Should().Equal($"consume {GvlPath}");
-        tree.Get("TIPC^Other^Other Project^GVLs^GVL_IO").Xml.Should().Contain("<Value>False</Value>");
+        NativeTwinCatRunner.NeedsProcessImageRefresh(Config(true, "MAIN.fbCyl.bIn")).Should().BeTrue();
+        NativeTwinCatRunner.NeedsProcessImageRefresh(Config(true, null, "MAIN.fbCyl.bIn")).Should().BeTrue();
     }
 
     [Fact]
-    public void SetAlwaysBind_NoFieldInTheXml_IsReportedNotClaimed()
+    public void ProcessImageRefresh_NotWhenNoPointHasASymbol()
     {
-        var tree = new FakeSysManTree();
-        tree.Add(GvlPath, itemType: PlcItemType.Gvl).Xml = "<TreeItem><ItemName>GVL_IO</ItemName></TreeItem>";
+        NativeTwinCatRunner.NeedsProcessImageRefresh(Config(true, null, "", "  ")).Should().BeFalse();
+    }
 
-        AlwaysBindOutcome outcome = new GvlWriter(tree).SetAlwaysBind(GvlPath);
-
-        outcome.Verified.Should().BeFalse();
-        outcome.Message.Should().Contain("No LinkAlways");
-        tree.Mutations.Should().BeEmpty();
+    [Fact]
+    public void ProcessImageRefresh_NotWhenLinkingIsDisabled()
+    {
+        NativeTwinCatRunner.NeedsProcessImageRefresh(Config(false, "MAIN.fbCyl.bIn")).Should().BeFalse();
     }
 
     [Theory]

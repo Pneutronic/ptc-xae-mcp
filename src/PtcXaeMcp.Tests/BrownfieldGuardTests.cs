@@ -119,8 +119,6 @@ public class BrownfieldGuardTests
         BrownfieldGuard.AllowFuzzyDeviceMatch(strict: true).Should().BeFalse();
     }
 
-    // ---- H3: GVL-collision guard — moved to GvlWriter (issue #155 E-2), see GvlWriterTests.
-
     // ---- H4: build controllable ------------------------------------------------------
 
     [Fact]

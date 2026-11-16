@@ -9,10 +9,10 @@ internal sealed record EventClassEvent(uint Id, string Name, string Severity, st
 
 /// <summary>One event as a tool call passes it (checked by the coordinator before anything changes).</summary>
 public sealed record EventClassEventInput(
-    [property: System.ComponentModel.Description("Event id, 0..4294967295, unique in the class (TcEventEntry.nEventId).")] long Id,
-    [property: System.ComponentModel.Description("Event name, an IEC identifier unique in the class: the PLC uses TC_EVENTS.<class>.<name>.")] string Name,
+    [property: System.ComponentModel.Description("Event id, 0..4294967295, unique in the class.")] long Id,
+    [property: System.ComponentModel.Description("IEC identifier, unique in the class; the PLC uses TC_EVENTS.<class>.<name>.")] string Name,
     [property: System.ComponentModel.Description("Verbose, Info, Warning, Error or Critical. Default Info.")] string? Severity = null,
-    [property: System.ComponentModel.Description("Display text; {0}, {1} … take the arguments of the event. Default: the event name.")] string? Text = null);
+    [property: System.ComponentModel.Description("Display text; {0}, {1} … take the event's arguments. Default: the name.")] string? Text = null);
 
 /// <summary>
 /// An event class as the type system holds it. <c>Persistent</c>: <c>PersistentType="true"</c>, kept in the .tsproj even when

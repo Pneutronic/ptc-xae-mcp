@@ -7,15 +7,11 @@ internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_resolve_host", ReadOnly = true)]
     [Description(
-        "Diagnostic: resolve which TwinCAT XAE Shell host a project's declared " +
-        ".tsproj TcVersion selects (>= 3.1.4026 -> 64-bit ProgID " +
-        "TcXaeShell.DTE.17.0, otherwise 32-bit TcXaeShell.DTE.15.0). Reports " +
-        "the parsed TcVersion, host class, chosen ProgID and exe path, whether " +
-        "that exe is installed, and whether the host is currently running. " +
-        "Pure read-only; no project is opened or modified. If no path is given, " +
-        "uses the currently-open solution.")]
+        "Resolve which XAE host (32- or 64-bit) a project's TcVersion selects. " +
+        "3.1.4026 and later select the 64-bit XAE, older ones the 32-bit. Reports TcVersion, host class, ProgID, exe " +
+        "path, whether it is installed and running. Opens and changes nothing.")]
     public string ResolveHost(
-        [Description("Absolute path to a .tsproj or .sln. Optional — defaults to the currently-open solution.")]
+        [Description("Absolute path to a .tsproj or .sln. Default: the open solution.")]
         string? tsprojOrSlnPath = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_resolve_host", new { tsprojOrSlnPath }, () =>

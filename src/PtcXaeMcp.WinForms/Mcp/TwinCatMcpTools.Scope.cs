@@ -12,9 +12,9 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_create_scope_project ---------------------------------------
 
     [McpServerTool(Name = "twincat_create_scope_project", ReadOnly = false, Destructive = false)]
-    [Description("Add a TwinCAT Scope (measurement) project to the open solution using the Scope View 'YT Scope Project' template. Returns the new project's path. projectName defaults to 'MeasurementProject'. Requires TE130X Scope View to be installed.")]
+    [Description("Add a TwinCAT Scope (measurement) project to the open solution. Uses the 'YT Scope Project' template; needs TE130X Scope View installed. Returns the project path.")]
     public string CreateScopeProject(
-        [Description("Name for the new measurement project. Defaults to 'MeasurementProject' when omitted.")] string? projectName = null,
+        [Description("Name of the new measurement project. Default 'MeasurementProject'.")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_create_scope_project", new { projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -23,9 +23,9 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_remove_scope_project ---------------------------------------
 
     [McpServerTool(Name = "twincat_remove_scope_project", ReadOnly = false, Destructive = true)]
-    [Description("Unregister a TwinCAT Scope (measurement) project from the open solution — the counterpart to twincat_create_scope_project. Removes the project node only; does NOT save the solution and does NOT delete files from disk. projectName must match an existing measurement project; required when the solution has more than one (fails loud otherwise so a customer-shipped scope project is never removed by accident). Idempotent: returns a benign summary if no matching project is present. Use this before closing/deleting a created scope project so a blocked close cannot leave a dangling node (E_ABORT 'Missing Project Nodes' on reopen).")]
+    [Description("Remove a Scope (measurement) project node from the open solution. Counterpart of twincat_create_scope_project. Does NOT save the solution or delete files from disk. Idempotent: benign result if no project matches. Call it before closing a solution with a scope project you created, so no dangling node breaks the reopen ('Missing Project Nodes').")]
     public string RemoveScopeProject(
-        [Description("Name of the measurement project to remove. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Measurement project to remove; must match an existing one. Required when the solution has several (else [Error]).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_remove_scope_project", new { projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -34,19 +34,19 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_add_scope_channel -----------------------------------------
 
     [McpServerTool(Name = "twincat_add_scope_channel", ReadOnly = false, Destructive = false)]
-    [Description("Add a chart → axis-group → channel to the scope project and bind it to a PLC symbol (e.g. 'TIPC^PLC^PLC Projekt^MAIN.rActualValue'). Reuses an existing chart/axis by name if they already exist. chartName, axisName, channelName default to the symbol path. Set stackedAxis=true to place the channel on its own Y-axis. An existing DataPool acquisition with the same Symbol Name and port is reused (not duplicated); otherwise one is created. The acquisition is pointed at the actual PLC symbol so it records data, every field is read back and a field that did not land returns [Error]: symbolName overrides the PLC-side symbol name derived from symbol; targetPort defaults to 851 (TC3 PLC 1 Runtime); sampleMode (e.g. 'Task Sampletime') and sampleTimeMs tune sampling; symbolComment is optional. projectName selects which measurement project to use when the solution has more than one (omit if only one; an ambiguous omission returns a structured [Error] listing the projects). Returns the channel's tree path.")]
+    [Description("Add a channel bound to a PLC symbol to the scope project. Creates chart, axis-group and channel, reusing a chart/axis of the same name, and reuses or creates the DataPool acquisition (same symbol and port). Every field is read back; one that did not land returns [Error]. Returns the channel's tree path.")]
     public string AddScopeChannel(
-        [Description("PLC symbol path to bind the channel to, e.g. 'TIPC^PLC^PLC Projekt^MAIN.rActualValue'.")] string  symbol,
-        [Description("Name of the chart to add the channel to; reused if it already exists. Defaults to the symbol path.")] string? chartName     = null,
-        [Description("Name of the axis-group within the chart; reused if it already exists. Defaults to the symbol path.")] string? axisName      = null,
-        [Description("Name of the created channel. Defaults to the symbol path.")] string? channelName   = null,
-        [Description("True to place the channel on its own Y-axis instead of sharing the axis-group's axis. Default false.")] bool    stackedAxis   = false,
-        [Description("PLC-side symbol name for the DataPool acquisition, if it must differ from the name derived from symbol.")] string? symbolName    = null,
-        [Description("ADS target port of the PLC runtime to sample from. Defaults to 851 (TC3 PLC 1 Runtime).")] int?    targetPort    = null,
-        [Description("Sample mode for the acquisition, e.g. 'Task Sampletime'. Uses the scope's default when omitted.")] string? sampleMode    = null,
-        [Description("Sample time in milliseconds. Uses the scope's default when omitted.")] int?    sampleTimeMs  = null,
-        [Description("Optional free-text comment stored on the acquisition's symbol binding.")] string? symbolComment = null,
-        [Description("Name of the measurement project to use. Required when the solution has more than one; omit when there is exactly one.")] string? projectName   = null,
+        [Description("PLC symbol path, e.g. 'TIPC^PLC^PLC Projekt^MAIN.rActualValue'.")] string  symbol,
+        [Description("Chart name; reused if it exists. Default: the symbol path.")] string? chartName     = null,
+        [Description("Axis-group name in the chart; reused if it exists. Default: the symbol path.")] string? axisName      = null,
+        [Description("Channel name. Default: the symbol path.")] string? channelName   = null,
+        [Description("True puts the channel on its own Y-axis. Default false.")] bool    stackedAxis   = false,
+        [Description("PLC-side symbol name for the acquisition, if it differs from the one derived from symbol.")] string? symbolName    = null,
+        [Description("ADS port of the PLC runtime. Default 851 (PLC 1).")] int?    targetPort    = null,
+        [Description("Sample mode, e.g. 'Task Sampletime'. Default: the scope's default.")] string? sampleMode    = null,
+        [Description("Sample time in ms. Default: the scope's default.")] int?    sampleTimeMs  = null,
+        [Description("Optional comment on the acquisition's symbol binding.")] string? symbolComment = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName   = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_add_scope_channel",
             new { symbol, chartName, axisName, channelName, stackedAxis, symbolName, targetPort, sampleMode, sampleTimeMs, symbolComment, projectName }, () =>
@@ -58,10 +58,10 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_read_scope_acquisition ------------------------------------
 
     [McpServerTool(Name = "twincat_read_scope_acquisition", ReadOnly = true)]
-    [Description("Read the full symbol/ADS structure of one DataPool acquisition in the scope project. acqSelector is the acquisition name or 'DataPool^<name>'. Returns every ProjectItem.Properties entry (raw key=value), plus the resolved Symbol Name, Data Type, Sample Mode, Sample Time, and Target Port, and flags acquisitions with no symbol bound (would record nothing). projectName selects the measurement project when the solution has more than one. Read-only.")]
+    [Description("Read the symbol and ADS settings of one scope DataPool acquisition. Returns Symbol Name, Data Type, Sample Mode, Sample Time, Target Port and all raw properties; flags an acquisition with no symbol bound (records nothing). Read-only.")]
     public string ReadScopeAcquisition(
-        [Description("Acquisition name, or 'DataPool^<name>' tree path.")] string acqSelector,
-        [Description("Name of the measurement project to read from. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Acquisition name or 'DataPool^<name>'.")] string acqSelector,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_read_scope_acquisition", new { acqSelector, projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -89,18 +89,18 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_set_scope_acquisition_symbol ------------------------------
 
     [McpServerTool(Name = "twincat_set_scope_acquisition_symbol", ReadOnly = false, Destructive = true)]
-    [Description("Set or repair the PLC symbol and ADS/sample settings of an existing DataPool acquisition (the partial-update analogue of twincat_set_scope_labels). acqSelector is the acquisition name or 'DataPool^<name>'. Supply at least one of: symbolName (PLC-side symbol, e.g. 'GVL_HMI.HmiOpened'), targetPort (e.g. 851), targetSystem, sampleMode, sampleTimeMs, timeOffsetS, symbolComment, enabled. Only supplied fields change. Every field is read back; any field that did not land returns [Error] naming what did and did not apply. projectName selects the measurement project when the solution has more than one. Returns the read-back values.")]
+    [Description("Set or repair the PLC symbol and sample settings of a scope acquisition. Only supplied fields change; supply at least one. Every field is read back; any that did not land returns [Error] naming what did and did not apply. Returns the read-back values.")]
     public string SetScopeAcquisitionSymbol(
-        [Description("Acquisition name, or 'DataPool^<name>' tree path, of the acquisition to update.")] string  acqSelector,
-        [Description("PLC-side symbol name to bind, e.g. 'GVL_HMI.HmiOpened'. Only changed when supplied.")] string? symbolName    = null,
-        [Description("ADS target port of the PLC runtime to sample from, e.g. 851. Only changed when supplied.")] int?    targetPort    = null,
-        [Description("Target system (AMS NetId) to sample from. Only changed when supplied.")] string? targetSystem  = null,
-        [Description("Sample mode for the acquisition, e.g. 'Task Sampletime'. Only changed when supplied.")] string? sampleMode    = null,
-        [Description("Sample time in milliseconds. Only changed when supplied.")] int?    sampleTimeMs  = null,
-        [Description("Time offset in seconds applied to the acquisition. Only changed when supplied.")] double? timeOffsetS   = null,
-        [Description("Free-text comment stored on the acquisition's symbol binding. Only changed when supplied.")] string? symbolComment = null,
-        [Description("Whether the acquisition is enabled. Only changed when supplied.")] bool?   enabled       = null,
-        [Description("Name of the measurement project to update. Required when the solution has more than one; omit when there is exactly one.")] string? projectName   = null,
+        [Description("Acquisition name or 'DataPool^<name>'.")] string  acqSelector,
+        [Description("PLC symbol to bind, e.g. 'GVL_HMI.HmiOpened'.")] string? symbolName    = null,
+        [Description("ADS port of the PLC runtime, e.g. 851.")] int?    targetPort    = null,
+        [Description("AMS NetId of the target system to sample from.")] string? targetSystem  = null,
+        [Description("Sample mode, e.g. 'Task Sampletime'.")] string? sampleMode    = null,
+        [Description("Sample time in ms.")] int?    sampleTimeMs  = null,
+        [Description("Time offset in seconds.")] double? timeOffsetS   = null,
+        [Description("Comment on the acquisition's symbol binding.")] string? symbolComment = null,
+        [Description("Enable or disable the acquisition.")] bool?   enabled       = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName   = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_set_scope_acquisition_symbol",
             new { acqSelector, symbolName, targetPort, targetSystem, sampleMode, sampleTimeMs, timeOffsetS, symbolComment, enabled, projectName }, () =>
@@ -112,11 +112,11 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_set_scope_axis_mode ----------------------------------------
 
     [McpServerTool(Name = "twincat_set_scope_axis_mode", ReadOnly = false, Destructive = true)]
-    [Description("EXPERIMENTAL — the stacked-axis property key is not documented and not yet verified on a live TE130x. Set the Y-axis display mode of a chart in the scope project. mode is 'overlaid' (all channels share one Y-axis) or 'stacked' (each channel gets its own Y-axis). chartName is the chart's tree name. The value is read back; if no stacked-axis property exists or the read-back differs, returns [Error] listing the chart's property keys. projectName selects the measurement project when the solution has more than one.")]
+    [Description("Set a scope chart's Y-axis mode to overlaid or stacked. EXPERIMENTAL: not verified on a live TE130x. The value is read back; if the property is missing or differs, returns [Error] listing the chart's property keys.")]
     public string SetScopeAxisMode(
-        [Description("Tree name of the chart to update.")] string chartName,
-        [Description("Y-axis display mode: 'overlaid' (all channels share one Y-axis) or 'stacked' (each channel gets its own Y-axis).")] string mode,
-        [Description("Name of the measurement project to update. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Tree name of the chart.")] string chartName,
+        [Description("'overlaid' (one shared Y-axis) or 'stacked' (one Y-axis per channel).")] string mode,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_set_scope_axis_mode", new { chartName, mode, projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -125,13 +125,13 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_set_scope_labels ------------------------------------------
 
     [McpServerTool(Name = "twincat_set_scope_labels", ReadOnly = false, Destructive = true)]
-    [Description("Set or fix the display labels of an existing chart or axis-group node in the scope project. nodeSelector is the node's name. Supply at least one of: name (rename the node), chartTitle (set the chart title text), axisTitle (set the Y-axis title). Flips Show Title to Custom for any supplied title. Every value is read back; if any requested label did not land, returns [Error] naming what did and did not apply. projectName selects the measurement project when the solution has more than one.")]
+    [Description("Rename a scope chart or axis-group node, or set its titles. Supply at least one of name, chartTitle, axisTitle; a supplied title sets Show Title to Custom. Every value is read back; any that did not land returns [Error] naming what did and did not apply.")]
     public string SetScopeLabels(
-        [Description("Name of the chart or axis-group node to update.")] string  nodeSelector,
-        [Description("New name for the node (rename). Only changed when supplied.")] string? name       = null,
-        [Description("Title text, only where the node has a title property; TE130x 4026.22 has none on a chart or axis group (a chart shows its name — use `name`), so there it returns [Error].")] string? chartTitle = null,
-        [Description("Y-axis title text. Only changed when supplied; flips Show Title to Custom.")] string? axisTitle  = null,
-        [Description("Name of the measurement project to update. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Name of the chart or axis-group node.")] string  nodeSelector,
+        [Description("New node name (rename).")] string? name       = null,
+        [Description("Title text, only where the node has a title property; TE130x 4026.22 has none on a chart or axis group (a chart shows its name: use `name`), so there it returns [Error].")] string? chartTitle = null,
+        [Description("Y-axis title text.")] string? axisTitle  = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_set_scope_labels",
             new { nodeSelector, name, chartTitle, axisTitle, projectName }, () =>
@@ -142,9 +142,9 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_list_scope_channels ----------------------------------------
 
     [McpServerTool(Name = "twincat_list_scope_channels", ReadOnly = true)]
-    [Description("Enumerate all charts, axis-groups, channels, and acquisitions in the scope project. Returns one line per node with kind (CHART|AXISGROUP|CHANNEL|ACQUISITION), tree path, bound acquisition (for channels), and whether the display label is still at its template default. projectName selects the measurement project when the solution has more than one.")]
+    [Description("List all charts, axis-groups, channels and acquisitions of the scope project. One line per node: kind (CHART|AXISGROUP|CHANNEL|ACQUISITION), tree path, bound acquisition (channels) and a flag if the label is still the template default.")]
     public string ListScopeChannels(
-        [Description("Name of the measurement project to list. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_list_scope_channels", new { projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -169,9 +169,9 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_get_scope_status ------------------------------------------
 
     [McpServerTool(Name = "twincat_get_scope_status", ReadOnly = true)]
-    [Description("Report whether a TwinCAT Measurement (scope) project exists in the open solution and summarise its structure (chart/axis/channel/acquisition counts). projectName selects the measurement project when the solution has more than one (ambiguous omission returns a structured [Error] listing them). Read-only.")]
+    [Description("Report whether a scope (measurement) project exists in the open solution. Returns its chart/axis-group/channel/acquisition counts. Read-only.")]
     public string GetScopeStatus(
-        [Description("Name of the measurement project to report on. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_scope_status", new { projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -196,10 +196,10 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_export_scope_data -----------------------------------------
 
     [McpServerTool(Name = "twincat_export_scope_data", ReadOnly = false, Destructive = true)]
-    [Description("Export the recorded scope data to a file next to the open solution. format is one of CSV (default), BINARY, TDMS, DAT, SVD. Returns the written file path. projectName selects the measurement project when the solution has more than one. Returns [Error] if no data has been recorded yet; any other export failure is reported with its message and HRESULT.")]
+    [Description("Export recorded scope data to a file next to the open solution. Returns the written file path; [Error] if no data has been recorded yet.")]
     public string ExportScopeData(
-        [Description("Export file format: CSV (default), BINARY, TDMS, DAT, or SVD.")] string format = "CSV",
-        [Description("Name of the measurement project to export from. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("CSV (default), BINARY, TDMS, DAT or SVD.")] string format = "CSV",
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_export_scope_data", new { format, projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -208,9 +208,9 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_start_scope_record ----------------------------------------
 
     [McpServerTool(Name = "twincat_start_scope_record", ReadOnly = false, Destructive = true)]
-    [Description("Start a TwinCAT Scope recording (IMeasurementScope.StartRecord on the scope-config root). The tool does not check the current state itself — call twincat_get_scope_record_state first. Returns [Error] if StartRecord fails or no scope project exists. projectName selects the measurement project when the solution has more than one.")]
+    [Description("Start a TwinCAT Scope recording. Does not check the current state: call twincat_get_scope_record_state first. [Error] if the start fails or no scope project exists.")]
     public string StartScopeRecord(
-        [Description("Name of the measurement project to start recording on. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_start_scope_record", new { projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -219,9 +219,9 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_stop_scope_record -----------------------------------------
 
     [McpServerTool(Name = "twincat_stop_scope_record", ReadOnly = false, Destructive = true)]
-    [Description("Stop the active TwinCAT Scope recording (IMeasurementScope.StopRecord). Returns [Error] if StopRecord fails. After stopping, the scope enters 'Reply' state and recorded data is available for twincat_save_scope_data or twincat_export_scope_data. projectName selects the measurement project when the solution has more than one.")]
+    [Description("Stop the active TwinCAT Scope recording. The scope then enters 'Reply' state; save the data with twincat_save_scope_data or twincat_export_scope_data. [Error] if the stop fails.")]
     public string StopScopeRecord(
-        [Description("Name of the measurement project to stop recording on. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_stop_scope_record", new { projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -230,9 +230,9 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_get_scope_record_state ------------------------------------
 
     [McpServerTool(Name = "twincat_get_scope_record_state", ReadOnly = true)]
-    [Description("Read the current TwinCAT Scope recording state: 'Config' (not recording), 'Record' (recording in progress), or 'Reply' (recording stopped, data available). Polling-friendly — call before start/stop to guard preconditions. Returns [Error] (never 'Config') when the state cannot be read. projectName selects the measurement project when the solution has more than one. Read-only.")]
+    [Description("Read the TwinCAT Scope recording state: Config, Record or Reply. 'Config' = not recording, 'Record' = recording, 'Reply' = stopped, data available. Call before start/stop. [Error] (never 'Config') when the state cannot be read. Read-only.")]
     public string GetScopeRecordState(
-        [Description("Name of the measurement project to read. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_scope_record_state", new { projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -253,10 +253,10 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_save_scope_data -------------------------------------------
 
     [McpServerTool(Name = "twincat_save_scope_data", ReadOnly = false, Destructive = true)]
-    [Description("Save the recorded TwinCAT Scope data as a native .svdx file (SaveSVD). The scope must be in 'Reply' state (recording stopped). path is the output file path; if omitted, defaults to ScopeData.svdx next to the open solution. Returns the written file path. Returns [Error] if no data has been recorded. Use twincat_export_scope_data for CSV/TDMS/DAT/BINARY formats. projectName selects the measurement project when the solution has more than one.")]
+    [Description("Save recorded TwinCAT Scope data as a native .svdx file. Needs 'Reply' state (recording stopped). Returns the written file path; [Error] if no data has been recorded. For CSV/TDMS/DAT/BINARY use twincat_export_scope_data.")]
     public string SaveScopeData(
-        [Description("Output .svdx file path. Defaults to ScopeData.svdx next to the open solution when omitted.")] string? path = null,
-        [Description("Name of the measurement project to save from. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Output .svdx path. Default ScopeData.svdx next to the open solution.")] string? path = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_save_scope_data", new { path, projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -266,17 +266,17 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_set_scope_record_settings ---------------------------------
 
     [McpServerTool(Name = "twincat_set_scope_record_settings", ReadOnly = false, Destructive = true)]
-    [Description("Set TwinCAT Scope record configuration on the scope-config root. Supply at least one of: recordTimeS (total recording duration in seconds, > 0), ringbuffer (true = Restart Record / ring mode), fileStore (file-store path), recordMode ('UserStart' or 'TriggerStart'), autoSaveMode ('None', 'SVDX', or 'Export'), autoSavePath, filenameMask, syncMode ('Soft', 'Medium', or 'Hard'). Only supplied fields are changed. EXPERIMENTAL — these property keys are matched by normalised token and are not yet verified on a live TE130x; every value is read back and any field that did not land returns [Error] listing the scope root's property keys. projectName selects the measurement project when the solution has more than one.")]
+    [Description("Set the scope's record settings (duration, ring buffer, auto-save, sync). Only supplied fields change; supply at least one. EXPERIMENTAL: not verified on a live TE130x; every value is read back and a field that did not land returns [Error] listing the scope root's property keys.")]
     public string SetScopeRecordSettings(
-        [Description("Total recording duration in seconds. Must be > 0. Only changed when supplied.")] double? recordTimeS  = null,
-        [Description("True selects ring-buffer ('Restart Record') mode. Only changed when supplied.")] bool?   ringbuffer   = null,
-        [Description("File-store path for recorded data. Only changed when supplied.")] string? fileStore    = null,
-        [Description("NOT writable: 'Record.Start Mode' is read-only in TE130x (it follows from the trigger configuration). Supplying it returns [Error] for this field; omit it.")] string? recordMode   = null,
-        [Description("Auto-save mode: 'None', 'SVDX', or 'Export'. Only changed when supplied.")] string? autoSaveMode = null,
-        [Description("Auto-save output path. Only changed when supplied.")] string? autoSavePath = null,
-        [Description("Filename mask/pattern for auto-saved files. Only changed when supplied.")] string? filenameMask = null,
-        [Description("Synchronisation mode: 'Soft', 'Medium', or 'Hard'. Only changed when supplied.")] string? syncMode     = null,
-        [Description("Name of the measurement project to update. Required when the solution has more than one; omit when there is exactly one.")] string? projectName  = null,
+        [Description("Total recording duration in seconds, > 0.")] double? recordTimeS  = null,
+        [Description("True = ring-buffer ('Restart Record') mode.")] bool?   ringbuffer   = null,
+        [Description("File-store path for recorded data.")] string? fileStore    = null,
+        [Description("NOT writable: read-only in TE130x (follows the trigger configuration). Supplying it returns [Error] for this field; omit it.")] string? recordMode   = null,
+        [Description("'None', 'SVDX' or 'Export'.")] string? autoSaveMode = null,
+        [Description("Auto-save output path.")] string? autoSavePath = null,
+        [Description("Filename mask for auto-saved files.")] string? filenameMask = null,
+        [Description("'Soft', 'Medium' or 'Hard'.")] string? syncMode     = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName  = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_set_scope_record_settings",
             new { recordTimeS, ringbuffer, fileStore, recordMode, autoSaveMode, autoSavePath, filenameMask, syncMode, projectName }, () =>
@@ -288,10 +288,10 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_create_scope_trigger_group --------------------------------
 
     [McpServerTool(Name = "twincat_create_scope_trigger_group", ReadOnly = false, Destructive = false)]
-    [Description("EXPERIMENTAL — the trigger-group element id and its property keys are not documented and not yet verified on a live TE130x. Create a trigger group under the scope project's existing Trigger node (never creates that node). action is the trigger event that fires when all sets in the group are satisfied: 'StopRecord', 'StopDisplay', 'RestartDisplay', 'StartSubsave', 'StopSubsave', or 'EventMarker'. The action is read back; if it did not land, the group is deleted again and [Error] lists the group's property keys. Use twincat_add_scope_trigger_set to add conditions to the group. projectName selects the measurement project when the solution has more than one.")]
+    [Description("Create a trigger group under the scope project's Trigger node. The Trigger node must exist (never created). EXPERIMENTAL: not verified on a live TE130x. The action is read back; if it did not land, the group is deleted again and [Error] lists its property keys. Add conditions with twincat_add_scope_trigger_set.")]
     public string CreateScopeTriggerGroup(
-        [Description("Trigger event fired when all sets in the group are satisfied: 'StopRecord', 'StopDisplay', 'RestartDisplay', 'StartSubsave', 'StopSubsave', or 'EventMarker'.")] string action,
-        [Description("Name of the measurement project to create the group in. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Event fired when all sets of the group are satisfied: 'StopRecord', 'StopDisplay', 'RestartDisplay', 'StartSubsave', 'StopSubsave' or 'EventMarker'.")] string action,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_create_scope_trigger_group", new { action, projectName }, () =>
             bridge.Dispatcher.Run(() =>
@@ -301,15 +301,15 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_add_scope_trigger_set -------------------------------------
 
     [McpServerTool(Name = "twincat_add_scope_trigger_set", ReadOnly = false, Destructive = false)]
-    [Description("EXPERIMENTAL — the condition property keys are not yet verified on a live TE130x. Add a trigger set to an existing trigger group in the TwinCAT Scope project. groupName is the name of the trigger group (from twincat_create_scope_trigger_group). setType is 'ChannelSet' or 'DirectorySet' (TriggerSetType ids 0/1 of the Scope Automation Interface). For ChannelSet: supply symbol (PLC channel symbol), threshold (numeric trigger level), edge ('Rising'|'Falling'|'Both'), compare ('Greater'|'Less'|'Equal'). Each condition is read back; any condition that did not land returns [Error] naming what did and did not apply. projectName selects the measurement project when the solution has more than one.")]
+    [Description("Add a trigger set to an existing scope trigger group. EXPERIMENTAL: not verified on a live TE130x. For a ChannelSet supply threshold, edge and compare. Each condition is read back; any that did not land returns [Error] naming what did and did not apply.")]
     public string AddScopeTriggerSet(
-        [Description("Name of the trigger group to add the set to (from twincat_create_scope_trigger_group).")] string  groupName,
-        [Description("Trigger set type: 'ChannelSet' or 'DirectorySet' (TriggerSetType 0/1). Default 'ChannelSet'.")] string  setType     = "ChannelSet",
-        [Description("NOT supported: the trigger channel is a Guid reference to a DataPool acquisition that the Automation Interface does not expose. Supplying it returns [Error] for this condition; pick the channel in the Scope editor.")] string? symbol      = null,
-        [Description("Numeric trigger level. Only used for ChannelSet.")] double? threshold   = null,
-        [Description("Trigger edge: 'Rising', 'Falling', or 'Both'. Only used for ChannelSet.")] string? edge        = null,
-        [Description("Comparison operator: 'Greater', 'Less', or 'Equal'. Only used for ChannelSet.")] string? compare     = null,
-        [Description("Name of the measurement project to update. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Trigger group name (from twincat_create_scope_trigger_group).")] string  groupName,
+        [Description("'ChannelSet' (default) or 'DirectorySet'.")] string  setType     = "ChannelSet",
+        [Description("NOT supported: the trigger channel cannot be set through the automation interface. Supplying it returns [Error] for this condition; pick the channel in the Scope editor.")] string? symbol      = null,
+        [Description("Numeric trigger level (ChannelSet only).")] double? threshold   = null,
+        [Description("'Rising', 'Falling' or 'Both' (ChannelSet only).")] string? edge        = null,
+        [Description("'Greater', 'Less' or 'Equal' (ChannelSet only).")] string? compare     = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_add_scope_trigger_set",
             new { groupName, setType, symbol, threshold, edge, compare, projectName }, () =>
@@ -320,9 +320,9 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_list_scope_triggers ----------------------------------------
 
     [McpServerTool(Name = "twincat_list_scope_triggers", ReadOnly = true)]
-    [Description("EXPERIMENTAL — reads the trigger properties by token match (keys not yet verified on a live TE130x). Enumerate all trigger groups and their trigger sets in the TwinCAT Scope project. Returns group name, action, and for each set: setType, symbol, threshold, edge, and compare condition. projectName selects the measurement project when the solution has more than one. Read-only.")]
+    [Description("List the scope project's trigger groups and their trigger sets. Per group: name and action; per set: setType, symbol, threshold, edge, compare. EXPERIMENTAL: not verified on a live TE130x. Read-only.")]
     public string ListScopeTriggers(
-        [Description("Name of the measurement project to list. Required when the solution has more than one; omit when there is exactly one.")] string? projectName = null,
+        [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_list_scope_triggers", new { projectName }, () =>
             bridge.Dispatcher.Run(() =>

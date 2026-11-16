@@ -34,12 +34,10 @@ internal sealed partial class TwinCatMcpTools
 
     [McpServerTool(Name = "twincat_get_client_info", ReadOnly = true)]
     [Description(
-        "Return the calling MCP client's self-reported identity for THIS session: " +
-        "client name, version, negotiated MCP protocol version, and session id. " +
-        "SECURITY: clientInfo is self-reported and unauthenticated — a client may " +
-        "claim any name/version. Diagnostics only; never use for access control. " +
-        "If the per-call session cannot be resolved, falls back to the " +
-        "most-recently-connected client and says so (the value may be stale).")]
+        "Return this session's self-reported MCP client identity and tool profile. " +
+        "Client name, version, MCP protocol version, session id, tool profile and access policy. The identity is " +
+        "unauthenticated: diagnostics only, never for access control. If the session cannot be resolved, reports the " +
+        "most recently connected client and says so (may be stale).")]
     public string GetClientInfo(RequestContext<CallToolRequestParams> context,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_client_info", null, () =>

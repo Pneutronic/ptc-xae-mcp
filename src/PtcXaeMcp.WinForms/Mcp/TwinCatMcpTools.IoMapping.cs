@@ -8,18 +8,16 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_link_variables", ReadOnly = false, Destructive = true)]
-    [Description("Create a link between two TwinCAT variables identified by their caret-separated tree paths. " +
-                 "Requires XAE running with a solution open. Saves the project after linking. " +
-                 "Use twincat_get_fieldbus_topology to find I/O paths (TIID^...) and " +
-                 "twincat_plc_list to find PLC paths (TIPC^...). " +
-                 "When TwinCAT refuses the link, the error names the cause: the type, bit size and direction of both " +
-                 "variables, which path does not resolve, or which path is not a variable.")]
+    [Description("Link two TwinCAT variables given by their tree paths and save the project. " +
+                 "Needs an open solution. I/O paths (TIID^...): twincat_get_fieldbus_topology; PLC paths (TIPC^...): " +
+                 "twincat_plc_list. A refused link names the cause: type, bit size and direction of both variables, " +
+                 "a path that does not resolve, or a path that is not a variable.")]
     public string LinkVariables(
-        [Description("Full tree path of the first variable, e.g. 'TIPC^PLC^PLC Projekt^MAIN.bVar'.")] string variable1TreePath,
-        [Description("Full tree path of the second variable, e.g. 'TIID^Device 1 (EtherCAT)^Box 1^Channel 1'.")] string variable2TreePath,
-        [Description("Bit offset within variable1TreePath (default 0).")] int bitOffset1 = 0,
-        [Description("Bit offset within variable2TreePath (default 0).")] int bitOffset2 = 0,
-        [Description("Number of bits to link; 0 means minimum size of both variables (default 0).")] int size = 0,
+        [Description("Tree path of the first variable, e.g. 'TIPC^PLC^PLC Project^MAIN.bVar'.")] string variable1TreePath,
+        [Description("Tree path of the second variable, e.g. 'TIID^Device 1 (EtherCAT)^Box 1^Channel 1'.")] string variable2TreePath,
+        [Description("Bit offset in the first variable (default 0).")] int bitOffset1 = 0,
+        [Description("Bit offset in the second variable (default 0).")] int bitOffset2 = 0,
+        [Description("Bits to link; 0 = smaller size of both variables (default 0).")] int size = 0,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_link_variables",
             new { variable1TreePath, variable2TreePath, bitOffset1, bitOffset2, size }, () =>
@@ -28,24 +26,21 @@ internal sealed partial class TwinCatMcpTools
                     variable1TreePath ?? "", variable2TreePath ?? "", bitOffset1, bitOffset2, size)), cancellationToken);
 
     [McpServerTool(Name = "twincat_unlink_variables", ReadOnly = false, Destructive = true)]
-    [Description("Remove a variable link in TwinCAT. " +
-                 "If variable2TreePath is omitted or empty, all links from variable1TreePath are removed. " +
-                 "Requires XAE running with a solution open. Saves the project after unlinking.")]
+    [Description("Remove a variable link, or all links of one variable, and save the project. " +
+                 "Needs an open solution.")]
     public string UnlinkVariables(
-        [Description("Full tree path of the first variable.")] string variable1TreePath,
-        [Description("Full tree path of the second variable. Leave empty to remove all links from variable1TreePath.")] string variable2TreePath = "",
+        [Description("Tree path of the first variable.")] string variable1TreePath,
+        [Description("Tree path of the second variable. Empty = remove ALL links of variable1TreePath.")] string variable2TreePath = "",
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_unlink_variables", new { variable1TreePath, variable2TreePath },
             () => bridge.Dispatcher.Run(() =>
                 new IoMappingCoordinator(bridge.Dispatcher.Session).UnlinkVariables(variable1TreePath ?? "", variable2TreePath ?? "")), cancellationToken);
 
     [McpServerTool(Name = "twincat_get_mapping_info", ReadOnly = false, Destructive = true)]
-    [Description("Export all current variable mappings as XML (VarLinks format) via ITcSysManager3::ProduceMappingInfo. " +
-                 "Writes to outputPath if given, otherwise defaults to Mappings.xml next to the .sln (original " +
-                 "behaviour, overwrites any existing file there). Read-only w.r.t. the XAE project itself. " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Export all variable mappings (links) as VarLinks XML to a file. " +
+                 "Overwrites an existing file at the target. Does not change the project. Needs an open solution.")]
     public string GetMappingInfo(
-        [Description("Absolute path to write the XML to. Omit to use the default (Mappings.xml next to the .sln).")] string? outputPath = null,
+        [Description("Absolute path of the XML file (directory must exist). Omit for Mappings.xml next to the .sln.")] string? outputPath = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_get_mapping_info", new { outputPath }, () =>
             bridge.Dispatcher.Run(() =>
@@ -53,12 +48,11 @@ internal sealed partial class TwinCatMcpTools
                 ?? new IoMappingCoordinator(bridge.Dispatcher.Session).GetMappingInfo(outputPath)), cancellationToken);
 
     [McpServerTool(Name = "twincat_set_device_disabled", ReadOnly = false, Destructive = true)]
-    [Description("Enable or disable a TwinCAT I/O device by its tree path. " +
-                 "disabled=true sets SMDS_DISABLED; disabled=false sets SMDS_NOT_DISABLED (re-enables). " +
-                 "Requires XAE running with a solution open. Saves the project after changing state.")]
+    [Description("Enable or disable a TwinCAT I/O device by its tree path and save the project. " +
+                 "Needs an open solution.")]
     public string SetDeviceDisabled(
-        [Description("Caret-separated tree path of the I/O device, e.g. 'TIID^Device 1 (EtherCAT)'. " +
-                     "Get valid paths via twincat_get_fieldbus_topology.")] string treePath,
+        [Description("Tree path of the I/O device, e.g. 'TIID^Device 1 (EtherCAT)'. " +
+                     "From twincat_get_fieldbus_topology.")] string treePath,
         [Description("true to disable the device, false to enable it.")] bool disabled,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_set_device_disabled",

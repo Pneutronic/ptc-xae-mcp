@@ -7,16 +7,14 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_plc_project_info", ReadOnly = false, Destructive = false)]
-    [Description("Read or set the Project Information of a PLC project (the XAE's project properties > Common): Title, Version, Company, " +
-                 "Author, DefaultNamespace, Description, Released. Without values it only reads and lists every field. With values it sets " +
-                 "exactly those (an empty string clears a field), leaves the others unchanged, verifies them by read-back and saves the " +
-                 "project. A library needs at least the Title — twincat_save_as_library fails with \"'Title' not specified\" without it — " +
-                 "and normally a Version (four numbers, e.g. 1.0.0.0; anything else is refused before the write). plcProjectName picks " +
-                 "one PLC of several.")]
+    [Description("Read or set the Project Information (Title, Version, …) of a PLC project. Fields (project properties > Common): " +
+                 "Title, Version, Company, Author, DefaultNamespace, Description, Released. Without values it lists every field; with " +
+                 "values it sets exactly those (\"\" clears one), verifies by read-back and saves the project. twincat_save_as_library " +
+                 "needs a Title (else \"'Title' not specified\") and normally a Version.")]
     public string PlcProjectInfo(
-        [Description("Name of the PLC (or its project). Leave empty for the first PLC project.")] string? plcProjectName = null,
-        [Description("Title of the project/library. Required to save it as a library.")] string? title = null,
-        [Description("Version as four numbers, e.g. 1.2.0.0.")] string? version = null,
+        [Description("Name of the PLC (or its project); empty = the first PLC project.")] string? plcProjectName = null,
+        [Description("Title of the project/library; required to save it as a library.")] string? title = null,
+        [Description("Four numbers, e.g. 1.2.0.0; anything else is refused before the write.")] string? version = null,
         [Description("Company (distributor of the library).")] string? company = null,
         [Description("Author.")] string? author = null,
         [Description("Default namespace of the library.")] string? defaultNamespace = null,

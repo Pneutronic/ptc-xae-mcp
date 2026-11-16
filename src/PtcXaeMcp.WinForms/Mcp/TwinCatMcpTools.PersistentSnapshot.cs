@@ -14,20 +14,19 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_list_ads_symbols", ReadOnly = true)]
-    [Description("Read-only browse of the ONLINE symbol table of a running PLC / UMR via ADS (no values -- " +
-                 "use twincat_read_ads_variables_batch for those). Returns JSON { success, total, offset, returned, " +
-                 "has_more, next_offset, symbols: [{ path, type, size, isPersistent, readOnly, comment }], amsNetId, " +
-                 "adsPort } or [Error]. Paged with limit/offset: call again with offset=next_offset while has_more is " +
-                 "true. total is null when the walk stopped after 100000 symbols (narrow root or maxDepth). " +
-                 "isPersistent is the runtime's IsPersistent flag (VAR_GLOBAL PERSISTENT); RETAIN " +
-                 "variables are NOT flagged over ADS. Default amsNetId = the local AMS router's NetId, port 851.")]
+    [Description("List the online symbol table of a running PLC or UMR via ADS (no values). " +
+                 "For values use twincat_read_ads_variables_batch. Read-only. Returns JSON { success, total, offset, " +
+                 "returned, has_more, next_offset, symbols: [{ path, type, size, isPersistent, readOnly, comment }], " +
+                 "amsNetId, adsPort } or [Error]. Call again with offset=next_offset while has_more. total is null " +
+                 "when the walk stopped at 100000 symbols (narrow root or maxDepth). isPersistent marks PERSISTENT " +
+                 "only; RETAIN is NOT flagged over ADS.")]
     public string ListAdsSymbols(
-        [Description("Symbol to list the children of, e.g. 'GVL_Recipe'. Omit for the top level.")] string? root = null,
-        [Description("How many levels below root to list. Default 1.")] int? maxDepth = null,
-        [Description("Only symbols the runtime flags as persistent. Default false.")] bool persistentOnly = false,
+        [Description("Symbol whose children to list, e.g. 'GVL_Recipe'. Omit for the top level.")] string? root = null,
+        [Description("Levels below root to list. Default 1.")] int? maxDepth = null,
+        [Description("Only symbols flagged persistent. Default false.")] bool persistentOnly = false,
         [Description("Symbols per page: default 500, at most 5000 (0 = 5000).")] int? limit = null,
-        [Description("Symbols to skip, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
-        [Description("Optional AMS Net ID. Omit for the local TwinCAT runtime.")] string? amsNetId = null,
+        [Description("Symbols to skip (next_offset of the previous page). Default 0.")] int offset = 0,
+        [Description("AMS NetId of the target. Omit for the local runtime.")] string? amsNetId = null,
         [Description("ADS port of the PLC runtime. Default 851.")] int? adsPort = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_list_ads_symbols", new { root, maxDepth, persistentOnly, limit, offset, amsNetId, adsPort }, () =>
@@ -36,26 +35,21 @@ internal sealed partial class TwinCatMcpTools
                     .ListSymbols(root, maxDepth, persistentOnly, limit, amsNetId, adsPort, offset)), cancellationToken);
 
     [McpServerTool(Name = "twincat_persistent_snapshot_save", ReadOnly = true)]
-    [Description("Capture the remanent data of a running PLC into a snapshot file (format " +
-                 "ptc-persistent-snapshot/1: a flat map leaf path -> { type, value }, arrays by declared index). " +
-                 "READ-ONLY on the PLC (ADS sum reads); it only writes the local file. The remanent leaves come " +
-                 "from the compiled .tmc of the open solution (PERSISTENT and RETAIN, as the compiler resolved " +
-                 "them -- selectionSource 'tmc'; every TMC leaf must exist on the PLC with the same type, else " +
-                 "[Error] TMC does not match the running PLC), else from the runtime's IsPersistent flags " +
-                 "(selectionSource 'ads' -- RETAIN is not detectable that way). roots[] adds explicit subtrees. " +
-                 "Leaves that cannot be captured (input-mapped, read-only, POINTER/REFERENCE, PROPERTY, " +
-                 "unsupported type, unreadable) are listed in skipped with the reason, never dropped silently. " +
-                 "Returns JSON { success, path, leafCount, selectionSource, skipped[], skippedCount, warnings[], " +
-                 "amsNetId, adsPort } -- never the value map itself. Default amsNetId = the local AMS router's " +
-                 "NetId, port 851.")]
+    [Description("Save a running PLC's PERSISTENT/RETAIN data to a snapshot file. " +
+                 "Read-only on the PLC; writes only the local JSON file (leaf path -> { type, value }). Leaves come " +
+                 "from the open solution's compiled .tmc (selectionSource 'tmc'; [Error] if a TMC leaf is missing on " +
+                 "the PLC or has another type), else from the runtime's persistent flags ('ads', no RETAIN). " +
+                 "Leaves that cannot be captured (e.g. input-mapped, POINTER, PROPERTY) are listed in skipped with " +
+                 "the reason. Returns JSON { success, path, leafCount, selectionSource, skipped[], skippedCount, " +
+                 "warnings[], amsNetId, adsPort }, not the values.")]
     public string PersistentSnapshotSave(
-        [Description("'persistent', 'retain' or 'both' (default). Which remanent leaves to select.")] string? kind = null,
+        [Description("'persistent', 'retain' or 'both' (default).")] string? kind = null,
         [Description("Extra symbol paths whose whole subtree is added, e.g. ['GVL_Settings.nRetainCounter'].")] string[]? roots = null,
         [Description("'auto' (default: TMC if found, else ADS), 'tmc', 'ads' or 'roots' (only roots[]).")] string? selection = null,
         [Description("Absolute path of the PLC .tmc. Omit to find it in the open solution.")] string? tmcPath = null,
-        [Description("Target .json file. Omit for %LOCALAPPDATA%\\ptc-xae-mcp\\snapshots\\<utc>_<netId>.json. " +
+        [Description("Target .json file. Default %LOCALAPPDATA%\\ptc-xae-mcp\\snapshots\\<utc>_<netId>.json. " +
                      "Must be inside the solution directory, TEMP, %LOCALAPPDATA%\\ptc-xae-mcp or PTC_XAE_MCP_ALLOWED_PATHS.")] string? path = null,
-        [Description("Optional AMS Net ID. Omit for the local TwinCAT runtime.")] string? amsNetId = null,
+        [Description("AMS NetId of the target. Omit for the local runtime.")] string? amsNetId = null,
         [Description("ADS port of the PLC runtime. Default 851.")] int? adsPort = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_persistent_snapshot_save", new { kind, roots, selection, tmcPath, path, amsNetId, adsPort }, () =>
@@ -64,27 +58,24 @@ internal sealed partial class TwinCatMcpTools
                     .Save(kind, roots, selection, tmcPath, path, amsNetId, adsPort)), cancellationToken);
 
     [McpServerTool(Name = "twincat_persistent_snapshot_compare", ReadOnly = true)]
-    [Description("Compare a snapshot file leaf by leaf with the running PLC (or with another snapshot via " +
-                 "otherPath -- then no PLC is needed). READ-ONLY. Returns JSON { success, equal, against, " +
-                 "equalCount, differenceCount, onlyInSnapshotCount, onlyOnPlcCount, typeMismatchCount, total, offset, " +
-                 "returned, has_more, next_offset, differences[{ path, snapshotPath, type, snapshot, live }], " +
-                 "onlyInSnapshot[], onlyOnPlc[], typeMismatches[], conflicts[], warnings[] }. limit/offset page the four " +
-                 "leaf lists together: each list shows its items [offset, offset+limit); total is the longest list, so " +
-                 "call again with offset=next_offset while has_more is true; the *Count fields give each list's size. " +
-                 "equal is true when every leaf of the snapshot matches. onlyInSnapshot = orphans with no counterpart " +
-                 "on the PLC after pathMap; onlyOnPlc = remanent leaves the snapshot does not have (information " +
-                 "only, it does not make equal false). Types are decided by the PLC as it is now (integer widths, " +
-                 "REAL/LREAL, STRING/WSTRING are compatible; anything else is a type mismatch).")]
+    [Description("Compare a snapshot file leaf by leaf with the running PLC or another snapshot. " +
+                 "Read-only; with otherPath no PLC is needed. Returns JSON { success, equal, against, equalCount, " +
+                 "differenceCount, onlyInSnapshotCount, onlyOnPlcCount, typeMismatchCount, total, offset, returned, " +
+                 "has_more, next_offset, differences[{ path, snapshotPath, type, snapshot, live }], onlyInSnapshot[], " +
+                 "onlyOnPlc[], typeMismatches[], conflicts[], warnings[] }. limit/offset page the four leaf lists " +
+                 "together; call again with offset=next_offset while has_more; *Count gives each list's size. " +
+                 "equal = every snapshot leaf matches; onlyOnPlc (remanent leaves not in the snapshot) does not affect " +
+                 "it. Integer widths, REAL/LREAL and STRING/WSTRING are compatible; other type changes are mismatches.")]
     public string PersistentSnapshotCompare(
         [Description("Snapshot file written by twincat_persistent_snapshot_save.")] string snapshotPath,
-        [Description("Compare against this second snapshot file instead of the PLC.")] string? otherPath = null,
-        [Description("JSON object of rename rules applied to the snapshot paths, e.g. " +
+        [Description("Second snapshot file to compare against instead of the PLC.")] string? otherPath = null,
+        [Description("JSON rename rules for the snapshot paths, e.g. " +
                      "{\"GVL_Old.stRecipe\":\"GVL_New.stRecipe\"} (exact path or prefix at a '.'/'[' boundary).")] string? pathMap = null,
-        [Description("Absolute path of the PLC .tmc used to re-select the live remanent set. Omit to find it.")] string? tmcPath = null,
-        [Description("Optional AMS Net ID. Omit for the local TwinCAT runtime.")] string? amsNetId = null,
+        [Description("Absolute path of the PLC .tmc for the live remanent set. Omit to find it.")] string? tmcPath = null,
+        [Description("AMS NetId of the target. Omit for the local runtime.")] string? amsNetId = null,
         [Description("ADS port of the PLC runtime. Default 851.")] int? adsPort = null,
         [Description("Items per list and page: default 200, at most 5000 (0 = 5000).")] int? limit = null,
-        [Description("Items to skip in every list, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
+        [Description("Items to skip in every list (next_offset of the previous page). Default 0.")] int offset = 0,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_persistent_snapshot_compare", new { snapshotPath, otherPath, pathMap, tmcPath, amsNetId, adsPort, limit, offset }, () =>
             Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
@@ -92,25 +83,22 @@ internal sealed partial class TwinCatMcpTools
                     .Compare(snapshotPath, otherPath, pathMap, tmcPath, amsNetId, adsPort, limit, offset)), cancellationToken);
 
     [McpServerTool(Name = "twincat_persistent_snapshot_restore", ReadOnly = false, Destructive = true)]
-    [Description("Restore a snapshot into the running PLC -- DESTRUCTIVE and human-gated. dryRun defaults to " +
-                 "TRUE: it only returns the restore plan { planHash, plcState, writes[{ path, type, current, " +
-                 "snapshot }], skips[{ path, reason }], unchanged } and writes nothing. With dryRun=false it " +
-                 "requires the planHash of a dry run, re-plans, refuses on a different hash, then raises a " +
-                 "restore proposal (modal popup in the host window showing target, PLC state RUN/STOP, the " +
+    [Description("Restore a snapshot into the running PLC; DESTRUCTIVE and human-confirmed. " +
+                 "A dry run only returns the plan { planHash, plcState, writes[{ path, type, current, snapshot }], " +
+                 "skips[{ path, reason }], unchanged } and writes nothing. dryRun=false needs the dry run's planHash, " +
+                 "refuses if the plan changed, raises a confirmation popup in the host window (target, PLC RUN/STOP, " +
                  "differences) and returns { restoreId, status: \"pending\" }. NOTHING is written until a human " +
-                 "confirms; there is no MCP tool that confirms. After the confirm the host re-plans against the " +
-                 "PLC (rejecting if it changed), writes with ADS sum commands and reads EVERY written leaf back. " +
-                 "Poll twincat_persistent_snapshot_restore_status for the outcome and the per-leaf report. " +
-                 "Only leaves whose live value differs are written; type changes, out-of-bounds indices, " +
-                 "read-only and input-mapped leaves are skipped with a reason. A running program may overwrite " +
-                 "a restored value; the read-back reports it.")]
+                 "confirms; no tool can confirm. After confirmation the plan is rechecked (rejected if the PLC " +
+                 "changed), only differing leaves are written and every written leaf is read back; poll " +
+                 "twincat_persistent_snapshot_restore_status. Type changes, out-of-bounds indices, read-only and " +
+                 "input-mapped leaves are skipped. A running program may overwrite a restored value; the read-back shows it.")]
     public string PersistentSnapshotRestore(
         [Description("Snapshot file written by twincat_persistent_snapshot_save.")] string snapshotPath,
         [Description("true (default): return the plan only. false: propose the restore for human confirmation.")] bool dryRun = true,
-        [Description("The planHash returned by the dry run. Required when dryRun=false.")] string? planHash = null,
-        [Description("JSON object of rename rules old -> new (see twincat_persistent_snapshot_compare).")] string? pathMap = null,
-        [Description("Restrict the restore to these leaf paths (e.g. picked differences). Omit for all.")] string[]? include = null,
-        [Description("Optional AMS Net ID. Omit for the local TwinCAT runtime.")] string? amsNetId = null,
+        [Description("planHash from the dry run. Required when dryRun=false.")] string? planHash = null,
+        [Description("JSON rename rules old -> new (see twincat_persistent_snapshot_compare).")] string? pathMap = null,
+        [Description("Restore only these leaf paths. Omit for all.")] string[]? include = null,
+        [Description("AMS NetId of the target. Omit for the local runtime.")] string? amsNetId = null,
         [Description("ADS port of the PLC runtime. Default 851.")] int? adsPort = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_persistent_snapshot_restore", new { snapshotPath, dryRun, planHash, pathMap, include, amsNetId, adsPort }, () =>
@@ -119,13 +107,12 @@ internal sealed partial class TwinCatMcpTools
                     .Restore(snapshotPath, dryRun, planHash, pathMap, include, amsNetId, adsPort)), cancellationToken);
 
     [McpServerTool(Name = "twincat_persistent_snapshot_restore_status", ReadOnly = true)]
-    [Description("Read-only poll of a restore proposal: returns JSON { restoreId, status, reason, target, " +
-                 "plcState, snapshot, createdUtc, expiresUtc, writeCount, report }. Status is one of " +
-                 "pending | confirmed | executed | rejected | expired. Once executed, report carries " +
-                 "{ written, failed, skipped, items[{ path, outcome, readBack, message }] } -- the read-back " +
-                 "value, not the intended one. Reads only; writes nothing.")]
+    [Description("Poll the status of a persistent-snapshot restore proposal. Read-only. Returns JSON " +
+                 "{ restoreId, status, reason, target, plcState, snapshot, createdUtc, expiresUtc, writeCount, report }; " +
+                 "status is pending | confirmed | executed | rejected | expired. Once executed, report has " +
+                 "{ written, failed, skipped, items[{ path, outcome, readBack, message }] } with read-back values.")]
     public string PersistentSnapshotRestoreStatus(
-        [Description("The restoreId returned by twincat_persistent_snapshot_restore.")] string restoreId,
+        [Description("restoreId from twincat_persistent_snapshot_restore.")] string restoreId,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_persistent_snapshot_restore_status", new { restoreId }, () =>
             PersistentSnapshotCoordinator.RestoreStatus(bridge.SnapshotRestore, restoreId), cancellationToken, bypassGate: true);

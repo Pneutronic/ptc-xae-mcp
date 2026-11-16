@@ -11,35 +11,30 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     private const string HmiProjectParam =
-        "HMI project name as reported by twincat_hmi_list_projects. Optional when the " +
-        "open solution contains exactly one HMI project; required (no fallback) when it contains several.";
+        "HMI project name from twincat_hmi_list_projects. Optional if the solution has exactly one HMI project.";
 
     private static string HmiResult((string Summary, string Json) result) =>
         McpErrors.IsError(result.Summary) ? result.Summary : result.Summary + Environment.NewLine + result.Json;
 
     [McpServerTool(Name = "twincat_hmi_list_projects", ReadOnly = true)]
-    [Description("List the TwinCAT HMI (TE2000) projects of the solution open in the XAE, via the HMI " +
-                 "Automation Interface (dte.GetObject(\"Beckhoff.TcHmi.1.12\")). Per project: name, " +
-                 "projectDirectory, isReady, isPublishRunning. Also reports automationVersion and, if open, " +
-                 "the XAE window 'Activate Engineering Server Trial License' (a CAPTCHA only the engineer can " +
-                 "answer — the HMI engineering server does not work until then). Read-only. " +
-                 "Result: one-line summary + indented JSON.")]
+    [Description("List the TwinCAT HMI (TE2000) projects of the open solution. Per project: name, " +
+                 "projectDirectory, isReady, isPublishRunning; also automationVersion and whether the XAE window " +
+                 "'Activate Engineering Server Trial License' is open (a CAPTCHA only a person can answer; the HMI " +
+                 "engineering server does not work until then).")]
     public string HmiListProjects(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_hmi_list_projects", new { }, () =>
             bridge.Dispatcher.Run(() =>
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ListProjects())), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_get_project_info", ReadOnly = true)]
-    [Description("Details of one TwinCAT HMI project: project config (ActiveTheme, Locale, ScaleMode, " +
-                 "StartupView, LoginPage, websocket timeouts), the server extensions of its HMI engineering " +
-                 "server (domainName, state, loaded, version — e.g. ADS, TcHmiSrv, TcHmiUserManagement) and, " +
-                 "with includeFiles, the project tree (views, content, server config …; max 400 nodes). " +
-                 "Read-only. Result: one-line summary + indented JSON.")]
+    [Description("Show config, server extensions and file tree of one TwinCAT HMI project. Config: ActiveTheme, " +
+                 "Locale, ScaleMode, StartupView, LoginPage, websocket timeouts. Engineering-server extensions " +
+                 "(e.g. ADS, TcHmiSrv): domainName, state, loaded, version. Tree (max 400 nodes) only with includeFiles.")]
     public string HmiGetProjectInfo(
         [Description(HmiProjectParam)] string? hmiProject = null,
-        [Description("Also return the project tree (ITcHmiItem children). Default false.")]
+        [Description("Also return the project tree. Default false.")]
         bool includeFiles = false,
-        [Description("Tree depth when includeFiles is true, 1..6. Default 2.")]
+        [Description("Tree depth 1..6 when includeFiles. Default 2.")]
         int maxDepth = 2,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_hmi_get_project_info", new { hmiProject, includeFiles, maxDepth }, () =>
@@ -47,29 +42,25 @@ internal sealed partial class TwinCatMcpTools
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).GetProjectInfo(hmiProject, includeFiles, maxDepth))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_list_mapped_symbols", ReadOnly = true)]
-    [Description("List the symbols mapped in a TwinCAT HMI project's engineering server, as the HMI Automation " +
-                 "Interface reports them (compare with the offline extraction of stage 33). Per symbol: " +
-                 "mappedName (e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'), domain (e.g. ADS), type, " +
-                 "dataTypeDisplayName, readOnly, hidden. Filterable by domain and name prefix. CAUTION (verified " +
-                 "live): this list is a cached view — a map/unmap done after the project was loaded is NOT reflected, " +
-                 "even with refresh=true. For the live state of one symbol use twincat_hmi_read_symbols " +
-                 "(SYMBOL_NOT_MAPPED = not mapped). Read-only. " +
-                 "Result: one-line summary + indented JSON { hmiProject, mappedCount, total, offset, returned, has_more, " +
-                 "next_offset, symbols[] }: mappedCount = every mapped symbol, total = those that pass the filters, " +
-                 "paged with limit/offset (call again with offset=next_offset while has_more is true).")]
+    [Description("List the symbols mapped in a TwinCAT HMI project's engineering server. Per symbol: mappedName " +
+                 "(e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'), domain, type, dataTypeDisplayName, readOnly, hidden. CAUTION: " +
+                 "cached view; maps/unmaps after the project was loaded are NOT shown, even with refresh=true. For the " +
+                 "live state of one symbol use twincat_hmi_read_symbols (SYMBOL_NOT_MAPPED = not mapped). JSON: " +
+                 "mappedCount (all mapped), total (after filters), offset, has_more, next_offset, symbols[]; while " +
+                 "has_more, call again with offset=next_offset.")]
     public string HmiListMappedSymbols(
         [Description(HmiProjectParam)] string? hmiProject = null,
-        [Description("Only symbols of this server domain, e.g. 'ADS'. Case-insensitive. Omit for all.")]
+        [Description("Only this server domain, e.g. 'ADS' (case-insensitive).")]
         string? domain = null,
-        [Description("Only symbols whose mapped name starts with this, e.g. 'ADS.PLC1.GVL_HMI.'. Case-insensitive.")]
+        [Description("Only mapped names starting with this, e.g. 'ADS.PLC1.GVL_HMI.' (case-insensitive).")]
         string? namePrefix = null,
-        [Description("Include symbols flagged hidden. Default false.")]
+        [Description("Include hidden symbols. Default false.")]
         bool includeHidden = false,
-        [Description("Ask the server to refresh its symbol list before answering. Default false.")]
+        [Description("Ask the server to refresh its symbol list first. Default false.")]
         bool refresh = false,
-        [Description("Symbols per page: default 500, at most 5000 (0 = 5000).")]
+        [Description("Page size: default 500, max 5000 (0 = 5000).")]
         int? limit = null,
-        [Description("Symbols to skip, for the next page (next_offset of the previous call). Default 0.")]
+        [Description("Symbols to skip (next_offset of the previous page). Default 0.")]
         int offset = 0,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_hmi_list_mapped_symbols", new { hmiProject, domain, namePrefix, includeHidden, refresh, limit, offset }, () =>
@@ -78,16 +69,14 @@ internal sealed partial class TwinCatMcpTools
                     .ListMappedSymbols(hmiProject, domain, namePrefix, includeHidden, refresh, limit, offset))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_read_symbols", ReadOnly = true)]
-    [Description("Read symbol values THROUGH the HMI engineering server (what the HMI would display), e.g. " +
-                 "'ADS.PLC1.MAIN.fbHmi.bStart' or a server symbol like 'UserSelectType'. Batch read; a symbol " +
-                 "that cannot be read does NOT fail the batch — it appears with ok=false and the server's error " +
-                 "(e.g. SYMBOL_NOT_MAPPED, HMI_ADS_E_SYNC_TIMEOUT when the PLC runtime is unreachable). The " +
-                 "value is returned exactly as the server reports it — NOT guaranteed JSON (a BOOL reads as " +
-                 "'False'). Compare with twincat_read_ads_variable to prove a binding end-to-end. Read-only, " +
-                 "max 200 names. Result: one-line summary + indented JSON { hmiProject, count, ok, results[] }.")]
+    [Description("Read symbol values through the HMI engineering server (what the HMI shows). Max 200 names. A " +
+                 "failing symbol does not fail the batch: it gets ok=false and the server error (SYMBOL_NOT_MAPPED; " +
+                 "HMI_ADS_E_SYNC_TIMEOUT = PLC runtime unreachable). Values come as the server reports them, not " +
+                 "guaranteed JSON (a BOOL reads 'False'). Compare with twincat_read_ads_variable to prove a binding " +
+                 "end-to-end. JSON: { hmiProject, count, ok, results[] }.")]
     public string HmiReadSymbols(
-        [Description("HMI symbol names to read, e.g. ['ADS.PLC1.GVL_HMI.HmiOpened', 'UserSelectType']. " +
-                     "At least one required.")] string[] symbols,
+        [Description("HMI symbol names (at least one), e.g. ['ADS.PLC1.GVL_HMI.HmiOpened', 'UserSelectType'].")]
+        string[] symbols,
         [Description(HmiProjectParam)] string? hmiProject = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_hmi_read_symbols", new { hmiProject, count = symbols?.Length ?? 0 }, () =>
@@ -95,16 +84,15 @@ internal sealed partial class TwinCatMcpTools
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ReadSymbols(hmiProject, symbols))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_server_control", ReadOnly = false, Destructive = true)]
-    [Description("Start, shut down or refresh the symbols of a TwinCAT HMI project's ENGINEERING server — the " +
-                 "local TcHmiSrv the XAE runs for this project (live view, tests), NOT the TF2000 runtime server " +
-                 "on a target. The XAE starts it automatically when the project opens; use 'start' after a " +
-                 "shutdown/crash and 'refresh_symbols' after PLC symbol changes. 'start' waits until at least one " +
-                 "server extension is loaded, 'shutdown' until none is (bounded by timeoutMs). Changes no project " +
-                 "file. Result: one-line summary + indented JSON (extensionsAfter[]).")]
+    [Description("Start, shut down or refresh symbols of an HMI project's engineering server. That is the local " +
+                 "TcHmiSrv the XAE runs for the project (live view), NOT the TF2000 runtime server on a target. The " +
+                 "XAE starts it when the project opens; use 'start' after a shutdown/crash, 'refresh_symbols' after " +
+                 "PLC symbol changes. 'start' waits until an extension is loaded, 'shutdown' until none is. Changes " +
+                 "no project file. JSON includes extensionsAfter[].")]
     public string HmiServerControl(
         [Description("start | shutdown | refresh_symbols")] string action,
         [Description(HmiProjectParam)] string? hmiProject = null,
-        [Description("How long to wait for the server to settle, 0..120000 ms. Default 30000.")]
+        [Description("Max wait for the server to settle, 0..120000 ms. Default 30000.")]
         int timeoutMs = 30000,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_hmi_server_control", new { action, hmiProject, timeoutMs }, () =>
@@ -112,31 +100,28 @@ internal sealed partial class TwinCatMcpTools
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ControlServer(hmiProject, action, timeoutMs))), cancellationToken);
 
     private const string ConfirmNote =
-        "EVERY call must be confirmed by the engineer in a modal popup of the MCP host — no parameter bypasses " +
-        "it; rejected or expired (confirmTimeoutSeconds) means nothing is written. While the popup is open, " +
-        "other MCP calls get 'An operation is already in progress'.";
+        "A person must confirm every call in a popup of the MCP host (no bypass); rejected or timed out = " +
+        "nothing written. Meanwhile other calls get 'An operation is already in progress'.";
 
     private const string ConfirmTimeoutParam =
-        "Seconds the engineer has to answer the popup, 10..600. Default 120.";
+        "Seconds to answer the popup, 10..600. Default 120.";
 
     [McpServerTool(Name = "twincat_hmi_map_symbol", ReadOnly = false, Destructive = false)]
-    [Description("Map a PLC symbol into a TwinCAT HMI project's server so views can bind to it. " + ConfirmNote +
-                 " Easiest: plcPath 'MAIN.fbHmi.bStart' becomes mapName 'ADS.PLC1.MAIN.fbHmi.bStart' and " +
-                 "internalName 'PLC1::MAIN::fbHmi::bStart' (the convention of all existing mappings, verified on two " +
-                 "real projects). Arrays / other domains: pass mapName + internalName explicitly. Refuses when the " +
-                 "name is already mapped (the API does not reveal an existing mapping's target, so it is never " +
-                 "re-mapped silently). Success only after a read-back finds the mapping. An ADS map needs the PLC " +
-                 "runtime of the ADS extension to be reachable. Result: one-line summary + indented JSON.")]
+    [Description("Map a PLC symbol into an HMI project's server so views can bind to it. " + ConfirmNote +
+                 " plcPath 'MAIN.fbHmi.bStart' becomes mapName 'ADS.PLC1.MAIN.fbHmi.bStart' + internalName " +
+                 "'PLC1::MAIN::fbHmi::bStart'; for arrays or other domains pass mapName + internalName. Refuses an " +
+                 "already mapped name (never re-maps). Success only after read-back finds the mapping. An ADS map " +
+                 "needs the ADS extension's PLC runtime reachable.")]
     public string HmiMapSymbol(
-        [Description("Dotted PLC path, e.g. 'MAIN.fbHmi.bStart' or 'GVL_HMI.HmiOpened'. Alternative to mapName + internalName.")]
+        [Description("Dotted PLC path, e.g. 'GVL_HMI.HmiOpened'. Alternative to mapName + internalName.")]
         string? plcPath = null,
-        [Description("Explicit mapped name, e.g. 'ADS.PLC1.GVL_HMI.HmiOpened'. Requires internalName.")]
+        [Description("Explicit mapped name, e.g. 'ADS.PLC1.GVL_HMI.HmiOpened'. Needs internalName.")]
         string? mapName = null,
-        [Description("Explicit internal name inside the domain, e.g. 'PLC1::GVL_HMI::HmiOpened'. Requires mapName.")]
+        [Description("Explicit internal name, e.g. 'PLC1::GVL_HMI::HmiOpened'. Needs mapName.")]
         string? internalName = null,
         [Description("Server domain. Default 'ADS'.")] string? domain = null,
-        [Description("ADS runtime name used to derive names from plcPath. Default 'PLC1'.")] string? runtime = null,
-        [Description("Optional sub-symbol (ITcHmiServer3.MapSymbol overload).")] string? subSymbolName = null,
+        [Description("ADS runtime for names derived from plcPath. Default 'PLC1'.")] string? runtime = null,
+        [Description("Optional sub-symbol.")] string? subSymbolName = null,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
         CancellationToken cancellationToken = default)
@@ -147,18 +132,16 @@ internal sealed partial class TwinCatMcpTools
                     .MapSymbol(hmiProject, plcPath, mapName, internalName, domain, runtime, subSymbolName, confirmTimeoutSeconds))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_unmap_symbol", ReadOnly = false, Destructive = true)]
-    [Description("Remove a symbol mapping from a TwinCAT HMI project's server. " + ConfirmNote +
-                 " Pass mapName (e.g. 'ADS.PLC1.MAIN.fbHmi.bStart') or plcPath (derived like twincat_hmi_map_symbol). " +
-                 "A name that is not mapped returns 'Nothing to do' without a popup. Success only after a read-back " +
-                 "no longer finds the mapping. Result: one-line summary + indented JSON.")]
+    [Description("Remove a symbol mapping from an HMI project's server. " + ConfirmNote +
+                 " Not mapped = 'Nothing to do', no popup. Success only after read-back no longer finds it.")]
     public string HmiUnmapSymbol(
-        [Description("Mapped name to remove, e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'. Alternative to plcPath.")]
+        [Description("Mapped name, e.g. 'ADS.PLC1.MAIN.fbHmi.bStart'. Alternative to plcPath.")]
         string? mapName = null,
-        [Description("Dotted PLC path, e.g. 'MAIN.fbHmi.bStart' (ADS names derived). Alternative to mapName.")]
+        [Description("Dotted PLC path, e.g. 'MAIN.fbHmi.bStart' (name derived as in twincat_hmi_map_symbol). Alternative to mapName.")]
         string? plcPath = null,
-        [Description("Server domain of the mapping. Default 'ADS'.")] string? domain = null,
-        [Description("ADS runtime name used to derive the name from plcPath. Default 'PLC1'.")] string? runtime = null,
-        [Description("Also delete historized data of the symbol. Default false.")] bool removeHistorizedData = false,
+        [Description("Server domain. Default 'ADS'.")] string? domain = null,
+        [Description("ADS runtime for names derived from plcPath. Default 'PLC1'.")] string? runtime = null,
+        [Description("Also delete the symbol's historized data. Default false.")] bool removeHistorizedData = false,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
         CancellationToken cancellationToken = default)
@@ -169,17 +152,15 @@ internal sealed partial class TwinCatMcpTools
                     .UnmapSymbol(hmiProject, plcPath, mapName, domain, runtime, removeHistorizedData, confirmTimeoutSeconds))), cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_write_symbol", ReadOnly = false, Destructive = true)]
-    [Description("Write a value THROUGH the HMI server of a TwinCAT HMI project. For an ADS-mapped symbol " +
-                 "('ADS.PLC1.…') this WRITES THROUGH TO THE LIVE PLC — physically effective like " +
-                 "twincat_write_ads_variable. " + ConfirmNote + " The popup shows the current and the new value. " +
-                 "Refuses unmapped (SYMBOL_NOT_MAPPED) and read-only symbols before asking. valueJson must be valid " +
-                 "JSON (true, 42, 3.5, \"text\", {…}). After the write the value is read back; a differing read-back " +
-                 "is reported as a warning (verified=false), because the PLC may change the value at once. " +
-                 "Result: one-line summary + indented JSON { written, before, after, verified, writesToPlc }.")]
+    [Description("Write a symbol value through a TwinCAT HMI project's server. For an ADS-mapped symbol " +
+                 "('ADS.PLC1.…') this WRITES TO THE LIVE PLC, physically effective like twincat_write_ads_variable. " +
+                 ConfirmNote + " The popup shows current and new value. Refuses unmapped (SYMBOL_NOT_MAPPED) and " +
+                 "read-only symbols before asking. The value is read back; a difference is a warning (verified=false), " +
+                 "as the PLC may change it at once. JSON: { written, before, after, verified, writesToPlc }.")]
     public string HmiWriteSymbol(
-        [Description("HMI symbol name, e.g. 'ADS.PLC1.MAIN.fbHmi.bStart' or a server symbol like 'UserSelectType'.")]
+        [Description("HMI symbol name, e.g. 'ADS.PLC1.MAIN.fbHmi.bStart' or 'UserSelectType'.")]
         string symbol,
-        [Description("The value as JSON: true, 42, 3.5, \"text\" (strings quoted), or an object/array for structs.")]
+        [Description("Value as valid JSON: true, 42, 3.5, \"text\" (quoted), or an object/array for structs.")]
         string valueJson,
         [Description(HmiProjectParam)] string? hmiProject = null,
         [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,

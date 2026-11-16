@@ -8,29 +8,20 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_login", ReadOnly = false, Destructive = true)]
-    [Description("Log the PLC online (Offline → Online). " +
-                 "Parameter mode selects the apply strategy when the running application differs from the project: " +
-                 "'online_change' — apply changes to the running PLC without a stop (fast, retains variable values); " +
-                 "'download' — stop the PLC, transfer the full compiled program (leaves PLC in STOP — no auto-run); " +
-                 "'login_without_change' — attach to the running PLC without transferring code (monitoring only). " +
-                 "Primary path: discovers the TwinCAT PLC Login DTE command ('Loginto' substring) and executes it. " +
-                 "A Win32 dialog watcher handles the 3-way login modal and follow-up confirmations. " +
-                 "Idempotent: if the PLC Logout command is available (already online), returns no-op success. " +
-                 "If Login AND Logout are both disabled (no reachable target runtime / project not activated), " +
-                 "returns success=false, isOnlineNow=false — never a false 'already online'. " +
-                 "Online state is verified after login via the PLC Logout command's IsAvailable flag " +
-                 "(same probe used by twincat_get_plc_online_state — correct after activate_config). " +
-                 "mode='online_change' is verified on the PLC itself: TwinCAT_SystemInfoVarList._AppInfo.OnlineChangeCnt is read over ADS " +
-                 "on the project's target before and after the login, and the first task's cycle counter twice afterwards. " +
-                 "onlineChange.verdict: 'applied' (counter +1), 'not_needed' (application already matched), 'not_applied' (the modal got " +
-                 "the online-change answer but the counter did not move — success is then false), 'download' (a fallback download replaced " +
-                 "the application) or 'unknown' (the counter could not be read). onlineChange.plcCycling false means the application is not running. " +
-                 "Requires XAE running with a compiled solution open. " +
+    [Description("Log the XAE in to the PLC (Offline → Online), applying changes per mode. " +
+                 "When the running application differs: 'online_change' applies changes without a stop (keeps values); " +
+                 "'download' stops the PLC and transfers the full program (leaves it in STOP; start with twincat_plc_start); " +
+                 "'login_without_change' attaches without transferring code (monitoring only). Answers the login modal and " +
+                 "follow-up confirmations. Already online = no-op success. No reachable runtime or project not activated: " +
+                 "success=false, isOnlineNow=false. online_change is verified on the PLC (online-change counter read over ADS " +
+                 "before and after): onlineChange.verdict 'applied', 'not_needed', 'not_applied' (success then false), " +
+                 "'download' (a fallback download replaced the application) or 'unknown' (counter unreadable); " +
+                 "plcCycling false = application not running. Needs a compiled solution open. " +
                  "Returns { success, mode, dialogHandled, isOnlineNow, runState, message, onlineChange? }.")]
     public string Login(
-        [Description("Apply mode: 'online_change' | 'download' | 'login_without_change'.")] string mode = "online_change",
-        [Description("mode='online_change' only: when online change is not possible, accept a full download instead (stops the running PLC). Default false — the login is refused with an [Error]. Download confirmations are never answered 'Ja' for 'login_without_change'.")] bool allowDownloadFallback = false,
-        [Description("mode='online_change' only: ADS port of the PLC application whose online-change counter is read (851 = first PLC). Default 851.")] int adsPort = 851,
+        [Description("'online_change' (default) | 'download' | 'login_without_change'.")] string mode = "online_change",
+        [Description("online_change only: if online change is impossible, download instead (stops the running PLC). Default false refuses with [Error].")] bool allowDownloadFallback = false,
+        [Description("online_change only: ADS port of the PLC whose counter is read. Default 851 (first PLC).")] int adsPort = 851,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_login", new { mode, allowDownloadFallback, adsPort }, () =>
             bridge.Dispatcher.Run(() =>
@@ -73,15 +64,9 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_logout", ReadOnly = false, Destructive = true)]
-    [Description("Log out the PLC project (Online → Offline). " +
-                 "Primary path: executes the TwinCAT PLC Logout DTE command (its IsAvailable flag is the " +
-                 "reliable online signal — it stays correct after activate_config, unlike DTE.Debugger.CurrentMode). " +
-                 "Fallback (older TC): ConsumeXml('<LogoutCmd/>') / DTE.Debugger.Stop(). " +
-                 "Idempotent: returns a no-op result when the PLC is already offline. " +
-                 "Returns { wasOnline, isOnlineNow, message }. " +
-                 "Call before twincat_clean_solution / twincat_rebuild_solution to avoid " +
-                 "build failures caused by an active Online connection. " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Log the XAE out of the PLC (Online → Offline). " +
+                 "No-op when already offline. Returns { wasOnline, isOnlineNow, message }. Call before " +
+                 "twincat_clean_solution / twincat_rebuild_solution, which fail while Online. Needs an open solution.")]
     public string Logout(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_logout", null, () =>
             bridge.Dispatcher.Run(() =>
@@ -93,10 +78,8 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_clean_solution", ReadOnly = false, Destructive = false)]
-    [Description("Clean the entire TwinCAT solution via DTE.Solution.SolutionBuild.Clean(). " +
-                 "Removes compiler output and boot-project artefacts so the next build starts from scratch. " +
-                 "Returns { success, message }. " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Clean the whole solution: remove compiler output and boot-project artefacts. " +
+                 "The next build starts from scratch. Returns a message or [Error]. Needs an open solution.")]
     public string CleanSolution(CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_clean_solution", null, () =>
             bridge.Dispatcher.Run(() =>
@@ -106,48 +89,46 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_rebuild_solution", ReadOnly = false, Destructive = false)]
-    [Description("Rebuild the entire TwinCAT solution (Clean then Build). " +
-                 "Forces a complete recompilation — equivalent to 'Rebuild All' in the IDE. " +
-                 "Compile-only: does NOT activate the boot project or restart the runtime " +
-                 "(use twincat_activate_config for that). " +
-                 "Returns { success, failedProjects, errors[] } identical to twincat_build_solution. " +
-                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.")]
+    [Description("Rebuild the whole solution (Clean, then Build), like 'Rebuild All'. " +
+                 "Compile only: no activation or runtime restart (use twincat_activate_config). " +
+                 "Returns { success, failedProjects, errors[] }. Library references are checked first (missing or wrong " +
+                 "version: '[Warn] Build result not conclusive', the build still runs). PLC files changed on disk outside the " +
+                 "XAE since loading refuse the build with [Error] (it would compile the stale in-memory state and saving could " +
+                 "overwrite the change): reload with twincat_open_project(closeCurrentFirst=true) or set ignoreStaleFiles. " +
+                 "With expectSymbols a name missing from the compiled PLC makes the result an [Error] that says why (only " +
+                 "objects a task's program reaches are compiled). Needs an open solution.")]
     public string RebuildSolution(
-        [Description("Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
-        [Description("Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check.")] string[]? expectSymbols = null,
+        [Description("Build despite PLC files changed on disk outside the XAE (builds the in-memory state; result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
+        [Description("Names that must exist in the compiled PLC, checked case-insensitively in its .tmc, e.g. ['MAIN.fbAxis', 'GVL_Recipe.nCount', 'ST_Recipe']: symbol paths (also members), data types, or a program/GVL name. Functions and FB types without an instance never appear. Omit to skip.")] string[]? expectSymbols = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_rebuild_solution", new { ignoreStaleFiles, expectSymbols }, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).RebuildSolution(ignoreStaleFiles, expectSymbols)), cancellationToken);
 
     [McpServerTool(Name = "twincat_rebuild_plc", ReadOnly = false, Destructive = false)]
-    [Description("Rebuild a single PLC project (Clean then BuildProject). " +
-                 "Forces a complete recompilation of the named (or auto-detected) PLC project. " +
-                 "Compile-only: does NOT activate the boot project or restart the runtime. " +
-                 "Returns { success, failedProjects, errors[] } identical to twincat_build_plc. " +
-                 "Library references are checked first: a missing or wrongly versioned library prefixes the result with [Warn] Build result not conclusive (the build still runs). A PLC source file changed on disk outside the XAE since the project was loaded refuses the build with [Error] (the build would compile the old in-memory state and its save could write it over the change); reload with twincat_open_project(closeCurrentFirst=true) or pass ignoreStaleFiles=true. Pass expectSymbols to prove the compiled PLC contains what you just wrote: each name is looked up in the PLC project's .tmc after the build; a missing one makes the result an [Error] that says why (TwinCAT compiles only objects a task's program reaches). Requires XAE running with a solution open.")]
+    [Description("Rebuild one PLC project (Clean, then Build). " +
+                 "Compile only: no activation or runtime restart. " +
+                 "Returns { success, failedProjects, errors[] }. Library references are checked first (missing or wrong " +
+                 "version: '[Warn] Build result not conclusive', the build still runs). PLC files changed on disk outside the " +
+                 "XAE since loading refuse the build with [Error] (it would compile the stale in-memory state and saving could " +
+                 "overwrite the change): reload with twincat_open_project(closeCurrentFirst=true) or set ignoreStaleFiles. " +
+                 "With expectSymbols a name missing from the compiled PLC makes the result an [Error] that says why (only " +
+                 "objects a task's program reaches are compiled). Needs an open solution.")]
     public string RebuildPlc(
-        [Description("Name of the PLC project to rebuild (e.g. 'PLC'). Leave empty to auto-detect.")] string? plcProjectName = null,
-        [Description("Build even when PLC source files changed on disk outside the XAE (the in-memory state is built; the result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
-        [Description("Names that must be in the compiled PLC afterwards, e.g. ['GVL_Recipe.nCount', 'MAIN.fbAxis', 'ST_Recipe']: a symbol path (a variable of a program or GVL, or a member inside one such as 'MAIN.fbAxis.nState'), a data type (struct, enum, an FB that is instantiated) or a program/GVL name (found when any symbol lies below it). Checked case-insensitively against the PLC project's .tmc; functions and FB types without an instance never appear there. Omit to skip the check.")] string[]? expectSymbols = null,
+        [Description("PLC project name (e.g. 'PLC'). Empty = auto-detect.")] string? plcProjectName = null,
+        [Description("Build despite PLC files changed on disk outside the XAE (builds the in-memory state; result starts with [Warn]). Default false refuses.")] bool ignoreStaleFiles = false,
+        [Description("Names that must exist in the compiled PLC, checked case-insensitively in its .tmc, e.g. ['MAIN.fbAxis', 'GVL_Recipe.nCount', 'ST_Recipe']: symbol paths (also members), data types, or a program/GVL name. Functions and FB types without an instance never appear. Omit to skip.")] string[]? expectSymbols = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_rebuild_plc", new { plcProjectName, ignoreStaleFiles, expectSymbols }, () =>
             bridge.Dispatcher.Run(() => new BuildCoordinator(bridge.Dispatcher.Session).RebuildPlc(plcProjectName, ignoreStaleFiles, expectSymbols)), cancellationToken);
 
     [McpServerTool(Name = "twincat_force_close_xae", ReadOnly = false, Destructive = true)]
-    [Description("EXPLICIT, opt-in recovery for a stale or crashed TcXaeShell (XAE) instance. " +
-                 "Never invoked implicitly — a normal mutating tool will never terminate XAE. " +
-                 "Asks each TcXaeShell to close gracefully and only kills the ones that do not " +
-                 "exit in time. REFUSES while a dismissable modal dialog (security code / restart / " +
-                 "trial license) is open — that instance is alive, not a zombie; use " +
-                 "twincat_dismiss_security_dialog instead. Terminating XAE discards any unsaved " +
-                 "work in it. Use only when twincat_get_status reports a stale/crashed instance " +
-                 "or a multi-XAE block you cannot otherwise clear. " +
-                 "pid: close only that one TcXaeShell process (see the PID list in a multi-XAE " +
-                 "twincat_get_status block reason) instead of every running instance — use this " +
-                 "when several instances are running and only one is confirmed stale, so the " +
-                 "others (possibly holding unsaved work) are left alone.")]
+    [Description("Force-close a stale or crashed XAE (TcXaeShell); its unsaved work is lost. " +
+                 "Explicit recovery only; no other tool terminates the XAE. Asks each instance to close and kills those that " +
+                 "do not exit in time. Refuses while a dismissable modal (security code / restart / trial license) is open — " +
+                 "that XAE is alive; use twincat_dismiss_security_dialog. Use only when twincat_get_status reports a " +
+                 "stale/crashed instance or a multi-XAE block you cannot clear otherwise.")]
     public string ForceCloseXae(
-        [Description("PID of one specific TcXaeShell process to close. Omit to close all (original behaviour).")] int? pid = null,
+        [Description("PID of the one TcXaeShell to close (from the twincat_get_status multi-XAE list), leaving the other instances and their unsaved work alone. Omit to close all.")] int? pid = null,
         CancellationToken cancellationToken = default)
         // Control/recovery command: bypass the operation gate so a wedged
         // in-flight call can never deadlock the very tool meant to recover it

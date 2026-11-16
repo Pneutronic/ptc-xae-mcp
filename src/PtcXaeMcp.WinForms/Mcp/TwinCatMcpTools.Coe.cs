@@ -7,25 +7,21 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_read_coe_dictionary", ReadOnly = true)]
-    [Description("Read the CoE offline dictionary for an EtherCAT slave from its ESI file. " +
-                 "Returns each object (index, name, access, objectType) and its sub-indexes " +
-                 "(subindex, name, dataType, bitSize, defaultValue, defaultText, access, isSetting). " +
-                 "Enum-typed sub-indexes include a human-readable defaultText, e.g. 'IIR level 1 (2)'. " +
-                 "Read-only; no activated configuration or live controller required. " +
-                 "Result: one-line summary + indented JSON { treePath, slaveType, fallbackNote, total, offset, " +
-                 "returned, has_more, next_offset, objects[] }: total counts the objects that pass indexFilter, " +
-                 "paged with limit/offset (call again with offset=next_offset while has_more is true).")]
+    [Description("Read the CoE offline dictionary of an EtherCAT slave from its ESI file. " +
+                 "Per object: index, name, access, objectType and sub-indexes (subindex, name, dataType, bitSize, " +
+                 "defaultValue, defaultText for enums e.g. 'IIR level 1 (2)', access, isSetting). " +
+                 "Offline: no active configuration or controller needed. " +
+                 "Result: summary line + JSON { treePath, slaveType, fallbackNote, total, offset, returned, has_more, " +
+                 "next_offset, objects[] }; total counts objects matching indexFilter.")]
     public string ReadCoeDictionary(
-        [Description("Caret-separated tree path of the EtherCAT slave under TIID, " +
-                     "e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^-1AI5 (EL3174)'. " +
-                     "Get a valid path via twincat_get_fieldbus_topology first.")]
+        [Description("Tree path of the EtherCAT slave, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^Term 2 (EL3174)'. " +
+                     "From twincat_get_fieldbus_topology.")]
         string treePath,
-        [Description("Optional index filter: single index (e.g. '800D') or hex range (e.g. '8000-80FF'). " +
-                     "Omit to return all objects.")]
+        [Description("Index '800D' or hex range '8000-80FF'. Omit for all objects.")]
         string? indexFilter = null,
-        [Description("CoE objects per page: default 100, at most 1000 (0 = 1000).")]
+        [Description("Objects per page: default 100, max 1000 (0 = 1000).")]
         int? limit = null,
-        [Description("Objects to skip, for the next page (next_offset of the previous call). Default 0.")]
+        [Description("Objects to skip: next_offset of the previous call while has_more. Default 0.")]
         int offset = 0,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_read_coe_dictionary", new { treePath, indexFilter, limit, offset }, () =>
@@ -39,16 +35,14 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_read_coe_startup", ReadOnly = true)]
-    [Description("Read the configured Startup SDO-download overrides for an EtherCAT slave " +
-                 "as stored in the TwinCAT project. These are the CoE register values that will " +
-                 "be written to the device on the PS / SafeOp→Op transition — the answer to " +
-                 "'which registers has the project changed away from the ESI default?'. " +
-                 "Returns an empty list (not an error) when no overrides are configured. " +
-                 "Read-only. Result: one-line summary + indented JSON (entryCount, entries[]).")]
+    [Description("Read the project's CoE Startup SDO overrides of an EtherCAT slave. " +
+                 "These CoE values are written to the device on the PS / SafeOp→Op transition, i.e. where the project " +
+                 "deviates from the ESI default. Empty list (not an error) when none. Read-only, CoE only " +
+                 "(SoE/EoE/FoE and fixed entries: twincat_read_ethercat_startup). " +
+                 "Result: summary line + JSON (entryCount, entries[]).")]
     public string ReadCoeStartup(
-        [Description("Caret-separated tree path of the EtherCAT slave under TIID, " +
-                     "e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^-1AI5 (EL3174)'. " +
-                     "Get a valid path via twincat_get_fieldbus_topology first.")]
+        [Description("Tree path of the EtherCAT slave, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^Term 2 (EL3174)'. " +
+                     "From twincat_get_fieldbus_topology.")]
         string treePath,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_read_coe_startup", new { treePath }, () =>
@@ -62,34 +56,25 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_read_ethercat_startup", ReadOnly = true)]
-    [Description("READ-ONLY, offline: the complete Startup list of EtherCAT boxes as the Startup tab shows it — CoE, " +
-                 "SoE, EoE and FoE mailbox commands, the fixed ones (generated by TwinCAT from the PDO/telegram " +
-                 "configuration, shown in angle brackets) and the projected ones. twincat_read_coe_startup sees only " +
-                 "the CoE part and reports 0 entries for a SoE drive (Rexroth IndraDrive, Beckhoff AX5000). Read from " +
-                 "the boxes' ProduceXml, no activated configuration or controller needed. Without treePath every box " +
-                 "below every EtherCAT master is read and only boxes with at least one entry are returned. " +
-                 "Result: one-line summary ('7 slaves, 70 startup entries (SoE 63, EoE 7) — 42 fixed') + indented JSON " +
-                 "{ slaveCount, slavesScanned, entryCount, fixedCount, byProtocol, boxes [{ treePath, name, slaveType, " +
-                 "physAddr, linkedAxis (NC axis or null), soeChannels, virtualPort (EoE {macAddr, ipAddr, subnet, " +
-                 "gateway, dnsAddr, dnsName}), entryCount, entries [...] }] }. Every entry has protocol, fixed, " +
-                 "transitions[] (PS, IP, SO ...), comment, timeoutMs, dataHex. CoE: index (hex), subIndex, " +
-                 "completeAccess, source (mailbox | operationMode). SoE: idn ('S-0-0015', 'P-0-3231'), idnRaw (16 bit; " +
-                 "bit 15 = P, bits 12-14 = parameter set), parameterSet, driveNo (0 = first drive; a drive may list " +
-                 "its fixed entries once per DriveNo), opCode, elements (name of the SoE element, 'value' = 0x40), " +
-                 "attribute (raw), value (unsigned little endian for 2/4/8 data bytes, else absent), list " +
-                 "{currentLength, maxLength} when the data start with a SoE list header that fits (a plain 4 byte value " +
-                 "can look like an empty list), idnList (the IDNs of the AT list S-0-0016 / MDT list S-0-0024). " +
-                 "The ESC register commands (set sm ...) are not part of the Startup tab and not returned. " +
-                 "Requires XAE running with a solution open.")]
+    [Description("Read the full EtherCAT Startup list of boxes, as the Startup tab shows it. " +
+                 "Read-only and offline (no active configuration needed); needs an open solution. Covers CoE, SoE, EoE " +
+                 "and FoE mailbox commands, both fixed (generated from the PDO/telegram configuration, in angle brackets) " +
+                 "and projected; twincat_read_coe_startup sees only CoE and reports 0 entries for a SoE drive. " +
+                 "ESC register commands (set sm ...) are not returned. " +
+                 "Result: summary line + JSON { slaveCount, slavesScanned, entryCount, fixedCount, byProtocol, " +
+                 "boxes[{ treePath, name, slaveType, physAddr, linkedAxis, soeChannels, virtualPort (EoE), entryCount, " +
+                 "entries[] }] }. Entry: protocol, fixed, transitions[], comment, timeoutMs, dataHex; CoE adds index (hex), " +
+                 "subIndex, completeAccess, source; SoE adds idn ('S-0-0015'), idnRaw, parameterSet, driveNo (0 = first " +
+                 "drive), opCode, elements, attribute, value (unsigned little endian for 2/4/8 bytes), list " +
+                 "{currentLength, maxLength} (a plain 4-byte value can look like an empty list), idnList (AT S-0-0016 / " +
+                 "MDT S-0-0024).")]
     public string ReadEtherCatStartup(
         [Description("Tree path of ONE EtherCAT box, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^Drive 1'. " +
-                     "Omit to read all boxes of all EtherCAT masters (only boxes with entries are listed). " +
-                     "Get paths via twincat_get_fieldbus_topology.")]
+                     "From twincat_get_fieldbus_topology. Omit for all boxes of all masters (only boxes with entries are listed).")]
         string? treePath = null,
-        [Description("Include the fixed entries generated by TwinCAT (the ones in angle brackets in the Startup tab). " +
-                     "Default true; false returns only what the project configures itself.")]
+        [Description("Include the TwinCAT-generated fixed entries. Default true; false = only what the project configures.")]
         bool includeFixed = true,
-        [Description("Only this protocol: CoE, SoE, EoE or FoE (case-insensitive). Omit for all.")]
+        [Description("Only CoE, SoE, EoE or FoE (case-insensitive). Omit for all.")]
         string? protocol = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_read_ethercat_startup", new { treePath, includeFixed, protocol }, () =>
@@ -98,38 +83,31 @@ internal sealed partial class TwinCatMcpTools
                     .Read(treePath, includeFixed, protocol)), cancellationToken);
 
     [McpServerTool(Name = "twincat_read_soe_parameter", ReadOnly = true)]
-    [Description("READ-ONLY, online: reads SoE parameters (IDNs) live from a SoE drive (Rexroth IndraDrive, Beckhoff AX5000) " +
-                 "over ADS (index group 0xF420 on the box's EtherCAT address, as in twincat_ethercat_read_identities): " +
-                 "needs the configuration active on the target and the slave at least in PREOP. The box's AMS address comes " +
-                 "from its device XML. Two modes. With idns: those IDNs at driveNo (default 0), each with the requested " +
-                 "elements. Without idns: every SoE entry of the box's Startup list (see twincat_read_ethercat_startup) is " +
-                 "read from the drive and compared with the project (projected = Startup data, actual = what the drive " +
-                 "holds; match true/false; AT/MDT lists compare their data without the maximum length; the entry's own " +
-                 "DriveNo is used, driveNo filters; entries that do not write the value element are listed with a note). " +
-                 "Result: one-line summary + indented JSON { treePath, netId, port, mode (read | compare), parameters [{ idn, " +
-                 "idnRaw, driveNo, name, unit, attribute {rawHex, conversionFactor, dataLength, isList, isCommand, display, " +
-                 "decimalPlaces, writeProtectedIn[]}, value / min / max / default {hex, length, unsigned (2/4/8 bytes), " +
-                 "signed + scaled (only with the attribute: display format, decimal places), list {currentLength, maxLength}, " +
-                 "idnList, text}, dataStatus, errors [{element, code, name}], compare: fixed, comment, projected, actual, " +
-                 "match, note }] }. Without the attribute element the values stay raw (hex + unsigned); with it they are " +
-                 "interpreted by the SERCOS attribute layout, which is not yet verified against a drive: rawHex is " +
-                 "authoritative. An ADS error of one IDN (e.g. DeviceInvalidOffset = IDN not supported) is recorded in " +
-                 "that IDN's errors and does not stop the others; a drive that does not answer at all is an [Error] with " +
-                 "NetId and port. Never writes.")]
+    [Description("Read SoE parameters (IDNs) live from a SoE drive over ADS; never writes. " +
+                 "For drives such as Beckhoff AX5000 or Rexroth IndraDrive. Needs the configuration active on the target " +
+                 "and the slave at least in PREOP. With idns: reads those IDNs and elements. Without idns: reads every SoE " +
+                 "entry of the box's Startup list (twincat_read_ethercat_startup) from the drive and compares (projected, " +
+                 "actual, match; AT/MDT lists compared without max length; entries that do not write the value element get " +
+                 "a note). Result: summary line + JSON { treePath, netId, port, mode (read | compare), parameters[{ idn, " +
+                 "idnRaw, driveNo, name, unit, attribute {rawHex, ...}, value/min/max/default {hex, length, unsigned, " +
+                 "signed + scaled (only with attribute), list, idnList, text}, dataStatus, errors[{element, code, name}], " +
+                 "fixed, comment, projected, actual, match, note }] }. Scaling from the attribute is not yet verified " +
+                 "against a drive: rawHex is authoritative. An ADS error of one IDN (e.g. DeviceInvalidOffset = not " +
+                 "supported) goes into its errors; a drive that does not answer is an [Error] with NetId and port.")]
     public string ReadSoeParameter(
-        [Description("Tree path of the EtherCAT box of the SoE drive, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^Drive 1'. " +
-                     "Get paths via twincat_get_fieldbus_topology.")]
+        [Description("Tree path of the SoE drive's EtherCAT box, e.g. 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)^Drive 1'. " +
+                     "From twincat_get_fieldbus_topology.")]
         string treePath,
-        [Description("IDNs to read: 'S-0-0001', 'P-0-3231' or decimal numbers. Omit to read every SoE IDN of the box's " +
-                     "Startup list and compare it with the project. At most 256.")]
+        [Description("IDNs 'S-0-0001', 'P-0-3231' or decimal, at most 256. Omit to compare the box's Startup SoE entries " +
+                     "with the drive.")]
         string[]? idns = null,
-        [Description("Drive number within the box (0 = first drive; an AX5206 has 0 and 1). Default 0 with idns; without idns " +
-                     "it restricts the comparison to Startup entries of that DriveNo (default: every entry at its own DriveNo).")]
+        [Description("Drive within the box (0 = first; an AX5206 has 0 and 1). With idns default 0; without idns it " +
+                     "filters Startup entries by DriveNo (default: each entry at its own DriveNo).")]
         int? driveNo = null,
-        [Description("Elements to read per IDN (only with idns): value (default), name, attribute, unit, min, max, default, " +
+        [Description("Elements per IDN (only with idns): value (default), name, attribute, unit, min, max, default, " +
                      "dataStatus. Add 'attribute' for decoded, scaled values.")]
         string[]? elements = null,
-        [Description("ADS timeout per read in milliseconds (default 5000, 100-30000). A read that times out is repeated once before the error is recorded.")]
+        [Description("ADS timeout per read in ms (default 5000, 100-30000); a timed-out read is retried once.")]
         int? timeoutMs = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_read_soe_parameter", new { treePath, idns, driveNo, elements, timeoutMs }, () =>

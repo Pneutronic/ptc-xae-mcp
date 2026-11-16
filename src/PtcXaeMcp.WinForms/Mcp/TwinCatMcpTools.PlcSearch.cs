@@ -11,24 +11,22 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_plc_search", ReadOnly = true)]
-    [Description("Search the declarations and implementations of every POU, METHOD, PROPERTY (Get/Set), ACTION, TRANSITION, INTERFACE, DUT and GVL " +
-                 "of the open PLC project(s) — instead of reading every element. The text is the one twincat_plc_read returns (unsaved editor " +
-                 "changes included). Matching is case-insensitive by default (ST is); regex=true takes a .NET regular expression (^ and $ per line), " +
-                 "wholeWord=true skips hits inside longer identifiers. Each hit: element kind and tree path, section, line:column (the line numbers of " +
-                 "twincat_plc_read), the element's revision (pass it to twincat_plc_replace_text / twincat_plc_write as expectedRevision) and an " +
-                 "excerpt with the hit lines marked '>'. Graphical implementations (SFC, FBD, LD, CFC) are XML and not searched; they are listed as " +
-                 "skipped, their declarations are searched. Paged with limit/offset: the last line gives total, has_more and next_offset.")]
+    [Description("Search declarations and implementations across the open PLC project(s). Covers every POU, METHOD, PROPERTY " +
+                 "(Get/Set), ACTION, TRANSITION, INTERFACE, DUT and GVL, with unsaved editor changes. Each hit: kind and tree path, section, " +
+                 "line:column (as in twincat_plc_read), the element's revision (expectedRevision for twincat_plc_replace_text / " +
+                 "twincat_plc_write) and an excerpt with hit lines marked '>'. Graphical implementations (SFC/FBD/LD/CFC) are not searched " +
+                 "and listed as skipped; their declarations are. Paged with limit/offset (last line: total, has_more, next_offset).")]
     public string PlcSearch(
         [Description("Text to find; a regular expression when regex=true.")] string pattern,
-        [Description("True: pattern is a .NET regular expression. Default false (literal text).")] bool regex = false,
-        [Description("True: match case exactly. Default false (ST identifiers are case-insensitive).")] bool caseSensitive = false,
-        [Description("True: only whole identifiers (no letter, digit or '_' directly before or after the hit).")] bool wholeWord = false,
+        [Description("True: pattern is a .NET regular expression (^ and $ per line). Default false.")] bool regex = false,
+        [Description("True: match case exactly. Default false.")] bool caseSensitive = false,
+        [Description("True: skip hits inside longer identifiers. Default false.")] bool wholeWord = false,
         [Description("declaration, implementation or both (default).")] string? scope = null,
-        [Description("Optional caret-separated tree path: only this element and the elements below it, e.g. a folder or a POU with its members.")] string? pathPrefix = null,
-        [Description("Optional element kind filter: POU, INTERFACE, DUT, GVL or MEMBER.")] string? kind = null,
-        [Description("Lines of context before and after each hit, 0–10. Default 1.")] int contextLines = 1,
-        [Description("Hits per page: default 100, at most 1000 (0 = 1000).")] int? limit = null,
-        [Description("Hits to skip, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
+        [Description("Optional caret-separated tree path: only this element and below (a folder, or a POU with its members).")] string? pathPrefix = null,
+        [Description("Optional kind filter: POU, INTERFACE, DUT, GVL or MEMBER.")] string? kind = null,
+        [Description("Context lines before and after each hit, 0–10. Default 1.")] int contextLines = 1,
+        [Description("Hits per page: default 100, max 1000 (0 = 1000).")] int? limit = null,
+        [Description("Hits to skip (next_offset of the previous page). Default 0.")] int offset = 0,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_search",
             new { pattern, regex, caseSensitive, wholeWord, scope, pathPrefix, kind, contextLines, limit, offset }, () =>
@@ -57,22 +55,21 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_replace_text", ReadOnly = false, Destructive = true)]
-    [Description("Replace one exact piece of text in the declaration or the implementation of one PLC element, leaving the rest byte-identical — " +
-                 "instead of rewriting the whole section with twincat_plc_write. oldText must occur exactly once (case and whitespace as " +
-                 "twincat_plc_read returns them; LF in oldText/newText also matches CRLF), or pass occurrence to pick the n-th. Refused with [Error], " +
-                 "before the automatic logout and without a change: oldText not found (the message says where it nearly matched), found several " +
-                 "times (with the lines), a section the element does not have, a graphical implementation (SFC/FBD/LD/CFC: use twincat_plc_write), " +
-                 "a METHOD/PROPERTY/ACTION header put into a POU/INTERFACE/GVL/DUT declaration, or expectedRevision (from twincat_plc_read or " +
-                 "twincat_plc_search) that no longer matches. The write is verified by an independent read-back. Returns the changed lines with " +
-                 "two lines of context and the new revision for the next edit. " + PlcKindHelp)]
+    [Description("Replace an exact text snippet in a PLC element's declaration or implementation. The rest stays byte-identical " +
+                 "(no need to rewrite the section with twincat_plc_write). oldText must occur exactly once (case and whitespace as " +
+                 "twincat_plc_read returns them; LF also matches CRLF) unless occurrence picks one. Refused with [Error] before the logout, " +
+                 "nothing changed: oldText not found (nearest match shown) or found several times (lines listed), a missing section, a " +
+                 "graphical implementation (SFC/FBD/LD/CFC: use twincat_plc_write), a METHOD/PROPERTY/ACTION header in a " +
+                 "POU/INTERFACE/GVL/DUT declaration, a stale expectedRevision. Logs the XAE out first (refused if that fails); verified by " +
+                 "read-back. Returns the changed lines with two lines of context and the new revision. " + PlcKindHelp)]
     public string PlcReplaceText(
         [Description("Caret-separated tree path of the element.")] string path,
-        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL or MEMBER.")] string kind,
+        [Description("Kind the node must have: POU, INTERFACE, DUT, GVL or MEMBER.")] string kind,
         [Description("declaration or implementation.")] string section,
-        [Description("The exact text to replace (may span lines).")] string oldText,
-        [Description("The replacement; an empty string deletes oldText.")] string newText,
-        [Description("Optional 1-based occurrence when oldText occurs several times. Omit to require exactly one.")] int? occurrence = null,
-        [Description("Revision twincat_plc_read or twincat_plc_search reported for this element. When given, a different current revision refuses the replacement (someone else changed it).")] string? expectedRevision = null,
+        [Description("Exact text to replace (may span lines).")] string oldText,
+        [Description("Replacement; \"\" deletes oldText.")] string newText,
+        [Description("1-based occurrence when oldText occurs several times; omit to require exactly one.")] int? occurrence = null,
+        [Description("Revision from twincat_plc_read or twincat_plc_search; a different current revision refuses the replacement.")] string? expectedRevision = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_replace_text",
             new { path, kind, section, oldText, newText, occurrence, expectedRevision }, () =>

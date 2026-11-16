@@ -14,24 +14,22 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     private const string PlcKindHelp =
-        "kind is one of POU | INTERFACE | DUT | GVL | MEMBER | FOLDER (text elements: declaration and/or implementation) or " +
-        "TEXTLIST | IMAGEPOOL | VISU | RECIPE | UML | TASKREF (list, create, rename, delete only: XAE does not expose their content " +
-        "through the Automation Interface, so read/write/entries answer [Error]; TREND exists but cannot be created). " +
-        "LIBRARY has its own tools (twincat_*_library_*).";
+        "kind: POU | INTERFACE | DUT | GVL | MEMBER | FOLDER, or TEXTLIST | IMAGEPOOL | VISU | RECIPE | UML | TASKREF " +
+        "(list/create/rename/delete only; read/write/entries answer [Error]). With a path, kind must equal the node's real type, " +
+        "checked before anything else ([Error] otherwise). Libraries: twincat_*_library_* tools.";
 
     [McpServerTool(Name = "twincat_plc_list", ReadOnly = true)]
-    [Description("List PLC elements. Without arguments: every POU, INTERFACE, DUT, GVL and FOLDER of the open PLC project. " +
-                 "kind filters by element kind; parentPath restricts to the subtree below a tree path. Under a POU, an INTERFACE or a " +
-                 "PROPERTY, parentPath lists its MEMBERs (METHOD, ACTION, PROPERTY, Get/Set), including members inside folders under a POU; " +
-                 "kind=MEMBER requires such a parentPath. recursive=false lists only the direct children. One line per element: " +
-                 "kind/subtype, tree path, language. limit/offset page through a large project: the last line then gives total, has_more and next_offset. " +
+    [Description("List PLC elements (POU, INTERFACE, DUT, GVL, FOLDER) of the open PLC project. " +
+                 "kind filters; parentPath limits to a subtree — under a POU, INTERFACE or PROPERTY it lists the MEMBERs " +
+                 "(METHOD, ACTION, PROPERTY, Get/Set), which kind=MEMBER requires. One line per element: kind/subtype, tree path, " +
+                 "language. Paged with limit/offset (last line: total, has_more, next_offset). " +
                  PlcKindHelp)]
     public string PlcList(
-        [Description("Optional element kind filter, e.g. POU, DUT, GVL, MEMBER.")] string? kind = null,
-        [Description("Optional caret-separated tree path; only elements below it are listed. Required for kind=MEMBER.")] string? parentPath = null,
-        [Description("False lists only the direct children of parentPath. Default true.")] bool recursive = true,
-        [Description("Most elements to return; 0 (default) returns all.")] int limit = 0,
-        [Description("Elements to skip, for the next page (next_offset of the previous call). Default 0.")] int offset = 0,
+        [Description("Optional kind filter, e.g. POU, DUT, MEMBER.")] string? kind = null,
+        [Description("Optional caret-separated tree path to list below. Required for kind=MEMBER.")] string? parentPath = null,
+        [Description("False: only direct children of parentPath. Default true.")] bool recursive = true,
+        [Description("Max elements; 0 (default) = all.")] int limit = 0,
+        [Description("Elements to skip (next_offset of the previous page). Default 0.")] int offset = 0,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_list", new { kind, parentPath, recursive, limit, offset }, () =>
             Mcp.McpPaging.Validate(limit, offset) ?? bridge.Dispatcher.Run(() =>
@@ -54,30 +52,28 @@ internal sealed partial class TwinCatMcpTools
             }), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_create", ReadOnly = false, Destructive = false)]
-    [Description("Create a PLC element under parentPath. kind + subtype pick the element: POU/PROGRAM|FUNCTION|FUNCTION_BLOCK, DUT/STRUCT|ENUM|UNION|ALIAS (default STRUCT; ALIAS needs a " +
-                 "'TYPE <name> : <baseType>; END_TYPE' declaration), GVL/NORMAL|PARAMLIST (default NORMAL; persistent variables are a 'VAR_GLOBAL PERSISTENT' " +
-                 "section of a NORMAL GVL — put it in the declaration), INTERFACE, MEMBER/METHOD|ACTION|PROPERTY|GET|SET (parentPath is the POU or INTERFACE; " +
-                 "GET/SET are named Get/Set; PROPERTY gets its accessors per 'accessors'; TRANSITION under a POU is ST, implementation only), " +
-                 "FOLDER (under a folder, the PLC project node, a POU or an INTERFACE), TEXTLIST/LOCAL, IMAGEPOOL/LOCAL, UML/CLASSDIAGRAM, " +
-                 "VISU/MANAGER|VISUALIZATION and RECIPE/MANAGER (all under a folder or the PLC project node), VISU/TARGET|WEB (under a visualization " +
-                 "manager), RECIPE/DEFINITION (under a recipe manager), TASKREF/PROGRAM (under a PLC task node; name = the PROGRAM to run). " +
-                 "The GLOBAL text list / image pool, the text-list enumeration and the trend elements are refused by XAE and not offered. " +
-                 "declaration optionally fills the new element (not for FOLDER, ACTION); implementation optionally writes its body right after (POU, METHOD, ACTION, " +
-                 "TRANSITION, GET, SET — a PROPERTY's code goes into its accessors), read back like twincat_plc_write. returnType applies to FUNCTION, METHOD, PROPERTY (default BOOL); implLanguage " +
-                 "(ST, IL, SFC, FBD, CFC, LD; default ST) to POUs and members; accessors (GET | SET | BOTH, default BOTH) to PROPERTY only. A parameter that does " +
-                 "not apply to the element is an [Error]. Logs the XAE out first. Returns the new element's tree path. " +
-                 "A new GVL, an FB nobody instantiates or a function is not compiled until a task's program uses it (or it carries " +
-                 "{attribute 'linkalways'}); twincat_build_plc(expectSymbols=[...]) proves what landed in the compiled PLC. " + PlcKindHelp)]
+    [Description("Create a PLC element (POU, DUT, GVL, member, folder, …) under parentPath. kind/subtype and parent: " +
+                 "POU/PROGRAM|FUNCTION|FUNCTION_BLOCK, DUT/STRUCT|ENUM|UNION|ALIAS (ALIAS needs a 'TYPE <name> : <baseType>; END_TYPE' " +
+                 "declaration), GVL/NORMAL|PARAMLIST (persistent = a 'VAR_GLOBAL PERSISTENT' section in a NORMAL GVL's declaration), INTERFACE; " +
+                 "MEMBER/METHOD|ACTION|PROPERTY|GET|SET under a POU or INTERFACE (GET/SET are named Get/Set; TRANSITION under a POU: ST, " +
+                 "implementation only); FOLDER under a folder, the PLC project node, a POU or INTERFACE; TEXTLIST/LOCAL, IMAGEPOOL/LOCAL, " +
+                 "UML/CLASSDIAGRAM, VISU/MANAGER|VISUALIZATION, RECIPE/MANAGER under a folder or the PLC project node; VISU/TARGET|WEB under a " +
+                 "visualization manager; RECIPE/DEFINITION under a recipe manager; TASKREF/PROGRAM under a PLC task node (name = the PROGRAM). " +
+                 "The global text list/image pool, text-list enumerations and trends cannot be created. declaration (not FOLDER/ACTION) and " +
+                 "implementation (POU, METHOD, ACTION, TRANSITION, GET, SET; a PROPERTY's code goes into its accessors) fill the new element, " +
+                 "verified like twincat_plc_write. A parameter that does not apply is an [Error]. Logs the XAE out first (refuses if that fails). " +
+                 "Returns the new tree path. A new GVL, unused FB or function is only compiled once a task's program uses it (or with " +
+                 "{attribute 'linkalways'}); verify with twincat_build_plc(expectSymbols=[...]). " + PlcKindHelp)]
     public string PlcCreate(
-        [Description("Element kind: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind,
-        [Description("Caret-separated tree path of the parent: a folder or the PLC project node; for kind=MEMBER the POU or INTERFACE.")] string parentPath,
+        [Description("Element kind (see the tool description), e.g. POU, DUT, GVL, MEMBER, FOLDER.")] string kind,
+        [Description("Caret-separated tree path of the parent (see the tool description per kind).")] string parentPath,
         [Description("Name of the new element.")] string name,
-        [Description("Subtype within the kind (required for POU and MEMBER), e.g. FUNCTION_BLOCK, STRUCT, PARAMLIST, METHOD. Optional for DUT (STRUCT), GVL (NORMAL), INTERFACE and FOLDER.")] string? subtype = null,
-        [Description("Optional declaration text for the new element. TwinCAT's default skeleton remains when omitted.")] string? declaration = null,
-        [Description("Return type for FUNCTION, METHOD and PROPERTY. Defaults to BOOL.")] string? returnType = null,
-        [Description("Implementation language: ST, IL, SFC, FBD, CFC or LD. Defaults to ST.")] string? implLanguage = null,
-        [Description("For subtype=PROPERTY only: GET, SET or BOTH (default).")] string? accessors = null,
-        [Description("Optional body (implementation) written right after the element was created: ST text, or XAE's XML for SFC/FBD/CFC/LD. For a POU, METHOD, ACTION, TRANSITION, GET or SET.")] string? implementation = null,
+        [Description("Subtype, e.g. FUNCTION_BLOCK, STRUCT, METHOD. Required for POU and MEMBER; DUT defaults to STRUCT, GVL to NORMAL.")] string? subtype = null,
+        [Description("Optional declaration; TwinCAT's default skeleton when omitted.")] string? declaration = null,
+        [Description("Return type for FUNCTION, METHOD, PROPERTY. Default BOOL.")] string? returnType = null,
+        [Description("ST, IL, SFC, FBD, CFC or LD (POUs and members). Default ST.")] string? implLanguage = null,
+        [Description("PROPERTY only: GET, SET or BOTH (default).")] string? accessors = null,
+        [Description("Optional body written right after creation: ST text, or XAE's XML for SFC/FBD/CFC/LD.")] string? implementation = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_create",
             new { kind, subtype, parentPath, name, declaration, returnType, implLanguage, accessors, implementation }, () =>
@@ -86,20 +82,17 @@ internal sealed partial class TwinCatMcpTools
                     .Create(kind, subtype, parentPath, name, declaration, returnType, implLanguage, accessors, implementation)), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_read", ReadOnly = true)]
-    [Description("Read a PLC element's text by its caret-separated tree path: the declaration and, for elements that have one, the implementation " +
-                 "(with its language; for SFC, FBD, CFC and LD the implementation is XAE's native XML). Only the sections the element has are returned (a DUT, GVL or INTERFACE has no implementation, an ACTION or " +
-                 "TRANSITION no declaration). kind is checked against the node's real type before anything is read: a mismatch is an [Error] " +
-                 "such as \"'<path>' is a GVL, not a DUT\". The first line ends with 'Revision: <16 hex digits>', a hash of the text read; pass it to " +
-                 "twincat_plc_write(expectedRevision): the write is then refused when someone else changed the element in between. When openInEditor=true, also opens the element in the XAE editor (video mode), " +
-                 "best-effort, behind the user's work unless bringToFront=true. " +
-                 "paths reads several elements of the same kind in one call instead of path: each under a '=== <path> ===' line, a failing " +
-                 "one as its [Error] while the others are still read; the first line counts read and failed. " + PlcKindHelp)]
+    [Description("Read a PLC element's declaration and implementation by tree path. Only existing sections are returned " +
+                 "(DUT/GVL/INTERFACE: no implementation; ACTION/TRANSITION: no declaration), with the language; SFC/FBD/CFC/LD implementations " +
+                 "are XAE's native XML. The first line ends with 'Revision: <16 hex digits>' — pass it as expectedRevision to a later write " +
+                 "so the write is refused if the element changed meanwhile. paths reads several elements of one kind: each under " +
+                 "'=== <path> ===', a failing one as its [Error]; the first line counts read and failed. " + PlcKindHelp)]
     public string PlcRead(
-        [Description("Caret-separated tree path of the element to read. Give either path or paths.")] string? path = null,
-        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind = "",
-        [Description("When true, also opens the element in the visible XAE editor (video mode), best-effort. Default false. Not with paths.")] bool openInEditor = false,
+        [Description("Caret-separated tree path of the element (as twincat_plc_list shows). Give path or paths.")] string? path = null,
+        [Description("Kind the node must have, e.g. POU, DUT, GVL, MEMBER.")] string kind = "",
+        [Description("Also open the element in the XAE editor, best-effort, behind the user's work unless bringToFront. Not with paths. Default false.")] bool openInEditor = false,
         [Description(BringToFrontHelp)] bool bringToFront = false,
-        [Description("Several caret-separated tree paths of the same kind, read one after the other (at most 50). Instead of path.")] string[]? paths = null,
+        [Description("Up to 50 tree paths of the same kind, instead of path.")] string[]? paths = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_read", new { path, kind, openInEditor, bringToFront, paths }, () =>
         {
@@ -172,25 +165,21 @@ internal sealed partial class TwinCatMcpTools
     }
 
     [McpServerTool(Name = "twincat_plc_write", ReadOnly = false, Destructive = true)]
-    [Description("Replace the declaration and/or the implementation of an existing PLC element. A section that is null stays unchanged. " +
-                 "Each section can be given inline (declaration/implementation) or read from a file (declarationFile/implementationFile); giving both " +
-                 "forms for one section is an error. kind is checked against the node's real type before the automatic logout. A section the element " +
-                 "does not have (an implementation for a DUT, GVL or INTERFACE; a declaration for an ACTION) is an [Error] before the logout. The " +
-                 "implementation is text for ST and IL; for SFC, FBD, CFC and LD it is XAE's native XML exactly as twincat_plc_read returns it (root " +
-                 "<NWL> for LD and FBD, <SFC>, <CFC>) — anything else is refused before the logout. A declaration can be written in every language. " +
-                 "A POU/INTERFACE/GVL/DUT declaration that " +
-                 "contains a METHOD/PROPERTY/ACTION header line is refused (members are separate elements — create them with twincat_plc_create). " +
-                 "The write is verified by an independent read-back. With expectedRevision (from twincat_plc_read) the element is read first and " +
-                 "the write is refused with [Error] — before the logout, nothing changed — when its text moved on since that read. The result " +
-                 "ends with the new 'Revision: …' for the next edit. " + PlcKindHelp)]
+    [Description("Replace the declaration and/or implementation of an existing PLC element. A null section stays unchanged; " +
+                 "give each section inline or as a file, not both. Implementation: text for ST/IL; for SFC/FBD/CFC/LD exactly XAE's XML " +
+                 "as twincat_plc_read returns it (root <NWL> for LD/FBD, <SFC>, <CFC>). A POU/INTERFACE/GVL/DUT declaration containing a " +
+                 "METHOD/PROPERTY/ACTION header is refused (create members with twincat_plc_create). Refused with [Error] before the logout, " +
+                 "nothing changed: wrong kind, a section the element lacks (implementation of a DUT/GVL/INTERFACE, declaration of an ACTION), " +
+                 "invalid graphical XML, a stale expectedRevision. Logs the XAE out first (refused if that fails); verified by an independent " +
+                 "read-back; the result ends with the new 'Revision: …'. " + PlcKindHelp)]
     public string PlcWrite(
-        [Description("Caret-separated tree path of the element to write.")] string path,
-        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind,
-        [Description("New declaration text. Null leaves it unchanged. Alternative to 'declarationFile'.")] string? declaration = null,
-        [Description("New implementation (ST source). Null leaves it unchanged. Alternative to 'implementationFile'.")] string? implementation = null,
-        [Description("Path to a file whose contents become the declaration. Alternative to 'declaration'.")] string? declarationFile = null,
-        [Description("Path to a file whose contents become the implementation. Alternative to 'implementation'.")] string? implementationFile = null,
-        [Description("Revision twincat_plc_read reported for this element. When given, a different current revision refuses the write (someone else changed it). Omit to write unconditionally.")] string? expectedRevision = null,
+        [Description("Caret-separated tree path of the element.")] string path,
+        [Description("Kind the node must have, e.g. POU, DUT, GVL, MEMBER.")] string kind,
+        [Description("New declaration; null = unchanged. Or declarationFile.")] string? declaration = null,
+        [Description("New implementation; null = unchanged. Or implementationFile.")] string? implementation = null,
+        [Description("File whose contents become the declaration.")] string? declarationFile = null,
+        [Description("File whose contents become the implementation.")] string? implementationFile = null,
+        [Description("Revision from twincat_plc_read; a different current revision refuses the write. Omit to write unconditionally.")] string? expectedRevision = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_write",
             new { path, kind, declaration, implementation, declarationFile, implementationFile, expectedRevision }, () =>
@@ -201,28 +190,27 @@ internal sealed partial class TwinCatMcpTools
                     .Write(path, kind, declaration, implementation, declarationFile, implementationFile, expectedRevision)), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_delete", ReadOnly = false, Destructive = true)]
-    [Description("Delete a PLC element by its caret-separated tree path. kind is checked against the node's real type before the automatic logout. " +
-                 "Whitelist: the PLC project root, the PLC instance, References and any node whose type cannot be read are refused. A FOLDER is deleted only " +
-                 "when it is empty, or with recursive=true (then with everything in it). The delete is verified by an independent lookup. Deleting an " +
-                 "element that is referenced elsewhere may break the build — follow with twincat_build_plc if that matters. " + PlcKindHelp)]
+    [Description("Delete a PLC element by tree path. Refuses the PLC project root, the PLC instance, References and nodes " +
+                 "whose type cannot be read. A FOLDER must be empty unless recursive=true. Logs the XAE out first (refused if that fails); " +
+                 "the delete is verified by lookup. Deleting something referenced elsewhere may break the build — check with " +
+                 "twincat_build_plc. " + PlcKindHelp)]
     public string PlcDelete(
-        [Description("Caret-separated tree path of the element to delete.")] string path,
-        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind,
-        [Description("FOLDER only: true deletes a non-empty folder with everything in it. Default false.")] bool recursive = false,
+        [Description("Caret-separated tree path of the element.")] string path,
+        [Description("Kind the node must have, e.g. POU, DUT, GVL, MEMBER, FOLDER.")] string kind,
+        [Description("FOLDER only: true deletes it with everything in it. Default false.")] bool recursive = false,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_delete", new { path, kind, recursive }, () =>
             bridge.Dispatcher.Run(() =>
                 new PlcObjectCoordinator(bridge.Dispatcher.Session).Delete(path, kind, recursive)), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_rename", ReadOnly = false, Destructive = true)]
-    [Description("Rename a PLC element by its caret-separated tree path. kind is checked against the node's real type before the automatic logout. " +
-                 "Property accessors (Get/Set) have fixed names and cannot be renamed. Returns the new tree path. " +
-                 "Renaming may make TwinCAT ask whether to update all references to the old name (the XAE's rename-via-refactoring prompt); the tool answers that prompt itself — " +
-                 "\"Nein\" by default (only the element is renamed; callers keep the old name), \"Ja\" with updateReferences=true — and the result says whether it appeared and what was answered. Rebuild afterwards. " + PlcKindHelp)]
+    [Description("Rename a PLC element by tree path; returns the new path. Get/Set accessors cannot be renamed. Logs the XAE " +
+                 "out first (refused if that fails). If TwinCAT asks whether to update all references, the tool answers per updateReferences " +
+                 "and reports whether the prompt appeared and what was answered. Rebuild afterwards. " + PlcKindHelp)]
     public string PlcRename(
-        [Description("Caret-separated tree path of the element to rename.")] string path,
-        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL, MEMBER or FOLDER.")] string kind,
-        [Description("New name of the element.")] string newName,
+        [Description("Caret-separated tree path of the element.")] string path,
+        [Description("Kind the node must have, e.g. POU, DUT, GVL, MEMBER, FOLDER.")] string kind,
+        [Description("New name.")] string newName,
         [Description(UpdateReferencesHelp)] bool updateReferences = false,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_rename", new { path, kind, newName, updateReferences }, () =>
@@ -230,28 +218,25 @@ internal sealed partial class TwinCatMcpTools
                 new PlcObjectCoordinator(bridge.Dispatcher.Session).Rename(path, kind, newName, updateReferences)), cancellationToken);
 
     [McpServerTool(Name = "twincat_plc_move", ReadOnly = false, Destructive = true)]
-    [Description("Move a PLC element into another folder; the object GUID of the element and of its members stays the same (the .TcPOU keeps its Id). " +
-                 "kind POU, INTERFACE, DUT or GVL: targetFolderPath is a FOLDER anywhere in the same PLC project (not a folder inside a POU) or the PLC " +
-                 "project node. kind MEMBER (METHOD, ACTION, PROPERTY, TRANSITION): targetFolderPath is a FOLDER inside the same POU/INTERFACE, or that " +
-                 "POU/INTERFACE itself; another POU is refused. The target folder must exist — create it first with twincat_plc_create (kind=FOLDER). " +
-                 "The Automation Interface has no move, so the tool exports the element (for a MEMBER: its POU/INTERFACE) as PLCopen XML, places it in " +
-                 "the target folder inside the file's project structure, deletes the original and imports the file into the same PLC project — no " +
-                 "clipboard, no UI automation, the XAE is not brought to the front. kind is checked against the node's real type; a wrong kind, a " +
-                 "missing target, a target that is not a folder or is the current folder, a name already in the target, a member target outside its " +
-                 "POU and a property accessor (Get/Set) are refused before the automatic logout, nothing changed. After the import the move is " +
-                 "verified: the element resolves at the new path, the old path is gone, the text of the element and of every member is unchanged " +
-                 "(revision) and the object GUIDs equal the original's. A failure after the delete re-imports the original at its old place and says " +
-                 "exactly what happened. The exports are kept under %LOCALAPPDATA%\\ptc-xae-mcp\\move. Not saved — twincat_save_project afterwards.")]
+    [Description("Move a PLC element into another folder, keeping its object GUIDs. kind POU, INTERFACE, DUT or GVL: target is " +
+                 "a FOLDER of the same PLC project (not inside a POU) or the PLC project node. kind MEMBER (METHOD, ACTION, PROPERTY, " +
+                 "TRANSITION): target is a FOLDER inside the same POU/INTERFACE or that POU/INTERFACE itself. The target must exist (create " +
+                 "it with twincat_plc_create kind=FOLDER). Works by PLCopen export, delete and re-import (for a MEMBER: of its whole " +
+                 "POU/INTERFACE); the XAE is not brought to the front. Refused before the logout, nothing changed: wrong kind, missing, " +
+                 "non-folder or current target, name already in the target, member target outside its POU, Get/Set accessor. Logs the XAE " +
+                 "out first (refused if that fails). Verified afterwards (new path resolves, old one gone, text and GUIDs unchanged); a " +
+                 "failure after the delete re-imports the original and says what happened. Exports are kept under " +
+                 "%LOCALAPPDATA%\\ptc-xae-mcp\\move. Not saved — call twincat_save_project afterwards.")]
     public string PlcMove(
-        [Description("Caret-separated tree path of the element to move.")] string path,
-        [Description("Element kind the node must have: POU, INTERFACE, DUT, GVL or MEMBER.")] string kind,
-        [Description("Caret-separated tree path of the existing target folder (or the PLC project node). For kind=MEMBER a folder inside the same POU/INTERFACE, or the POU/INTERFACE itself.")] string targetFolderPath,
+        [Description("Caret-separated tree path of the element.")] string path,
+        [Description("Kind the node must have: POU, INTERFACE, DUT, GVL or MEMBER (checked first).")] string kind,
+        [Description("Caret-separated tree path of the existing target folder or the PLC project node; for MEMBER a folder in the same POU/INTERFACE or that POU/INTERFACE.")] string targetFolderPath,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_plc_move", new { path, kind, targetFolderPath }, () =>
             bridge.Dispatcher.Run(() =>
                 new PlcObjectCoordinator(bridge.Dispatcher.Session).Move(path, kind, targetFolderPath)), cancellationToken);
 
     internal const string UpdateReferencesHelp =
-        "How to answer TwinCAT's prompt to update all references to the old name, if it asks: false (default) = \"Nein\", only the element is renamed; " +
-        "true = \"Ja\", TwinCAT rewrites the references in the project.";
+        "Answer to TwinCAT's prompt to update all references, if shown: false (default) = \"Nein\", only the element is renamed " +
+        "(callers keep the old name); true = \"Ja\", references in the project are rewritten.";
 }

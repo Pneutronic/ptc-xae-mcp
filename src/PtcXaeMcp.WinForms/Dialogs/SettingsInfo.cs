@@ -51,6 +51,8 @@ internal static class SettingsInfo
             new("Allowed variable writes (environment)", Raw(Mcp.AccessPolicy.AdsWriteAllowEnvVar, "(none)"),
                 Env(Mcp.AccessPolicy.AdsWriteAllowEnvVar) + " (symbol patterns, e.g. MAIN.stTest.*; the lists of both sources are intersected)"),
             new("Denied variable writes (environment)", Raw(Mcp.AccessPolicy.AdsWriteDenyEnvVar, "(none)"), Env(Mcp.AccessPolicy.AdsWriteDenyEnvVar)),
+            new("Human confirmation (environment)", Raw(Mcp.AccessPolicy.ConfirmEnvVar, "(none)"),
+                Env(Mcp.AccessPolicy.ConfirmEnvVar) + " (off, remote, all; the stricter of this and the choice above applies)"),
         };
         if (updateCheckState is not null)
             rows.Add(new("Update check at start", updateCheckState,

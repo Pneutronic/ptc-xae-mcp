@@ -55,6 +55,14 @@ public sealed class McpActivity
     }
 
     /// <summary>
+    /// Records something that happened around a call but is not a tool body run (a confirmation asked or refused, a
+    /// receipt replayed) as one entry of its own.
+    /// </summary>
+    public void RecordNote(string name, string arguments, string result, bool success, TimeSpan duration) =>
+        Record(new McpActivityEntry(DateTimeOffset.UtcNow - duration, name, McpActivityEntry.Truncate(arguments),
+            McpActivityEntry.Truncate(result), duration, success));
+
+    /// <summary>
     /// The access policy's decision for a call (tool name, traced arguments): a refusal, or null plus an optional
     /// warning appended to the result. Set by <see cref="McpBridge"/>; null lets every call through (unit tests).
     /// </summary>

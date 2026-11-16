@@ -32,6 +32,15 @@ internal sealed record ToolInfo(string Name, Toolset Toolset, AccessLevel Level,
 {
     /// <summary>The argument that names the PLC symbol a variable-writing tool changes (checked against the access policy's symbol lists), or null.</summary>
     public string? SymbolArgument { get; init; }
+
+    /// <summary>Whether a human confirms a call (see <see cref="HumanConfirmation"/>); <see cref="ConfirmClass.Never"/> for most tools.</summary>
+    public ConfirmClass Confirm { get; init; }
+
+    /// <summary>True when the tool only acts if its <c>dryRun</c> argument is explicitly false; a dry run is never confirmed.</summary>
+    public bool ConfirmOnlyWithoutDryRun { get; init; }
+
+    /// <summary>An argument value that changes nothing on the target (<c>login</c> with <c>mode=login_without_change</c>): no confirmation.</summary>
+    public (string Argument, string Value)? ConfirmExempt { get; init; }
 }
 
 /// <summary>
@@ -172,6 +181,28 @@ internal static class ToolCatalog
         ["twincat_hmi_write_symbol"] = "symbol",
     };
 
+    /// <summary>
+    /// The actions a human confirms (the rest is <see cref="ConfirmClass.Never"/>). The restore of a snapshot and the HMI
+    /// writes are not listed: a human already answers their popup in the host window before anything is written.
+    /// </summary>
+    private static readonly Dictionary<string, ConfirmClass> ConfirmClasses = new(StringComparer.Ordinal)
+    {
+        ["twincat_activate_config"] = ConfirmClass.Always,
+        ["twincat_restart_runtime"] = ConfirmClass.Always,
+        ["twincat_set_system_mode"] = ConfirmClass.Always,
+        ["twincat_plc_stop"] = ConfirmClass.Always,
+        ["twincat_activate_boot_project"] = ConfirmClass.Always,
+        ["twincat_umr_set_mode"] = ConfirmClass.Always,
+        ["twincat_ibn_arm"] = ConfirmClass.Always,
+        ["twincat_write_ads_variable"] = ConfirmClass.Runtime,
+        ["twincat_login"] = ConfirmClass.Runtime,
+        ["twincat_plc_start"] = ConfirmClass.Runtime,
+        ["twincat_add_route"] = ConfirmClass.Runtime,
+    };
+
+    /// <summary>Tools that only act with <c>dryRun=false</c> (their default is a dry run).</summary>
+    private static readonly HashSet<string> DryRunByDefault = new(StringComparer.Ordinal) { "twincat_activate_boot_project" };
+
     /// <summary>Emergency stops and the way out: never refused, whatever the access policy says.</summary>
     private static readonly HashSet<string> Always = new(StringComparer.Ordinal)
     {
@@ -193,7 +224,7 @@ internal static class ToolCatalog
 
     /// <summary>Tool names the toolset table lists that no tool has (a stale entry).</summary>
     internal static IEnumerable<string> UnknownNamesInTables() =>
-        Toolsets.Keys.Concat(RuntimeActions.Keys).Concat(Always).Concat(SymbolArguments.Keys).Distinct().Where(n => !Tools.ContainsKey(n));
+        Toolsets.Keys.Concat(RuntimeActions.Keys).Concat(Always).Concat(SymbolArguments.Keys).Concat(ConfirmClasses.Keys).Concat(DryRunByDefault).Distinct().Where(n => !Tools.ContainsKey(n));
 
     /// <summary>The <c>[McpServerTool]</c> methods of the tool classes with their annotation.</summary>
     internal static IEnumerable<(MethodInfo Method, McpServerToolAttribute Attribute)> ToolMethods() =>
@@ -219,6 +250,9 @@ internal static class ToolCatalog
             tools[name] = new ToolInfo(name, toolset, level, runtime ? target : TargetRule.None, Always.Contains(name), attr.ReadOnly)
             {
                 SymbolArgument = SymbolArguments.GetValueOrDefault(name),
+                Confirm = ConfirmClasses.GetValueOrDefault(name),
+                ConfirmOnlyWithoutDryRun = DryRunByDefault.Contains(name),
+                ConfirmExempt = name == "twincat_login" ? ("mode", "login_without_change") : null,
             };
         }
         return tools.ToFrozenDictionary(StringComparer.Ordinal);

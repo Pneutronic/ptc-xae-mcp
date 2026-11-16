@@ -218,25 +218,30 @@ internal sealed partial class ApprovalsView : UserControl
         var grpHmi = new GroupBox { Name = "_grpHmiApprovals", Text = "HMI write approvals", Dock = DockStyle.Fill, Padding = new Padding(8) };
         grpHmi.Controls.Add(_gridHmiApprovals);
 
-        // ── Root layout: fixed rows on top, the two logs share the rest ──────
+        // ── Confirmation requests of clients that cannot be asked in-band ─────
+        var grpConfirmations = BuildConfirmationGroup();
+
+        // ── Root layout: fixed rows on top, the logs share the rest ───────────
         var root = new TableLayoutPanel
         {
             Name = "_pnlApprovals",
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 6,
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 30F));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
         root.Controls.Add(topRow, 0, 0);
         root.Controls.Add(armRow, 0, 1);
         root.Controls.Add(lblArmHint, 0, 2);
-        root.Controls.Add(grpAudit, 0, 3);
-        root.Controls.Add(grpHmi, 0, 4);
+        root.Controls.Add(grpConfirmations, 0, 3);
+        root.Controls.Add(grpAudit, 0, 4);
+        root.Controls.Add(grpHmi, 0, 5);
         Controls.Add(root);
 
         // The hint wraps to the view width instead of widening the window.
@@ -293,6 +298,7 @@ internal sealed partial class ApprovalsView : UserControl
         _liveCoordinator.Audited += _onAudited;
         host.HmiApprovals.Changed += _onHmiApprovalChanged;
         AttachRestore(host);
+        AttachConfirmations(host);
 
         var auditSnapshot = _liveCoordinator.AuditSnapshot();
         _replayedAudit = new HashSet<IbnAuditEntry>(auditSnapshot);
@@ -301,7 +307,7 @@ internal sealed partial class ApprovalsView : UserControl
         foreach (var record in host.HmiApprovals.Snapshot())
             ShowHmiApproval(record);
 
-        _ibnCountdownTimer.Tick += (_, _) => RefreshIbnState();
+        _ibnCountdownTimer.Tick += (_, _) => { RefreshIbnState(); RefreshConfirmations(); };
         _ibnCountdownTimer.Start();
         RefreshIbnState();
     }
@@ -321,6 +327,7 @@ internal sealed partial class ApprovalsView : UserControl
                 host.LiveCoordinator.Audited -= _onAudited;
                 host.HmiApprovals.Changed -= _onHmiApprovalChanged;
                 DetachRestore(host);
+                DetachConfirmations(host);
             }
         }
         base.Dispose(disposing);
@@ -519,7 +526,7 @@ internal sealed partial class ApprovalsView : UserControl
             .Select(x => x.ProposalId)
             .ToHashSet(StringComparer.Ordinal);
         pendingIds.UnionWith(_openPopups);
-        return pendingIds.Count + PendingRestoreCount();
+        return pendingIds.Count + PendingRestoreCount() + PendingConfirmationCount();
     }
 
     private void UpdateAttention(ApprovalsAttention attention)

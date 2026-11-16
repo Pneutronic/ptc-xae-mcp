@@ -265,6 +265,7 @@ authentication model beyond that token. Full threat model and details:
 | Allowed NetIds | runtime actions only on these systems | `PTC_XAE_MCP_ALLOWED_NETIDS` |
 | Allowed variable writes | variable writes (`twincat_write_ads_variable`, `twincat_hmi_write_symbol`, `twincat_write_init_symbol`, `twincat_persistent_snapshot_restore`) reach only symbols matching one of these patterns, e.g. `MAIN.stTest.*; GVL_Param.r*` (`*` any text, `?` one character, case ignored) | `PTC_XAE_MCP_ADS_WRITE_ALLOW` (`;`-separated) |
 | Denied variable writes | these symbols are never written, whatever the allowed list says | `PTC_XAE_MCP_ADS_WRITE_DENY` |
+| Human confirmation | `remote` (default): a human confirms activate, restart, PLC start/stop, system mode, login and ADS writes on systems other than this machine; `all`: also activate, restart, stop and mode switches on this machine; `off`: nobody is asked | `PTC_XAE_MCP_CONFIRM` |
 
 `local` in a list means this PC and its User Mode Runtimes. Without any setting everything is allowed, as before.
 The symbol lists keep an agent on the commissioning variables (test flags, parameters) of a customer machine while valves,
@@ -274,6 +275,16 @@ A refused call returns `[Error]` and does nothing; tools above the level are lef
 stops (`twincat_stop`, `twincat_shutdown`, `twincat_force_close_xae`, the IBN abort/disarm/release) always work. No
 tool can read the policy file or change the policy; `twincat_get_status` shows it, and the window title names a
 restricted level (`READ ONLY`, `ENGINEER`).
+
+**Human confirmation.** The tool parameters `confirm`, `autoConfirmRestart` and `autoConfirmLogin` are set by the agent
+and answer XAE dialogs; they are no consent. Before an action with effect on a target system the server asks a *human*:
+through MCP elicitation, so the client shows the question (tool, target, arguments) in its own window; a decline or a
+cancel does nothing. A client without elicitation gets `[Confirm]` and a token bound to that tool, those arguments and
+that target; a human presses *Release* in the *Approvals* tab of this window, and only then does the repeated call with
+`confirmationToken` run — once, within 180 s. With the default `remote` nothing is asked for this machine or its User
+Mode Runtimes, so local work and the live test suite run unchanged. Dry runs, reads, project changes, the emergency
+stops, HMI writes and snapshot restores (which a human already confirms in the window) are never asked.
+`twincat_doctor` and `twincat_get_client_info` report the mode and whether the client can be asked in-band.
 
 **No telemetry.** The server makes no network connections of its own: no
 usage statistics, no license check, nothing is sent to Pneutronic or anyone

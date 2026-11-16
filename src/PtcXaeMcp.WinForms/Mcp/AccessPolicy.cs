@@ -14,14 +14,18 @@ namespace PtcXaeMcp.WinForms.Mcp;
 /// <param name="AdsWriteAllow">Glob patterns on the full symbol path: when set, runtime variable writes reach only
 /// matching symbols (null = no list, empty = no symbol).</param>
 /// <param name="AdsWriteDeny">Glob patterns that are never written, whatever <paramref name="AdsWriteAllow"/> says.</param>
+/// <param name="Confirm">When a human is asked before an action with effect on a target system (null = not set, which
+/// reads as <see cref="ConfirmMode.Remote"/>).</param>
 internal sealed record AccessPolicy(
     AccessLevel Level,
     IReadOnlySet<string> BlockedNetIds,
     IReadOnlySet<string>? AllowedNetIds,
     string Source,
     IReadOnlySet<string>? AdsWriteAllow = null,
-    IReadOnlySet<string>? AdsWriteDeny = null)
+    IReadOnlySet<string>? AdsWriteDeny = null,
+    ConfirmMode? Confirm = null)
 {
+    public const string ConfirmEnvVar = "PTC_XAE_MCP_CONFIRM";
     public const string LevelEnvVar = "PTC_XAE_MCP_ACCESS";
     public const string BlockedEnvVar = "PTC_XAE_MCP_BLOCKED_NETIDS";
     public const string AllowedEnvVar = "PTC_XAE_MCP_ALLOWED_NETIDS";
@@ -39,6 +43,22 @@ internal sealed record AccessPolicy(
     public static readonly AccessPolicy Unrestricted = new(AccessLevel.Runtime, Empty, null, "default");
 
     public bool HasNetIdRules => BlockedNetIds.Count > 0 || AllowedNetIds is not null;
+
+    /// <summary>The confirmation mode in force: the one set, else <see cref="ConfirmMode.Remote"/>.</summary>
+    public ConfirmMode EffectiveConfirm => Confirm ?? ConfirmMode.Remote;
+
+    /// <summary>
+    /// <c>off</c>, <c>remote</c> or <c>all</c>. Anything else is read as <c>all</c>: a restriction that cannot be read
+    /// must not turn into a weaker one.
+    /// </summary>
+    public static ConfirmMode ParseConfirm(string? text) => text?.Trim().ToLowerInvariant() switch
+    {
+        "off" => ConfirmMode.Off,
+        "remote" => ConfirmMode.Remote,
+        _ => ConfirmMode.All,
+    };
+
+    public static string Name(ConfirmMode mode) => mode.ToString().ToLowerInvariant();
 
     /// <summary>True when a symbol allow list or deny list is set.</summary>
     public bool HasSymbolRules => AdsWriteAllow is not null || AdsWriteDeny is { Count: > 0 };
@@ -79,15 +99,17 @@ internal sealed record AccessPolicy(
         string? allowed = getEnv(AllowedEnvVar);
         string? writeAllow = getEnv(AdsWriteAllowEnvVar);
         string? writeDeny = getEnv(AdsWriteDenyEnvVar);
+        string? confirm = getEnv(ConfirmEnvVar);
         if (string.IsNullOrWhiteSpace(level) && string.IsNullOrWhiteSpace(blocked) && string.IsNullOrWhiteSpace(allowed)
-            && string.IsNullOrWhiteSpace(writeAllow) && string.IsNullOrWhiteSpace(writeDeny))
+            && string.IsNullOrWhiteSpace(writeAllow) && string.IsNullOrWhiteSpace(writeDeny) && string.IsNullOrWhiteSpace(confirm))
             return null;
         var parsedLevel = string.IsNullOrWhiteSpace(level) ? AccessLevel.Runtime
             : TryParseLevel(level, out var l) ? l : AccessLevel.Read;
         return new AccessPolicy(parsedLevel, ParseList(blocked),
             string.IsNullOrWhiteSpace(allowed) ? null : ParseList(allowed), "environment",
             string.IsNullOrWhiteSpace(writeAllow) ? null : ParsePatterns(writeAllow),
-            string.IsNullOrWhiteSpace(writeDeny) ? null : ParsePatterns(writeDeny));
+            string.IsNullOrWhiteSpace(writeDeny) ? null : ParsePatterns(writeDeny),
+            string.IsNullOrWhiteSpace(confirm) ? null : ParseConfirm(confirm));
     }
 
     /// <summary>
@@ -122,7 +144,14 @@ internal sealed record AccessPolicy(
             (var only, null) => only,
             var (x, y) => x.Union(y, StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase),
         };
-        return new AccessPolicy(level, blocked, allowed, $"{a.Source} + {b.Source}", writeAllow, writeDeny);
+        ConfirmMode? confirm = (a.Confirm, b.Confirm) switch
+        {
+            (null, null) => null,
+            (null, var only) => only,
+            (var only, null) => only,
+            var (x, y) => (ConfirmMode)Math.Max((int)x!.Value, (int)y!.Value),
+        };
+        return new AccessPolicy(level, blocked, allowed, $"{a.Source} + {b.Source}", writeAllow, writeDeny, confirm);
     }
 
     // ---- file ---------------------------------------------------------------------------------------------
@@ -166,7 +195,7 @@ internal sealed record AccessPolicy(
                 level = AccessLevel.Read;
 
             return new AccessPolicy(level, ReadList(root, "blockedNetIds") ?? Empty, ReadList(root, "allowedNetIds"), "window",
-                ReadPatterns(root, "adsWriteAllow"), ReadPatterns(root, "adsWriteDeny"));
+                ReadPatterns(root, "adsWriteAllow"), ReadPatterns(root, "adsWriteDeny"), ReadConfirm(root));
         }
         catch (JsonException ex)
         {
@@ -194,6 +223,12 @@ internal sealed record AccessPolicy(
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
+    private static ConfirmMode? ReadConfirm(JsonElement root)
+    {
+        if (!root.TryGetProperty("confirm", out var value)) return null;
+        return value.ValueKind == JsonValueKind.String ? ParseConfirm(value.GetString()) : ConfirmMode.All;
+    }
+
     public string ToJson()
     {
         var root = new JsonObject
@@ -207,6 +242,8 @@ internal sealed record AccessPolicy(
             root["adsWriteAllow"] = new JsonArray(AdsWriteAllow.Order().Select(n => (JsonNode)n).ToArray());
         if (AdsWriteDeny is { Count: > 0 })
             root["adsWriteDeny"] = new JsonArray(AdsWriteDeny.Order().Select(n => (JsonNode)n).ToArray());
+        if (Confirm is { } confirm)
+            root["confirm"] = Name(confirm);
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
@@ -332,6 +369,7 @@ internal sealed record AccessPolicy(
         if (AllowedNetIds is not null) text += $", runtime actions only on: {Describe(AllowedNetIds)}";
         if (AdsWriteAllow is not null) text += $", variable writes only to: {Describe(AdsWriteAllow)}";
         if (AdsWriteDeny is { Count: > 0 }) text += $", variable writes never to: {Describe(AdsWriteDeny)}";
+        text += $", human confirmation: {Name(EffectiveConfirm)}";
         return $"{text} (from {Source})";
     }
 }

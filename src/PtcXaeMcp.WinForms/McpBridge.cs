@@ -82,6 +82,8 @@ internal sealed class McpBridge : IDisposable
         Surface = new ToolSurface(Environment.GetEnvironmentVariable, () => Policy.Current, Theme.ThemeManager.Settings.ToolProfile);
         Activity.AccessGate = AccessGate.Create(() => Policy.Current,
             () => _host.Dispatcher.Session.ProjectTargetNetId(), () => _host.UmrManager.InstanceNetIds());
+        Confirmation = new HumanConfirmation(() => Policy.Current,
+            () => _host.Dispatcher.Session.ProjectTargetNetId(), () => _host.UmrManager.InstanceNetIds(), _host.Confirmations, Activity);
         Policy.Changed += Surface.NotifyToolListChanged;
         // A call that answered [Blocked] reports its real result here once the XAE returns it.
         _host.Dispatcher.LateResult = Activity.RecordLateResult;
@@ -93,6 +95,9 @@ internal sealed class McpBridge : IDisposable
 
     /// <summary>Which tools each session sees (tool profile + access policy).</summary>
     public ToolSurface Surface { get; }
+
+    /// <summary>The human confirmation before an action with effect on a target system (elicitation, else a token a human releases in the window).</summary>
+    public HumanConfirmation Confirmation { get; }
 
     /// <summary>True when the diagnostics/test-support tools are registered; the GUI shows the
     /// test-harness controls (single-step, narration) only then (issue #269).</summary>
@@ -186,6 +191,8 @@ internal sealed class McpBridge : IDisposable
                     filters.AddCallToolFilter(Mcp.UnknownArguments.Filter);
                     // The tool profile of the client and the access policy decide which tools a session sees.
                     filters.AddCallToolFilter(Surface.CallFilter);
+                    // A human confirms an action with effect on a target system before its body (and the access gate in it) runs.
+                    filters.AddCallToolFilter(Confirmation.Filter);
                     filters.AddListToolsFilter(Surface.ListFilter);
                 });
 
@@ -205,7 +212,9 @@ internal sealed class McpBridge : IDisposable
             app.Urls.Add($"http://localhost:{Port}");
 
             // Optional parameters lose the "null" type and the null default the SDK generates (see ToolSchemas).
-            ToolSchemas.SlimAll(app.Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection);
+            var toolCollection = app.Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection;
+            ToolSchemas.SlimAll(toolCollection);
+            ReservedArguments.AddAll(toolCollection);
 
             // Localhost-only hardening (#156 item 7, SECURITY.md). Runs before
             // everything else: a request whose Host header is not one of the

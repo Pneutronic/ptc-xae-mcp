@@ -37,6 +37,19 @@ Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migrati
   when one symbol it would write does not match (use `include` to narrow it). An empty allowed list allows nothing;
   without lists everything is allowed as before. Merging two sources intersects the allowed lists and unites the denied
   lists. No tool can read or change them; `twincat_get_status` shows them.
+- **A human confirms actions with effect on a target system.** Before `twincat_activate_config`,
+  `twincat_restart_runtime`, `twincat_set_system_mode`, `twincat_plc_stop`, `twincat_activate_boot_project` (not a dry
+  run), `twincat_umr_set_mode`, `twincat_plc_start`, `twincat_login` (not `login_without_change`),
+  `twincat_write_ads_variable` and `twincat_add_route` the server asks a person, not the agent: through MCP
+  elicitation (tool, target and arguments in the client's own window), or, for a client that cannot be asked, a
+  `[Confirm]` answer with a `confirmationToken` that a human releases with a *Release* button in the *Approvals* tab
+  (bound to tool, arguments and target; valid 180 s; works once). `PTC_XAE_MCP_CONFIRM` / `confirm` in `policy.json` /
+  *Settings…*: `remote` (default: only systems other than this machine and its User Mode Runtimes — local work and the
+  live suite are not asked), `all` (also activate, restart, stop and mode switches on this machine), `off`; the stricter
+  of window and environment applies. A call the access policy refuses is not asked about. `twincat_doctor` and
+  `twincat_get_client_info` report the mode and whether the client can be asked in-band. The existing `confirm`,
+  `autoConfirmRestart` and `autoConfirmLogin` parameters still answer XAE dialogs and are no consent. Snapshot restores
+  and HMI writes keep their confirmation popup in the window and are not asked twice.
 - **`ioPoints[].symbol`** (optional): the full PLC instance path of an `AT %I*/%Q*` variable, e.g.
   `MAIN.fbCyl.LimitSwitchWorkingPosition` or `MAIN.aCyl[1].bOut`. Grammar: identifiers separated by `.`, each
   optionally followed by index groups of signed integers — `[1]`, `[0]`, `[-1]`, `[2,3]`, `[2][3]`,

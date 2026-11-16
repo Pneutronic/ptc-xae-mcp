@@ -64,6 +64,10 @@ internal sealed class ServerHost : IDisposable
     /// <summary>Every HMI write approval and its outcome (bounded), for the Approvals view (#272).</summary>
     public HmiApprovalHistory HmiApprovals { get; } = new();
 
+    /// <summary>The tokens of the human confirmation for clients that cannot be asked in-band. A human releases them in the
+    /// Approvals view; no tool can.</summary>
+    internal Mcp.ConfirmationRegistry Confirmations { get; } = new();
+
     /// <summary>The host's run log (apply-schema progress, environment checks) — <c>twincat_get_log</c>.</summary>
     public HostRunLog RunLog { get; } = new();
 

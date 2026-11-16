@@ -17,6 +17,12 @@ internal readonly record struct SchemaCheckIssue(string Message, string Path, in
 /// </summary>
 internal static class SchemaModelValidator
 {
+    private const string MigrationHint =
+        "Declare the AT %I*/%Q* variables in the PLC components and link them by naming each one's full PLC " +
+        "instance path in ioPoints[].symbol (e.g. MAIN.fbCyl.LimitSwitchWorkingPosition).";
+
+    private static readonly string[] LegacyTwinCatFields = ["gvlName", "overwriteExistingGvl"];
+
     /// <param name="root">The parsed schema JSON.</param>
     /// <param name="rawJson">The exact text <paramref name="root"/> was parsed from — used only
     /// to compute 1-based line numbers for issues (the UI shows them; the runner ignores them).</param>
@@ -34,8 +40,16 @@ internal static class SchemaModelValidator
                 issues.Add(new SchemaCheckIssue("twincat.deviceName is missing or empty.", "twincat.deviceName", FindJsonLine(rawJson, "\"deviceName\"\\s*:")));
             if (string.IsNullOrWhiteSpace(TryGetString(root, "twincat", "plcProjectName")))
                 issues.Add(new SchemaCheckIssue("twincat.plcProjectName is missing or empty.", "twincat.plcProjectName", FindJsonLine(rawJson, "\"plcProjectName\"\\s*:")));
-            if (string.IsNullOrWhiteSpace(TryGetString(root, "twincat", "gvlName")))
-                issues.Add(new SchemaCheckIssue("twincat.gvlName is missing or empty.", "twincat.gvlName", FindJsonLine(rawJson, "\"gvlName\"\\s*:")));
+            // The central GVL is gone (4.0.0): a legacy field is an error naming the migration, never
+            // silently ignored (the apply would otherwise run without the GVL its author expects).
+            if (twincat.TryGetProperty("gvlName", out _))
+                issues.Add(new SchemaCheckIssue(
+                    "twincat.gvlName was removed in 4.0.0: apply_schema no longer creates a GVL. " + MigrationHint,
+                    "twincat.gvlName", FindJsonLine(rawJson, "\"gvlName\"\\s*:")));
+            if (twincat.TryGetProperty("overwriteExistingGvl", out _))
+                issues.Add(new SchemaCheckIssue(
+                    "twincat.overwriteExistingGvl was removed in 4.0.0: apply_schema no longer creates or replaces a GVL. " + MigrationHint,
+                    "twincat.overwriteExistingGvl", FindJsonLine(rawJson, "\"overwriteExistingGvl\"\\s*:")));
         }
 
         if (!root.TryGetProperty("ethercat", out var ethercat) || ethercat.ValueKind != JsonValueKind.Object ||
@@ -59,33 +73,48 @@ internal static class SchemaModelValidator
         if (ioPoints.GetArrayLength() == 0)
             issues.Add(new SchemaCheckIssue("ioPoints is empty.", "ioPoints", FindJsonLine(rawJson, "\"ioPoints\"\\s*:")));
 
-        var seenVarNames = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var seenSymbols = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         int idx = 0;
+        int symbolOccurrence = 0;
         foreach (JsonElement p in ioPoints.EnumerateArray())
         {
             idx++;
-            string varPath = $"ioPoints[{idx}].varName";
+            string symbolPath = $"ioPoints[{idx}].symbol";
             string termPath = $"ioPoints[{idx}].terminalName";
             string channelPath = $"ioPoints[{idx}].channel";
             string dirPath = $"ioPoints[{idx}].direction";
 
-            string varName = p.TryGetProperty("varName", out var varNameEl) ? varNameEl.GetString() ?? string.Empty : string.Empty;
-            if (string.IsNullOrWhiteSpace(varName))
+            // symbol is optional (a point without one only builds hardware) and varName is only a
+            // label, so neither is required. A given symbol must be a valid PLC instance path, and two
+            // points must not link the same one (the second link would silently replace the first).
+            if (p.TryGetProperty("symbol", out var symbolEl) && symbolEl.ValueKind != JsonValueKind.Null)
             {
-                issues.Add(new SchemaCheckIssue($"{varPath} is missing.", varPath, FindJsonLineOccurrence(rawJson, "\"varName\"\\s*:", idx)));
-            }
-            else if (seenVarNames.TryGetValue(varName, out int firstIdx))
-            {
-                // Duplicate-varName check (new in step 1): two ioPoints writing the same GVL
-                // symbol used to silently overwrite each other's link with no diagnostic.
-                issues.Add(new SchemaCheckIssue(
-                    $"{varPath} duplicates ioPoints[{firstIdx}].varName ('{varName}').",
-                    varPath,
-                    FindJsonLineOccurrence(rawJson, "\"varName\"\\s*:", idx)));
-            }
-            else
-            {
-                seenVarNames[varName] = idx;
+                symbolOccurrence++;
+                int? symbolLine = FindJsonLineOccurrence(rawJson, "\"symbol\"\\s*:", symbolOccurrence);
+                if (symbolEl.ValueKind != JsonValueKind.String)
+                {
+                    issues.Add(new SchemaCheckIssue($"{symbolPath} must be a string.", symbolPath, symbolLine));
+                }
+                else
+                {
+                    string symbol = symbolEl.GetString() ?? string.Empty;
+                    string? invalid = PlcSymbolPath.Check(symbol);
+                    if (invalid is not null)
+                    {
+                        issues.Add(new SchemaCheckIssue(
+                            $"{symbolPath} '{symbol}' {invalid}. Omit symbol for a point that only builds hardware.",
+                            symbolPath, symbolLine));
+                    }
+                    else if (seenSymbols.TryGetValue(symbol, out int firstIdx))
+                    {
+                        issues.Add(new SchemaCheckIssue(
+                            $"{symbolPath} duplicates ioPoints[{firstIdx}].symbol ('{symbol}').", symbolPath, symbolLine));
+                    }
+                    else
+                    {
+                        seenSymbols[symbol] = idx;
+                    }
+                }
             }
 
             if (!p.TryGetProperty("terminalName", out var terminalName) || string.IsNullOrWhiteSpace(terminalName.GetString()))
@@ -126,6 +155,9 @@ internal static class SchemaModelValidator
             // Live 2026-09-26 (#155 c): the issue used to carry "<json>" as its path; the
             // exception knows the exact property path and line, so the caller sees where the typo is.
             string path = string.IsNullOrEmpty(ex.Path) ? "<json>" : ex.Path.TrimStart('$').TrimStart('.');
+            // A removed field is already reported with its migration text; no second "unknown" issue for it.
+            if (LegacyTwinCatFields.Any(f => string.Equals(path, "twincat." + f, StringComparison.OrdinalIgnoreCase)))
+                return [];
             int? line = ex.LineNumber is long l ? (int)l + 1 : null;
             string prefix = ex.Message.Contains("could not be mapped", StringComparison.Ordinal)
                 ? "Unknown or misspelled JSON property"

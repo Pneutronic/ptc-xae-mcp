@@ -84,16 +84,6 @@ internal sealed class TwinCatConfig
     [JsonPropertyName("plcProjectName")]
     public string PlcProjectName { get; set; } = string.Empty;
 
-    [JsonPropertyName("gvlName")]
-    public string GvlName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// issue #155 E-2: replace an existing GVL of the same name at the target path (its
-    /// declarations and links are lost). Default false: a collision is an error.
-    /// </summary>
-    [JsonPropertyName("overwriteExistingGvl")]
-    public bool OverwriteExistingGvl { get; init; }
-
     [JsonPropertyName("linking")]
     public LinkingConfig Linking { get; init; } = new();
 

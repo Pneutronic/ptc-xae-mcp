@@ -130,7 +130,7 @@ internal sealed class SettingsDialog : Form
     private readonly TextBox _txtBlocked = new();
     private readonly TextBox _txtAllowed = new();
 
-    private const string AutomaticLabel = "Automatic (by client: Claude all, Cursor/VS Code/Windsurf core)";
+    private const string AutomaticLabel = "Automatic (by client: Claude all, Cursor/VS Code/Windsurf/Hermes core)";
 
     private int AddAccessRows(TableLayoutPanel layout, int row, McpAccessSettings access)
     {

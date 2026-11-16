@@ -10,6 +10,12 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Fixed
+- **Hermes Agent sees tool descriptions** (#40) — Hermes lists MCP tools in a tool-search catalog of about 4000
+  tokens. With all 202 tools only the names fit, so the model saw no descriptions and no parameters until it called
+  `tool_describe`. Hermes (client name containing "hermes") now gets the `core` profile, whose 108 tools are listed
+  with the first sentence of their description. The README explains the Hermes settings for more toolsets.
+
 ## [3.2.1] - 2026-11-13
 
 ### Fixed

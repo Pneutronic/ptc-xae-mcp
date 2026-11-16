@@ -193,10 +193,17 @@ Every tool belongs to one toolset: `meta`, `project`, `build`, `plc`, `ads`, `ru
 | Profile | Toolsets | Chosen for |
 |---|---|---|
 | `all` | every toolset | Claude clients and any client not listed below |
-| `core` | `meta`, `project`, `build`, `plc`, `ads`, `runtime` | clients whose name contains Cursor, Visual Studio Code, VS Code, Copilot or Windsurf |
+| `core` | `meta`, `project`, `build`, `plc`, `ads`, `runtime` | clients whose name contains Cursor, Visual Studio Code, VS Code, Copilot, Windsurf or Hermes |
 
 *Settings… → Tool profile* or `PTC_XAE_MCP_TOOLSETS` (`all`, `core`, or a list such as `core,hmi`) sets one profile
 for every client. The profile only decides what is listed; `twincat_get_client_info` shows the one in force.
+
+**Hermes Agent** does not put MCP tools into the model's tool list directly. It lists them in a tool-search catalog
+of about 4000 tokens (`tools.tool_search.listing_max_tokens`, at most `threshold_pct` % of the context) and loads a
+tool's description and parameters only when the model calls `tool_describe`. With `core` the catalog shows each tool
+with the first sentence of its description; with `all` only the names fit. If you need more toolsets in Hermes, raise
+`listing_max_tokens` (about 6000 for `all`), or set `tools.tool_search.enabled: off` so that every tool is passed with
+its full schema (about 67 000 tokens for `all`).
 
 ### Prompts and resources
 

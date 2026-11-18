@@ -11,6 +11,20 @@ internal sealed partial class HmiCoordinator
 {
     internal const int MaxSwitchMappings = 200;
 
+    /// <summary>How often a probe is repeated while the runtime is still loading its symbols, and the pause between.</summary>
+    internal const int SwitchProbeAttempts = 10;
+    internal static readonly TimeSpan SwitchProbePause = TimeSpan.FromSeconds(1);
+
+    /// <summary>The pause between probes. A seam so tests do not wait.</summary>
+    internal Action<TimeSpan> ProbeDelay { get; init; } = Thread.Sleep;
+
+    /// <summary>Live 2026-11-18, right after USE_TMC was switched: "ERR_TARGETPORTNOTFOUND, Reason: Initial refresh of
+    /// symbol information hasn't finished, yet" — a transitional state, not an answer about the symbol.</summary>
+    internal static bool IsStillLoading(string? error) =>
+        error is not null
+        && (error.Contains("Initial refresh of symbol information", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("ERR_TARGETPORTNOTFOUND", StringComparison.Ordinal));
+
     internal sealed record SwitchOutcome(string MappedName, string From, string? To, string State, string? Detail);
 
     /// <summary>
@@ -133,9 +147,14 @@ internal sealed partial class HmiCoordinator
         catch (Exception ex) when (IsHmiFailure(ex)) { return new(name, from, to, "failed", ex.Message); }
         if (!write.Ok) return new(name, from, to, "failed", write.LastError ?? "the server refused the entry");
 
-        HmiSymbolValue? probe;
-        try { probe = Session.ReadHmiSymbols(hmiProject, [name]).FirstOrDefault(); }
-        catch (Exception ex) when (IsHmiFailure(ex)) { probe = new HmiSymbolValue(name, false, null, ex.Message); }
+        HmiSymbolValue? probe = null;
+        for (int attempt = 0; attempt < SwitchProbeAttempts; attempt++)
+        {
+            if (attempt > 0) ProbeDelay(SwitchProbePause);
+            try { probe = Session.ReadHmiSymbols(hmiProject, [name]).FirstOrDefault(); }
+            catch (Exception ex) when (IsHmiFailure(ex)) { probe = new HmiSymbolValue(name, false, null, ex.Message); }
+            if (!IsStillLoading(probe?.Error)) break;
+        }
         string probeError = probe?.Error ?? "";
         if (probe?.Ok == true) return new(name, from, to, "switched", "reads a value from the PLC");
         // Live 2026-11-18: in TMC mode the ADS extension answers HMI_ADS_E_USING_TMC for EVERY name, also one that

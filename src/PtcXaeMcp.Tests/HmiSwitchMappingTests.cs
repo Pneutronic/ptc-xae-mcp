@@ -119,6 +119,44 @@ public class HmiSwitchMappingTests
     }
 
     [Fact]
+    public void Switch_RuntimeStillLoading_WaitsThenDecides()
+    {
+        var fake = Session();
+        int reads = 0;
+        PlcAnswers(fake, null, "Message: ERR_TARGETPORTNOTFOUND, Reason: Initial refresh of symbol information hasn't finished, yet.");
+        var delays = new List<TimeSpan>();
+        var coordinator = new HmiCoordinator(fake, new FakeHmiConfirmer())
+        {
+            ProbeDelay = d =>
+            {
+                delays.Add(d);
+                if (++reads == 2) { fake.HmiSymbolErrors.Remove(Name); fake.HmiSymbolValues[Name] = "True"; }
+            },
+        };
+
+        var (summary, _) = coordinator.SwitchMappingToPlc(null, "PLC1", null, 120);
+
+        Assert.Contains("1/1 switched", summary);
+        Assert.Equal(2, delays.Count);
+    }
+
+    [Fact]
+    public void Switch_RuntimeNeverFinishesLoading_RestoresAfterTheBoundedWait()
+    {
+        var fake = Session();
+        string before = fake.HmiSymbolValues[Config];
+        PlcAnswers(fake, null, "Message: ERR_TARGETPORTNOTFOUND, Reason: Initial refresh of symbol information hasn't finished, yet.");
+        var delays = new List<TimeSpan>();
+
+        var (summary, _) = new HmiCoordinator(fake, new FakeHmiConfirmer()) { ProbeDelay = delays.Add }
+            .SwitchMappingToPlc(null, "PLC1", null, 120);
+
+        Assert.Contains("0/1 switched", summary);
+        Assert.Equal(HmiCoordinator.SwitchProbeAttempts - 1, delays.Count);
+        Assert.Equal(before, fake.HmiSymbolValues[Config]);
+    }
+
+    [Fact]
     public void Switch_PlcDoesNotKnowTheSymbol_RestoresTheOldEntry()
     {
         var fake = Session();

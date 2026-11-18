@@ -497,6 +497,36 @@ public class HmiWriteTests
         Assert.False(Assert.Single(popup.Requests).Request.WritesToPlc);
     }
 
+    [Theory]
+    [InlineData("ADS.Config::RUNTIMES::PLC1::TMC")]
+    [InlineData("ADS.Config::RUNTIMES::PLC1::NETID")]
+    [InlineData("ads.config")]
+    [InlineData("TcHmiSrv.Config::SYMBOLS::X")]
+    public void Write_ServerConfigSymbol_IsNotFlaggedAsPlcWrite(string symbol)
+    {
+        // Live 2026-11-18: a write to ADS.Config::… was reported as "through to the PLC".
+        var fake = Session();
+        fake.HmiSymbolValues[symbol] = "{}";
+        var popup = new FakeHmiConfirmer();
+
+        var (summary, json) = new HmiCoordinator(fake, popup).WriteSymbol(null, symbol, "{\"USE_TMC\":true}", 120);
+
+        Assert.False(Assert.Single(popup.Requests).Request.WritesToPlc);
+        Assert.DoesNotContain("through to the PLC", summary);
+        using var doc = JsonDocument.Parse(json);
+        Assert.False(doc.RootElement.GetProperty("writesToPlc").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData("ADS.Config", null, false)]
+    [InlineData("ADS.Config::RUNTIMES", "ADS", false)]
+    [InlineData("ADS.PLC1.MAIN.bStart", null, true)]
+    [InlineData("ADS.PLC1.GVL.Config", null, true)]
+    [InlineData("MyServerSymbol", "ADS", true)]
+    [InlineData("UserSelectType", null, false)]
+    public void WritesToPlc_ConfigNeverPlc(string symbol, string? domain, bool expected) =>
+        Assert.Equal(expected, HmiSymbolNames.WritesToPlc(symbol, domain));
+
     [Fact]
     public void Write_Confirmed_WritesCompactJsonAndVerifies()
     {

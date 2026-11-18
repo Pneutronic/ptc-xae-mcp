@@ -550,15 +550,58 @@ public class HmiRuntimeTmcTests : IDisposable
     }
 
     [Fact]
-    public void Enable_RuntimeWithoutATmcKey_StillLands()
+    public void Enable_RuntimeWithoutATmcObject_WritesTheObjectWhole()
     {
-        // A runtime that never had a TMC carries no TMC key; the server fills in the schema default.
+        // Live 2026-11-18: a runtime that never had a TMC carries no TMC key, and the server refuses a
+        // write to a leaf below it (INVALID_SUBSYMBOL) — the tool must write the object as a whole.
         var fake = Session(FakeTwinCatSession.AdsRuntimeJson());
+        Assert.False(Runtime(fake).HasTmcConfig);
 
-        var (summary, _) = Coordinator(fake, new FakeHmiConfirmer()).EnableRuntimeTmc(null, "PLC1", TmcOnDisk(), 120);
+        var (summary, json) = Coordinator(fake, new FakeHmiConfirmer()).EnableRuntimeTmc(null, "PLC1", TmcOnDisk(), 120);
 
         Assert.DoesNotContain("[Error]", summary);
-        Assert.True(Runtime(fake).UseTmc);
+        Assert.Contains($@"SetHmiRuntimeTmc({Project}, PLC1, {Relative()}, useTmc=True, createTmcObject)", fake.CallLog);
+        HmiAdsRuntime after = Runtime(fake);
+        Assert.True(after.HasTmcConfig);
+        Assert.True(after.UseTmc);
+        Assert.Equal(Relative(), after.TmcFile);
+        using var doc = JsonDocument.Parse(json);
+        Assert.True(doc.RootElement.GetProperty("createdTmcObject").GetBoolean());
+    }
+
+    [Fact]
+    public void Enable_RuntimeWithATmcObject_WritesTheLeaves()
+    {
+        var fake = Session();
+        Assert.True(Runtime(fake).HasTmcConfig);
+
+        var (summary, json) = Coordinator(fake, new FakeHmiConfirmer()).EnableRuntimeTmc(null, "PLC1", TmcOnDisk(), 120);
+
+        Assert.DoesNotContain("[Error]", summary);
+        Assert.DoesNotContain(fake.CallLog, c => c.Contains("createTmcObject", StringComparison.Ordinal));
+        using var doc = JsonDocument.Parse(json);
+        Assert.False(doc.RootElement.GetProperty("createdTmcObject").GetBoolean());
+    }
+
+    [Fact]
+    public void FakeServer_RefusesALeafWriteWithoutTmcObject_LikeTheLiveServer()
+    {
+        var fake = Session(FakeTwinCatSession.AdsRuntimeJson());
+
+        HmiOperationResult result = fake.SetHmiRuntimeTmc(Project, "PLC1", Relative(), useTmc: true);
+
+        Assert.False(result.Ok);
+        Assert.Contains("INVALID_SUBSYMBOL", result.LastError);
+        Assert.False(Runtime(fake).HasTmcConfig);
+    }
+
+    [Fact]
+    public void TmcObjectJson_HoldsBothLeaves()
+    {
+        Assert.Equal("ADS.Config::RUNTIMES::PLC1::TMC", HmiRuntimeTmc.TmcObjectSymbol("PLC1"));
+        using var doc = JsonDocument.Parse(HmiRuntimeTmc.TmcObjectJson(@"Tmc\PLC1_PLC.DATA_UPLOADINFO2.bin", true));
+        Assert.Equal(@"Tmc\PLC1_PLC.DATA_UPLOADINFO2.bin", doc.RootElement.GetProperty("DATA_SYMBOLUPANDDOWNLOAD").GetString());
+        Assert.True(doc.RootElement.GetProperty("USE_TMC").GetBoolean());
     }
 
     [Fact]

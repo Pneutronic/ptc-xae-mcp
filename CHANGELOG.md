@@ -10,6 +10,20 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Fixed
+- `twincat_hmi_enable_runtime_tmc` failed on an ADS runtime that never had a `TMC` object (the server refuses a write
+  to a leaf below a missing object). The tool now writes the object as a whole in that case.
+- `twincat_hmi_write_symbol` no longer reports a write to a server configuration symbol (`ADS.Config::…`,
+  `TcHmiSrv.Config::…`) as "through to the PLC" (`writesToPlc` is now false).
+- `twincat_hmi_read_symbols` explains `HMI_ADS_E_USING_TMC` as TMC mode (types and mappings, no values) instead of
+  "PLC presumably unreachable".
+
+### Changed
+- The server-side TMC route (`twincat_hmi_enable_runtime_tmc` / `_disable_runtime_tmc`) is verified on a live HMI
+  engineering server (TE2000 14.17.22.1, server 24.0.7.0): offline mappings get their final `ADS.<runtime>.*` names
+  and read from the PLC after switching back, without re-mapping. `twincat_hmi_map_symbol` points at this route when
+  it refuses the `TMC` domain.
+
 ## [4.0.0] - 2026-11-16
 
 Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migration table below.

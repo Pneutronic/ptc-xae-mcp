@@ -89,7 +89,8 @@ internal sealed partial class TwinCatComSession
     public HmiOperationResult DeleteHmiItem(string hmiProject, string path) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult AttachHmiTmcFile(string hmiProject, string rootNamespace, string tmcFilePath) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult DetachHmiTmcFile(string hmiProject, string rootNamespace) => throw TwinCatNotBuilt.HmiException();
-    public HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc) => throw TwinCatNotBuilt.HmiException();
+    public HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc,
+        bool createTmcObject = false) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult AddHmiInternalSymbol(string hmiProject, string name, string dataType, string? defaultValueJson, bool persist, bool readOnly) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult RemoveHmiInternalSymbol(string hmiProject, string name) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult MapHmiOfflineSymbol(string hmiProject, string mapName, string dataType, string? defaultValueJson, bool online, bool persist) => throw TwinCatNotBuilt.HmiException();
@@ -357,15 +358,32 @@ internal sealed partial class TwinCatComSession
         return new HmiOperationResult(true, lastError);
     }
 
-    // ---- #161: server-side TMC of an ADS runtime — decompiled TE2000 14.17.22.1, NOT verified live ----
+    // ---- #161: server-side TMC of an ADS runtime — decompiled TE2000 14.17.22.1, verified live 2026-11-18 ----
     //   TcHmiServerCommunication.AttachTmcFile sends exactly these two writes, path first, in one
     //   request; DetachTmcFile the same with "" / false. WriteSymbolJson sends a generic write of the
     //   named symbol (SrvComm.WriteSymbolValue, option Replace — irrelevant for a scalar leaf) and
     //   returns false with LastError when the server answers with an error. Each write retries on its
     //   own: re-issuing a write that a busy XAE rejected writes the same value, so it cannot double-apply.
 
-    public HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc)
+    //   A runtime without a TMC object refuses both leaf writes (live: INVALID_SUBSYMBOL for …::TMC); writing
+    //   the object as a whole was accepted and read back (engineering server 24.0.7.0).
+    public HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc,
+        bool createTmcObject = false)
     {
+        if (createTmcObject)
+        {
+            string objectSymbol = HmiRuntimeTmc.TmcObjectSymbol(runtime);
+            string objectJson = HmiRuntimeTmc.TmcObjectJson(dataSymbolUpAndDownload, useTmc);
+            string? objectError = ComBusyRetry.Run(() =>
+            {
+                ITcHmiServer server = RequireHmiServer(hmiProject);
+                return server.WriteSymbolJson(objectSymbol, objectJson) ? null : HmiLastError(server) ?? "no error text";
+            }, HmiTimeout);
+            return objectError is null
+                ? new HmiOperationResult(true, null)
+                : new HmiOperationResult(false, $"{objectSymbol}: {objectError}");
+        }
+
         string pathSymbol = HmiRuntimeTmc.ConfigSymbol(runtime, HmiRuntimeTmc.DataSymbolUpAndDownload);
         string flagSymbol = HmiRuntimeTmc.ConfigSymbol(runtime, HmiRuntimeTmc.UseTmc);
         string pathJson = System.Text.Json.JsonSerializer.Serialize(dataSymbolUpAndDownload);

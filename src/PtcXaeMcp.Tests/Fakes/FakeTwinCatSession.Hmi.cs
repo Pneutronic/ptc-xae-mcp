@@ -216,13 +216,28 @@ internal sealed partial class FakeTwinCatSession
     public bool HmiRuntimeTmcBreaksReadBack { get; set; }
     public Exception? SetHmiRuntimeTmcThrows { get; set; }
 
-    public HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc)
+    public HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc,
+        bool createTmcObject = false)
     {
-        CallLog.Add($"SetHmiRuntimeTmc({hmiProject}, {runtime}, {dataSymbolUpAndDownload}, useTmc={useTmc})");
+        CallLog.Add($"SetHmiRuntimeTmc({hmiProject}, {runtime}, {dataSymbolUpAndDownload}, useTmc={useTmc}" +
+                    (createTmcObject ? ", createTmcObject" : "") + ")");
         if (SetHmiRuntimeTmcThrows is not null) throw SetHmiRuntimeTmcThrows;
         try
         {
             if (HmiRuntimeTmcDoesNothing) return new HmiOperationResult(true, null);
+            if (createTmcObject)
+            {
+                UpdateRuntimeTmc(runtime, tmc =>
+                {
+                    tmc["DATA_SYMBOLUPANDDOWNLOAD"] = dataSymbolUpAndDownload;
+                    tmc["USE_TMC"] = useTmc;
+                }, create: true);
+                return new HmiOperationResult(true, null);
+            }
+            // Live 2026-11-18: without a TMC object the server refuses the leaf write.
+            if (!RuntimeHasTmcObject(runtime))
+                return new HmiOperationResult(false,
+                    $"ADS.Config::RUNTIMES::{runtime}::TMC::DATA_SYMBOLUPANDDOWNLOAD: Command Error: INVALID_SUBSYMBOL");
             UpdateRuntimeTmc(runtime, tmc => tmc["DATA_SYMBOLUPANDDOWNLOAD"] = dataSymbolUpAndDownload);
             if (HmiRuntimeTmcRefusesFlag)
                 return new HmiOperationResult(false,
@@ -241,15 +256,20 @@ internal sealed partial class FakeTwinCatSession
         }
     }
 
-    private void UpdateRuntimeTmc(string runtime, Action<System.Text.Json.Nodes.JsonObject> change)
+    private bool RuntimeHasTmcObject(string runtime) =>
+        System.Text.Json.Nodes.JsonNode.Parse(HmiSymbolValues[HmiCoordinator.AdsRuntimesSymbol])?[runtime]?["TMC"]
+            is System.Text.Json.Nodes.JsonObject;
+
+    private void UpdateRuntimeTmc(string runtime, Action<System.Text.Json.Nodes.JsonObject> change, bool create = false)
     {
         var root = System.Text.Json.Nodes.JsonNode.Parse(HmiSymbolValues[HmiCoordinator.AdsRuntimesSymbol])!.AsObject();
         var rt = root[runtime]?.AsObject()
                  ?? throw new InvalidOperationException($"Command Error: no runtime '{runtime}'");
         if (rt["TMC"] is not System.Text.Json.Nodes.JsonObject tmc)
         {
-            // The schema default the server fills in (TcHmiAds.Schema.json).
-            tmc = new System.Text.Json.Nodes.JsonObject { ["DATA_SYMBOLUPANDDOWNLOAD"] = "", ["USE_TMC"] = false };
+            if (!create)
+                throw new InvalidOperationException($"Command Error: INVALID_SUBSYMBOL ADS.Config::RUNTIMES::{runtime}::TMC");
+            tmc = new System.Text.Json.Nodes.JsonObject();
             rt["TMC"] = tmc;
         }
         change(tmc);

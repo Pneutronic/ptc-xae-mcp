@@ -86,7 +86,7 @@ internal sealed partial class TwinCatMcpTools
                  "reading and binding then work without any PLC (twincat_hmi_attach_tmc_file only feeds the " +
                  "engineering). Converts the .tmc into a .bin in the engineering server's folder and sets USE_TMC=true. " +
                  ConfirmNote + " Whether symbols are served is not checked: read one with twincat_hmi_read_symbols. " +
-                 "Undo with twincat_hmi_disable_runtime_tmc. Not yet verified on a live HMI server.")]
+                 "Undo with twincat_hmi_disable_runtime_tmc. Values need the PLC (HMI_ADS_E_USING_TMC until then).")]
     public string HmiEnableRuntimeTmc(
         [Description(HmiAdsRuntimeParam)] string runtime,
         [Description(HmiTmcFileParam)]
@@ -103,7 +103,7 @@ internal sealed partial class TwinCatMcpTools
     [McpServerTool(Name = "twincat_hmi_disable_runtime_tmc", ReadOnly = false, Destructive = true)]
     [Description("Switch an HMI ADS runtime from a TMC file back to the PLC (USE_TMC=false). Without a reachable " +
                  "PLC it then has no symbols. " + ConfirmNote + " No TMC in use = 'Nothing to " +
-                 "do'. The .bin stays on disk. Not yet verified on a live HMI server.")]
+                 "do'. The .bin stays on disk. Mappings made in TMC mode keep their names.")]
     public string HmiDisableRuntimeTmc(
         [Description(HmiAdsRuntimeParam)] string runtime,
         [Description(HmiProjectParam)] string? hmiProject = null,

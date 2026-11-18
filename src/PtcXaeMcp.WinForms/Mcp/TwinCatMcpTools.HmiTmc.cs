@@ -83,8 +83,8 @@ internal sealed partial class TwinCatMcpTools
     [Description("Move HMI mappings from the engineering-only TMC domain to a real ADS runtime. " +
                  "Like TE2000 'Switch Mapping to PLC': same mapped name, DOMAIN=ADS, internal path re-rooted at the runtime, so bindings keep " +
                  "working. Default: all TMC mappings. " + ConfirmNote + " Each mapping is read through the server " +
-                 "afterwards; when the runtime does not know the symbol the old entry is written back and the mapping is " +
-                 "reported as not switched. Mappings made with twincat_hmi_enable_runtime_tmc are ADS already — use " +
+                 "afterwards; when the PLC does not know the symbol the old entry is written back and the mapping is " +
+                 "reported as not switched. A runtime still in TMC mode cannot tell (state switchedUnverified). Mappings made with twincat_hmi_enable_runtime_tmc are ADS already — use " +
                  "twincat_hmi_disable_runtime_tmc for those.")]
     public string HmiSwitchMappingToPlc(
         [Description(HmiAdsRuntimeParam)] string runtime,

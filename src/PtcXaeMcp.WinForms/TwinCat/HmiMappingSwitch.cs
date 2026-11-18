@@ -10,7 +10,8 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 /// <c>MAPPING</c> = the target runtime + the internal path without its first segment, <c>AUTOMAP=true</c>,
 /// <c>USEMAPPING=true</c>. No unmap and no rename, so bindings, views and project datatypes keep working. Here the
 /// server configuration entry <c>TcHmiSrv.Config::SYMBOLS::&lt;name&gt;</c> is rewritten — the entry that request
-/// produces.
+/// produces. <c>AUTOMAP</c> belongs to the request, not to the stored entry: live 2026-11-18 the server refused an
+/// entry carrying it ("server request") and accepted the same entry without it.
 /// </summary>
 internal static class HmiMappingSwitch
 {
@@ -40,7 +41,7 @@ internal static class HmiMappingSwitch
         catch (JsonException) { return null; }
     }
 
-    /// <summary>The entry after the switch: everything kept except DOMAIN, MAPPING, AUTOMAP, USEMAPPING (set) and
+    /// <summary>The entry after the switch: everything kept except DOMAIN, MAPPING, USEMAPPING (set), AUTOMAP and
     /// SCHEMA (dropped — an automapped ADS symbol takes its type from the runtime, the TMC schema would pin the
     /// offline one). Null when the entry cannot be re-rooted.</summary>
     internal static string? Switched(string entryJson, string runtime)
@@ -52,9 +53,9 @@ internal static class HmiMappingSwitch
         string? mapping = Reroot(Text(o, "MAPPING"), runtime);
         if (mapping is null) return null;
         o.Remove("SCHEMA");
+        o.Remove("AUTOMAP");
         o["DOMAIN"] = HmiSymbolNames.AdsDomain;
         o["MAPPING"] = mapping;
-        o["AUTOMAP"] = true;
         o["USEMAPPING"] = true;
         return o.ToJsonString();
     }

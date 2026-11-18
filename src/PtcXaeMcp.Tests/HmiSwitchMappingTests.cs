@@ -71,7 +71,7 @@ public class HmiSwitchMappingTests
 
         Assert.Equal("ADS", (string?)e["DOMAIN"]);
         Assert.Equal("PLC1::GVL_HmiTest::stSingle", (string?)e["MAPPING"]);
-        Assert.True((bool?)e["AUTOMAP"]);
+        Assert.Null(e["AUTOMAP"]); // live: the server refuses a stored entry carrying it
         Assert.True((bool?)e["USEMAPPING"]);
         Assert.Equal(3, (int?)e["ACCESS"]);
         Assert.Null(e["SCHEMA"]);
@@ -104,7 +104,7 @@ public class HmiSwitchMappingTests
     }
 
     [Fact]
-    public void Switch_RuntimeInTmcMode_CountsAsSwitchedButSaysNoValue()
+    public void Switch_RuntimeInTmcMode_IsSwitchedButNotVerified()
     {
         var fake = Session();
         PlcAnswers(fake, null, "Message: HMI_ADS_E_USING_TMC");
@@ -112,9 +112,10 @@ public class HmiSwitchMappingTests
         var (summary, json) = new HmiCoordinator(fake, new FakeHmiConfirmer()).SwitchMappingToPlc(null, "PLC1", null, 120);
 
         Assert.Contains("1/1 switched", summary);
-        Assert.Contains("USE_TMC", summary);
+        Assert.Contains("NOT verified", summary);
         using var doc = JsonDocument.Parse(json);
-        Assert.Equal("switchedTmcMode", doc.RootElement.GetProperty("results")[0].GetProperty("state").GetString());
+        Assert.Equal("switchedUnverified", doc.RootElement.GetProperty("results")[0].GetProperty("state").GetString());
+        Assert.Equal(0, doc.RootElement.GetProperty("verified").GetInt32());
     }
 
     [Fact]

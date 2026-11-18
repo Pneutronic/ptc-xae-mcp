@@ -98,11 +98,12 @@ internal sealed partial class HmiCoordinator
             results.Add(SwitchOne(project.Name, name, entry, from, to, target.Name));
 
         int switched = results.Count(r => r.State == "switched");
-        int offline = results.Count(r => r.State == "switchedTmcMode");
+        int offline = results.Count(r => r.State == "switchedUnverified");
         int refused = results.Count(r => r.State is "refused" or "failed" or "restoreFailed");
         string summary = $"Switch Mapping to PLC in '{project.Name}' → runtime '{target.Name}' — {Describe(outcome)}: " +
                          $"{switched + offline}/{results.Count} switched" +
-                         (offline > 0 ? $" ({offline} verified only against the runtime's TMC file — USE_TMC is on, values follow once it reads the PLC)" : "") +
+                         (offline > 0 ? $" ({offline} NOT verified: runtime '{target.Name}' uses its TMC file and answers " +
+                                        "HMI_ADS_E_USING_TMC for any name — read them after twincat_hmi_disable_runtime_tmc)" : "") +
                          (refused > 0 ? $", {refused} NOT switched: " + string.Join("; ", results.Where(r => r.State is "refused" or "failed" or "restoreFailed")
                              .Take(5).Select(r => $"{r.MappedName} ({r.Detail})")) : "") +
                          ". Mapped names are unchanged, so bindings keep working.";
@@ -113,6 +114,7 @@ internal sealed partial class HmiCoordinator
             hmiProject = project.Name,
             runtime = target.Name,
             switched = switched + offline,
+            verified = switched,
             notSwitched = refused,
             results,
             confirmation = ConfirmationWire(outcome),
@@ -136,8 +138,12 @@ internal sealed partial class HmiCoordinator
         catch (Exception ex) when (IsHmiFailure(ex)) { probe = new HmiSymbolValue(name, false, null, ex.Message); }
         string probeError = probe?.Error ?? "";
         if (probe?.Ok == true) return new(name, from, to, "switched", "reads a value from the PLC");
+        // Live 2026-11-18: in TMC mode the ADS extension answers HMI_ADS_E_USING_TMC for EVERY name, also one that
+        // does not exist — the switch is kept, but its target is not proven.
         if (probeError.Contains(UsingTmcCode, StringComparison.Ordinal))
-            return new(name, from, to, "switchedTmcMode", "known to the runtime (USE_TMC), no value yet");
+            return new(name, from, to, "switchedUnverified",
+                $"runtime '{runtime}' uses its TMC file (USE_TMC) and answers HMI_ADS_E_USING_TMC for any name — " +
+                "whether the symbol exists is checked only with the PLC connected (twincat_hmi_disable_runtime_tmc, then read it)");
 
         // The PLC does not know the symbol (or the server could not tell): put the old entry back.
         bool unknown = probeError.Contains("HMI_ADS_E_INVALID_SYMBOL", StringComparison.Ordinal)

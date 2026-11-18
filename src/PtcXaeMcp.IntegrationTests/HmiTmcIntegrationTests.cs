@@ -183,13 +183,21 @@ public class HmiTmcIntegrationTests(HmiFixture fx)
         try
         {
             (runtime, _) = await EnableRuntimeTmcAsync();
-            string map = await fx.CallAsync("twincat_hmi_map_symbol", new()
+            // Live 2026-11-18: right after USE_TMC the ADS extension may not have loaded the converted file yet —
+            // the same map succeeded a few seconds later. A refused map writes nothing, so it is retried.
+            string map = "";
+            for (int attempt = 0; attempt < 10; attempt++)
             {
-                ["plcPath"] = FixtureLayout.BoolSymbol,
-                ["runtime"] = runtime,
-                ["hmiProject"] = fx.ProjectName,
-                ["confirmTimeoutSeconds"] = 30,
-            });
+                map = await fx.CallAsync("twincat_hmi_map_symbol", new()
+                {
+                    ["plcPath"] = FixtureLayout.BoolSymbol,
+                    ["runtime"] = runtime,
+                    ["hmiProject"] = fx.ProjectName,
+                    ["confirmTimeoutSeconds"] = 30,
+                });
+                if (!map.StartsWith("[Error]", StringComparison.Ordinal)) break;
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
             Assert.False(map.StartsWith("[Error]", StringComparison.Ordinal),
                 "With USE_TMC the ADS extension should know the PLC symbols without a PLC: " + map);
             mapName = Json(map).GetProperty("mapName").GetString();
@@ -333,7 +341,7 @@ public class HmiTmcIntegrationTests(HmiFixture fx)
                 ["confirmTimeoutSeconds"] = 30,
             });
             Assert.False(write.StartsWith("[Error]", StringComparison.Ordinal), write);
-            Assert.False(Json(write).GetProperty("writesToPlc").GetBoolean(), write);
+            Assert.DoesNotContain("through to the PLC", write, StringComparison.Ordinal);
 
             string sw = await fx.CallAsync("twincat_hmi_switch_mapping_to_plc", new()
             {
@@ -346,7 +354,8 @@ public class HmiTmcIntegrationTests(HmiFixture fx)
             JsonElement result = Json(sw).GetProperty("results")[0];
             Assert.Equal(mapName, result.GetProperty("mappedName").GetString());
             string state = result.GetProperty("state").GetString()!;
-            Assert.True(state is "switched" or "switchedTmcMode", sw);
+            // In TMC mode the runtime answers HMI_ADS_E_USING_TMC for any name, so the target is not proven.
+            Assert.True(state is "switched" or "switchedUnverified", sw);
 
             string read = await fx.CallAsync("twincat_hmi_read_symbols", new()
             {
@@ -359,10 +368,10 @@ public class HmiTmcIntegrationTests(HmiFixture fx)
         }
         finally
         {
+            // Removes the entry whatever its domain (unmap verifies against the live server).
             await fx.CallAsync("twincat_hmi_unmap_symbol", new()
             {
                 ["mapName"] = mapName,
-                ["domain"] = "ADS",
                 ["hmiProject"] = fx.ProjectName,
                 ["confirmTimeoutSeconds"] = 30,
             });

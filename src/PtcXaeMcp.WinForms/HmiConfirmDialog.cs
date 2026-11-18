@@ -125,6 +125,10 @@ internal static class HmiConfirmText
         HmiWriteKind.AddInternalSymbol => "MCP wants to add a client internal symbol (%i%) to the HMI project",
         HmiWriteKind.RemoveInternalSymbol => "MCP wants to remove a client internal symbol (%i%) from the HMI project",
         HmiWriteKind.MapOfflineSymbol => "MCP wants to create a server symbol in the HMI server (TcHmiSrv domain)",
+        HmiWriteKind.CreateProjectDatatype =>
+            "MCP wants to add project datatypes (from a PLC type of a TMC file) to Properties/tchmi.project.Schema.json",
+        HmiWriteKind.SwitchMappingToPlc =>
+            "MCP wants to switch HMI mappings from a TMC file to a real PLC (same mapped names, domain ADS)",
         _ => "MCP wants to write a value through the HMI server",
     };
 
@@ -143,6 +147,8 @@ internal static class HmiConfirmText
         HmiWriteKind.AttachTmcFile or HmiWriteKind.DetachTmcFile
             or HmiWriteKind.EnableRuntimeTmc or HmiWriteKind.DisableRuntimeTmc => "ADS runtime",
         HmiWriteKind.AddInternalSymbol or HmiWriteKind.RemoveInternalSymbol => "%i% symbol",
+        HmiWriteKind.CreateProjectDatatype => "Datatype",
+        HmiWriteKind.SwitchMappingToPlc => "Mappings",
         _ => "Symbol",
     };
 }

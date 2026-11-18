@@ -14,6 +14,10 @@ pull-request numbers refer to those.
 - `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
   kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after
   a type was deleted, and how `tchmi.project.Schema.tpl.json` differs.
+- `twincat_hmi_create_project_datatype` creates the project datatype for a PLC STRUCT or ENUM of an attached TMC file
+  (TE2000 "Create new project datatype → based on a remote type"), including enum fields, nested structs and arrays
+  (`<PLC>.ARRAY_1..n_OF-<Type>` with `startOffset`), and asks the HMI server to refresh its project definitions. Refuses
+  a type that already exists, also under another name; identical sub-types are reused.
 
 ### Fixed
 - `twincat_hmi_enable_runtime_tmc` failed on an ADS runtime that never had a `TMC` object (the server refuses a write

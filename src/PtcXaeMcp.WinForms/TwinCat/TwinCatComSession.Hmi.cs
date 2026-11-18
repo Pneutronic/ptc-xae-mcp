@@ -91,6 +91,7 @@ internal sealed partial class TwinCatComSession
     public HmiOperationResult DetachHmiTmcFile(string hmiProject, string rootNamespace) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc,
         bool createTmcObject = false) => throw TwinCatNotBuilt.HmiException();
+    public HmiOperationResult RefreshHmiDefinitions(string hmiProject, string domain) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult AddHmiInternalSymbol(string hmiProject, string name, string dataType, string? defaultValueJson, bool persist, bool readOnly) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult RemoveHmiInternalSymbol(string hmiProject, string name) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult MapHmiOfflineSymbol(string hmiProject, string mapName, string dataType, string? defaultValueJson, bool online, bool persist) => throw TwinCatNotBuilt.HmiException();
@@ -406,6 +407,16 @@ internal sealed partial class TwinCatComSession
             ? new HmiOperationResult(true, null)
             : new HmiOperationResult(false, $"{flagSymbol}: {flagError} ({HmiRuntimeTmc.DataSymbolUpAndDownload} was already written)");
     }
+
+    // hmi-offline-types: TcHmiServerCommunication.RefreshDefinitions sends a write of the function symbol
+    // RefreshDefinitions with the domain as value. Re-issuing after a busy rejection only refreshes again.
+    public HmiOperationResult RefreshHmiDefinitions(string hmiProject, string domain) =>
+        ComBusyRetry.Run(() =>
+        {
+            ITcHmiServer server = RequireHmiServer(hmiProject);
+            bool ok = server.WriteSymbolJson("RefreshDefinitions", System.Text.Json.JsonSerializer.Serialize(domain));
+            return new HmiOperationResult(ok, ok ? null : HmiLastError(server));
+        }, HmiTimeout);
 
     public HmiServerControlResult ControlHmiServer(string hmiProject, string action, int timeoutMs) =>
         ComBusyRetry.Run(() =>

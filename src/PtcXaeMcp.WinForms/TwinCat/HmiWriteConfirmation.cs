@@ -29,6 +29,9 @@ internal enum HmiWriteKind
     AddInternalSymbol,
     RemoveInternalSymbol,
     MapOfflineSymbol,
+    // hmi-offline-types
+    CreateProjectDatatype,
+    SwitchMappingToPlc,
 }
 
 /// <summary>What the popup shows the engineer before anything is written.</summary>

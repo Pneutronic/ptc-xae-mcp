@@ -180,4 +180,81 @@ internal static class HmiProjectDatatypes
             .Select(p => p.Key).Order(StringComparer.OrdinalIgnoreCase).ToList();
         return new HmiSchemaDiff(onlySchema, onlyTemplate, different);
     }
+
+    // ---- creating (twincat_hmi_create_project_datatype) ----------------------------------------------
+
+    /// <summary>What a create would do against the existing definitions of one file.</summary>
+    internal sealed record CreatePlan(
+        IReadOnlyList<KeyValuePair<string, JsonNode>> ToAdd,
+        IReadOnlyList<string> Reused,
+        string? Error);
+
+    /// <summary>
+    /// Fail-closed duplicate rules. The requested type must not exist under its name, nor with the same content
+    /// under another name (a second copy keeps pointing at the original sub-types — seen in TE2000). A sub-type
+    /// that already exists with the same content is reused; with different content it is refused, as TE2000's
+    /// own dialog refuses it ("Type(s) … are already present").
+    /// </summary>
+    internal static CreatePlan PlanCreate(JsonObject existing, HmiRemoteTypes.Result generated)
+    {
+        var root = generated.Definitions[0];
+        if (existing.ContainsKey(root.Key))
+            return new CreatePlan([], [], $"'{root.Key}' already exists as a project datatype");
+        string? copy = existing.FirstOrDefault(p => JsonNode.DeepEquals(p.Value, root.Value)).Key;
+        if (copy is not null)
+            return new CreatePlan([], [], $"the same type already exists as '{copy}' — use that one (a second copy " +
+                                         "under another name keeps pointing at the original sub-types)");
+        var toAdd = new List<KeyValuePair<string, JsonNode>> { root };
+        var reused = new List<string>();
+        var conflicts = new List<string>();
+        foreach (var sub in generated.Definitions.Skip(1))
+        {
+            if (!existing.TryGetPropertyValue(sub.Key, out JsonNode? have)) toAdd.Add(sub);
+            else if (JsonNode.DeepEquals(have, sub.Value)) reused.Add(sub.Key);
+            else conflicts.Add(sub.Key);
+        }
+        return conflicts.Count > 0
+            ? new CreatePlan([], [], $"the sub-type(s) {string.Join(", ", conflicts.Select(c => $"'{c}'"))} already exist " +
+                                     "with a different content (an older TMC state, or edited by hand) — nothing is " +
+                                     "overwritten; delete or update them first")
+            : new CreatePlan(toAdd, reused, null);
+    }
+
+    private static readonly JsonSerializerOptions WriteOptions = new()
+    {
+        WriteIndented = true,
+        IndentCharacter = '\t',
+        IndentSize = 1,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    /// <summary>The schema text with <paramref name="additions"/> added under <c>definitions</c>; everything else
+    /// is kept. Tab-indented like the files TE2000 writes. Null when the text is not a schema object.</summary>
+    internal static string? AddDefinitions(string text, IEnumerable<KeyValuePair<string, JsonNode>> additions)
+    {
+        JsonNode? parsed;
+        try { parsed = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }); }
+        catch (JsonException) { return null; }
+        if (parsed is not JsonObject root) return null;
+        if (root["definitions"] is not JsonObject defs)
+        {
+            if (root["definitions"] is not null) return null;
+            defs = new JsonObject();
+            root["definitions"] = defs;
+        }
+        foreach (var (name, node) in additions) defs[name] = node.DeepClone();
+        string result = root.ToJsonString(WriteOptions);
+        return text.EndsWith('\n') ? result + Environment.NewLine : result;
+    }
+
+    /// <summary>Writes through a temp file and a replace, keeping a UTF-8 BOM if the file had one.</summary>
+    internal static void WriteAtomically(string path, string text)
+    {
+        byte[] old = File.Exists(path) ? File.ReadAllBytes(path) : [];
+        bool bom = old.Length >= 3 && old[0] == 0xEF && old[1] == 0xBB && old[2] == 0xBF;
+        string temp = path + ".ptc-tmp";
+        File.WriteAllText(temp, text, new System.Text.UTF8Encoding(bom));
+        if (File.Exists(path)) File.Replace(temp, path, null);
+        else File.Move(temp, path);
+    }
 }

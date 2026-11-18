@@ -256,6 +256,14 @@ internal sealed partial class FakeTwinCatSession
         }
     }
 
+    public HmiOperationResult? RefreshHmiDefinitionsResult { get; set; }
+
+    public HmiOperationResult RefreshHmiDefinitions(string hmiProject, string domain)
+    {
+        CallLog.Add($"RefreshHmiDefinitions({hmiProject}, {domain})");
+        return RefreshHmiDefinitionsResult ?? new HmiOperationResult(true, null);
+    }
+
     private bool RuntimeHasTmcObject(string runtime) =>
         System.Text.Json.Nodes.JsonNode.Parse(HmiSymbolValues[HmiCoordinator.AdsRuntimesSymbol])?[runtime]?["TMC"]
             is System.Text.Json.Nodes.JsonObject;

@@ -43,6 +43,7 @@ public partial class McpServerTests
         "twincat_hmi_disable_runtime_tmc",
         // hmi-offline-types
         "twincat_hmi_list_project_datatypes",
+        "twincat_hmi_create_project_datatype",
         // hmi-internal-symbols (#165)
         "twincat_hmi_list_internal_symbols",
         "twincat_hmi_add_internal_symbol",
@@ -67,6 +68,7 @@ public partial class McpServerTests
         "twincat_hmi_add_internal_symbol",
         "twincat_hmi_remove_internal_symbol",
         "twincat_hmi_map_offline_symbol",
+        "twincat_hmi_create_project_datatype",
     ];
 
     /// <summary>Calls <paramref name="tool"/> through the guarded <see cref="CallToolAsync"/> and

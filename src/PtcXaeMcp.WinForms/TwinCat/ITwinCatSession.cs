@@ -694,6 +694,14 @@ internal interface ITwinCatSession : IDisposable
         bool createTmcObject = false);
 
     /// <summary>
+    /// hmi-offline-types: the server request TE2000 sends after it changed tchmi.project.Schema.json
+    /// (<c>Symbol="RefreshDefinitions", WriteValue="project"</c>, decompiled engineering 14.17.22.1), so the server
+    /// and through it the engineering read the project datatypes again — nothing watches the file. Sent through
+    /// <c>ITcHmiServer.WriteSymbolJson</c>. Ok=false with LastError when the server refused it.
+    /// </summary>
+    HmiOperationResult RefreshHmiDefinitions(string hmiProject, string domain);
+
+    /// <summary>
     /// hmi-internal-symbols (#165): <c>ITcHmiProject.GetInternalSymbolInstance(name, value, type,
     /// persist, isReadonly)</c> + <c>AddInternalSymbol</c> — a CLIENT (framework) internal symbol
     /// <c>%i%name%/i%</c>, persisted by TE2000 in <c>Properties\tchmiconfig.json</c>.

@@ -57,6 +57,28 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() =>
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ListProjectDatatypes(hmiProject))), cancellationToken);
 
+    [McpServerTool(Name = "twincat_hmi_create_project_datatype", ReadOnly = false, Destructive = false)]
+    [Description("Create the project datatype for a PLC STRUCT or ENUM of an attached TMC file, like TE2000 'Create new " +
+                 "project datatype → based on a remote type': '<virtualPlc>.<Type>' plus its sub-types (enum fields, " +
+                 "nested structs, arrays as '<virtualPlc>.ARRAY_1..n_OF-<Type>' with startOffset) in " +
+                 "Properties/tchmi.project.Schema.json (and .tpl.json if present), then asks the HMI server to refresh " +
+                 "its project definitions. " + ConfirmNote + " Refuses a type that already exists (also under another " +
+                 "name) and a sub-type that exists with different content; identical sub-types are reused. Use the " +
+                 "result as user-control parameter type 'tchmi:project#/definitions/<name>'. Check with " +
+                 "twincat_hmi_list_project_datatypes.")]
+    public string HmiCreateProjectDatatype(
+        [Description("'<virtualPlc>.<Type>', e.g. 'PLC_TMC.ST_Recipe': the virtual PLC name of an attached TMC file " +
+                     "(twincat_hmi_list_tmc_files) and a STRUCT or ENUM declared in that PLC.")]
+        string remoteType,
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_hmi_create_project_datatype",
+            new { hmiProject, remoteType, confirmTimeoutSeconds }, () =>
+            bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session, host.HmiConfirmer)
+                    .CreateProjectDatatype(hmiProject, remoteType, confirmTimeoutSeconds))), cancellationToken);
+
     [McpServerTool(Name = "twincat_hmi_attach_tmc_file", ReadOnly = false, Destructive = false)]
     [Description("Attach a PLC project's TMC file to an HMI project for offline symbols. Like TE2000 'Attach TMC " +
                  "file', its symbols become bindable in the engineering without a PLC. " + ConfirmNote + " Refuses a file or virtualPlcName " +

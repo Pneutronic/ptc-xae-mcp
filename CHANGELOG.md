@@ -18,6 +18,9 @@ pull-request numbers refer to those.
   (TE2000 "Create new project datatype → based on a remote type"), including enum fields, nested structs and arrays
   (`<PLC>.ARRAY_1..n_OF-<Type>` with `startOffset`), and asks the HMI server to refresh its project definitions. Refuses
   a type that already exists, also under another name; identical sub-types are reused.
+- `twincat_hmi_switch_mapping_to_plc` moves mappings from the engineering-only `TMC` domain to an ADS runtime (TE2000
+  "Switch Mapping to PLC"): same mapped name, domain ADS, internal path re-rooted at the runtime. Each mapping is read
+  through the server afterwards; one the runtime does not know gets its old entry back.
 
 ### Fixed
 - `twincat_hmi_enable_runtime_tmc` failed on an ADS runtime that never had a `TMC` object (the server refuses a write

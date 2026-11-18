@@ -108,6 +108,8 @@ internal sealed partial class FakeTwinCatSession
     }
 
     public HmiOperationResult HmiWriteResult { get; set; } = new(true, null);
+    /// <summary>Runs after an accepted write — lets a test change what the server answers next.</summary>
+    public Action<string, string>? AfterHmiWrite { get; set; }
     /// <summary>Simulates a PLC that changes the value right after the write.</summary>
     public string? HmiWriteReadBackOverride { get; set; }
 
@@ -115,7 +117,10 @@ internal sealed partial class FakeTwinCatSession
     {
         CallLog.Add($"WriteHmiSymbol({hmiProject}, {symbol}, {valueJson})");
         if (HmiWriteResult.Ok)
+        {
             HmiSymbolValues[symbol] = HmiWriteReadBackOverride ?? RenderLikeTheServer(valueJson);
+            AfterHmiWrite?.Invoke(symbol, valueJson);
+        }
         return HmiWriteResult;
     }
 

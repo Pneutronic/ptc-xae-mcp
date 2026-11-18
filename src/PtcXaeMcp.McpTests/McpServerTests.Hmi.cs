@@ -41,6 +41,8 @@ public partial class McpServerTests
         "twincat_hmi_detach_tmc_file",
         "twincat_hmi_enable_runtime_tmc",
         "twincat_hmi_disable_runtime_tmc",
+        // hmi-offline-types
+        "twincat_hmi_list_project_datatypes",
         // hmi-internal-symbols (#165)
         "twincat_hmi_list_internal_symbols",
         "twincat_hmi_add_internal_symbol",

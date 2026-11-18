@@ -44,6 +44,19 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() =>
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ListPlcTmcCandidates())), cancellationToken);
 
+    [McpServerTool(Name = "twincat_hmi_list_project_datatypes", ReadOnly = true)]
+    [Description("List the project datatypes of an HMI project (definitions in Properties/tchmi.project.Schema.json): " +
+                 "name, kind (userControl/struct/enum/array/alias/other), namespace and where it comes from " +
+                 "(attachedTmc/adsRuntime), $ref targets and dangling $refs (a reference to a project type that no " +
+                 "longer exists). Reports how tchmi.project.Schema.tpl.json differs. A user-control parameter " +
+                 "references a type as tchmi:project#/definitions/<name>.")]
+    public string HmiListProjectDatatypes(
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_hmi_list_project_datatypes", new { hmiProject }, () =>
+            bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ListProjectDatatypes(hmiProject))), cancellationToken);
+
     [McpServerTool(Name = "twincat_hmi_attach_tmc_file", ReadOnly = false, Destructive = false)]
     [Description("Attach a PLC project's TMC file to an HMI project for offline symbols. Like TE2000 'Attach TMC " +
                  "file', its symbols become bindable in the engineering without a PLC. " + ConfirmNote + " Refuses a file or virtualPlcName " +

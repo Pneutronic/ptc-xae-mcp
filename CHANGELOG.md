@@ -10,6 +10,11 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
+  kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after
+  a type was deleted, and how `tchmi.project.Schema.tpl.json` differs.
+
 ### Fixed
 - `twincat_hmi_enable_runtime_tmc` failed on an ADS runtime that never had a `TMC` object (the server refuses a write
   to a leaf below a missing object). The tool now writes the object as a whole in that case.

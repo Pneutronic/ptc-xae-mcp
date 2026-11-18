@@ -28,6 +28,13 @@ internal static class HmiLiveViewCheck
     private static readonly TimeSpan Step = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(10);
 
+    // liveview_*.html sets TCHMI_ENGINEERING = true: the client then waits in splash stage 6 ("Connectivity") for the
+    // XAE designer's channel, which a browser outside the XAE never offers (live 2026-11-18, framework 14.6.3: stuck
+    // forever although the websocket was ready). Pinning the flag to false before the page's own scripts run lets the
+    // live view start like a normal client (view after ~1 s).
+    internal const string OutsideEngineeringScript =
+        "try { Object.defineProperty(window, 'TCHMI_ENGINEERING', { configurable: false, get() { return false; }, set(v) { } }); } catch (e) { }";
+
     // Framework state without depending on one API version: TcHmi present, current view and its id.
     internal const string StateScript = """
         (() => {
@@ -96,6 +103,7 @@ internal static class HmiLiveViewCheck
             {
                 foreach (string domain in new[] { "Runtime.enable", "Log.enable", "Network.enable", "Page.enable" })
                     await browser.SendAsync(domain, null, CallTimeout, ct);
+                await browser.SendAsync("Page.addScriptToEvaluateOnNewDocument", new JsonObject { ["source"] = OutsideEngineeringScript }, CallTimeout, ct);
                 await browser.SendAsync("Emulation.setDeviceMetricsOverride", new JsonObject
                     { ["width"] = o.Width, ["height"] = o.Height, ["deviceScaleFactor"] = 1, ["mobile"] = false }, CallTimeout, ct);
                 var nav = await browser.SendAsync("Page.navigate", new JsonObject { ["url"] = o.Url }, CallTimeout, ct);

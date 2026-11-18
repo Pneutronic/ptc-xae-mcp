@@ -14,7 +14,8 @@ internal sealed record HmiScaffoldResult(string Text, int Rows, int Width, int H
 
 internal static partial class HmiScaffold
 {
-    // Beckhoff controls and the attribute each binds (TE2000 framework 1.12 Description.json).
+    // Beckhoff controls and the attribute each binds (Description.json of Beckhoff.TwinCAT.HMI.Controls 14.8.3, checked
+    // 2026-11-18: TcHmiCheckbox data-tchmi-state-symbol, TcHmiNumericInput data-tchmi-value, TcHmiTextbox/-block data-tchmi-text).
     internal const string Content = "TcHmi.Controls.System.TcHmiContent";
     internal const string Textblock = "TcHmi.Controls.Beckhoff.TcHmiTextblock";
     internal const string NumericInput = "TcHmi.Controls.Beckhoff.TcHmiNumericInput";
@@ -23,6 +24,10 @@ internal static partial class HmiScaffold
     internal const string TextAttribute = "data-tchmi-text";
     internal const string ValueAttribute = "data-tchmi-value";
     internal const string StateSymbolAttribute = "data-tchmi-state-symbol";
+    internal const string VerticalAlignment = "data-tchmi-text-vertical-alignment";
+    internal const string FontWeightAttribute = "data-tchmi-text-font-weight";
+    // BindingMode 'OneWay' | 'TwoWay' (framework _Types.d.ts); live 2026-11-18: NumericInput.setValue(42.25) reached the
+    // server symbol with TwoWay; a checkbox writes through its state-symbol without a binding mode.
     internal const string TwoWay = "|BindingMode=TwoWay";
 
     internal const int RowHeight = 30;
@@ -96,19 +101,20 @@ internal static partial class HmiScaffold
             switch (v.ValueKind)
             {
                 case JsonValueKind.True or JsonValueKind.False:
-                    AppendControl(rows, idBase, Checkbox, vx, y, RowHeight, RowHeight, StateSymbolAttribute, binding,
-                        readOnly ? "data-tchmi-is-enabled" : null, "false");
+                    AppendControl(rows, idBase, Checkbox, vx, y, RowHeight, RowHeight, (StateSymbolAttribute, binding),
+                        readOnly ? [("data-tchmi-is-enabled", "false")] : []);
                     break;
                 case JsonValueKind.Number when !readOnly:
-                    AppendControl(rows, idBase, NumericInput, vx, y, ValueWidth, RowHeight, ValueAttribute, writable);
+                    AppendControl(rows, idBase, NumericInput, vx, y, ValueWidth, RowHeight, (ValueAttribute, writable), []);
                     binding = writable;
                     break;
                 case JsonValueKind.String when !readOnly:
-                    AppendControl(rows, idBase, Textbox, vx, y, ValueWidth, RowHeight, TextAttribute, writable);
+                    AppendControl(rows, idBase, Textbox, vx, y, ValueWidth, RowHeight, (TextAttribute, writable), []);
                     binding = writable;
                     break;
                 default:   // read-only number/string, null
-                    AppendControl(rows, idBase, Textblock, vx, y, ValueWidth, RowHeight, TextAttribute, binding);
+                    AppendControl(rows, idBase, Textblock, vx, y, ValueWidth, RowHeight, (TextAttribute, binding),
+                        [(VerticalAlignment, "Center")]);
                     break;
             }
             bindings.Add(binding);
@@ -124,20 +130,19 @@ internal static partial class HmiScaffold
         return new HmiScaffoldResult(text, count, width, height, skipped, bindings);
     }
 
+    // Labels sit in the middle of the 30 px row like the inputs next to them (live 2026-11-18: top-aligned looked off).
     private static void AppendTextblock(StringBuilder sb, string id, int left, int top, int width, string text, bool bold) =>
-        AppendControl(sb, id, Textblock, left, top, width, RowHeight, TextAttribute, text,
-            bold ? "data-tchmi-text-font-weight" : null, "Bold");
+        AppendControl(sb, id, Textblock, left, top, width, RowHeight, (TextAttribute, text),
+            bold ? [(VerticalAlignment, "Center"), (FontWeightAttribute, "Bold")] : [(VerticalAlignment, "Center")]);
 
     private static void AppendControl(StringBuilder sb, string id, string type, int left, int top, int width, int height,
-        string mainName, string mainValue, string? extraName = null, string? extraValue = null)
+        (string Name, string Value) main, (string Name, string Value)[] extras)
     {
-        var main = (Name: mainName, Value: mainValue);
-        var extra = (Name: extraName, Value: extraValue);
         sb.Append("  <div id=\"").Append(id).Append("\" data-tchmi-type=\"").Append(type).Append('"')
           .Append(CultureInfo.InvariantCulture, $" data-tchmi-left=\"{left}\" data-tchmi-left-unit=\"px\" data-tchmi-top=\"{top}\" data-tchmi-top-unit=\"px\"")
           .Append(CultureInfo.InvariantCulture, $" data-tchmi-width=\"{width}\" data-tchmi-width-unit=\"px\" data-tchmi-height=\"{height}\" data-tchmi-height-unit=\"px\"")
           .Append(' ').Append(main.Name).Append("=\"").Append(HmiPlacement.Escape(main.Value)).Append('"');
-        if (extra.Name is not null) sb.Append(' ').Append(extra.Name).Append("=\"").Append(HmiPlacement.Escape(extra.Value ?? "")).Append('"');
+        foreach (var (name, value) in extras) sb.Append(' ').Append(name).Append("=\"").Append(HmiPlacement.Escape(value)).Append('"');
         sb.Append(">\n  </div>\n");
     }
 }

@@ -17,7 +17,10 @@ internal sealed record HmiSymbolSources(
     IReadOnlySet<string> InternalSymbols);
 
 /// <param name="Severity">error (fails at runtime), warning (likely wrong or unchecked), info.</param>
-internal sealed record HmiBindingFinding(string File, int Line, string Severity, string Kind, string Reference, string Message);
+/// <param name="Count">How often the same finding occurs in the file; <paramref name="Lines"/> lists every line
+/// when more than one.</param>
+internal sealed record HmiBindingFinding(string File, int Line, string Severity, string Kind, string Reference, string Message,
+    int Count = 1, IReadOnlyList<int>? Lines = null);
 
 internal sealed record HmiBindingReport(
     int FilesChecked,
@@ -135,7 +138,11 @@ internal static class HmiBindingCheck
             }
         }
 
+        // the same unresolved reference on every row of a page is one finding with its lines
         var ordered = findings
+            .GroupBy(f => (f.File, f.Severity, f.Kind, f.Reference, f.Message))
+            .Select(g => g.Count() == 1 ? g.First()
+                : g.First() with { Count = g.Count(), Lines = g.Select(x => x.Line).Distinct().Order().ToList() })
             .OrderBy(f => Array.IndexOf(SeverityOrder, f.Severity))
             .ThenBy(f => f.File, StringComparer.OrdinalIgnoreCase)
             .ThenBy(f => f.Line)
@@ -205,7 +212,9 @@ internal static class HmiBindingCheck
             int d = Distance(name, c);
             if (d < bestDistance) { bestDistance = d; best = c; }
         }
-        int limit = Math.Max(2, name.Length / 4);
+        // Live 2026-11-18: with length/4 'McpScaffold.Axis' suggested 'McpScaffold.On' (4 edits) — noise. A typo is
+        // one or two edits, a bit more in long names.
+        int limit = Math.Max(2, name.Length / 8);
         return best is not null && bestDistance <= limit ? $" — did you mean '{best}'?" : "";
     }
 

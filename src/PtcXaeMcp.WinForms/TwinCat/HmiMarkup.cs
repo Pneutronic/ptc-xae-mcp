@@ -47,7 +47,7 @@ internal sealed record HmiMarkupDocument(IReadOnlyList<HmiElement> Elements, Hmi
 
 /// <summary>A binding expression <c>%k%body%/k%</c> (or a trigger's <c>"fn": "…"</c>) in an HMI file.</summary>
 /// <param name="Kind">s (server symbol), i (internal symbol), pp (user-control parameter), ctrl, f (function),
-/// l (localized text), ctx, tp, u, ts.</param>
+/// l (localized text), ctx, tp (template parameter), tr (themed resource), t (timer), pkg (package).</param>
 /// <param name="Target">What the expression points at: symbol name without <c>::</c> sub-path and <c>|</c>
 /// options, function name without arguments, control id, parameter or key.</param>
 internal sealed record HmiBinding(string Kind, string Expression, string Target, int Line);
@@ -64,7 +64,8 @@ internal static partial class HmiMarkup
     [GeneratedRegex(@"(?<name>[A-Za-z_:][-A-Za-z0-9_:.]*)(?:\s*=\s*(?:""(?<v>[^""]*)""|'(?<v>[^']*)'|(?<v>[^\s""'>]+)))?", RegexOptions.CultureInvariant)]
     private static partial Regex Attr();
 
-    [GeneratedRegex(@"%(?<k>s|i|pp|ctrl|f|l|ctx|tp|u|ts)%(?<body>.*?)%/\k<k>%", RegexOptions.Singleline | RegexOptions.CultureInvariant)]
+    // The symbol tags of the framework (TcHmi SymbolTag, framework 14.6: s i l pp tp f ctrl ctx tr t pkg).
+    [GeneratedRegex(@"%(?<k>s|i|l|pp|tp|f|ctrl|ctx|tr|t|pkg)%(?<body>.*?)%/\k<k>%", RegexOptions.Singleline | RegexOptions.CultureInvariant)]
     private static partial Regex Expression();
 
     [GeneratedRegex(@"""fn""\s*:\s*""(?<fn>[^""]+)""", RegexOptions.CultureInvariant)]

@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-221 tools, generated from the source attributes — one section per
+228 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -24,6 +24,7 @@
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
 - [Hmi](#hmi) (8)
+- [HmiAuthoring](#hmiauthoring) (7)
 - [HmiInternalSymbols](#hmiinternalsymbols) (4)
 - [HmiTmc](#hmitmc) (10)
 - [HmiViews](#hmiviews) (7)
@@ -662,6 +663,95 @@ Write a symbol value through an HMI project's server. An ADS symbol ('ADS.PLC1.�
 |---|---|---|---|
 | `symbol` | `string` |  | HMI symbol name, e.g. 'ADS.PLC1.MAIN.bStart'. |
 | `valueJson` | `string` |  | Value as JSON: true, 42, "text", or an object/array. |
+| `hmiProject` | `string?` | `null` |  |
+| `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
+
+## HmiAuthoring
+
+### `twincat_hmi_list_components`
+
+List the pages, user controls, functions and languages of an HMI project. Read from the saved files: views, contents, user controls WITH their parameters (propertyName, attribute, type, required), functions with arguments, languages, themes, and which page uses which user control/content/function. Use it before twincat_hmi_place_user_control.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_check_bindings`
+
+Check that every binding and reference in HMI pages resolves. Saved files: %s% server symbols against the mapped symbols, %i% internal symbols, %pp% user-control parameters, %ctrl% control ids, %f%/trigger functions, %l% texts in every language, user-control hosts (target exists, required parameters), region targets, duplicate ids. Findings with file, line, severity (error/warning/info) and a 'did you mean'.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `paths` | `string[]?` | `null` | Pages to check, project-relative (.view/.content/.usercontrol). Default: all. |
+| `includeInfo` | `bool` | `false` | Also list info findings (framework functions and domain symbols that are not checked). |
+| `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_list_localization`
+
+List the localized texts of an HMI project and what is missing. Saved files: languages with their texts, keys missing per language, keys used (%l%Key%/l%) but not defined, keys defined but unused.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_set_localized_texts`
+
+Set or remove localized texts in existing languages. One confirmation for all: { "de": { "Start": "Start", "Old": null }, "en": { "Start": "Start" } } (null removes). Existing keys keep their place, new keys are appended. Use in a page as %l%Key%/l%.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `texts` | `string` |  | JSON object: locale → { key → text \| null }. |
+| `hmiProject` | `string?` | `null` |  |
+| `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
+
+### `twincat_hmi_place_user_control`
+
+Place a project user control on a view or content. Adds a TcHmiUserControlHost as last child of the page's root (or replaces the host with the same id when replace=true). parameters by propertyName from twincat_hmi_list_components, e.g. { "Safety": "%s%PLC1.GVL.Safety%/s%", "Window": 40 }; objects/arrays are written as JSON. Unknown or missing required parameters are refused. Size defaults to the control's design size.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `page` | `string` |  | Target page, project-relative, e.g. 'Desktop.view' or 'Contents/Main.content'. |
+| `userControl` | `string` |  | The user control, e.g. 'UserControls/X/X.usercontrol'. |
+| `id` | `string` |  | Control id of the host, unique in the page. |
+| `left` | `int` | `0` | Left in px. |
+| `top` | `int` | `0` | Top in px. |
+| `width` | `int?` | `null` | Width; default: design width of the user control. |
+| `height` | `int?` | `null` | Height; default: design height of the user control. |
+| `widthUnit` | `string?` | `null` | 'px' (default) or '%'. |
+| `heightUnit` | `string?` | `null` | 'px' (default) or '%'. |
+| `parameters` | `string?` | `null` | JSON object propertyName → value (string, number, bool, object, array; a binding as string). |
+| `replace` | `bool` | `false` | Replace the existing host with this id instead of refusing. |
+| `hmiProject` | `string?` | `null` |  |
+| `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
+
+### `twincat_hmi_check_liveview`
+
+Load the HMI live view in a headless browser and report what broke. Reports JS exceptions, console errors/warnings, failed requests, whether the framework shows a view, and the rendered controls (count, controls without size). Optional: switch to another view, take a PNG screenshot, evaluate a JavaScript expression after load (result as JSON; may write symbols through the server, so not read-only). Run twincat_hmi_build first. Needs Edge, Chrome or a Playwright Chromium.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `url` | `string?` | `null` | Live-view URL. Default: http://127.0.0.1:<HmiCommunicationServerPort>/<newest liveview_*.html> of the project. |
+| `view` | `string?` | `null` | View to load after start, project-relative, e.g. 'Views/Test.view'. Default: the startup view. |
+| `waitMs` | `int` | `HmiLiveViewCheck.DefaultWaitMs` | Max wait for the framework and view in ms, 1000-120000. Default 30000. |
+| `width` | `int` | `1280` | Viewport width in px. Default 1280. |
+| `height` | `int` | `800` | Viewport height in px. Default 800. |
+| `screenshotPath` | `string?` | `null` | Absolute path of a PNG screenshot to write. |
+| `expression` | `string?` | `null` | JavaScript evaluated after load (promises awaited); its value is returned as JSON. |
+| `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_scaffold_symbol_view`
+
+Generate a .content with one row per field of a server symbol. Label + checkbox (BOOL), numeric input (number), textbox (string), or read-only textblocks; nested structs get a header. The shape comes from the symbol's current value read through the HMI server, or from sampleValue. Arrays are listed as skipped. dryRun returns the markup without writing.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `symbol` | `string` |  | Server symbol, e.g. 'PLC1.MAIN.stAxis' (mapped name, without %s%). |
+| `path` | `string` |  | Target .content, project-relative, e.g. 'Contents/Axis.content'. |
+| `readOnly` | `bool` | `false` | Only display values (textblocks, disabled checkboxes). |
+| `maxDepth` | `int` | `3` | Struct nesting depth, 1-6. Default 3. |
+| `sampleValue` | `string?` | `null` | JSON value of the symbol's shape, used instead of reading the server. |
+| `dryRun` | `bool` | `false` | Return the markup only, write nothing. |
+| `overwrite` | `bool` | `false` | Replace an existing file. |
 | `hmiProject` | `string?` | `null` |  |
 | `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 

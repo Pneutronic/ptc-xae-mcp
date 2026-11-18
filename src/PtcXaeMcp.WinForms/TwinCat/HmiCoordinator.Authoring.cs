@@ -55,16 +55,16 @@ internal sealed partial class HmiCoordinator
         var sources = SymbolSources(project!);
         var report = HmiBindingCheck.Check(snap, index, sources, only);
         var shown = report.Findings.Where(f => includeInfo || f.Severity != "info").ToList();
-        int errors = report.Findings.Count(f => f.Severity == "error");
-        int warnings = report.Findings.Count(f => f.Severity == "warning");
-        int infos = report.Findings.Count(f => f.Severity == "info");
+        int errors = report.Findings.Where(f => f.Severity == "error").Sum(f => f.Count);
+        int warnings = report.Findings.Where(f => f.Severity == "warning").Sum(f => f.Count);
+        int infos = report.Findings.Where(f => f.Severity == "info").Sum(f => f.Count);
 
         string summary = $"Checked {report.BindingsChecked} binding(s) in {report.FilesChecked} page(s) of '{project!.Name}': " +
                          (errors + warnings == 0 ? "no errors, no warnings" : $"{errors} error(s), {warnings} warning(s)") +
                          (infos > 0 ? $", {infos} info" : "") + $". Server symbols from {report.ServerSource}.";
         if (errors > 0)
             summary += " First: " + string.Join("; ", report.Findings.Where(f => f.Severity == "error").Take(3)
-                .Select(f => $"{f.File}:{f.Line} {f.Message}"));
+                .Select(f => $"{f.File}:{(f.Lines is { } l ? string.Join(",", l) : f.Line.ToString(System.Globalization.CultureInfo.InvariantCulture))} {f.Message}"));
         return (summary, JsonSerializer.Serialize(new
         {
             hmiProject = project.Name, source = "disk (saved files)", report.FilesChecked, report.BindingsChecked,
@@ -87,8 +87,11 @@ internal sealed partial class HmiCoordinator
             source = $"nowhere — the engineering server did not answer ({ex.Message})";
         }
         var (serverSymbols, _, _) = HmiInternalSymbols.ReadServerSymbols(project.ProjectDirectory);
-        if (server is not null && serverSymbols is not null)
+        if (server is not null && serverSymbols is { Count: > 0 })
+        {
             foreach (var s in serverSymbols) server.Add(s.Name);
+            source = source[..^1] + $", {serverSymbols.Count} server-config symbol(s))";
+        }
 
         var domains = new HashSet<string>(StringComparer.Ordinal) { "ADS", "TcHmiSrv" };
         try

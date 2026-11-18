@@ -209,9 +209,9 @@ internal sealed class CdpBrowser : IAsyncDisposable
             case "Runtime.consoleAPICalled":
                 string type = p["type"]?.GetValue<string>() ?? "log";
                 if (type is not ("error" or "warning" or "assert")) return null;
-                string args = string.Join(" ", (p["args"] as JsonArray ?? new JsonArray()).Select(a =>
+                string args = FormatConsole((p["args"] as JsonArray ?? new JsonArray()).Select(a =>
                     a?["value"] is JsonNode v ? (v is JsonValue jv && jv.TryGetValue(out string? s) ? s : v.ToJsonString())
-                    : a?["description"]?.GetValue<string>() ?? a?["type"]?.GetValue<string>() ?? ""));
+                    : a?["description"]?.GetValue<string>() ?? a?["type"]?.GetValue<string>() ?? "").ToList());
                 var frame = (p["stackTrace"]?["callFrames"] as JsonArray)?.FirstOrDefault();
                 return new CdpEvent("console", type == "warning" ? "warning" : "error", FirstLine(args),
                     frame?["url"]?.GetValue<string>(), Int(frame?["lineNumber"]) + 1);
@@ -232,6 +232,30 @@ internal sealed class CdpBrowser : IAsyncDisposable
             default:
                 return null;
         }
+    }
+
+    /// <summary>console.log semantics: when the first argument holds %s/%o/%O/%d/%i/%f, the following arguments fill
+    /// them in order; the rest is appended. TcHmi logs every error this way (live: "[Source=…, Control=%o] %s …").</summary>
+    internal static string FormatConsole(IReadOnlyList<string> args)
+    {
+        if (args.Count == 0) return "";
+        string head = args[0];
+        int next = 1;
+        var sb = new StringBuilder();
+        for (int i = 0; i < head.Length; i++)
+        {
+            if (head[i] == '%' && i + 1 < head.Length && "soOdifc%".Contains(head[i + 1]))
+            {
+                char k = head[++i];
+                if (k == '%') sb.Append('%');
+                else if (k == 'c') next++;                    // CSS style argument: dropped
+                else sb.Append(next < args.Count ? args[next++] : "%" + k);
+                continue;
+            }
+            sb.Append(head[i]);
+        }
+        for (; next < args.Count; next++) sb.Append(' ').Append(args[next]);
+        return sb.ToString();
     }
 
     private static int? Int(JsonNode? n) => n is JsonValue v && v.TryGetValue(out int i) ? i : n is JsonValue d && d.TryGetValue(out double x) ? (int)x : null;

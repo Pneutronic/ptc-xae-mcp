@@ -11,6 +11,22 @@ pull-request numbers refer to those.
 ## [Unreleased]
 
 ### Added
+- `twincat_hmi_list_components` indexes an HMI project from its saved files: views, contents, user controls with their
+  parameters (propertyName, markup attribute, type, required, default), functions with arguments, languages, themes, and
+  which page uses which user control, content or function.
+- `twincat_hmi_check_bindings` checks every symbol expression of the pages (`%s%`, `%i%`, `%pp%`, `%ctrl%`, `%f%` and
+  trigger functions, `%l%`), user-control hosts (target exists, required parameters set, bindings only on bindable
+  parameters), region targets and duplicate control ids. Findings carry file, line(s), severity and a "did you mean".
+- `twincat_hmi_list_localization` lists the localized texts per language with missing, undefined and unused keys;
+  `twincat_hmi_set_localized_texts` sets or removes texts in existing languages with one confirmation.
+- `twincat_hmi_place_user_control` puts a project user control on a view or content (`TcHmiUserControlHost`, parameters
+  by name, objects and arrays as JSON), or replaces the host with the same id.
+- `twincat_hmi_scaffold_symbol_view` generates a content with one row per field of a server symbol (checkbox, numeric
+  input, textbox or read-only textblocks; two-way bindings for inputs). The shape comes from the symbol's current value
+  or from a sample; `dryRun` writes nothing.
+- `twincat_hmi_check_liveview` loads the live view in a headless Chromium (Edge, Chrome or a Playwright download) and
+  reports exceptions, console and network errors, whether a view appears and the rendered controls; optionally another
+  view, a PNG screenshot and a JavaScript expression evaluated in the page.
 - `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
   kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after
   a type was deleted, and how `tchmi.project.Schema.tpl.json` differs.

@@ -149,7 +149,7 @@ public sealed class HmiAuthoringTests : IDisposable
     {
         string text = "<div data-tchmi-tooltip=\"%f%TcHmi.Functions.Ptc.Gauge(%ctrl%Surface::Width%/ctrl%, &quot;x&quot;, %s%PLC1.MAIN.st::nValue|BindingMode=TwoWay%/s%)%/f%\">\n" +
                       "<script type=\"application/json\">[{ \"fn\": \"TcHmi.Functions.Beckhoff.ToUpper\" }]</script>\n" +
-                      "%i%Counter%/i% %l%Start%/l% %pp%Value%/pp% %s%PLC1.MAIN.arr[2]%/s%";
+                      "%i%Counter%/i% %l%Start%/l% %pp%Value%/pp% %s%PLC1.MAIN.arr[2]%/s% %tr%Theme::Color%/tr% %u%NoTag%/u%";
         var b = HmiMarkup.Bindings(text);
 
         Assert.Contains(b, x => x is { Kind: "f", Target: "TcHmi.Functions.Ptc.Gauge", Line: 1 });
@@ -160,6 +160,8 @@ public sealed class HmiAuthoringTests : IDisposable
         Assert.Contains(b, x => x is { Kind: "l", Target: "Start" });
         Assert.Contains(b, x => x is { Kind: "pp", Target: "Value" });
         Assert.Contains(b, x => x is { Kind: "s", Target: "PLC1.MAIN.arr" });
+        Assert.Contains(b, x => x.Kind == "tr");                               // framework tag
+        Assert.DoesNotContain(b, x => x.Kind == "u");                          // not a framework tag
     }
 
     // ── components ────────────────────────────────────────────────────────────
@@ -481,6 +483,23 @@ public sealed class HmiAuthoringTests : IDisposable
         Assert.Null(CdpBrowser.Translate("Network.responseReceived", P("{\"response\":{\"status\":200}}")));
         Assert.Null(CdpBrowser.Translate("Network.loadingFailed", P("{\"canceled\":true,\"errorText\":\"x\"}")));
         Assert.Null(CdpBrowser.Translate("Page.loadEventFired", P("{}")));
+        Assert.Equal("[Control=Speed, Property=Value] %s%X%/s% Code: 3005 extra",
+            CdpBrowser.FormatConsole(["[Control=%o, Property=%o] %s Code: %d", "Speed", "Value", "%s%X%/s%", "3005", "extra"]));
+        Assert.Equal("100% done", CdpBrowser.FormatConsole(["100%% done"]));
+    }
+
+    [Fact]
+    public void Check_SameFindingOnManyRowsIsOneFindingWithItsLines_AndFarNamesGetNoSuggestion()
+    {
+        var files = SampleFiles();
+        files["Contents/A.content"] = "<div id=\"A\" data-tchmi-type=\"T\">\n<div id=\"B\" data-tchmi-x=\"%s%Plant.Axis::a%/s%\"></div>\n" +
+                                      "<div id=\"C\" data-tchmi-x=\"%s%Plant.Axis::b%/s%\"></div>\n</div>";
+        var snap = Snap(files);
+        var r = HmiBindingCheck.Check(snap, HmiComponents.Build(snap), Sources("Plant.On", "PLC1.MAIN.nSpeed"), ["Contents/A.content"]);
+        var f = Assert.Single(r.Findings);
+        Assert.Equal(2, f.Count);
+        Assert.Equal([2, 3], f.Lines);
+        Assert.DoesNotContain("did you mean", f.Message, StringComparison.Ordinal);
     }
 
     [Fact]

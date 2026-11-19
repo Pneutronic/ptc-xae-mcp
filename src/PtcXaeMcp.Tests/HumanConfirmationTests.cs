@@ -105,6 +105,7 @@ public sealed class HumanConfirmationTests : IDisposable
         [
             "twincat_persistent_snapshot_restore", // a human answers the host popup before anything is written
             "twincat_hmi_write_symbol", "twincat_hmi_server_control", // HMI writes: popup; server control: this machine only
+            "twincat_hmi_publish", // a human answers the host popup (target, profile, what runs there) before the publish
             "twincat_umr_start", "twincat_umr_stop", // this machine's User Mode Runtime only
             "twincat_ibn_propose", "twincat_persistent_snapshot_test_confirm", // act on a target an earlier, checked call chose
             "twincat_confirm_event_logger", // acknowledges a log entry

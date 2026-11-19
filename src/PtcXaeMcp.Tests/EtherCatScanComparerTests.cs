@@ -140,6 +140,8 @@ public class EtherCatScanXmlTests
     [InlineData("<TreeItem><DeviceDef/></TreeItem>")]
     [InlineData("<TreeItem><DeviceDef><AddressInfo/></DeviceDef></TreeItem>")]
     [InlineData("<TreeItem><DeviceDef><AddressInfo><Pnp/></AddressInfo></DeviceDef></TreeItem>")]
+    // As the XAE writes it for a master without an adapter (captured on the neutral fixture).
+    [InlineData("<TreeItem><DeviceDef><AddressInfo><Pnp><DeviceDesc></DeviceDesc><DeviceName></DeviceName><DeviceData>000000000000</DeviceData></Pnp></AddressInfo></DeviceDef></TreeItem>")]
     [InlineData("")]
     public void ExtractAddressInfo_NoAdapter_IsAnErrorNamingIt(string xml)
     {
@@ -154,7 +156,7 @@ public class EtherCatScanXmlTests
         var (info, _) = EtherCatScanXml.ExtractAddressInfo(TargetXml);
         string xml = EtherCatScanXml.BuildScanXml(info!);
         var doc = System.Xml.Linq.XDocument.Parse(xml);
-        Assert.Equal("1", doc.Descendants("ScanBoxes").Single().Value);
+        Assert.Equal("true", doc.Descendants("ScanBoxes").Single().Value);
         Assert.Single(doc.Descendants("AddressInfo"));
         Assert.Equal("TreeItem", doc.Root!.Name.LocalName);
     }

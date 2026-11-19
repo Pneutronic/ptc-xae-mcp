@@ -111,8 +111,7 @@ internal static class EtherCatScanXml
             if (string.IsNullOrWhiteSpace(deviceXml)) return (null, none);
             var info = XDocument.Parse(deviceXml).Descendants()
                 .FirstOrDefault(e => string.Equals(e.Name.LocalName, "AddressInfo", StringComparison.OrdinalIgnoreCase));
-            bool empty = info is null || !info.Descendants().Any(d => !string.IsNullOrWhiteSpace(d.Value));
-            return empty ? (null, none) : (info!.ToString(SaveOptions.DisableFormatting), null);
+            return info is null || !HasAdapter(info) ? (null, none) : (info.ToString(SaveOptions.DisableFormatting), null);
         }
         catch (Exception ex)
         {
@@ -120,15 +119,22 @@ internal static class EtherCatScanXml
         }
     }
 
+    // A device without an adapter still carries <Pnp><DeviceData>000000000000</DeviceData></Pnp> (live fixture), so
+    // DeviceData alone proves nothing: an adapter is assigned when some other leaf holds a value other than zero.
+    private static bool HasAdapter(XElement addressInfo) =>
+        addressInfo.Descendants()
+            .Where(e => !e.HasElements && !string.Equals(e.Name.LocalName, "DeviceData", StringComparison.OrdinalIgnoreCase))
+            .Any(e => !string.IsNullOrWhiteSpace(e.Value) && e.Value.Trim().Any(c => c != '0'));
+
     /// <summary>
     /// The XML for ConsumeXml on the temporary device: the target's adapter plus the ScanBoxes request
-    /// (Infosys: <c>&lt;TreeItem&gt;&lt;DeviceDef&gt;&lt;ScanBoxes&gt;1&lt;/ScanBoxes&gt;&lt;/DeviceDef&gt;&lt;/TreeItem&gt;</c>).
+    /// (Infosys shows 1; the XAE itself writes <c>true</c>/<c>false</c> into the device XML, so <c>true</c> is used).
     /// </summary>
     internal static string BuildScanXml(string addressInfo) =>
         new XElement("TreeItem",
             new XElement("DeviceDef",
                 XElement.Parse(addressInfo),
-                new XElement("ScanBoxes", "1"))).ToString(SaveOptions.DisableFormatting);
+                new XElement("ScanBoxes", "true"))).ToString(SaveOptions.DisableFormatting);
 
     internal static string TemporaryDeviceName() => "PtcScanTmp_" + Guid.NewGuid().ToString("N")[..8];
 }

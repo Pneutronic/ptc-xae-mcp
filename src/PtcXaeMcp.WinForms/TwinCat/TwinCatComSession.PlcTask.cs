@@ -20,9 +20,8 @@ internal sealed partial class TwinCatComSession
     {
         dynamic dte = GetActiveTcDte();
         object sysMan = RequireSystemManager(dte);
-        object tirt = RequireTirt(sysMan);
         var tasks = new List<RealtimeTaskInfo>();
-        foreach (object task in (List<object>)Children(tirt))
+        foreach (object task in TaskItems(sysMan))
             tasks.Add(ReadRealtimeTask(task));
         return tasks;
     }, OpenTimeout);

@@ -11,10 +11,10 @@ internal sealed partial class TwinCatMcpTools
     [Description("Create a real-time task for a PLC and link it to the PLC project. Creates the task under SYSTEM > Tasks, the " +
                  "PLC task reference linked to it and, with program, the call of that PROGRAM. Refused with [Error] before the logout, " +
                  "nothing changed: name not an IEC identifier or already used by a task, cycle time <= 0 or not a multiple of 100 ns, " +
-                 "priority outside 1..63 or used by another task under TIRT (listed), unknown PLC project or PROGRAM. Logs the XAE out " +
-                 "first. The XAE may adjust cycle time or priority silently: the result shows the read-back values and warns on a " +
-                 "difference. If a later step fails, the [Error] names what was created and how to finish or remove it. Saves on " +
-                 "success; effective at the next Activate Configuration. Priorities of tasks outside TIRT (NC SAF/SVB) are not checked.")]
+                 "priority outside 1..63 or used by another task under TIRT or TINC (NC SAF/SVB; listed), unknown PLC project or " +
+                 "PROGRAM. Logs the XAE out first. The XAE may adjust cycle time or priority silently: the result shows the read-back " +
+                 "values and warns on a difference. If a later step fails, the [Error] names what was created and how to finish or " +
+                 "remove it. Saves on success; effective at the next Activate Configuration.")]
     public string PlcTaskCreate(
         [Description("New task name (IEC identifier), e.g. 'FastTask'; the PLC task reference gets the same name.")] string name,
         [Description("Cycle time in ms, > 0 and a multiple of 0.0001 ms (100 ns), e.g. 10 or 0.5.")] double cycleTimeMs,

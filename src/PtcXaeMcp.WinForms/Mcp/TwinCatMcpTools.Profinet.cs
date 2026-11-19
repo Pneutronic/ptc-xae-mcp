@@ -8,7 +8,8 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_profinet_device_add", ReadOnly = false, Destructive = false)]
-    [Description("Create a Profinet device (RT) on an EL6631-0010: TwinCAT as Profinet IO device for an external Profinet controller. " +
+    [Description("Create a Profinet device (RT) on an EL6631-0010 terminal. TwinCAT acts as Profinet IO device for an external " +
+                 "Profinet controller. " +
                  "Creates the I/O device under I/O > Devices, binds it to the EL6631-0010 in the EtherCAT network and adds its Profinet " +
                  "box from the newest EL6631 GSDML file of the TwinCAT installation (Config\\Io\\Profinet); the XAE names that box itself. Refused with [Error] before " +
                  "the logout, nothing changed: the box is not an EL6631-0010 or already used by a device, the name is taken, no GSDML " +
@@ -26,8 +27,8 @@ internal sealed partial class TwinCatMcpTools
                 new ProfinetCoordinator(bridge.Dispatcher.Session).AddDevice(name, boxPath, dap, syncTask)), cancellationToken);
 
     [McpServerTool(Name = "twincat_profinet_list_modules", ReadOnly = true)]
-    [Description("List the modules of a Profinet device (RT) on an EL6631-0010: the modules placed per slot and the module types its " +
-                 "DAP offers (from the device's GSDML file). Read-only; needs an open solution. Returns a summary line and JSON { device, " +
+    [Description("List the placed and the offered modules of a Profinet device (RT). Placed: per slot; offered: the module types " +
+                 "its DAP allows (from the device's GSDML file). Read-only; needs an open solution. Returns a summary line and JSON { device, " +
                  "box, api, gsdml, dap { number, name, maxSlot }, placed: [{ slot, name, module, identNumber, path }] (slot 0 = the DAP), catalog: " +
                  "[{ module, name, category, identNumber, inputBytes, outputBytes }] }.")]
     public string ProfinetListModules(

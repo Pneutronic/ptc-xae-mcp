@@ -8,7 +8,8 @@ namespace PtcXaeMcp.WinForms;
 internal sealed partial class TwinCatMcpTools
 {
     [McpServerTool(Name = "twincat_task_list", ReadOnly = true)]
-    [Description("List every real-time task: the tasks under SYSTEM > Tasks (TIRT) and the NC tasks SAF/SVB under TINC. Read-only; " +
+    [Description("List every real-time task: PLC, I/O and NC SAF/SVB tasks alike. The tasks under SYSTEM > Tasks (TIRT) and " +
+                 "under TINC. Read-only; " +
                  "needs an open solution. Returns a summary line and JSON { tasks: [{ name, path, kind (plc | io | nc | other), image, " +
                  "priority, cycleTimeMs, cycleTime100ns, amsPort, autoStart, disabled }], warnings }. kind plc = a PLC task reference " +
                  "links it; io = a task with process image that no PLC calls; nc = under TINC. Values the XAE does not show are null.")]
@@ -17,8 +18,8 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() => new TaskCoordinator(bridge.Dispatcher.Session).List()), cancellationToken);
 
     [McpServerTool(Name = "twincat_task_configure", ReadOnly = false, Destructive = true)]
-    [Description("Change priority, cycle time, AMS port and/or the disabled flag of one real-time task (TIRT or TINC, e.g. the NC SAF/SVB " +
-                 "tasks); only the values passed change. Refused with [Error] before the logout, nothing changed: unknown or ambiguous " +
+    [Description("Change priority, cycle time, AMS port or disabled flag of a real-time task. Any task under TIRT or TINC (e.g. " +
+                 "the NC SAF/SVB tasks); only the values passed change. Refused with [Error] before the logout, nothing changed: unknown or ambiguous " +
                  "task, nothing to change, priority outside 1..63 or used by another task (TIRT and TINC), cycle time <= 0 or not a " +
                  "multiple of 100 ns, AMS port outside 1..65535 or used by another task. Logs the XAE out first, reads every value back " +
                  "and saves; a value the XAE did not take is reported with [Warn], none taken is an [Error] without saving. Effective " +
@@ -35,8 +36,8 @@ internal sealed partial class TwinCatMcpTools
                 new TaskCoordinator(bridge.Dispatcher.Session).Configure(task, priority, cycleTimeMs, amsPort, disabled)), cancellationToken);
 
     [McpServerTool(Name = "twincat_io_task_create", ReadOnly = false, Destructive = false)]
-    [Description("Create an I/O task: a real-time task with process image under SYSTEM > Tasks that no PLC calls, for the sync task of " +
-                 "an I/O device (e.g. a Profinet device, AMS port 301). Refused with [Error] before the logout, nothing changed: name not " +
+    [Description("Create an I/O task: a real-time task with image that no PLC calls. It goes under SYSTEM > Tasks and serves as " +
+                 "sync task of an I/O device (e.g. a Profinet device, AMS port 301). Refused with [Error] before the logout, nothing changed: name not " +
                  "an IEC identifier or already used by a task, cycle time <= 0 or not a multiple of 100 ns, priority outside 1..63 or " +
                  "used (TIRT and TINC, listed), AMS port outside 1..65535 or used. Logs the XAE out first. The XAE gives a new image " +
                  "task priority 1 and AMS port 301 by itself; priority (and the port when passed) are written afterwards and read " +

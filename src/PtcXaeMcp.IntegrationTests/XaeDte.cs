@@ -96,6 +96,45 @@ internal static class XaeDte
     }
 
     /// <summary>
+    /// Cleanup for items no MCP tool removes (an I/O device, an I/O task): <c>DeleteChild(name)</c> on
+    /// <paramref name="parentPath"/>, best effort, unsaved. Returns what happened.
+    /// </summary>
+    public static string DeleteChild(string parentPath, string name)
+    {
+        object dte = TryGet() ?? throw new InvalidOperationException("No running XAE (TcXaeShell.DTE) in the ROT.");
+        var refs = new List<object> { dte };
+        T Track<T>(T o) where T : class { refs.Add(o); return o; }
+        try
+        {
+            return Retry(() =>
+            {
+                dynamic solution = Track<object>(((dynamic)dte).Solution);
+                dynamic projects = Track<object>(solution.Projects);
+                dynamic project = Track<object>(projects.Item(1));
+                dynamic sysManager = Track<object>(project.Object);
+                try
+                {
+                    dynamic node = Track<object>(sysManager.LookupTreeItem(parentPath));
+                    node.DeleteChild(name);
+                    return $"{parentPath}^{name}: deleted";
+                }
+                catch (COMException ex) when (ex.HResult != RpcECallRejected && ex.HResult != RpcEServerCallRetryLater)
+                {
+                    return $"{parentPath}^{name}: {ex.Message}";
+                }
+            });
+        }
+        finally
+        {
+            for (int i = refs.Count - 1; i >= 0; i--)
+            {
+                try { if (Marshal.IsComObject(refs[i])) Marshal.FinalReleaseComObject(refs[i]); }
+                catch (Exception) { /* best effort */ }
+            }
+        }
+    }
+
+    /// <summary>
     /// Cleanup for a task created by twincat_plc_task_create (no MCP tool removes one): DeleteChild of the PLC task
     /// reference under <paramref name="plcProjectPath"/> and of the real-time task under TIRT, best effort, unsaved.
     /// Returns what happened per item.

@@ -133,8 +133,17 @@ public class HmiAuthoringIntegrationTests(HmiFixture fx)
     {
         fx.Guard();
 
-        // diagnostics through the server's WebSocket API (no login: the local engineering server)
-        string diag = await fx.CallAsync("twincat_hmi_server_diagnostics", new() { ["hmiProject"] = fx.ProjectName, ["maxEvents"] = 5 });
+        // diagnostics through the server's WebSocket API (no login: the local engineering server). Another test of the
+        // collection may have just restarted the engineering server (ServerControl_ShutdownThenStart_ComesBack): its
+        // WebSocket can still refuse for a few seconds after the extensions report back, so wait up to 60 s for it.
+        string diag = "";
+        var until = DateTime.UtcNow.AddSeconds(60);
+        do
+        {
+            diag = await fx.CallAsync("twincat_hmi_server_diagnostics", new() { ["hmiProject"] = fx.ProjectName, ["maxEvents"] = 5 });
+            if (!diag.StartsWith("[Error] cannot talk to the HMI server", StringComparison.Ordinal)) break;
+            await Task.Delay(3000);
+        } while (DateTime.UtcNow < until);
         Assert.Contains("(engineering server", diag);
         JsonElement d = Json(diag);
         Assert.Equal("Engineering", d.GetProperty("license").GetProperty("STATE").GetString());

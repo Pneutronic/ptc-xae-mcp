@@ -97,7 +97,8 @@ internal sealed partial class TwinCatMcpTools
     [McpServerTool(Name = "twincat_umr_start", ReadOnly = false, Destructive = true)]
     [Description("Start a registered TwinCAT 3 Usermode Runtime instance on the local machine. " +
                  "It starts in Config mode; an init failure returns an error. Does NOT require stopping TcSysSrv. " +
-                 "Fails if this session already tracks a UMR process.")]
+                 "Refused if this session already tracks a UMR process, or if the instance's NetId already answers " +
+                 "over ADS (started elsewhere).")]
     public string UmrStart(
         [Description("Registered instance name (see twincat_umr_list_instances). " +
                      "Omit for the single instance, else 'UmRT_Default'.")] string? instanceName = null,

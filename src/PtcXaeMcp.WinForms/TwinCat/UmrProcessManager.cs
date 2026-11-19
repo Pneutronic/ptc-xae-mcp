@@ -222,6 +222,9 @@ internal sealed class UmrProcessManager : IDisposable
                 ? ParseRegistryNetId(reg)
                 : null);
 
+        if (AlreadyRunningRefusal(instance, effectiveNetId, OpenSystemControl) is { } refusal)
+            throw new InvalidOperationException(refusal);
+
         _initFailed = false;
         lock (_outputLock) _output.Clear();
 
@@ -294,6 +297,38 @@ internal sealed class UmrProcessManager : IDisposable
                 ? $"NetId {effectiveNetId} (-i path, from TcRegistry.xml)"
                 : $"NetId {effectiveNetId} (fixed in Start.bat)";
         return $"UMR instance '{instance}' started (PID={process.Id}), {netIdInfo}. State: Config.";
+    }
+
+    /// <summary>Opens the ADS system control used to probe an instance before it is started. A seam for tests.</summary>
+    internal Func<string, ISystemControl> OpenSystemControl { get; init; } = id => new AdsSystemControl(id);
+
+    /// <summary>
+    /// Refuses to start an instance that already runs, whoever started it. The process tracked by this manager is
+    /// not enough: a UMR started by another server, Start.bat or a service is invisible to it, and its command line
+    /// is often unreadable (another session or elevated). The instance's NetId is the identity that matters — two
+    /// processes with the same NetId fight over the same AMS address. So the system service (port 10000) of that
+    /// NetId is asked for its state: any answer means it runs and nothing is started. Null = no answer, start.
+    /// With the NetId unknown there is nothing to ask and the start goes ahead, as before.
+    /// </summary>
+    internal static string? AlreadyRunningRefusal(string instance, string? netId, Func<string, ISystemControl> openControl)
+    {
+        if (netId is null) return null;
+        TargetStateReading reading;
+        try
+        {
+            using var control = openControl(netId);
+            reading = control.ReadState();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return null; // the probe itself failed: no proof that it runs
+        }
+        if (reading.Error is not null) return null;
+        return $"UMR instance '{instance}' is already running: its NetId {netId} answers over ADS (system state " +
+               $"{reading.State ?? "unknown"}), started outside this server (another server, Start.bat or a service) " +
+               "or by another runtime with the same NetId. No second process was started. Use the running instance " +
+               "as it is " +
+               "(twincat_set_system_mode with that NetId switches Config/Run), or stop it where it was started first.";
     }
 
     private static string? TryReadFile(string path)

@@ -10,6 +10,11 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-11-19
+
+HMI authoring and TF2000: check pages offline and in a headless live view, place controls, check group rights, diagnose
+and publish to a TF2000 server. Tested in the 32-bit and the 64-bit XAE and against a licensed TF2000 server.
+
 ### Added
 - `twincat_hmi_list_components` indexes an HMI project from its saved files: views, contents, user controls with their
   parameters (propertyName, markup attribute, type, required, default), functions with arguments, languages, themes, and
@@ -48,8 +53,8 @@ pull-request numbers refer to those.
 - `twincat_hmi_publish` publishes the HMI project to a TF2000 server with a publish profile saved in the XAE (target,
   user and password, which the XAE keeps encrypted — the Automation Interface does not take a plain password). It reads
   the target before and after and reports success only when the target then names this project. No publish callback is
-  passed: the XAE keeps it and calls it on later builds, which hung the XAE once the MCP host had restarted. A popup
-  asks first. The XAE rewrites
+  passed: the XAE keeps it and calls it on later builds, which hung the XAE once the MCP host had restarted; success is
+  proven by the target's "Publish finished" event instead. A popup asks first. The XAE rewrites
   `Properties/tchmipublish.config.json` during a publish; the tool restores it afterwards.
 - `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
   kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after
@@ -72,7 +77,7 @@ pull-request numbers refer to those.
   `TcHmiSrv.Config::…`) as "through to the PLC" (`writesToPlc` is now false).
 - `twincat_hmi_read_symbols` explains `HMI_ADS_E_USING_TMC` as TMC mode (types and mappings, no values) instead of
   "PLC presumably unreachable".
-- The JSON answers of the HMI tools keep quotes, `<`, `>` and umlauts readable instead of `"`-style escapes.
+- The JSON answers of the HMI tools keep quotes, `<`, `>` and umlauts readable instead of JSON unicode escapes.
 
 ### Changed
 - The server-side TMC route (`twincat_hmi_enable_runtime_tmc` / `_disable_runtime_tmc`) is verified on a live HMI
@@ -829,7 +834,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.1.0...HEAD
+[4.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.1.0
 [4.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.0.0
 [3.2.2]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.2
 [3.2.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.1

@@ -242,6 +242,27 @@ internal static class HmiServerApi
         return list;
     }
 
+    /// <summary>
+    /// The newest events for the summary line: equal ones (severity, domain, text) once with "(×n)", in order of their newest
+    /// occurrence, texts cut before a native location ("[system:…") and to 160 characters — a server that failed the same
+    /// way on every start would otherwise fill the line with one stack text.
+    /// </summary>
+    internal static IEnumerable<string> NewestGrouped(IReadOnlyList<HmiServerEvent> newestFirst, int max) =>
+        newestFirst.GroupBy(e => (e.Severity, e.Domain, Text: ShortText(e.Text)))
+            .Take(max)
+            .Select(g => $"{g.Key.Severity} {g.Key.Domain}: {g.Key.Text}" + (g.Count() > 1 ? $" (×{g.Count()})" : ""));
+
+    private static readonly System.Text.RegularExpressions.Regex SessionId =
+        new(@"\s*\(Session ID [^)]*\)", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+
+    /// <summary>Event text for the summary: without session id and native location, at most 160 characters.</summary>
+    internal static string ShortText(string text)
+    {
+        int native = text.IndexOf(" [system:", StringComparison.Ordinal);
+        string t = SessionId.Replace(native > 0 ? text[..native] : text, "");
+        return t.Length <= 160 ? t : t[..159] + "…";
+    }
+
     /// <summary>Builds the diagnostics report from the answer to <see cref="DiagnosticsCommands"/>.</summary>
     public static (string Summary, object Json) Diagnose(JsonObject answer, string endpoint, string? note, int minSeverity, int maxEvents)
     {
@@ -276,8 +297,9 @@ internal static class HmiServerApi
 
         var events = Events(byName.GetValueOrDefault("ListEvents"));
         var counts = SeverityNames.ToDictionary(s => s, s => events.Count(e => e.Severity == s));
-        var shown = events.Where(e => SeverityLevel(e.Severity) is int l && l >= minSeverity)
-            .OrderByDescending(e => e.Time, StringComparer.Ordinal).Take(Math.Max(0, maxEvents)).ToList();
+        var filtered = events.Where(e => SeverityLevel(e.Severity) is int l && l >= minSeverity)
+            .OrderByDescending(e => e.Time, StringComparer.Ordinal).ToList();
+        var shown = filtered.Take(Math.Max(0, maxEvents)).ToList();
         var activeAlarms = events.Where(IsActiveAlarm).ToList();
         int unconfirmed = events.Count(e => e.Alarm && e.AlarmState is "Raised" or "Cleared");
 
@@ -316,7 +338,7 @@ internal static class HmiServerApi
         sb.Append(CultureInfo.InvariantCulture, $"; events: {counts["critical"]} critical, {counts["error"]} error(s), {counts["warning"]} warning(s)");
         if (activeAlarms.Count > 0) sb.Append(CultureInfo.InvariantCulture, $", {activeAlarms.Count} active alarm(s)");
         if (unconfirmed > 0) sb.Append(CultureInfo.InvariantCulture, $", {unconfirmed} unconfirmed");
-        if (shown.Count > 0) sb.Append(". Newest: ").Append(string.Join(" | ", shown.Take(3).Select(e => $"{e.Severity} {e.Domain}: {e.Text}")));
+        if (shown.Count > 0) sb.Append(". Newest: ").Append(string.Join(" | ", NewestGrouped(filtered, 3)));
         sb.Append('.');
         if (denied.Count > 0) sb.Append(" Not readable for this user: ").Append(string.Join(", ", denied)).Append('.');
         if (info is null && diag is null && denied.Count > 0)

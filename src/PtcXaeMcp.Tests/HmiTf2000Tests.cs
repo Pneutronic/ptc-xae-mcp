@@ -325,6 +325,30 @@ public sealed class HmiTf2000Tests : IDisposable
     }
 
     [Fact]
+    public void Diagnose_RepeatedEventsAreGroupedAndNativeLocationsCut()
+    {
+        // a TF2000 service that failed to bind an endpoint on several starts (live, server 24.0.7)
+        const string bind = "Error: bind: Die angeforderte Adresse ist in diesem Kontext ungültig [system:10049 at C:\\\\agent\\\\boost/asio/detail/win_iocp_socket_service.hpp:243:5]";
+        var answer = JsonNode.Parse($$"""
+            { "commands": [
+              { "symbol": "GetServerInformation", "readValue": { "productVersion": "24.0.7", "creatorMode": false } },
+              { "symbol": "ListEvents", "readValue": [
+                  { "domain": "TcHmiSrv", "name": "ERROR", "localizedString": "{{bind}}", "payloadType": 0, "payload": { "severity": 3, "timeRaised": "2026-11-03T07:10:15Z" } },
+                  { "domain": "TcHmiSrv", "name": "ERROR", "localizedString": "{{bind}}", "payloadType": 0, "payload": { "severity": 3, "timeRaised": "2026-10-30T09:59:07Z" } },
+                  { "domain": "ADS", "name": "RT", "localizedString": "Runtime not reachable", "payloadType": 0, "payload": { "severity": 3, "timeRaised": "2026-11-01T08:00:00Z" } },
+                  { "domain": "TcHmiSrv", "name": "ERROR", "localizedString": "{{bind}}", "payloadType": 0, "payload": { "severity": 3, "timeRaised": "2026-10-09T18:27:15Z" } } ] } ] }
+            """)!.AsObject();
+        var (summary, json) = HmiServerApi.Diagnose(answer, "http://127.0.0.1:1020", null, 3, 2);
+        Assert.Contains("Newest: error TcHmiSrv: Error: bind: Die angeforderte Adresse ist in diesem Kontext ungültig (×3) | error ADS: Runtime not reachable.",
+            summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("[system:", summary, StringComparison.Ordinal);
+        Assert.Contains("[system:10049", System.Text.Json.JsonSerializer.Serialize(json), StringComparison.Ordinal);   // the JSON keeps the full text
+        Assert.Equal(new string('x', 159) + "…", HmiServerApi.ShortText(new string('x', 400)));
+        Assert.Equal("Login failed for user TcHmiUserManagement::op: Authentication failed (HMI_E_AUTH_FAILED)",
+            HmiServerApi.ShortText("Login failed for user TcHmiUserManagement::op: Authentication failed (HMI_E_AUTH_FAILED) (Session ID 994b2fa6...)"));
+    }
+
+    [Fact]
     public void CertificateError_IsFoundThroughTheWrappedChain_AndAllMessagesAreShown()
     {
         var tls = new System.Security.Authentication.AuthenticationException("The remote certificate is invalid according to the validation procedure.");

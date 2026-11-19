@@ -10,6 +10,15 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_variant_create` and `twincat_variant_delete` create and delete project variants (optionally as a member
+  of an existing variant group). The variant list is read back after the write and a write that does not land is
+  rolled back; the active variant cannot be deleted.
+- `twincat_variant_set_item` sets `disabled` and/or the NC axis simulation flag of a tree item for one variant:
+  it turns the item's variant-dependent flag on, switches to the variant, writes and reads back, switches back to
+  the original variant (also after an error) and saves. The result lists the value in every variant. The
+  simulation flag is only written when the axis XML of the XAE carries it; otherwise the call says so.
+
 ## [4.1.0] - 2026-11-19
 
 HMI authoring and TF2000: check pages offline and in a headless live view, place controls, check group rights, diagnose

@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-233 tools, generated from the source attributes — one section per
+236 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -57,7 +57,7 @@
 - [SignalTestbench](#signaltestbench) (4)
 - [StaticAnalysis](#staticanalysis) (1)
 - [TcUnit](#tcunit) (1)
-- [VariantManagement](#variantmanagement) (2)
+- [VariantManagement](#variantmanagement) (5)
 - [VisibleEditor](#visibleeditor) (2)
 - [Visu](#visu) (4)
 - [Workflow](#workflow) (2)
@@ -448,7 +448,7 @@ Add an EtherCAT box/terminal, or a whole subtree, under a TIID node. Same engine
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `parentPath` | `string` |  | Parent tree path, e.g. 'TIID^Device 1 (EtherCAT)' or 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)'. From twincat_get_fieldbus_topology; the bare root 'TIID' is rejected. |
-| `vInfo` | `string?` | `null` | Single box: type, bare 'EL9011' (latest installed revision) or revisioned 'AX5206-0000-0202' (see twincat_list_ethercat_box_catalog). Excludes boxesJson. |
+| `vInfo` | `string?` | `null` | Single box: type, bare 'EL9011' (latest installed revision) or revisioned 'AX5206-0000-0202'; other vendors as 'V<vendorId>_P<productCode>_R<revision>' (8 hex digits each; a bare third-party ESI Type is translated). See twincat_list_ethercat_box_catalog. Excludes boxesJson. |
 | `name` | `string?` | `null` | Single box: designation, e.g. 'A1.49 (EL9011)'. Default: vInfo. |
 | `previousPort` | `string?` | `null` | Single box: upstream port letter A/B/C/D. |
 | `beforeSibling` | `string?` | `null` | Name of an existing sibling to insert before. Default: append at the end. |
@@ -456,7 +456,7 @@ Add an EtherCAT box/terminal, or a whole subtree, under a TIID node. Same engine
 
 ### `twincat_list_ethercat_box_catalog`
 
-List installable EtherCAT box types and their vInfo from the local ESI files. vInfo is the input of twincat_add_ethercat_box. Scans <TwinCAT>\3.1\Config\Io\EtherCAT offline: no XAE, solution or hardware needed. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017), ESI Type, name, productCode, revisionNo, vendor, source file. Malformed ESI files are skipped and counted. The first scan can take seconds; cached until an ESI file changes. Result: summary line + JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }; total counts every match.
+List installable EtherCAT box types and their vInfo from the local ESI files. vInfo is the input of twincat_add_ethercat_box. Scans <TwinCAT>\3.1\Config\Io\EtherCAT offline: no XAE, solution or hardware needed. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017; other vendors V<vendorId>_P<productCode>_R<revision>, e.g. V00000059_P00000013_R00000002), ESI Type, name, productCode, revisionNo, vendor, source file. Malformed ESI files are skipped and counted. The first scan can take seconds; cached until an ESI file changes. Result: summary line + JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }; total counts every match.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1347,11 +1347,11 @@ _No parameters._
 
 ### `twincat_create_nc_task`
 
-Create an NC-Task under the Motion (TINC) root. Needs an open solution. Works only when the project has no NC-Task yet; otherwise it returns guidance to reuse the existing one (twincat_list_nc_tasks_axes + twincat_create_axis). Returns the created tree path as read back. NOT saved: call twincat_save_project.
+Create an NC-Task under the Motion (TINC) root. Needs an open solution. Works only when the project has no NC-Task yet; otherwise it returns guidance to reuse the existing one (twincat_list_nc_tasks_axes + twincat_create_axis). Returns the created tree path as read back. The XAE appends ' SAF' to the name itself ('NC-Task 1' → 'NC-Task 1 SAF'); a trailing ' SAF'/' SVB' in the given name is removed and reported. NOT saved: call twincat_save_project.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `name` | `string` |  | Name for the new NC-Task, e.g. 'NC-Task 1'. |
+| `name` | `string` |  | Base name for the new NC-Task without ' SAF', e.g. 'NC-Task 1'. |
 
 ### `twincat_create_axis`
 
@@ -2384,6 +2384,34 @@ Set the active project variant by name, optionally building afterwards. An unkno
 |---|---|---|---|
 | `variantName` | `string` |  | Variant name as defined in the project, e.g. SIMULATION; [GroupName] activates a variant group. |
 | `rebuildAfter` | `bool` | `true` | Build the solution after switching. Default true; without a build the change does not take effect. |
+
+### `twincat_variant_create`
+
+Create a project variant, optionally as a member of an existing variant group. A duplicate or invalid name returns [Error] and changes nothing; the variant list is read back and a write that does not land is rolled back. The first variant of a project becomes the active variant. Returns JSON { variant, group, activeVariant, availableVariants, groups, notes } or [Error].
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `variantName` | `string` |  | Name of the new variant, e.g. Machine or Simulation. Must not contain [ ] ^ < > & quotes or slashes. |
+| `group` | `string?` | `null` | Optional name of an existing variant group to add the variant to. |
+
+### `twincat_variant_delete`
+
+Delete a project variant and its memberships in variant groups. The active variant (or a member of the active group) is refused with a hint to switch first; an unknown name returns [Error] and changes nothing. Per-variant settings of tree items that remain are named in the result. Returns JSON { variant, removedFromGroups, availableVariants, groups, notes } or [Error].
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `variantName` | `string` |  | Name of the variant to delete, as listed by twincat_get_variant_status. |
+
+### `twincat_variant_set_item`
+
+Set disabled and/or NC axis simulation of a tree item for one project variant. Turns the item's variant-dependent flag on, switches to the variant, writes and reads the value back, switches back to the original variant (also after an error) and saves. Returns JSON { treePath, variant, activeVariant, variants: [{ variant, disabled, axisSimulation }], notes } with the value in every variant, or [Error]. Needs at least one of disabled or axisSimulation.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `treePath` | `string` |  | Tree path of the item, e.g. TIID^Device 1 (I/O device or box) or an NC axis path from twincat_list_nc_tasks_axes. |
+| `variant` | `string` |  | Variant the setting belongs to, as listed by twincat_get_variant_status (a single variant, not [Group]). |
+| `disabled` | `bool?` | `null` | true disables the item in that variant, false enables it. Omit to leave unchanged. |
+| `axisSimulation` | `bool?` | `null` | true makes the NC axis a simulation axis in that variant, false a real one. NC axes only. Omit to leave unchanged. |
 
 ## VisibleEditor
 

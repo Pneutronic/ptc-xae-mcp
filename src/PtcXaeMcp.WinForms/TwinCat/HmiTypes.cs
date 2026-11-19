@@ -88,6 +88,9 @@ internal sealed record HmiOperationResult(bool Ok, string? LastError);
 /// </summary>
 /// <param name="SymbolCount">Entries under <c>SYMBOLS</c> (explicitly configured
 /// symbols), not the number of PLC symbols.</param>
+/// <param name="HasTmcConfig">The runtime carries a <c>TMC</c> object at all. Live 2026-11-18: a runtime
+/// that never had one answers <c>INVALID_SUBSYMBOL</c> for <c>…::TMC</c>, and the server refuses a write
+/// to a leaf below it — the object then has to be written as a whole.</param>
 internal sealed record HmiAdsRuntime(
     string Name,
     bool Enabled,
@@ -97,7 +100,8 @@ internal sealed record HmiAdsRuntime(
     bool UseWhitelisting,
     int SymbolCount,
     bool UseTmc,
-    string? TmcFile);
+    string? TmcFile,
+    bool HasTmcConfig = true);
 
 /// <summary>What a .tmc file on disk turned out to be — read before anything is attached.</summary>
 /// <param name="SymbolCount">Number of <c>&lt;Symbol&gt;</c> entries; 0 means the file

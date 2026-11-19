@@ -10,6 +10,32 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
+  kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after
+  a type was deleted, and how `tchmi.project.Schema.tpl.json` differs.
+- `twincat_hmi_create_project_datatype` creates the project datatype for a PLC STRUCT or ENUM of an attached TMC file
+  (TE2000 "Create new project datatype → based on a remote type"), including enum fields, nested structs and arrays
+  (`<PLC>.ARRAY_1..n_OF-<Type>` with `startOffset`), and asks the HMI server to refresh its project definitions. Refuses
+  a type that already exists, also under another name; identical sub-types are reused.
+- `twincat_hmi_switch_mapping_to_plc` moves mappings from the engineering-only `TMC` domain to an ADS runtime (TE2000
+  "Switch Mapping to PLC"): same mapped name, domain ADS, internal path re-rooted at the runtime. Each mapping is read
+  through the server afterwards; one the runtime does not know gets its old entry back.
+
+### Fixed
+- `twincat_hmi_enable_runtime_tmc` failed on an ADS runtime that never had a `TMC` object (the server refuses a write
+  to a leaf below a missing object). The tool now writes the object as a whole in that case.
+- `twincat_hmi_write_symbol` no longer reports a write to a server configuration symbol (`ADS.Config::…`,
+  `TcHmiSrv.Config::…`) as "through to the PLC" (`writesToPlc` is now false).
+- `twincat_hmi_read_symbols` explains `HMI_ADS_E_USING_TMC` as TMC mode (types and mappings, no values) instead of
+  "PLC presumably unreachable".
+
+### Changed
+- The server-side TMC route (`twincat_hmi_enable_runtime_tmc` / `_disable_runtime_tmc`) is verified on a live HMI
+  engineering server (TE2000 14.17.22.1, server 24.0.7.0): offline mappings get their final `ADS.<runtime>.*` names
+  and read from the PLC after switching back, without re-mapping. `twincat_hmi_map_symbol` points at this route when
+  it refuses the `TMC` domain.
+
 ## [4.0.0] - 2026-11-16
 
 Breaking change: `twincat_apply_schema` no longer creates a GVL; see the migration table below.

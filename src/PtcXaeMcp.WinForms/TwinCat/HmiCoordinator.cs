@@ -156,7 +156,12 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
         if (failed.Count > 0)
             summary += $" Not readable: {string.Join("; ", failed.Take(5).Select(v => $"{v.Symbol} ({v.Error})"))}" +
                        (failed.Count > 5 ? $" … +{failed.Count - 5} more." : ".");
-        if (failed.Any(v => v.Error?.Contains("HMI_ADS_E", StringComparison.Ordinal) == true))
+        // HMI_ADS_E_USING_TMC is not a connection problem: the runtime serves its symbols from a TMC file
+        // (USE_TMC) and by design executes no ADS command (live 2026-11-18).
+        if (failed.Any(v => v.Error?.Contains(UsingTmcCode, StringComparison.Ordinal) == true))
+            summary += " " + UsingTmcNote;
+        if (failed.Any(v => v.Error?.Contains("HMI_ADS_E", StringComparison.Ordinal) == true
+                            && !v.Error.Contains(UsingTmcCode, StringComparison.Ordinal)))
             summary += " " + AdsRuntimeNote;
         string json = JsonSerializer.Serialize(
             new { hmiProject = project.Name, count = values.Count, ok, results = values }, JsonOpts);
@@ -227,8 +232,9 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
         if (dom.Equals(TmcDomain, StringComparison.OrdinalIgnoreCase))
             return ($"[Error] Domain '{TmcDomain}' cannot be mapped: it exists only in the HMI engineering (attached TMC " +
                     "files); the HMI server rejects it with INVALID_DOMAIN and the engineering would keep a dangling " +
-                    "entry. Map against the ADS domain with a reachable PLC, or use an offline server symbol " +
-                    "(twincat_hmi_map_offline_symbol).", "{}");
+                    "entry (verified live on engineering 14.17.22.1). Without a PLC, switch the ADS runtime to its TMC " +
+                    "file (twincat_hmi_enable_runtime_tmc) and map against ADS — the mapping keeps its name when the " +
+                    "runtime is switched back to the PLC (twincat_hmi_disable_runtime_tmc).", "{}");
         string map, target;
         if (hasPath)
         {
@@ -425,8 +431,9 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
         if (listed?.ReadOnly == true)
             return ($"[Error] '{name}' is mapped read-only in '{project.Name}' — not written.", "{}");
 
-        bool writesToPlc = name.StartsWith(HmiSymbolNames.AdsDomain + ".", StringComparison.OrdinalIgnoreCase)
-                           || listed?.Domain.Equals(HmiSymbolNames.AdsDomain, StringComparison.OrdinalIgnoreCase) == true;
+        // ADS.Config::… is the ADS extension's own configuration (live 2026-11-18 it was labelled
+        // "through to the PLC") — a server-config write, not a PLC write.
+        bool writesToPlc = HmiSymbolNames.WritesToPlc(name, listed?.Domain);
         string current = before.Ok ? before.Value ?? "(null)" : $"(not readable: {before.Error})";
         var request = new HmiWriteRequest(HmiWriteKind.WriteSymbol, project.Name, project.ProjectDirectory,
             name, listed?.Domain ?? (writesToPlc ? HmiSymbolNames.AdsDomain : null), value, current, writesToPlc);
@@ -590,7 +597,17 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
         "symbols offline (twincat_hmi_list_plc_tmc_candidates lists the .tmc files of the solution's PLC projects). " +
         "That does NOT make a mapping work without a PLC: the HMI server has no 'TMC' domain (verified live, #160). " +
         "The server-side route is twincat_hmi_enable_runtime_tmc: the ADS runtime then serves the PLC symbols " +
-        "from the TMC file (#161, not yet verified live).";
+        "from the TMC file, so mapping works offline under the final ADS name (verified live, #161).";
+
+    /// <summary>The ADS extension's answer for a read while its runtime uses a TMC file.</summary>
+    internal const string UsingTmcCode = "HMI_ADS_E_USING_TMC";
+
+    /// <summary>Live 2026-11-18: types and mappings work in this mode, values never do.</summary>
+    internal const string UsingTmcNote =
+        "Note: HMI_ADS_E_USING_TMC means the ADS runtime serves its symbols from a TMC file (USE_TMC) — types and " +
+        "mappings work, but no ADS command is executed, so there are no values. This is not a connection problem. " +
+        "To read values, point the runtime at the PLC and switch it back with twincat_hmi_disable_runtime_tmc " +
+        "(twincat_hmi_list_ads_runtimes shows which runtime uses a TMC file).";
 
     /// <summary>Wording is deliberate: the HMI_ADS_E_* codes say the HMI server could
     /// not talk to the PLC runtime — which runtime/NetId is unreachable is not proven.</summary>

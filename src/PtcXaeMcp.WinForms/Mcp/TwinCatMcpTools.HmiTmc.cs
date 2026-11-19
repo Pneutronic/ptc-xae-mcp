@@ -44,6 +44,61 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() =>
                 HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ListPlcTmcCandidates())), cancellationToken);
 
+    [McpServerTool(Name = "twincat_hmi_list_project_datatypes", ReadOnly = true)]
+    [Description("List the project datatypes of an HMI project (tchmi.project.Schema.json). " +
+                 "Per definition: name, kind (userControl/struct/enum/array/alias/other), namespace and where it comes from " +
+                 "(attachedTmc/adsRuntime), $ref targets and dangling $refs (a reference to a project type that no " +
+                 "longer exists). Reports how tchmi.project.Schema.tpl.json differs. A user-control parameter " +
+                 "references a type as tchmi:project#/definitions/<name>.")]
+    public string HmiListProjectDatatypes(
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_hmi_list_project_datatypes", new { hmiProject }, () =>
+            bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).ListProjectDatatypes(hmiProject))), cancellationToken);
+
+    [McpServerTool(Name = "twincat_hmi_create_project_datatype", ReadOnly = false, Destructive = false)]
+    [Description("Create an HMI project datatype from a PLC STRUCT or ENUM of an attached TMC. " +
+                 "Like TE2000 'Create new project datatype → based on a remote type': '<virtualPlc>.<Type>' plus its sub-types (enum fields, " +
+                 "nested structs, arrays as '<virtualPlc>.ARRAY_1..n_OF-<Type>' with startOffset) in " +
+                 "Properties/tchmi.project.Schema.json (and .tpl.json if present), then asks the HMI server to refresh " +
+                 "its project definitions. " + ConfirmNote + " Refuses a type that already exists (also under another " +
+                 "name) and a sub-type that exists with different content; identical sub-types are reused. Use the " +
+                 "result as user-control parameter type 'tchmi:project#/definitions/<name>'. Check with " +
+                 "twincat_hmi_list_project_datatypes.")]
+    public string HmiCreateProjectDatatype(
+        [Description("'<virtualPlc>.<Type>', e.g. 'PLC_TMC.ST_Recipe': the virtual PLC name of an attached TMC file " +
+                     "(twincat_hmi_list_tmc_files) and a STRUCT or ENUM declared in that PLC.")]
+        string remoteType,
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_hmi_create_project_datatype",
+            new { hmiProject, remoteType, confirmTimeoutSeconds }, () =>
+            bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session, host.HmiConfirmer)
+                    .CreateProjectDatatype(hmiProject, remoteType, confirmTimeoutSeconds))), cancellationToken);
+
+    [McpServerTool(Name = "twincat_hmi_switch_mapping_to_plc", ReadOnly = false, Destructive = true)]
+    [Description("Move HMI mappings from the engineering-only TMC domain to a real ADS runtime. " +
+                 "Like TE2000 'Switch Mapping to PLC': same mapped name, DOMAIN=ADS, internal path re-rooted at the runtime, so bindings keep " +
+                 "working. Default: all TMC mappings. " + ConfirmNote + " Each mapping is read through the server " +
+                 "afterwards; when the PLC does not know the symbol the old entry is written back and the mapping is " +
+                 "reported as not switched. A runtime still in TMC mode cannot tell (state switchedUnverified). Mappings made with twincat_hmi_enable_runtime_tmc are ADS already — use " +
+                 "twincat_hmi_disable_runtime_tmc for those.")]
+    public string HmiSwitchMappingToPlc(
+        [Description(HmiAdsRuntimeParam)] string runtime,
+        [Description("Mapped names to switch (default: every mapping in the TMC domain, at most 200).")]
+        string[]? mapNames = null,
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_hmi_switch_mapping_to_plc",
+            new { hmiProject, runtime, mapNames, confirmTimeoutSeconds }, () =>
+            bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session, host.HmiConfirmer)
+                    .SwitchMappingToPlc(hmiProject, runtime, mapNames, confirmTimeoutSeconds))), cancellationToken);
+
     [McpServerTool(Name = "twincat_hmi_attach_tmc_file", ReadOnly = false, Destructive = false)]
     [Description("Attach a PLC project's TMC file to an HMI project for offline symbols. Like TE2000 'Attach TMC " +
                  "file', its symbols become bindable in the engineering without a PLC. " + ConfirmNote + " Refuses a file or virtualPlcName " +
@@ -86,7 +141,7 @@ internal sealed partial class TwinCatMcpTools
                  "reading and binding then work without any PLC (twincat_hmi_attach_tmc_file only feeds the " +
                  "engineering). Converts the .tmc into a .bin in the engineering server's folder and sets USE_TMC=true. " +
                  ConfirmNote + " Whether symbols are served is not checked: read one with twincat_hmi_read_symbols. " +
-                 "Undo with twincat_hmi_disable_runtime_tmc. Not yet verified on a live HMI server.")]
+                 "Undo with twincat_hmi_disable_runtime_tmc. Values need the PLC (HMI_ADS_E_USING_TMC until then).")]
     public string HmiEnableRuntimeTmc(
         [Description(HmiAdsRuntimeParam)] string runtime,
         [Description(HmiTmcFileParam)]
@@ -103,7 +158,7 @@ internal sealed partial class TwinCatMcpTools
     [McpServerTool(Name = "twincat_hmi_disable_runtime_tmc", ReadOnly = false, Destructive = true)]
     [Description("Switch an HMI ADS runtime from a TMC file back to the PLC (USE_TMC=false). Without a reachable " +
                  "PLC it then has no symbols. " + ConfirmNote + " No TMC in use = 'Nothing to " +
-                 "do'. The .bin stays on disk. Not yet verified on a live HMI server.")]
+                 "do'. The .bin stays on disk. Mappings made in TMC mode keep their names.")]
     public string HmiDisableRuntimeTmc(
         [Description(HmiAdsRuntimeParam)] string runtime,
         [Description(HmiProjectParam)] string? hmiProject = null,

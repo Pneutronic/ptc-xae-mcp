@@ -687,8 +687,19 @@ internal interface ITwinCatSession : IDisposable
     /// each through <c>ITcHmiServer.WriteSymbolJson</c>. Ok=false (with LastError naming the leaf)
     /// when the server refused a write; the first leaf may then already be written. Raw call —
     /// the read-back of <c>ADS.Config::RUNTIMES</c> in <c>HmiCoordinator.EnableRuntimeTmc</c> decides.
+    /// <paramref name="createTmcObject"/>: the runtime has no <c>TMC</c> object yet, so the server would refuse
+    /// both leaf writes (live 2026-11-18) — write <c>…::TMC</c> as one object holding both values instead.
     /// </summary>
-    HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc);
+    HmiOperationResult SetHmiRuntimeTmc(string hmiProject, string runtime, string dataSymbolUpAndDownload, bool useTmc,
+        bool createTmcObject = false);
+
+    /// <summary>
+    /// hmi-offline-types: the server request TE2000 sends after it changed tchmi.project.Schema.json
+    /// (<c>Symbol="RefreshDefinitions", WriteValue="project"</c>, decompiled engineering 14.17.22.1), so the server
+    /// and through it the engineering read the project datatypes again — nothing watches the file. Sent through
+    /// <c>ITcHmiServer.WriteSymbolJson</c>. Ok=false with LastError when the server refused it.
+    /// </summary>
+    HmiOperationResult RefreshHmiDefinitions(string hmiProject, string domain);
 
     /// <summary>
     /// hmi-internal-symbols (#165): <c>ITcHmiProject.GetInternalSymbolInstance(name, value, type,

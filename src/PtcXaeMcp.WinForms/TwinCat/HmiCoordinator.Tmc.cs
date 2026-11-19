@@ -435,7 +435,8 @@ internal sealed partial class HmiCoordinator
                 Bool(rt, "USE_WHITELISTING") ?? false,
                 Member(rt, "SYMBOLS") is { ValueKind: JsonValueKind.Object } s ? s.EnumerateObject().Count() : 0,
                 Bool(tmc, "USE_TMC") ?? false,
-                Text(tmc, "DATA_SYMBOLUPANDDOWNLOAD")));
+                Text(tmc, "DATA_SYMBOLUPANDDOWNLOAD"),
+                tmc.ValueKind == JsonValueKind.Object));
         }
         return runtimes.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }

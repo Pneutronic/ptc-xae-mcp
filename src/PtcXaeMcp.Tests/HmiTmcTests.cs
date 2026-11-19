@@ -751,7 +751,7 @@ public class HmiTmcTests : IDisposable
 
         Assert.StartsWith("[Error]", summary);
         Assert.Contains("INVALID_DOMAIN", summary, StringComparison.Ordinal);
-        Assert.Contains("twincat_hmi_map_offline_symbol", summary, StringComparison.Ordinal);
+        Assert.Contains("twincat_hmi_enable_runtime_tmc", summary, StringComparison.Ordinal);
         Assert.DoesNotContain(fake.CallLog, c => c.StartsWith("MapHmiSymbol", StringComparison.Ordinal));
     }
 

@@ -20,7 +20,10 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 /// </list>
 /// TE2000 only does this for a NEW project, automatically, through an XAE-internal TMC stream; no
 /// dialog offers it. Success is decided by reading <c>ADS.Config::RUNTIMES</c> back — never by the
-/// write calls' own answers. Not verified live yet (#161).
+/// write calls' own answers. Verified live 2026-11-18 (engineering 14.17.22.1, engineering server
+/// 24.0.7.0): offline mapping works under the final names (<c>ADS.&lt;rt&gt;.*</c>, schema
+/// <c>tchmi:server#/definitions/ADS-&lt;rt&gt;.&lt;Type&gt;</c>), values need the PLC; after
+/// <see cref="DisableRuntimeTmc"/> the same mappings read from the real PLC without re-mapping.
 /// </summary>
 internal sealed partial class HmiCoordinator
 {
@@ -98,7 +101,9 @@ internal sealed partial class HmiCoordinator
         }
 
         HmiOperationResult result;
-        try { result = Session.SetHmiRuntimeTmc(project.Name, current.Name, relative, useTmc: true); }
+        // Live 2026-11-18: a runtime without a TMC object refuses both leaf writes — write the object whole.
+        try { result = Session.SetHmiRuntimeTmc(project.Name, current.Name, relative, useTmc: true,
+                  createTmcObject: !current.HasTmcConfig); }
         catch (Exception ex) when (IsHmiFailure(ex))
         {
             return (WithDialogHint($"[Error] Writing {RuntimeTmcSymbol(current.Name)} failed: {ex.Message.TrimEnd('.')}. " +
@@ -140,7 +145,8 @@ internal sealed partial class HmiCoordinator
             module = info.ModuleName,
             nativeLibrary = info.NativeLibrary,
             nativeVersion = info.NativeVersion,
-            previous = new { useTmc = current.UseTmc, tmcFile = current.TmcFile },
+            previous = new { useTmc = current.UseTmc, tmcFile = current.TmcFile, hasTmcConfig = current.HasTmcConfig },
+            createdTmcObject = !current.HasTmcConfig,
             confirmation = ConfirmationWire(outcome),
         }, JsonOpts);
         return (summary, json);

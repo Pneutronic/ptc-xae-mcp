@@ -29,6 +29,9 @@ internal enum HmiWriteKind
     AddInternalSymbol,
     RemoveInternalSymbol,
     MapOfflineSymbol,
+    // hmi-offline-types
+    CreateProjectDatatype,
+    SwitchMappingToPlc,
 }
 
 /// <summary>What the popup shows the engineer before anything is written.</summary>
@@ -150,6 +153,26 @@ internal static partial class HmiSymbolNames
     /// <c>rootNamespace</c> of AttachTmcFile)?</summary>
     public static bool IsValidRuntime(string? runtime) =>
         !string.IsNullOrWhiteSpace(runtime) && RuntimeRegex().IsMatch(runtime.Trim());
+
+    /// <summary>A server-extension configuration symbol (<c>ADS.Config</c>, <c>ADS.Config::RUNTIMES::PLC1</c>,
+    /// <c>TcHmiSrv.Config::…</c>): its root before the first <c>::</c> is exactly <c>&lt;Extension&gt;.Config</c>
+    /// (one dot — <c>ADS.PLC1.GVL.Config</c> is a PLC variable). A write to one changes the HMI server's
+    /// configuration, never a PLC variable.</summary>
+    public static bool IsServerConfigSymbol(string? symbol)
+    {
+        string name = symbol?.Trim() ?? "";
+        int sep = name.IndexOf("::", StringComparison.Ordinal);
+        string[] parts = (sep < 0 ? name : name[..sep]).Split('.');
+        return parts.Length == 2 && parts[0].Length > 0
+               && parts[1].Equals("Config", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Does a write to <paramref name="symbol"/> go through the ADS extension to a PLC variable?
+    /// Server configuration (<see cref="IsServerConfigSymbol"/>) never does, even under <c>ADS.</c>.</summary>
+    public static bool WritesToPlc(string? symbol, string? listedDomain) =>
+        !IsServerConfigSymbol(symbol)
+        && ((symbol?.Trim() ?? "").StartsWith(AdsDomain + ".", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(listedDomain, AdsDomain, StringComparison.OrdinalIgnoreCase));
 
     public static bool TryFromPlcPath(string? plcPath, string? runtime,
         out string mapName, out string internalName, out string? error)

@@ -436,6 +436,36 @@ public class HmiCoordinatorTests
     }
 
     [Fact]
+    public void ReadSymbols_UsingTmc_SaysTmcModeNotUnreachable()
+    {
+        // Live 2026-11-18: a runtime with USE_TMC=true answers every value read like this.
+        var fake = Session(Entry(PlantHmi));
+        fake.HmiSymbolErrors["ADS.PLC1.MAIN.bStart"] =
+            "server request: Command Error: Code:1048624, Message: HMI_ADS_E_USING_TMC, " +
+            "Reason: In this mode, no ADS commands can be executed.";
+
+        var (summary, _) = new HmiCoordinator(fake).ReadSymbols(null, ["ADS.PLC1.MAIN.bStart"]);
+
+        Assert.Contains(HmiCoordinator.UsingTmcNote, summary);
+        Assert.Contains("twincat_hmi_disable_runtime_tmc", summary);
+        Assert.DoesNotContain("not reachable", summary);
+        Assert.DoesNotContain(HmiCoordinator.AdsRuntimeNote, summary);
+    }
+
+    [Fact]
+    public void ReadSymbols_UsingTmcAndTimeout_GetsBothNotes()
+    {
+        var fake = Session(Entry(PlantHmi));
+        fake.HmiSymbolErrors["ADS.PLC1.A"] = "server request: Message: HMI_ADS_E_USING_TMC";
+        fake.HmiSymbolErrors["ADS.PLC2.B"] = "server request: Message: HMI_ADS_E_SYNC_TIMEOUT";
+
+        var (summary, _) = new HmiCoordinator(fake).ReadSymbols(null, ["ADS.PLC1.A", "ADS.PLC2.B"]);
+
+        Assert.Contains(HmiCoordinator.UsingTmcNote, summary);
+        Assert.Contains(HmiCoordinator.AdsRuntimeNote, summary);
+    }
+
+    [Fact]
     public void ReadSymbols_UnmappedName_NoAdsNote()
     {
         var (summary, _) = new HmiCoordinator(Session(Entry(PlantHmi))).ReadSymbols(null, ["NoSuch.Symbol"]);

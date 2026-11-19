@@ -38,6 +38,17 @@ internal static class HmiRuntimeTmc
     internal static string ConfigSymbol(string runtime, string leaf) =>
         $"{HmiCoordinator.AdsRuntimesSymbol}::{runtime}::TMC::{leaf}";
 
+    /// <summary>The runtime's whole <c>TMC</c> object, written when the runtime has none yet.</summary>
+    internal static string TmcObjectSymbol(string runtime) => $"{HmiCoordinator.AdsRuntimesSymbol}::{runtime}::TMC";
+
+    /// <summary>The <c>TMC</c> object holding both leaves — the value accepted live on 2026-11-18.</summary>
+    internal static string TmcObjectJson(string dataSymbolUpAndDownload, bool useTmc) =>
+        System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            [DataSymbolUpAndDownload] = dataSymbolUpAndDownload,
+            [UseTmc] = useTmc,
+        });
+
     // ---- where the .bin goes ------------------------------------------------------
 
     /// <summary>

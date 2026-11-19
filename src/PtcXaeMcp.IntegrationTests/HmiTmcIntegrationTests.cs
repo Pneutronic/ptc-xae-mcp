@@ -170,8 +170,9 @@ public class HmiTmcIntegrationTests(HmiFixture fx)
     }
 
     [Trait("Description", "#161 Abnahme: mit USE_TMC lässt sich ein PLC-Symbol des Fixtures OHNE SPS über die ADS-Domain mappen (B10 gelöst); danach unmap + disable.")]
-    // Fails in every live run since 2.5.0; taken out until the HMI tools are reviewed as a whole.
-    [SkippableFact(Timeout = 300_000, Skip = "Known failure since 2.5.0 (runtime TMC mapping without a PLC); parked until the HMI tools are reviewed.")]
+    // Failed since 2.5.0 because enable_runtime_tmc wrote the TMC leaves of a runtime that has no TMC object
+    // (refused by the server); the tool now writes the object whole.
+    [SkippableFact(Timeout = 300_000)]
     public async Task RuntimeTmc_Enabled_MapsAPlcSymbolWithoutAPlc()
     {
         fx.Guard();
@@ -182,13 +183,21 @@ public class HmiTmcIntegrationTests(HmiFixture fx)
         try
         {
             (runtime, _) = await EnableRuntimeTmcAsync();
-            string map = await fx.CallAsync("twincat_hmi_map_symbol", new()
+            // Live 2026-11-18: right after USE_TMC the ADS extension may not have loaded the converted file yet —
+            // the same map succeeded a few seconds later. A refused map writes nothing, so it is retried.
+            string map = "";
+            for (int attempt = 0; attempt < 10; attempt++)
             {
-                ["plcPath"] = FixtureLayout.BoolSymbol,
-                ["runtime"] = runtime,
-                ["hmiProject"] = fx.ProjectName,
-                ["confirmTimeoutSeconds"] = 30,
-            });
+                map = await fx.CallAsync("twincat_hmi_map_symbol", new()
+                {
+                    ["plcPath"] = FixtureLayout.BoolSymbol,
+                    ["runtime"] = runtime,
+                    ["hmiProject"] = fx.ProjectName,
+                    ["confirmTimeoutSeconds"] = 30,
+                });
+                if (!map.StartsWith("[Error]", StringComparison.Ordinal)) break;
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
             Assert.False(map.StartsWith("[Error]", StringComparison.Ordinal),
                 "With USE_TMC the ADS extension should know the PLC symbols without a PLC: " + map);
             mapName = Json(map).GetProperty("mapName").GetString();
@@ -219,5 +228,154 @@ public class HmiTmcIntegrationTests(HmiFixture fx)
         JsonElement rt = json.GetProperty("runtimes").EnumerateArray().First();
         Assert.Matches(@"^\d{1,3}(\.\d{1,3}){5}$", rt.GetProperty("netId").GetString()!);
         Assert.True(rt.GetProperty("port").GetInt32() > 0, text);
+    }
+
+    // ── hmi-offline-types ───────────────────────────────────────────────────
+
+    private string SchemaPath => Path.Combine(fx.ProjectDirectory, "Properties", "tchmi.project.Schema.json");
+
+    private async Task<JsonElement> DatatypesAsync()
+    {
+        string text = await fx.CallAsync("twincat_hmi_list_project_datatypes", new() { ["hmiProject"] = fx.ProjectName });
+        Assert.False(text.StartsWith("[Error]", StringComparison.Ordinal), text);
+        return Json(text);
+    }
+
+    [Trait("Description", "Projekt-Datentypen der HMI-Fixture lesbar: Schema-Datei gefunden, keine verwaisten $refs.")]
+    [SkippableFact(Timeout = 180_000)]
+    public async Task ListProjectDatatypes_ReadsTheFixtureSchema()
+    {
+        fx.Guard();
+        JsonElement json = await DatatypesAsync();
+        Assert.Equal(SchemaPath, json.GetProperty("schemaFile").GetString(), StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(0, json.GetProperty("danglingCount").GetInt32());
+    }
+
+    [Trait("Description", "Remote-Typ aus angehängter TMC: attach → create_project_datatype ST_FixtureRecord (Struct + Enum) → list zeigt beide ohne verwaiste $refs → zweites create abgewiesen; Schema-Datei danach zurückgesetzt.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task CreateProjectDatatype_FromAttachedTmc_ReadsBack()
+    {
+        fx.Guard();
+        Skip.IfNot(HmiFixture.ExpectAutoConfirm, "Write lifecycle needs the TEMP-only auto-confirm (PTC_XAE_MCP_HMI_EXPECT_AUTOCONFIRM=1).");
+
+        string original = File.ReadAllText(SchemaPath);
+        string tmc = CopyFixtureTmcIntoTempTree();
+        string root = VirtualPlc + ".ST_FixtureRecord";
+        try
+        {
+            string attach = await fx.CallAsync("twincat_hmi_attach_tmc_file", new()
+            {
+                ["tmcFile"] = tmc,
+                ["hmiProject"] = fx.ProjectName,
+                ["confirmTimeoutSeconds"] = 30,
+            });
+            Assert.False(attach.StartsWith("[Error]", StringComparison.Ordinal), attach);
+
+            string create = await fx.CallAsync("twincat_hmi_create_project_datatype", new()
+            {
+                ["remoteType"] = root,
+                ["hmiProject"] = fx.ProjectName,
+                ["confirmTimeoutSeconds"] = 30,
+            });
+            Assert.False(create.StartsWith("[Error]", StringComparison.Ordinal), create);
+            JsonElement c = Json(create);
+            Assert.Equal("tchmi:project#/definitions/" + root, c.GetProperty("parameterType").GetString());
+            // Whether the server accepts RefreshDefinitions through WriteSymbolJson is recorded, not asserted.
+            Console.WriteLine($"create_project_datatype refreshed={c.GetProperty("refreshed").GetBoolean()} " +
+                              $"error={(c.TryGetProperty("refreshError", out JsonElement re) ? re.ToString() : "")}");
+
+            JsonElement list = await DatatypesAsync();
+            var byName = list.GetProperty("definitions").EnumerateArray().ToDictionary(d => d.GetProperty("name").GetString()!);
+            Assert.Equal("struct", byName[root].GetProperty("kind").GetString());
+            Assert.Equal("enum", byName[VirtualPlc + ".E_FixtureMode"].GetProperty("kind").GetString());
+            Assert.Equal("attachedTmc", byName[root].GetProperty("source").GetString());
+            Assert.Equal(0, list.GetProperty("danglingCount").GetInt32());
+
+            string again = await fx.CallAsync("twincat_hmi_create_project_datatype", new()
+            {
+                ["remoteType"] = root,
+                ["hmiProject"] = fx.ProjectName,
+                ["confirmTimeoutSeconds"] = 30,
+            });
+            Assert.StartsWith("[Error]", again);
+            Assert.Contains("already exists", again, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.WriteAllText(SchemaPath, original);   // TEMP copy only; there is no delete tool
+            await fx.CallAsync("twincat_hmi_detach_tmc_file", new()
+            {
+                ["virtualPlcName"] = VirtualPlc,
+                ["hmiProject"] = fx.ProjectName,
+                ["confirmTimeoutSeconds"] = 30,
+            });
+        }
+    }
+
+    [Trait("Description", "Switch Mapping to PLC: ein TMC-Domain-Eintrag (per Server-Config angelegt) wird auf die ADS-Runtime mit USE_TMC umgestellt — gleicher Name, Domain ADS, Runtime kennt das Symbol; danach unmap + disable.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task SwitchMappingToPlc_TmcEntry_BecomesAdsUnderTheSameName()
+    {
+        fx.Guard();
+        Skip.IfNot(HmiFixture.ExpectAutoConfirm, "Write lifecycle needs the TEMP-only auto-confirm (PTC_XAE_MCP_HMI_EXPECT_AUTOCONFIRM=1).");
+
+        string mapName = VirtualPlc + "." + FixtureLayout.BoolSymbol;
+        string config = "TcHmiSrv.Config::SYMBOLS::" + mapName;
+        string? runtime = null;
+        try
+        {
+            (runtime, _) = await EnableRuntimeTmcAsync();
+            // The entry of a TMC-domain mapping (the domain itself never serves values, #160).
+            string entry = JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["ACCESS"] = 3,
+                ["DOMAIN"] = "TMC",
+                ["MAPPING"] = VirtualPlc + "::" + FixtureLayout.BoolSymbol.Replace(".", "::", StringComparison.Ordinal),
+                ["USEMAPPING"] = true,
+            });
+            string write = await fx.CallAsync("twincat_hmi_write_symbol", new()
+            {
+                ["symbol"] = config,
+                ["valueJson"] = entry,
+                ["hmiProject"] = fx.ProjectName,
+                ["confirmTimeoutSeconds"] = 30,
+            });
+            Assert.False(write.StartsWith("[Error]", StringComparison.Ordinal), write);
+            Assert.DoesNotContain("through to the PLC", write, StringComparison.Ordinal);
+
+            string sw = await fx.CallAsync("twincat_hmi_switch_mapping_to_plc", new()
+            {
+                ["runtime"] = runtime,
+                ["mapNames"] = new[] { mapName },
+                ["hmiProject"] = fx.ProjectName,
+                ["confirmTimeoutSeconds"] = 30,
+            });
+            Assert.False(sw.StartsWith("[Error]", StringComparison.Ordinal), sw);
+            JsonElement result = Json(sw).GetProperty("results")[0];
+            Assert.Equal(mapName, result.GetProperty("mappedName").GetString());
+            string state = result.GetProperty("state").GetString()!;
+            // In TMC mode the runtime answers HMI_ADS_E_USING_TMC for any name, so the target is not proven.
+            Assert.True(state is "switched" or "switchedUnverified", sw);
+
+            string read = await fx.CallAsync("twincat_hmi_read_symbols", new()
+            {
+                ["symbols"] = new[] { config },
+                ["hmiProject"] = fx.ProjectName,
+            });
+            string value = Json(read).GetProperty("results")[0].GetProperty("value").GetString()!;
+            using var after = JsonDocument.Parse(value);
+            Assert.Equal("ADS", after.RootElement.GetProperty("DOMAIN").GetString());
+        }
+        finally
+        {
+            // Removes the entry whatever its domain (unmap verifies against the live server).
+            await fx.CallAsync("twincat_hmi_unmap_symbol", new()
+            {
+                ["mapName"] = mapName,
+                ["hmiProject"] = fx.ProjectName,
+                ["confirmTimeoutSeconds"] = 30,
+            });
+            if (runtime is not null) await DisableRuntimeTmcAsync(runtime);   // best effort
+        }
     }
 }

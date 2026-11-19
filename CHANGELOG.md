@@ -23,6 +23,9 @@ pull-request numbers refer to those.
   through the server afterwards; one the runtime does not know gets its old entry back.
 
 ### Fixed
+- `twincat_umr_start` started a second process for a Usermode Runtime instance that was already running when another
+  process (another server, `Start.bat`, a service) had started it. It now asks the instance's NetId over ADS (port 10000,
+  1 s timeout) first and refuses the start when it answers.
 - `twincat_hmi_enable_runtime_tmc` failed on an ADS runtime that never had a `TMC` object (the server refuses a write
   to a leaf below a missing object). The tool now writes the object as a whole in that case.
 - `twincat_hmi_write_symbol` no longer reports a write to a server configuration symbol (`ADS.Config::…`,

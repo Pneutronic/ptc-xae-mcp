@@ -113,14 +113,22 @@ public class HumanConfirmationIntegrationTests : IAsyncLifetime
         Assert.Contains("already in Run mode", text);
     }
 
-    [Trait("Description", "Default 'remote': eine Aktion auf einem anderen System wird per MCP-Elicitation gefragt; 'decline' tut nichts, 'accept' erreicht den Tool-Rumpf.")]
+    [Trait("Description", "Default 'remote': eine Aktion auf einem anderen System wird per MCP-Elicitation gefragt; ein 'decline' nach menschlicher Bedenkzeit tut nichts, ein sofortiges 'decline' (kein Dialog gezeigt, #51) führt zum Freigabe-Token, 'accept' erreicht den Tool-Rumpf.")]
     [SkippableFact(Timeout = 180_000)]
     public async Task Remote_AnotherSystemIsAsked_AndTheAnswerDecides()
     {
         SkipIfNotReady();
         var questions = new List<ElicitRequestParams>();
         string action = "decline";
-        await using var client = await ConnectAsync(q => { questions.Add(q); return Answer(action, confirmed: action == "accept"); });
+        // A person needs time to read the question; a "No" faster than the host's MinHumanAnswer (1 s) is taken as a
+        // client that declined without showing anything (#51).
+        int thinkMs = 1500;
+        await using var client = await ConnectAsync(q =>
+        {
+            questions.Add(q);
+            if (thinkMs > 0) Thread.Sleep(thinkMs);
+            return Answer(action, confirmed: action == "accept");
+        });
         Skip.If(await ModeAsync(client) == "off", "the host runs with the confirmation off");
 
         string declined = await CallAsync(client, "twincat_set_system_mode", new() { ["amsNetId"] = Elsewhere, ["mode"] = "config" });
@@ -131,10 +139,17 @@ public class HumanConfirmationIntegrationTests : IAsyncLifetime
         Assert.Contains(Elsewhere, question.Message);
         Assert.Contains("mode=config", question.Message);
 
+        thinkMs = 0;
+        string instant = await CallAsync(client, "twincat_set_system_mode", new() { ["amsNetId"] = Elsewhere, ["mode"] = "config" });
+
+        Assert.Equal(2, questions.Count);
+        Assert.StartsWith("[Confirm]", instant);
+        Assert.DoesNotContain("Declined by the human", instant);
+
         action = "accept";
         string accepted = await CallAsync(client, "twincat_set_system_mode", new() { ["amsNetId"] = Elsewhere, ["mode"] = "config" });
 
-        Assert.Equal(2, questions.Count);
+        Assert.Equal(3, questions.Count);
         Assert.DoesNotContain("Declined by the human", accepted);
         Assert.DoesNotContain("[Confirm]", accepted);
         Assert.StartsWith("[Error]", accepted); // the body ran and found nothing to talk to

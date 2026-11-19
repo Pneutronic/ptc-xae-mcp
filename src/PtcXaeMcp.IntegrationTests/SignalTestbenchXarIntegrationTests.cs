@@ -272,9 +272,13 @@ public class SignalTestbenchXarIntegrationTests : IAsyncLifetime
             Assert.False(unstable.RootElement.GetProperty("passed").GetBoolean());
             var v = unstable.RootElement.GetProperty("firstViolation");
             Assert.Equal(CycleCounter, v.GetProperty("symbol").GetString(), ignoreCase: true);
-            Assert.InRange(v.GetProperty("atMs").GetDouble(), 0, 3 * cycle + 500);
-            // Usually one count; a count can fall between reading the start value and the first notification.
-            Assert.InRange(v.GetProperty("to").GetInt64() - v.GetProperty("from").GetInt64(), 1, 3);
+            double atMs = v.GetProperty("atMs").GetDouble();
+            Assert.InRange(atMs, 0, 3 * cycle + 500);
+            // Usually one count; counts can fall between the start value and the first notification. Over a routed
+            // runtime (ADS over MQTT) that takes several cycles (seen 6-7 at a 10 ms cycle), so the bound follows the
+            // time the violation was seen at instead of a fixed number.
+            long step = v.GetProperty("to").GetInt64() - v.GetProperty("from").GetInt64();
+            Assert.InRange(step, 1, Math.Max(3, (long)Math.Ceiling(atMs / cycle) + 2));
         }
 
         using (var never = Json(await CallAsync("twincat_ads_expect",

@@ -47,8 +47,9 @@ pull-request numbers refer to those.
   written back to the symbol) instead of skipping it.
 - `twincat_hmi_publish` publishes the HMI project to a TF2000 server with a publish profile saved in the XAE (target,
   user and password, which the XAE keeps encrypted — the Automation Interface does not take a plain password). It reads
-  the target before and after and reports success only when the target then names this project; the XAE's progress
-  messages come back through the publish callback. A popup asks first. The XAE rewrites
+  the target before and after and reports success only when the target then names this project. No publish callback is
+  passed: the XAE keeps it and calls it on later builds, which hung the XAE once the MCP host had restarted. A popup
+  asks first. The XAE rewrites
   `Properties/tchmipublish.config.json` during a publish; the tool restores it afterwards.
 - `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
   kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after

@@ -4,7 +4,10 @@ using System.Text.Json.Nodes;
 namespace PtcXaeMcp.WinForms.TwinCat;
 
 /// <summary>What a TF2000 server says about itself before or after a publish (read through its WebSocket API).</summary>
-internal sealed record HmiPublishTargetState(string? ProjectName, string? ProjectVersion, string? License, string? User, string? Error)
+/// <param name="ServerTime">serverTime of GetServerInformation (UTC, ISO 8601).</param>
+/// <param name="LastPublished">Time of the newest "PROJECT_PUBLISHED" event ("Publish finished") in its event log.</param>
+internal sealed record HmiPublishTargetState(string? ProjectName, string? ProjectVersion, string? License, string? User, string? Error,
+    string? ServerTime = null, string? LastPublished = null)
 {
     public static HmiPublishTargetState Failed(string error) => new(null, null, null, null, error);
 }
@@ -22,9 +25,13 @@ internal sealed partial class HmiCoordinator
 {
     internal const int MinPublishTimeoutSeconds = 30, MaxPublishTimeoutSeconds = 1800;
 
+    // Live 2026-11-19 (TF2000 24.0.7): every publish logs PROJECT_PUBLISH_START "Publish started" and, when done,
+    // PROJECT_PUBLISHED "Publish finished" — the proof of a publish even when the same project ran there before.
+    internal const string PublishedEvent = "PROJECT_PUBLISHED";
+
     internal static JsonArray TargetStateCommands() =>
         [new JsonObject { ["symbol"] = "GetServerInformation" }, new JsonObject { ["symbol"] = "Diagnostics" },
-         new JsonObject { ["symbol"] = "GetCurrentUser" }];
+         new JsonObject { ["symbol"] = "GetCurrentUser" }, new JsonObject { ["symbol"] = "ListEvents" }];
 
     /// <summary>Reads project name/version, license state and user from <paramref name="targetUrl"/>.</summary>
     public static async Task<HmiPublishTargetState> ReadPublishTargetAsync(string targetUrl, string? user, string? password,
@@ -43,10 +50,21 @@ internal sealed partial class HmiCoordinator
         if (info is null)
             return HmiPublishTargetState.Failed(NoRightsPrefix + " — pass user and passwordVariable of a user who may read it " +
                                                 "(e.g. an administrator).");
+        string? lastPublished = HmiServerApi.Events(HmiServerApi.ReadValue(answer, "ListEvents"))
+            .Where(e => e.Name == PublishedEvent).Select(e => e.Time).DefaultIfEmpty().Max(StringComparer.Ordinal);
         return new HmiPublishTargetState(info["projectName"]?.ToString(), info["projectVersion"]?.ToString(),
             HmiServerApi.ReadValue(answer, "Diagnostics")?["LICENSE"]?["STATE"]?.ToString(),
-            HmiServerApi.ReadValue(answer, "GetCurrentUser")?["name"]?.ToString(), null);
+            HmiServerApi.ReadValue(answer, "GetCurrentUser")?["name"]?.ToString(), null,
+            info["serverTime"]?.ToString(), string.IsNullOrEmpty(lastPublished) ? null : lastPublished);
     }
+
+    /// <summary>The target logged "Publish finished" after <paramref name="before"/> was read (ISO times of the same server).</summary>
+    internal static bool PublishLoggedSince(HmiPublishTargetState before, HmiPublishTargetState after) =>
+        Time(after.LastPublished) is { } done && (Time(before.ServerTime) is not { } start || done > start);
+
+    private static DateTimeOffset? Time(string? iso) =>
+        DateTimeOffset.TryParse(iso, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal, out DateTimeOffset t) ? t : null;
 
     /// <summary>A publish profile saved in Properties/tchmipublish.config.json: its target and user.</summary>
     internal sealed record HmiPublishProfileInfo(string Name, string Url, string? User, bool HasPassword);
@@ -128,33 +146,6 @@ internal sealed partial class HmiCoordinator
 
     internal const string PublishConfigFile = "tchmipublish.config.json";
 
-    /// <summary>"[type 0, level 1] Copy …" from the JSON text the XAE passes to the publish callback; other text unchanged.</summary>
-    internal static string PublishMessage(string? data)
-    {
-        string text = (data ?? "").Trim();
-        if (!text.StartsWith('{')) return text;
-        try
-        {
-            if (JsonNode.Parse(text) is JsonObject o && o["Message"] is { } message)
-                return $"[type {o["MessageType"]}, level {o["ImportanceLevel"]}] {message}";
-        }
-        catch (JsonException) { /* not JSON after all */ }
-        return text;
-    }
-
-    /// <summary>Messages worth showing in the summary: anything but plain progress (type 0, level ≤ 1) or naming a problem;
-    /// without such, the last three.</summary>
-    internal static IReadOnlyList<string> NotablePublishMessages(IReadOnlyList<string> messages)
-    {
-        static bool Plain(string m) => m.StartsWith("[type 0, level 0]", StringComparison.Ordinal)
-                                       || m.StartsWith("[type 0, level 1]", StringComparison.Ordinal);
-        static bool Problem(string m) => m.Contains("error", StringComparison.OrdinalIgnoreCase)
-                                         || m.Contains("fail", StringComparison.OrdinalIgnoreCase)
-                                         || m.Contains("denied", StringComparison.OrdinalIgnoreCase);
-        var notable = messages.Where(m => !Plain(m) || Problem(m)).ToList();
-        return notable.Count > 0 ? notable.TakeLast(5).ToList() : messages.TakeLast(3).ToList();
-    }
-
     private static byte[]? ReadIfExists(string path)
     {
         try { return File.Exists(path) ? File.ReadAllBytes(path) : null; }
@@ -192,42 +183,39 @@ internal sealed partial class HmiCoordinator
         {
             hmiProject = run.ProjectName,
             targetUrl,
-            before = new { before.ProjectName, before.ProjectVersion, before.License, before.User },
-            publish = new
-            {
-                o.Started, o.StillRunning, o.Completed, o.ResultCode, o.SubmissionId, o.LastError, seconds = Math.Round(o.Seconds, 1),
-                messages = (o.Messages ?? []).TakeLast(50),
-            },
-            after = after is null ? null : new { after.ProjectName, after.ProjectVersion, after.License, after.User, after.Error },
+            before = new { before.ProjectName, before.ProjectVersion, before.License, before.User, before.ServerTime, before.LastPublished },
+            publish = new { o.Started, o.StillRunning, o.Completed, o.ResultCode, o.SubmissionId, o.LastError, seconds = Math.Round(o.Seconds, 1) },
+            after = after is null ? null : new { after.ProjectName, after.ProjectVersion, after.License, after.User, after.Error, after.LastPublished },
             profileFile = run.ProfileFile,
             confirmation = run.Confirmation,
         }, JsonOpts);
 
         string profile = run.ProfileFile is { } pf && !pf.StartsWith("unchanged", StringComparison.Ordinal) ? $" Profile file: {pf}." : "";
-        string said = o.Messages is { Count: > 0 } m
-            ? $" The XAE said ({m.Count} message(s)): " + string.Join(" | ", NotablePublishMessages(m).Select(HmiServerApi.ShortText)) + "."
-            : " The XAE sent no progress message.";
+        // The XAE's progress messages would need a publish callback, which breaks later builds (see TwinCatComSession.Hmi).
+        const string said = " The Automation Interface gives no reason; the Publish dialog of the XAE shows the publish log.";
         if (!o.Started)
             return ($"[Error] the XAE did not start the publish of '{run.ProjectName}' to {targetUrl}: {o.LastError ?? "no error text"}. " +
                     "Nothing was published." + said + profile, json);
         if (o.StillRunning)
             return ($"[Warn] the publish of '{run.ProjectName}' to {targetUrl} was still running after {o.Seconds:0} s. " +
-                    "Check later with twincat_hmi_server_diagnostics on the target." + said + profile, json);
+                    "Check later with twincat_hmi_server_diagnostics on the target." + profile, json);
 
         string call = $"result code {(o.ResultCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none")}, " +
                       $"completed {(o.Completed?.ToString() ?? "unknown")}, {o.Seconds:0.0} s";
         if (after?.Error is { } readError)
             return ($"[Warn] the XAE finished the publish of '{run.ProjectName}' to {targetUrl} ({call}), but the target could not be " +
-                    $"read afterwards: {readError}" + said + profile, json);
+                    $"read afterwards: {readError}" + profile, json);
         if (!string.Equals(after?.ProjectName, run.ProjectName, StringComparison.Ordinal))
             return ($"[Error] the XAE finished the publish ({call}), but {targetUrl} reports project '{after?.ProjectName}', not " +
                     $"'{run.ProjectName}'. {o.LastError}".TrimEnd() + said + profile, json);
 
-        string same = string.Equals(before.ProjectName, run.ProjectName, StringComparison.Ordinal)
-            ? " It ran the same project before, so the name alone does not prove that every file is new."
-            : "";
-        return ($"Published '{run.ProjectName}' to {targetUrl} — {run.Confirmation}, {call}; verified: the target now reports project " +
-                $"'{after!.ProjectName}'{(string.IsNullOrEmpty(after.ProjectVersion) ? "" : " " + after.ProjectVersion)} " +
-                $"(before: {(string.IsNullOrEmpty(before.ProjectName) ? "none" : "'" + before.ProjectName + "'")}).{same}{profile}", json);
+        string reports = $"reports project '{after!.ProjectName}'{(string.IsNullOrEmpty(after.ProjectVersion) ? "" : " " + after.ProjectVersion)} " +
+                         $"(before: {(string.IsNullOrEmpty(before.ProjectName) ? "none" : "'" + before.ProjectName + "'")})";
+        if (!PublishLoggedSince(before, after))
+            return ($"[Warn] the XAE finished the publish of '{run.ProjectName}' to {targetUrl} ({call}) and the target {reports}, but " +
+                    "its event log has no 'Publish finished' since the publish began — not proven that this publish landed." +
+                    said + profile, json);
+        return ($"Published '{run.ProjectName}' to {targetUrl} — {run.Confirmation}, {call}; verified: the target logged " +
+                $"'Publish finished' at {after.LastPublished} and {reports}.{profile}", json);
     }
 }

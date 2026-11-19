@@ -89,9 +89,9 @@ internal sealed record HmiPublishTarget(string ProfileName, string TargetUrl);
 /// <param name="StillRunning">IsPublishRunning was still true when the wait ended.</param>
 /// <param name="Completed">ITcHmiPublishResult.IsCompleted, null when there was no result object.</param>
 /// <param name="ResultCode">ITcHmiPublishResult.Result, null without a result object.</param>
-/// <param name="Messages">Progress messages the XAE sent through the publish callback, in order.</param>
+/// <remarks>Result codes seen live (TE2000 14.17): 3 after a successful publish, 2 after a failed one.</remarks>
 internal sealed record HmiPublishOutcome(bool Started, bool StillRunning, bool? Completed, int? ResultCode, int? SubmissionId,
-    string? LastError, double Seconds, IReadOnlyList<string>? Messages = null);
+    string? LastError, double Seconds);
 
 // ---- hmi-ads-tmc --------------------------------
 

@@ -100,22 +100,24 @@ public sealed class HmiPublishTests
     private static HmiPublishRun Run(HmiPublishOutcome o) => new(Project, o, null, "confirmed by the engineer");
 
     [Fact]
-    public void Report_SuccessOnlyWhenTheTargetReportsTheProject()
+    public void Report_SuccessNeedsTheProjectAndAPublishFinishedEventSinceTheStart()
     {
-        var ok = HmiCoordinator.PublishReport(Url, Empty, Run(new(true, false, true, 0, 7, null, 12.3)),
-            new HmiPublishTargetState(Project, "1.0.0.0", "Demo", "admin", null));
-        Assert.StartsWith($"Published '{Project}' to {Url} — confirmed by the engineer, result code 0, completed True, 12.3 s; " +
-                          $"verified: the target now reports project '{Project}' 1.0.0.0 (before: none).", ok.Summary, StringComparison.Ordinal);
-        Assert.Equal(7, JsonNode.Parse(ok.Json)!["publish"]!["submissionId"]!.GetValue<int>());
+        var before = new HmiPublishTargetState(Project, "1.0.0.0", "Demo", "admin", null, "2026-11-19T13:57:44.47Z", "2026-11-19T13:54:24.58Z");
+        var ok = HmiCoordinator.PublishReport(Url, before, Run(new(true, false, null, null, null, null, 48.1)),
+            before with { ServerTime = "2026-11-19T13:58:33.16Z", LastPublished = "2026-11-19T13:58:12.4544936Z" });
+        Assert.Equal($"Published '{Project}' to {Url} — confirmed by the engineer, result code none, completed unknown, 48.1 s; " +
+                     $"verified: the target logged 'Publish finished' at 2026-11-19T13:58:12.4544936Z and reports project '{Project}' 1.0.0.0 " +
+                     $"(before: '{Project}').", ok.Summary);
 
-        var other = HmiCoordinator.PublishReport(Url, Empty, Run(new(true, false, true, 0, 7, null, 3)),
+        // same project, but the newest "Publish finished" is older than the start: not proven
+        var stale = HmiCoordinator.PublishReport(Url, before, Run(new(true, false, null, null, null, null, 3)), before);
+        Assert.StartsWith("[Warn] the XAE finished the publish", stale.Summary, StringComparison.Ordinal);
+        Assert.Contains("no 'Publish finished' since the publish began", stale.Summary, StringComparison.Ordinal);
+
+        var other = HmiCoordinator.PublishReport(Url, Empty, Run(new(true, false, true, 3, 7, null, 3)),
             new HmiPublishTargetState("OtherHmi", "", "Demo", "admin", null));
         Assert.StartsWith("[Error] the XAE finished the publish", other.Summary, StringComparison.Ordinal);
         Assert.Contains("reports project 'OtherHmi'", other.Summary, StringComparison.Ordinal);
-
-        var same = HmiCoordinator.PublishReport(Url, new HmiPublishTargetState(Project, "", null, null, null),
-            Run(new(true, false, true, 0, 1, null, 3)), new HmiPublishTargetState(Project, "", null, null, null));
-        Assert.Contains("ran the same project before", same.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -154,18 +156,14 @@ public sealed class HmiPublishTests
     }
 
     [Fact]
-    public void Report_NamesTheXaeMessagesAndTheRestoredProfile()
+    public void Report_AFailedPublish_PointsToTheXaeLog_AndNamesTheRestoredProfile()
     {
-        var run = new HmiPublishRun(Project, new HmiPublishOutcome(true, false, false, 3, 1, null, 4,
-            ["[type 0, level 1] Connecting", "[type 2, level 3] Authentication failed"]), null, "confirmed by the engineer", "restored (x)");
+        var run = new HmiPublishRun(Project, new HmiPublishOutcome(true, false, true, 2, 1, null, 4), null, "confirmed by the engineer", "restored (x)");
         var (summary, json) = HmiCoordinator.PublishReport(Url, Empty, run, new HmiPublishTargetState("", "", null, null, null));
-        Assert.Contains("The XAE said (2 message(s)): [type 2, level 3] Authentication failed.", summary, StringComparison.Ordinal);
-        Assert.Equal("[type 0, level 1] Copy a.view", HmiCoordinator.PublishMessage("""{"MessageType":0,"ImportanceLevel":1,"Message":"Copy a.view"}"""));
-        Assert.Equal("plain text", HmiCoordinator.PublishMessage(" plain text "));
-        Assert.Equal(["[type 0, level 1] c", "[type 0, level 1] d", "[type 0, level 1] e"],
-            HmiCoordinator.NotablePublishMessages(["[type 0, level 1] a", "[type 0, level 1] b", "[type 0, level 1] c", "[type 0, level 1] d", "[type 0, level 1] e"]));
+        Assert.StartsWith("[Error] the XAE finished the publish (result code 2, completed True, 4.0 s)", summary, StringComparison.Ordinal);
+        Assert.Contains("the Publish dialog of the XAE shows the publish log.", summary, StringComparison.Ordinal);
         Assert.Contains("Profile file: restored (x).", summary, StringComparison.Ordinal);
-        Assert.Equal(2, JsonNode.Parse(json)!["publish"]!["messages"]!.AsArray().Count);
+        Assert.Equal(2, JsonNode.Parse(json)!["publish"]!["resultCode"]!.GetValue<int>());
     }
 
     [Fact]
@@ -173,11 +171,15 @@ public sealed class HmiPublishTests
     {
         var ok = HmiCoordinator.TargetState(JsonNode.Parse("""
             { "commands": [
-              { "symbol": "GetServerInformation", "readValue": { "projectName": "PlantHmi", "projectVersion": "1.2.0.0" } },
+              { "symbol": "GetServerInformation", "readValue": { "projectName": "PlantHmi", "projectVersion": "1.2.0.0", "serverTime": "2026-11-19T13:59:08Z" } },
               { "symbol": "Diagnostics", "readValue": { "LICENSE": { "STATE": "OK" } } },
-              { "symbol": "GetCurrentUser", "readValue": { "name": "admin" } } ] }
+              { "symbol": "GetCurrentUser", "readValue": { "name": "admin" } },
+              { "symbol": "ListEvents", "readValue": [
+                  { "domain": "TcHmiSrv", "name": "PROJECT_PUBLISHED", "localizedString": "Publish finished", "payloadType": 0, "payload": { "severity": 1, "timeRaised": "2026-11-19T13:54:24.3592198Z" } },
+                  { "domain": "TcHmiSrv", "name": "PROJECT_PUBLISHED", "localizedString": "Publish finished", "payload": { "severity": 1, "timeRaised": "2026-11-19T13:58:12.4544936Z" } },
+                  { "domain": "TcHmiSrv", "name": "PROJECT_PUBLISH_START", "localizedString": "Publish started", "payload": { "severity": 1, "timeRaised": "2026-11-19T13:59:00Z" } } ] } ] }
             """)!.AsObject());
-        Assert.Equal(new HmiPublishTargetState("PlantHmi", "1.2.0.0", "OK", "admin", null), ok);
+        Assert.Equal(new HmiPublishTargetState("PlantHmi", "1.2.0.0", "OK", "admin", null, "2026-11-19T13:59:08Z", "2026-11-19T13:58:12.4544936Z"), ok);
 
         var guest = HmiCoordinator.TargetState(JsonNode.Parse("""
             { "commands": [ { "symbol": "GetServerInformation", "error": { "code": 4101, "message": "INSUFFICIENT_ACCESS" } } ] }

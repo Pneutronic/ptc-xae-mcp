@@ -107,101 +107,47 @@ internal sealed partial class TwinCatComSession
     //     the XAE then decrypts it with its own keys. A plain password AND an empty one both fail with "Der Wert darf
     //     nicht NULL sein. Parametername: password" — an in-memory profile never publishes. So only Publish(profileName)
     //     of a profile the engineer saved in the XAE (password encrypted there) is used; the MCP never sees a password.
-    //   - The callback's Progress(string) carries JSON {"MessageType","ImportanceLevel","Message"}.
+    //   - NO callback: the XAE keeps an ITcHmiPublishCallback and calls it during LATER HMI builds. Once the host process
+    //     that passed it is gone, the next build fails with "Der RPC-Server ist nicht verfügbar (0x800706BA)" and the XAE
+    //     then rejects every call (RETRYLATER) until it is killed — reproduced twice. A second Publish(unknown profile,
+    //     null) does not replace it. So Publish gets null and the outcome comes from polling plus the target read-back.
     // Publish is not retried after it was issued: only the setup and the polling go through ComBusyRetry.
+
+    /// <summary>How long a publish may take to show IsPublishRunning after Publish returned.</summary>
+    private static readonly TimeSpan PublishStartGrace = TimeSpan.FromSeconds(20);
 
     public HmiPublishOutcome PublishHmiProject(string hmiProject, HmiPublishTarget target, TimeSpan timeout)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        var collector = new HmiPublishCollector();
         var (started, error) = ComBusyRetry.Run(() =>
         {
             ITcHmiProject project = RequireHmiProject(hmiProject);
             if (project.IsPublishRunning()) return (false, "a publish of this project is already running");
             if (!project.IsValidPublishProfile(target.ProfileName))
                 return (false, $"the XAE does not accept publish profile '{target.ProfileName}' as valid");
-            bool ok = project.Publish(target.ProfileName, false, collector);
+            bool ok = project.Publish(target.ProfileName, false, null);
             return (ok, ok ? null : HmiLastError(project));
         }, HmiTimeout);
-        if (!started)
-            return new HmiPublishOutcome(false, false, null, null, null, error, watch.Elapsed.TotalSeconds, collector.Messages);
+        if (!started) return new HmiPublishOutcome(false, false, null, null, null, error, watch.Elapsed.TotalSeconds);
 
-        // Wait for Finished; a publish that is no longer running without having called Finished gets 5 s grace.
-        bool running = true;
-        TimeSpan? stoppedAt = null;
-        while (watch.Elapsed < timeout && !collector.Done.Wait(1000))
+        // Running → wait until it stops; never seen running → give it PublishStartGrace to start (or to have finished).
+        TimeSpan returnedAt = watch.Elapsed;
+        bool running = false, seenRunning = false;
+        while (watch.Elapsed < timeout)
         {
             running = ComBusyRetry.Run(() => RequireHmiProject(hmiProject).IsPublishRunning(), HmiTimeout);
-            if (running) { stoppedAt = null; continue; }
-            stoppedAt ??= watch.Elapsed;
-            if (watch.Elapsed - stoppedAt > TimeSpan.FromSeconds(5)) break;
+            seenRunning |= running;
+            if (!running && (seenRunning || watch.Elapsed - returnedAt > PublishStartGrace)) break;
+            Thread.Sleep(1000);
         }
-        if (collector.Done.IsSet) running = false;
-        var (completed, code, submission, lastError) = collector.Result is { } fin
-            ? (fin.Completed, fin.Code, fin.SubmissionId, (string?)null)
-            : ComBusyRetry.Run(() =>
-            {
-                ITcHmiProject project = RequireHmiProject(hmiProject);
-                return project.GetPublishResult() is TcHmiAutomation.Publish.ITcHmiPublishResult r
-                    ? ((bool?)r.IsCompleted, (int?)r.Result, (int?)r.SubmissionId, HmiLastError(project))
-                    : (null, null, null, HmiLastError(project));
-            }, HmiTimeout);
-        return new HmiPublishOutcome(true, running, completed, code, submission, lastError, watch.Elapsed.TotalSeconds,
-            collector.Messages);
-    }
-
-    /// <summary>Receives the XAE's publish progress through COM (calls arrive on RPC threads; .NET objects are agile).</summary>
-    [ComVisible(true)]
-    [ClassInterface(ClassInterfaceType.None)]
-    public sealed class HmiPublishCollector : TcHmiAutomation.Publish.ITcHmiPublishCallback
-    {
-        private readonly List<string> _messages = [];
-        private (bool? Completed, int? Code, int? SubmissionId)? _result;
-
-        public ManualResetEventSlim Done { get; } = new(false);
-
-        internal IReadOnlyList<string> Messages { get { lock (_messages) return _messages.ToList(); } }
-
-        internal (bool? Completed, int? Code, int? SubmissionId)? Result { get { lock (_messages) return _result; } }
-
-        public void Progress(TcHmiAutomation.Publish.ITcHmiPublishProgress data)
+        var (completed, code, submission, lastError) = ComBusyRetry.Run(() =>
         {
-            string text;
-            try { text = $"[type {data.MessageType}, level {data.ImportanceLevel}] {data.Message}"; }
-            catch (Exception ex) when (ComCall.NotBusy(ex)) { text = "(unreadable progress message)"; }
-            Add(text);
-        }
-
-        // Live: the XAE sends JSON text {"MessageType":0,"ImportanceLevel":1,"Message":"Copy …"} through this overload.
-        public void Progress(string data) => Add(HmiCoordinator.PublishMessage(data));
-
-        public void Finished(TcHmiAutomation.Publish.ITcHmiPublishResult data)
-        {
-            (bool? Completed, int? Code, int? SubmissionId) r;
-            try { r = (data?.IsCompleted, data?.Result, data?.SubmissionId); }
-            catch (Exception ex) when (ComCall.NotBusy(ex)) { r = (null, null, null); }
-            lock (_messages) _result = r;
-            Done.Set();
-        }
-
-        // A publish sends one "Copy …" line per file (hundreds): those keep only the newest 20, everything else is kept.
-        private int _plain;
-
-        private void Add(string? text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return;
-            string t = text.Trim();
-            lock (_messages)
-            {
-                bool plain = t.StartsWith("[type 0, level 1] Copy ", StringComparison.Ordinal);
-                if (plain && ++_plain > 20)
-                {
-                    int oldest = _messages.FindIndex(m => m.StartsWith("[type 0, level 1] Copy ", StringComparison.Ordinal));
-                    if (oldest >= 0) _messages.RemoveAt(oldest);
-                }
-                if (_messages.Count < 2000) _messages.Add(t);
-            }
-        }
+            ITcHmiProject project = RequireHmiProject(hmiProject);
+            return project.GetPublishResult() is TcHmiAutomation.Publish.ITcHmiPublishResult r
+                ? ((bool?)r.IsCompleted, (int?)r.Result, (int?)r.SubmissionId, HmiLastError(project))
+                : (null, null, null, HmiLastError(project));
+        }, HmiTimeout);
+        return new HmiPublishOutcome(true, running, completed, code, submission, lastError, watch.Elapsed.TotalSeconds);
     }
 
     // ---- hmi-internal-symbols (#165) — decompiled TE2000 14.17.22.1, NOT verified live ----

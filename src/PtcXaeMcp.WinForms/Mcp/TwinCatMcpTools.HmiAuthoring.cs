@@ -196,15 +196,41 @@ internal sealed partial class TwinCatMcpTools
                  "the group rights of the server configuration (SYMBOLACCESS default, explicit symbol entries). A symbol a " +
                  "page writes (TwoWay binding, state symbol, WriteToSymbol action) needs write access. In the engineering " +
                  "server everything runs as administrator; on a TF2000 runtime a missing right leaves the control empty or " +
-                 "drops the write. Default groups: enabled groups with users, except administrators and guests.")]
-    public string HmiCheckAccess(
+                 "drops the write. Default groups: enabled groups with users, except administrators and guests. With endpoint " +
+                 "the rights come live from that TF2000 server (login: user + NAME of an environment variable holding the password).")]
+    public async Task<string> HmiCheckAccess(
         [Description("User groups to check, e.g. ['Operators']. Default: every enabled group with users except __SystemAdministrators/__SystemGuests.")] string[]? groups = null,
         [Description("Pages to check, project-relative (.view/.content/.usercontrol). Default: all.")] string[]? paths = null,
         [Description(HmiProjectParam)] string? hmiProject = null,
+        [Description("TF2000 server URL to take the rights from live, e.g. https://192.168.1.10:2020. Default: the project's saved configuration.")] string? endpoint = null,
+        [Description("User who may read the server configuration (e.g. an administrator); with endpoint.")] string? user = null,
+        [Description("Name of an environment variable of the MCP host that holds the password (the password itself is never a parameter).")] string? passwordVariable = null,
+        [Description("Accept a self-signed server certificate (https). Default false.")] bool trustServerCertificate = false,
         CancellationToken cancellationToken = default)
-        => bridge.Activity.Trace("twincat_hmi_check_access", new { hmiProject, groups, paths }, () =>
-            bridge.Dispatcher.Run(() =>
-                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).CheckAccess(hmiProject, groups, paths))), cancellationToken);
+        => await bridge.Activity.TraceAsync("twincat_hmi_check_access",
+            new { hmiProject, groups, paths, endpoint, user, passwordVariable, trustServerCertificate }, async () =>
+        {
+            HmiAccessModel? live = null;
+            string? liveSource = null;
+            if (!string.IsNullOrWhiteSpace(endpoint))
+            {
+                string? password = null;
+                if (!string.IsNullOrWhiteSpace(passwordVariable))
+                {
+                    if (string.IsNullOrEmpty(user)) return "[Error] passwordVariable needs user.";
+                    password = Environment.GetEnvironmentVariable(passwordVariable.Trim());
+                    if (password is null) return $"[Error] environment variable '{passwordVariable}' is not set in the MCP host process.";
+                }
+                var (model, error) = await HmiAccessCheck.ReadLiveModelAsync(endpoint.Trim(), user, password, trustServerCertificate,
+                    15000, cancellationToken);
+                if (model is null) return $"[Error] {error}";
+                live = model;
+                liveSource = $"live server {HmiServerApiClient.ParseEndpoint(endpoint).Http?.GetLeftPart(UriPartial.Authority)}" +
+                             (string.IsNullOrEmpty(user) ? "" : $" as {user}");
+            }
+            return bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).CheckAccess(hmiProject, groups, paths, live, liveSource)));
+        }, cancellationToken);
 
     [McpServerTool(Name = "twincat_hmi_server_diagnostics", ReadOnly = true)]
     [Description("Diagnose a TF2000 or engineering HMI server through its WebSocket API. " +

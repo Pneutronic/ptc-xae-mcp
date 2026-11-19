@@ -349,6 +349,34 @@ public sealed class HmiTf2000Tests : IDisposable
     }
 
     [Fact]
+    public void LiveModel_FromTheServersRights_OrNamesWhatIsNotReadable()
+    {
+        var ok = HmiAccessCheck.LiveModel(JsonNode.Parse("""
+            { "commands": [
+              { "symbol": "TcHmiSrv.Config::USERGROUPS", "readValue": {
+                  "Operators": { "ENABLED": true, "SYMBOLACCESS": 1.0, "SYMBOLS": { "Plant.Secret": 0 } },
+                  "__SystemAdministrators": { "ENABLED": true, "SYMBOLACCESS": 3 } } },
+              { "symbol": "TcHmiSrv.Config::USERGROUPUSERS", "readValue": {
+                  "TcHmiUserManagement": { "op1": { "USERGROUPUSERS_GROUPS": ["Operators"] } } } },
+              { "symbol": "TcHmiSrv.Config::REQUIREAUTH", "readValue": 2.0 },
+              { "symbol": "TcHmiUserManagement.Config::USERS", "readValue": { "op1": { "ENABLED": true, "PASSWORD": "hash", "SALT": "s" } } } ] }
+            """)!.AsObject());
+        Assert.Null(ok.Error);
+        HmiAccessGroup operators = ok.Model!.Group("Operators")!;
+        Assert.Equal(1, operators.SymbolAccess);
+        Assert.Equal(["op1"], operators.Users);
+        Assert.Equal((0, "entry 'Plant.Secret'"), HmiAccessModel.Effective(operators, "Plant.Secret"));
+        Assert.Equal(2, ok.Model.RequireAuthOnTarget);
+        Assert.True(Assert.Single(ok.Model.Users).PasswordSet);
+
+        var guest = HmiAccessCheck.LiveModel(JsonNode.Parse("""
+            { "commands": [ { "symbol": "TcHmiSrv.Config::USERGROUPS", "error": { "code": 4101, "message": "INSUFFICIENT_ACCESS" } } ] }
+            """)!.AsObject());
+        Assert.Null(guest.Model);
+        Assert.Contains("TcHmiSrv.Config::USERGROUPS (code 4101 INSUFFICIENT_ACCESS)", guest.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CertificateError_IsFoundThroughTheWrappedChain_AndAllMessagesAreShown()
     {
         var tls = new System.Security.Authentication.AuthenticationException("The remote certificate is invalid according to the validation procedure.");

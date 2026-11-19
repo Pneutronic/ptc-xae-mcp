@@ -773,13 +773,17 @@ Place any control of the project's packages on a view, content or user control. 
 
 ### `twincat_hmi_check_access`
 
-Check that the user groups may read and write the symbols the HMI pages bind. Saved files: every %s% use against the group rights of the server configuration (SYMBOLACCESS default, explicit symbol entries). A symbol a page writes (TwoWay binding, state symbol, WriteToSymbol action) needs write access. In the engineering server everything runs as administrator; on a TF2000 runtime a missing right leaves the control empty or drops the write. Default groups: enabled groups with users, except administrators and guests.
+Check that the user groups may read and write the symbols the HMI pages bind. Saved files: every %s% use against the group rights of the server configuration (SYMBOLACCESS default, explicit symbol entries). A symbol a page writes (TwoWay binding, state symbol, WriteToSymbol action) needs write access. In the engineering server everything runs as administrator; on a TF2000 runtime a missing right leaves the control empty or drops the write. Default groups: enabled groups with users, except administrators and guests. With endpoint the rights come live from that TF2000 server (login: user + NAME of an environment variable holding the password).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `groups` | `string[]?` | `null` | User groups to check, e.g. ['Operators']. Default: every enabled group with users except __SystemAdministrators/__SystemGuests. |
 | `paths` | `string[]?` | `null` | Pages to check, project-relative (.view/.content/.usercontrol). Default: all. |
 | `hmiProject` | `string?` | `null` |  |
+| `endpoint` | `string?` | `null` | TF2000 server URL to take the rights from live, e.g. https://192.168.1.10:2020. Default: the project's saved configuration. |
+| `user` | `string?` | `null` | User who may read the server configuration (e.g. an administrator); with endpoint. |
+| `passwordVariable` | `string?` | `null` | Name of an environment variable of the MCP host that holds the password (the password itself is never a parameter). |
+| `trustServerCertificate` | `bool` | `false` | Accept a self-signed server certificate (https). Default false. |
 
 ### `twincat_hmi_server_diagnostics`
 

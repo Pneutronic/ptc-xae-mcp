@@ -8,7 +8,10 @@ internal sealed partial class HmiCoordinator
 {
     // ---- check_access -------------------------------------------------------------
 
-    public (string Summary, string Json) CheckAccess(string? hmiProject, IReadOnlyList<string>? groups, IReadOnlyList<string>? paths)
+    /// <param name="liveModel">Rights read live from a TF2000 server (<see cref="HmiAccessCheck.ReadLiveModelAsync"/>);
+    /// null = the project's saved configuration.</param>
+    public (string Summary, string Json) CheckAccess(string? hmiProject, IReadOnlyList<string>? groups, IReadOnlyList<string>? paths,
+        HmiAccessModel? liveModel = null, string? liveSource = null)
     {
         var (project, snap, error) = LoadSnapshot(hmiProject);
         if (snap is null) return (error!, "{}");
@@ -30,9 +33,10 @@ internal sealed partial class HmiCoordinator
             pages = only;
         }
 
-        var model = HmiAccessCheck.LoadModel(project!.ProjectDirectory);
+        var model = liveModel ?? HmiAccessCheck.LoadModel(project!.ProjectDirectory);
         if (model.Groups.Count == 0)
-            return ($"[Error] no user groups found for '{project.Name}' ({string.Join("; ", model.Problems.DefaultIfEmpty("USERGROUPS is empty"))}).", "{}");
+            return ($"[Error] no user groups found {(liveSource is null ? $"for '{project!.Name}'" : "on the " + liveSource)} " +
+                    $"({string.Join("; ", model.Problems.DefaultIfEmpty("USERGROUPS is empty"))}).", "{}");
 
         IReadOnlyList<HmiAccessGroup> checkedGroups;
         if (groups is { Count: > 0 })
@@ -61,16 +65,20 @@ internal sealed partial class HmiCoordinator
         if (report.Findings.Count > 0)
             summary += " First: " + string.Join("; ", report.Findings.Take(3).Select(f => $"{f.File}:{string.Join(",", f.Lines)} {f.Message}"));
         if (report.Notes.Count > 0) summary += " Notes: " + string.Join(" ", report.Notes);
-        summary += " Source: saved server configuration (what a publish takes along); runtime-only changes on a target are not seen.";
+        summary += liveSource is null
+            ? " Source: saved server configuration (what a publish takes along); runtime-only changes on a target are not seen."
+            : $" Source: rights from the {liveSource}; pages from the project on disk.";
 
         return (summary, JsonSerializer.Serialize(new
         {
             hmiProject = project.Name,
-            source = "disk (Server\\TcHmiSrv\\TcHmiSrv.Config.default.json, .remote.json, TcHmiUserManagement config)",
+            source = liveSource ?? "disk (Server\\TcHmiSrv\\TcHmiSrv.Config.default.json, .remote.json, TcHmiUserManagement config)",
             groupsChecked = report.GroupsChecked,
             report.UsesChecked,
             report.FilesChecked,
-            requireAuth = new { projectDefault = model.RequireAuthDefault, remote = model.RequireAuthRemote, onTarget = model.RequireAuthOnTarget },
+            requireAuth = liveSource is null
+                ? (object)new { projectDefault = model.RequireAuthDefault, remote = model.RequireAuthRemote, onTarget = model.RequireAuthOnTarget }
+                : new { onTarget = model.RequireAuthOnTarget },
             groups = model.Groups.Select(g => new { g.Name, g.Enabled, g.SymbolAccess, explicitEntries = g.Symbols.Count, g.Users }),
             users = model.Users,
             findings = report.Findings,

@@ -83,6 +83,43 @@ internal static class HmiAccessCheck
         return BuildModel(srv, remote, um, problems);
     }
 
+    /// <summary>Symbols that hold the rights on a running server (verified live 2026-11-19 on a TF2000 24.0.7 service as
+    /// __SystemAdministrator; USERS carries password hashes, of which only "set or not" is used).</summary>
+    internal static readonly string[] LiveRightsSymbols =
+    [
+        "TcHmiSrv.Config::USERGROUPS", "TcHmiSrv.Config::USERGROUPUSERS", "TcHmiSrv.Config::REQUIREAUTH",
+        "TcHmiUserManagement.Config::USERS",
+    ];
+
+    /// <summary>The rights model of a running server, read through its WebSocket API.</summary>
+    public static async Task<(HmiAccessModel? Model, string? Error)> ReadLiveModelAsync(string endpoint, string? user, string? password,
+        bool trustServerCertificate, int timeoutMs, CancellationToken ct)
+    {
+        var commands = new JsonArray();
+        foreach (string s in LiveRightsSymbols) commands.Add(new JsonObject { ["symbol"] = s, ["commandOptions"] = new JsonArray("SendErrorMessage") });
+        var (answer, error) = await HmiServerApi.QueryAsync(endpoint, user, password, trustServerCertificate, commands, timeoutMs, ct)
+            .ConfigureAwait(false);
+        return answer is null ? (null, error) : LiveModel(answer);
+    }
+
+    internal static (HmiAccessModel? Model, string? Error) LiveModel(JsonObject answer)
+    {
+        var denied = new List<string>();
+        foreach (JsonNode? c in answer["commands"] as JsonArray ?? [])
+            if (HmiServerApi.ErrorOf(c) is { } e) denied.Add($"{c?["symbol"]} ({e})");
+        if (denied.Count > 0)
+            return (null, "the server does not let this user read its rights: " + string.Join(", ", denied) +
+                          ". Log in as a user who may read TcHmiSrv.Config (e.g. an administrator) with user and passwordVariable.");
+        var srv = new JsonObject
+        {
+            ["USERGROUPS"] = HmiServerApi.ReadValue(answer, LiveRightsSymbols[0])?.DeepClone(),
+            ["USERGROUPUSERS"] = HmiServerApi.ReadValue(answer, LiveRightsSymbols[1])?.DeepClone(),
+            ["REQUIREAUTH"] = HmiServerApi.ReadValue(answer, LiveRightsSymbols[2])?.DeepClone(),
+        };
+        var um = new JsonObject { ["USERS"] = HmiServerApi.ReadValue(answer, LiveRightsSymbols[3])?.DeepClone() };
+        return (BuildModel(srv, null, um), null);
+    }
+
     internal static HmiAccessModel BuildModel(JsonNode? srv, JsonNode? remote, JsonNode? userManagement, List<string>? problems = null)
     {
         problems ??= [];

@@ -36,7 +36,8 @@ pull-request numbers refer to those.
 - `twincat_hmi_check_access` checks, from the saved server configuration, whether the user groups may read every server
   symbol the pages bind and write every symbol a page writes (TwoWay binding, state symbol, WriteToSymbol action). The
   engineering server grants local clients everything, so missing rights otherwise show only on the TF2000 runtime.
-  Also reports REQUIREAUTH of the published server, groups without users and users without a password.
+  Also reports REQUIREAUTH of the published server, groups without users and users without a password. With `endpoint`
+  (and a login) the rights come live from a running TF2000 server instead of the project's files.
 - `twincat_hmi_server_diagnostics` talks to an HMI server (TF2000 runtime or the engineering server) through its
   WebSocket API: version, license state with used clients/targets, extensions, outdated symbols, sessions, event counts,
   active and unconfirmed alarms, newest events. Login with a user and the name of an environment variable holding the

@@ -117,7 +117,7 @@ internal static class ToolCatalog
         (Toolset.Io,
         [
             "twincat_add_ethercat_device", "twincat_add_ethercat_box", "twincat_remove_ethercat_box",
-            "twincat_configure_ethercat_slave", "twincat_set_previous_port", "twincat_ethercat_read_identities",
+            "twincat_configure_ethercat_slave", "twincat_set_previous_port", "twincat_ethercat_read_identities", "twincat_ethercat_scan_compare",
             "twincat_list_ethercat_box_catalog", "twincat_get_fieldbus_topology", "twincat_get_device_xml",
             "twincat_reload_device_descriptions", "twincat_set_device_disabled", "twincat_read_coe_dictionary",
             "twincat_read_coe_startup", "twincat_read_ethercat_startup", "twincat_read_soe_parameter",

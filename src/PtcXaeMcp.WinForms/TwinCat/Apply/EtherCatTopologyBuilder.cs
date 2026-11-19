@@ -33,17 +33,21 @@ internal sealed class EtherCatTopologyBuilder
     private readonly Action<string> _info;
     private readonly Action<string> _warn;
     private readonly CancellationToken _cancellationToken;
+    private readonly Func<string, IReadOnlyList<string>>? _esiIdentities;
     private readonly Dictionary<string, string> _createdPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MissingEthercatNodeInfo> _missing = [];
     private readonly List<PendingPreviousPort> _pending = [];
 
+    /// <param name="esiIdentities">vInfo → identity vInfos of a bare third-party Type
+    /// (<see cref="EsiCatalogScanner.ThirdPartyIdentityVInfos"/>), tried after the vInfo itself (#52).</param>
     public EtherCatTopologyBuilder(ISysManTree tree, Action<string>? info = null, Action<string>? warn = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, Func<string, IReadOnlyList<string>>? esiIdentities = null)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _info = info ?? (_ => { });
         _warn = warn ?? (_ => { });
         _cancellationToken = cancellationToken;
+        _esiIdentities = esiIdentities;
     }
 
     /// <summary>
@@ -194,7 +198,7 @@ internal sealed class EtherCatTopologyBuilder
                 "and is not adopted. Use an empty master or rename the schema node.");
 
         Exception? firstError = null;
-        string[] candidates = EtherCatVInfo.GetCreateChildVInfoCandidates(node.VInfo);
+        string[] candidates = EtherCatVInfo.GetCreateChildVInfoCandidates(node.VInfo, _esiIdentities);
         for (int i = 0; i < candidates.Length; i++)
         {
             string candidate = candidates[i];

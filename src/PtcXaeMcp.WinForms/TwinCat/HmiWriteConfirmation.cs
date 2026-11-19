@@ -32,6 +32,8 @@ internal enum HmiWriteKind
     // hmi-offline-types
     CreateProjectDatatype,
     SwitchMappingToPlc,
+    // hmi-tf2000: the whole project onto a TF2000 runtime server (Symbol = target URL)
+    Publish,
 }
 
 /// <summary>What the popup shows the engineer before anything is written.</summary>
@@ -113,8 +115,14 @@ internal sealed class HmiTempAutoConfirmer(
 {
     public HmiConfirmOutcome Confirm(HmiWriteRequest request, TimeSpan timeout) =>
         HmiAutoConfirmPolicy.Applies(readEnvironment(), request.ProjectDirectory, tempDirectory(), toLongPath)
+        && (request.Kind != HmiWriteKind.Publish || IsLoopbackUrl(request.Symbol))
             ? HmiConfirmOutcome.AutoConfirmed
             : inner.Confirm(request, timeout);
+
+    /// <summary>A publish changes the target server, not the TEMP project: the test seam only covers a server on this
+    /// machine (localhost, 127.x, ::1); any other target is always asked.</summary>
+    internal static bool IsLoopbackUrl(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out Uri? u) && u.IsLoopback;
 }
 
 internal static class Win32LongPath

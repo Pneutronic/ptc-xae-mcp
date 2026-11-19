@@ -37,12 +37,14 @@ public sealed class HumanConfirmationTests : IDisposable
     }
 
     private (HumanConfirmation Sut, ConfirmationRegistry Registry) Create(ConfirmMode? mode, string? projectTarget = Remote,
-        AccessLevel level = AccessLevel.Runtime, TimeSpan? askTimeout = null)
+        AccessLevel level = AccessLevel.Runtime, TimeSpan? askTimeout = null, TimeSpan? minHumanAnswer = null)
     {
         var registry = new ConfirmationRegistry(() => _now);
         var sut = new HumanConfirmation(() => Policy(mode, level), () => projectTarget, () => [], registry, null, () => [Local])
         {
             AskTimeout = askTimeout ?? TimeSpan.FromSeconds(5),
+            // The fake answers at once; the too-fast rule has its own tests.
+            MinHumanAnswer = minHumanAnswer ?? TimeSpan.Zero,
         };
         return (sut, registry);
     }
@@ -105,6 +107,7 @@ public sealed class HumanConfirmationTests : IDisposable
         [
             "twincat_persistent_snapshot_restore", // a human answers the host popup before anything is written
             "twincat_hmi_write_symbol", "twincat_hmi_server_control", // HMI writes: popup; server control: this machine only
+            "twincat_hmi_publish", // a human answers the host popup (target, profile, what runs there) before the publish
             "twincat_umr_start", "twincat_umr_stop", // this machine's User Mode Runtime only
             "twincat_ibn_propose", "twincat_persistent_snapshot_test_confirm", // act on a target an earlier, checked call chose
             "twincat_confirm_event_logger", // acknowledges a log entry
@@ -288,6 +291,45 @@ public sealed class HumanConfirmationTests : IDisposable
     }
 
     [Fact]
+    public async Task ADeclineFasterThanAHuman_GoesThroughTheWindow_NotRefused()
+    {
+        // #51: the client declined the elicitation at once without showing it.
+        var (sut, registry) = Create(ConfirmMode.Remote, minHumanAnswer: TimeSpan.FromSeconds(1));
+
+        var result = await sut.CheckAsync("twincat_activate_config", Args(new { }), new FakeAsker(ConfirmAnswer.No), default);
+
+        Assert.NotNull(result);
+        Assert.False(result!.IsError);
+        string text = TextOf(result);
+        Assert.StartsWith("[Confirm]", text);
+        Assert.Contains("too fast for a human", text);
+        Assert.Contains("Approvals tab", text);
+        Assert.Single(registry.Snapshot());
+    }
+
+    [Fact]
+    public async Task ADeclineAfterTheMinimumTime_IsAHumanNo()
+    {
+        var (sut, registry) = Create(ConfirmMode.Remote, minHumanAnswer: TimeSpan.FromMilliseconds(50));
+
+        var result = await sut.CheckAsync("twincat_activate_config", Args(new { }),
+            new FakeAsker(ConfirmAnswer.No, hang: TimeSpan.FromMilliseconds(200)), default);
+
+        Assert.Equal("[Error] Declined by the human. Nothing was done.", TextOf(result!));
+        Assert.Empty(registry.Snapshot());
+    }
+
+    [Fact]
+    public async Task AFastYes_IsStillAYes()
+    {
+        var (sut, _) = Create(ConfirmMode.Remote, minHumanAnswer: TimeSpan.FromSeconds(1));
+
+        var result = await sut.CheckAsync("twincat_activate_config", Args(new { }), new FakeAsker(ConfirmAnswer.Yes), default);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task AnUnansweredQuestion_FallsBackToTheTokenPath_AndNeverHangs()
     {
         var (sut, registry) = Create(ConfirmMode.Remote, askTimeout: TimeSpan.FromMilliseconds(100));
@@ -344,7 +386,10 @@ public sealed class HumanConfirmationTests : IDisposable
         {
             AccessGate = (_, _) => new AccessDecision("[Error] Access policy blocks it.", null),
         };
-        var sut = new HumanConfirmation(() => Policy(ConfirmMode.Remote), () => Remote, () => [], registry, activity, () => [Local]);
+        var sut = new HumanConfirmation(() => Policy(ConfirmMode.Remote), () => Remote, () => [], registry, activity, () => [Local])
+        {
+            MinHumanAnswer = TimeSpan.Zero, // the fake answers at once
+        };
         var asker = new FakeAsker(ConfirmAnswer.Yes);
 
         Assert.Null(await sut.CheckAsync("twincat_activate_config", Args(new { }), asker, default));
@@ -357,7 +402,10 @@ public sealed class HumanConfirmationTests : IDisposable
     {
         var registry = new ConfirmationRegistry(() => _now);
         var activity = new McpActivity(new McpActivityLog(capacity: 10), new McpActivityJsonLog(_dir));
-        var sut = new HumanConfirmation(() => Policy(ConfirmMode.Remote), () => Remote, () => [], registry, activity, () => [Local]);
+        var sut = new HumanConfirmation(() => Policy(ConfirmMode.Remote), () => Remote, () => [], registry, activity, () => [Local])
+        {
+            MinHumanAnswer = TimeSpan.Zero, // the fake answers at once
+        };
 
         await sut.CheckAsync("twincat_activate_config", Args(new { }), new FakeAsker(ConfirmAnswer.Yes), default);
         await sut.CheckAsync("twincat_activate_config", Args(new { }), new FakeAsker(ConfirmAnswer.No), default);

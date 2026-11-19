@@ -353,6 +353,14 @@ internal sealed partial class FakeTwinCatSession
         System.IO.File.WriteAllText(file, root.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
     }
 
+    /// <summary>What PublishHmiProject reports.</summary>
+    public HmiPublishOutcome HmiPublishOutcome { get; set; } = new(true, false, true, 0, 1, null, 2.5);
+    public HmiPublishOutcome PublishHmiProject(string hmiProject, HmiPublishTarget target, TimeSpan timeout)
+    {
+        CallLog.Add($"PublishHmiProject({hmiProject}, profile={target.ProfileName}, {target.TargetUrl}, timeout={timeout.TotalSeconds}s)");
+        return HmiPublishOutcome;
+    }
+
     /// <summary>Server answer for MapHmiOfflineSymbol.</summary>
     public HmiOperationResult HmiOfflineMapResult { get; set; } = new(true, null);
     /// <summary>The server reports success but keeps nothing.</summary>

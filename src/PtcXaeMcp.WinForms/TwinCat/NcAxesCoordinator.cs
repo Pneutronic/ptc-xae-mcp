@@ -26,6 +26,27 @@ internal sealed class NcAxesCoordinator(ITwinCatSession session)
                 $"with {axisCount} ax{(axisCount == 1 ? "is" : "es")} total.", tasks);
     }
 
+    /// <summary>Removes one trailing " SAF" or " SVB" (any case), the suffixes the XAE appends to an NC-Task
+    /// name itself (#53). <paramref name="stripped"/> is the removed suffix, or null.</summary>
+    internal static string StripNcTaskSuffix(string name, out string? stripped)
+    {
+        foreach (string suffix in new[] { " SAF", " SVB" })
+        {
+            if (name.Equals(suffix.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                stripped = suffix.Trim();
+                return string.Empty;
+            }
+            if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
+                stripped = suffix.Trim();
+                return name[..^suffix.Length].TrimEnd();
+            }
+        }
+        stripped = null;
+        return name;
+    }
+
     public string CreateNcTask(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -34,10 +55,19 @@ internal sealed class NcAxesCoordinator(ITwinCatSession session)
         var error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return error;
 
+        // The XAE names the task "<name> SAF" (and its second image "<name> SVB") by itself: "NC-Task SAF" became
+        // "NC-Task SAF SAF" (#53). Pass the base name; a trailing suffix is removed and reported.
+        string baseName = StripNcTaskSuffix(name.Trim(), out string? stripped);
+        if (baseName.Length == 0)
+            return $"[Error] name '{name.Trim()}' is only the suffix the XAE adds; pass the base name, e.g. 'NC-Task 1'.";
+
         try
         {
-            var path = session.CreateNcTask(name.Trim());
-            return $"Created NC-Task at {path}.";
+            var path = session.CreateNcTask(baseName);
+            return stripped is null
+                ? $"Created NC-Task at {path}."
+                : $"Created NC-Task at {path}. The trailing '{stripped}' was removed from the name: the XAE appends " +
+                  "' SAF' itself.";
         }
         catch (Exception ex)
         {

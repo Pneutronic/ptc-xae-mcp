@@ -21,7 +21,14 @@ internal static class EtherCatVInfo
     /// requested revision first, then known ESI aliases, then the bare base
     /// type (which makes TwinCAT auto-select the latest installed revision).
     /// </summary>
-    public static string[] GetCreateChildVInfoCandidates(string vInfo)
+    public static string[] GetCreateChildVInfoCandidates(string vInfo) => GetCreateChildVInfoCandidates(vInfo, null);
+
+    /// <summary>
+    /// As <see cref="GetCreateChildVInfoCandidates(string)"/>, with the identity vInfos
+    /// (<c>V…_P…_R…</c>) that <paramref name="esiIdentities"/> finds for a bare third-party Type inserted right
+    /// after the requested vInfo: CreateChild refuses a third-party box by its Type (#52).
+    /// </summary>
+    public static string[] GetCreateChildVInfoCandidates(string vInfo, Func<string, IReadOnlyList<string>>? esiIdentities)
     {
         var candidates = new List<string>();
 
@@ -39,6 +46,14 @@ internal static class EtherCatVInfo
         }
 
         AddCandidate(vInfo);
+        if (esiIdentities is not null)
+        {
+            foreach (string identity in esiIdentities(vInfo))
+            {
+                AddCandidate(identity);
+            }
+        }
+
         foreach (string alias in GetKnownVInfoAliases(vInfo))
         {
             AddCandidate(alias);

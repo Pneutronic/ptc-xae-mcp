@@ -155,7 +155,7 @@ public sealed class EsiCatalogScannerTests : IDisposable
 
         EsiCatalogDevice d = Assert.Single(scan.Devices);
         Assert.Equal(0x123u, d.VendorId);
-        Assert.Equal("ACME-IO 16", d.VInfo); // non-Beckhoff: bare Type text, no revision suffix
+        Assert.Equal("V00000123_P00000001_R00000005", d.VInfo); // non-Beckhoff: identity form (#52)
     }
 
     [Fact]
@@ -195,6 +195,30 @@ public sealed class EsiCatalogScannerTests : IDisposable
     [InlineData("Red-y", 0x00010000u, 0x1234u, "Red-y")]
     public void BuildVInfo_FollowsBeckhoffConvention(string type, uint? rev, uint? vendor, string expected)
         => Assert.Equal(expected, EsiCatalogScanner.BuildVInfo(type, rev, vendor));
+
+    [Theory]
+    // #52: CreateChild refuses a third-party box by its Type; vendor/product/revision is accepted (live, TC 4026.22).
+    [InlineData("Red-y", 0x00000001u, 0x0B02u, 0xD7F2u, "V00000B02_P0000D7F2_R00000001")]
+    [InlineData("MOVI-C Decentralized Electronics CiA402", 2u, 89u, 19u, "V00000059_P00000013_R00000002")]
+    [InlineData("ctrlX DRIVE XMD (SoE) 1/2", 3u, 36u, 0x20004121u, "V00000024_P20004121_R00000003")]
+    [InlineData("EL1008", 0x00110000u, 2u, 0x03F03052u, "EL1008-0000-0017")]   // Beckhoff keeps its convention
+    [InlineData("Red-y", null, 0x0B02u, 0xD7F2u, "Red-y")]                       // no revision: bare Type
+    public void BuildVInfo_ThirdParty_UsesTheIdentityForm(string type, uint? rev, uint? vendor, uint? product, string expected)
+        => Assert.Equal(expected, EsiCatalogScanner.BuildVInfo(type, rev, vendor, product));
+
+    [Fact]
+    public void ThirdPartyIdentityVInfos_BareType_NewestRevisionFirst()
+    {
+        WriteEsi("sew.xml", "89", "SEW",
+            Device("MOVI-C CiA402", "19", "1") + Device("MOVI-C CiA402", "19", "2"));
+        WriteEsi("bk.xml", "2", "Beckhoff", Device("EL1008", "#x03f03052", "#x00110000"));
+
+        Assert.Equal(["V00000059_P00000013_R00000002", "V00000059_P00000013_R00000001"],
+            EsiCatalogScanner.ThirdPartyIdentityVInfos("movi-c ciA402", _dir));
+        Assert.Empty(EsiCatalogScanner.ThirdPartyIdentityVInfos("EL1008", _dir));
+        Assert.Empty(EsiCatalogScanner.ThirdPartyIdentityVInfos("Unknown", _dir));
+        Assert.Empty(EsiCatalogScanner.ThirdPartyIdentityVInfos("MOVI-C CiA402", Path.Combine(_dir, "missing")));
+    }
 
     [Theory]
     [InlineData("#x0c1d3052", 0x0c1d3052u)]

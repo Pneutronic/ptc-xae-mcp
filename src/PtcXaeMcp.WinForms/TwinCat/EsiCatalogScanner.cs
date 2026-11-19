@@ -12,7 +12,9 @@ namespace PtcXaeMcp.WinForms.TwinCat;
 /// <param name="VInfo">
 /// The revision-exact vInfo for <c>twincat_add_ethercat_box</c>. For Beckhoff
 /// (vendor id 2) built by the <c>&lt;Type&gt;-&lt;LoWord&gt;-&lt;HiWord&gt;</c>
-/// convention (e.g. <c>EL1008-0000-0017</c>); for other vendors the bare Type text.
+/// convention (e.g. <c>EL1008-0000-0017</c>); for other vendors the identity form
+/// <c>V&lt;VendorId&gt;_P&lt;ProductCode&gt;_R&lt;RevisionNo&gt;</c> (8 hex digits each, e.g.
+/// <c>V00000059_P00000013_R00000002</c>), because CreateChild refuses their bare Type (#52).
 /// </param>
 internal sealed record EsiCatalogDevice(
     string Type,
@@ -494,7 +496,7 @@ internal static class EsiCatalogScanner
         if (string.IsNullOrEmpty(type)) return null;
         return new EsiCatalogDevice(
             type,
-            BuildVInfo(type, revisionNo, vendorId),
+            BuildVInfo(type, revisionNo, vendorId, productCode),
             name1033 ?? firstName,
             productCode,
             revisionNo,
@@ -508,11 +510,16 @@ internal static class EsiCatalogScanner
     /// <c>&lt;Type&gt;-&lt;RevisionNo low word, 4 digits&gt;-&lt;high word, 4 digits&gt;</c>
     /// (e.g. EL1008 + #x00110000 → <c>EL1008-0000-0017</c>; EL3112-0011 +
     /// #x0010000B → <c>EL3112-0011-0016</c>; a Type already in that shape,
-    /// e.g. <c>AX5206-0000-0216</c>, is kept). Non-Beckhoff vendors and entries
-    /// without a RevisionNo get the bare Type text.
+    /// e.g. <c>AX5206-0000-0216</c>, is kept). Other vendors get
+    /// <see cref="IdentityVInfo"/> when vendor id, product code and revision are known: CreateChild refuses
+    /// their bare Type with "Invalid item sub type" (live 2026-11-19, TC 4026.22: Vögtlin "Red-y", SEW
+    /// "MOVI-C Decentralized Electronics CiA402", which names two revisions; #52). Entries without a
+    /// RevisionNo, or a third-party entry without a product code, get the bare Type text.
     /// </summary>
-    internal static string BuildVInfo(string type, uint? revisionNo, uint? vendorId)
+    internal static string BuildVInfo(string type, uint? revisionNo, uint? vendorId, uint? productCode = null)
     {
+        if (vendorId is uint vendor && vendor != BeckhoffVendorId && productCode is uint product && revisionNo is uint revision)
+            return IdentityVInfo(vendor, product, revision);
         if (vendorId != BeckhoffVendorId || revisionNo is not uint rev)
             return type;
         if (FullRevisionSuffix.IsMatch(type))
@@ -523,6 +530,37 @@ internal static class EsiCatalogScanner
         return VariantSuffix.IsMatch(type)
             ? string.Create(CultureInfo.InvariantCulture, $"{type}-{hi:D4}")
             : string.Create(CultureInfo.InvariantCulture, $"{type}-{lo:D4}-{hi:D4}");
+    }
+
+    /// <summary>The vInfo that CreateChild(9099) accepts for any vendor's box: vendor id, product code and revision
+    /// as 8 hex digits each, e.g. <c>V00000B02_P0000D7F2_R00000001</c> (live 2026-11-19, TC 4026.22).</summary>
+    internal static string IdentityVInfo(uint vendorId, uint productCode, uint revisionNo) =>
+        string.Create(CultureInfo.InvariantCulture, $"V{vendorId:X8}_P{productCode:X8}_R{revisionNo:X8}");
+
+    /// <summary>
+    /// Identity vInfos (<see cref="IdentityVInfo"/>) of the third-party ESI devices whose Type equals
+    /// <paramref name="vInfo"/>, newest revision first: a schema or caller may still pass the bare Type that the
+    /// catalog listed before #52. Empty for Beckhoff types, unknown types, or when the ESI directory cannot be read.
+    /// </summary>
+    internal static IReadOnlyList<string> ThirdPartyIdentityVInfos(string vInfo, string? esiDirectory = null)
+    {
+        if (string.IsNullOrWhiteSpace(vInfo)) return [];
+        try
+        {
+            string? dir = esiDirectory ?? ResolveEsiDirectory();
+            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) return [];
+            return Scan(dir).Devices
+                .Where(d => d.VendorId is uint v && v != BeckhoffVendorId && d.ProductCode is not null && d.RevisionNo is not null &&
+                            string.Equals(d.Type, vInfo.Trim(), StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(d => d.RevisionNo)
+                .Select(d => IdentityVInfo(d.VendorId!.Value, d.ProductCode!.Value, d.RevisionNo!.Value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return [];
+        }
     }
 
     /// <summary>ESI HexDecValue: <c>#x0c1d3052</c> / <c>0x…</c> hex, else decimal. Null when unparsable.</summary>

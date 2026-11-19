@@ -10,7 +10,52 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-11-19
+
+HMI authoring and TF2000: check pages offline and in a headless live view, place controls, check group rights, diagnose
+and publish to a TF2000 server. Tested in the 32-bit and the 64-bit XAE and against a licensed TF2000 server.
+
 ### Added
+- `twincat_hmi_list_components` indexes an HMI project from its saved files: views, contents, user controls with their
+  parameters (propertyName, markup attribute, type, required, default), functions with arguments, languages, themes, and
+  which page uses which user control, content or function.
+- `twincat_hmi_check_bindings` checks every symbol expression of the pages (`%s%`, `%i%`, `%pp%`, `%ctrl%`, `%f%` and
+  trigger functions, `%l%`), user-control hosts (target exists, required parameters set, bindings only on bindable
+  parameters), region targets and duplicate control ids. Findings carry file, line(s), severity and a "did you mean".
+- `twincat_hmi_list_localization` lists the localized texts per language with missing, undefined and unused keys;
+  `twincat_hmi_set_localized_texts` sets or removes texts in existing languages with one confirmation.
+- `twincat_hmi_place_user_control` puts a project user control on a view or content (`TcHmiUserControlHost`, parameters
+  by name, objects and arrays as JSON), or replaces the host with the same id.
+- `twincat_hmi_scaffold_symbol_view` generates a content with one row per field of a server symbol (checkbox, numeric
+  input, textbox or read-only textblocks; two-way bindings for inputs). The shape comes from the symbol's current value
+  or from a sample; `dryRun` writes nothing.
+- `twincat_hmi_check_liveview` loads the live view in a headless Chromium (Edge, Chrome or a Playwright download) and
+  reports exceptions, console and network errors, whether a view appears and the rendered controls; optionally another
+  view, a PNG screenshot and a JavaScript expression evaluated in the page.
+- `twincat_hmi_describe_controls` lists the controls of the project's HMI packages (from each control's
+  `Description.json`: type, container or not, design size) or one control's attributes along its base chain (attribute,
+  propertyName, type, bindable, read-only).
+- `twincat_hmi_place_control` places any of these controls on a page, into the root or a container control, or
+  replaces a control of the same type. Attributes are checked against the control's description (unknown with a "did
+  you mean", read-only, layout, bindings on non-bindable ones); a region whose target content is missing is noted.
+- `twincat_hmi_check_access` checks, from the saved server configuration, whether the user groups may read every server
+  symbol the pages bind and write every symbol a page writes (TwoWay binding, state symbol, WriteToSymbol action). The
+  engineering server grants local clients everything, so missing rights otherwise show only on the TF2000 runtime.
+  Also reports REQUIREAUTH of the published server, groups without users and users without a password. With `endpoint`
+  (and a login) the rights come live from a running TF2000 server instead of the project's files.
+- `twincat_hmi_server_diagnostics` talks to an HMI server (TF2000 runtime or the engineering server) through its
+  WebSocket API: version, license state with used clients/targets, extensions, outdated symbols, sessions, event counts,
+  active and unconfirmed alarms, newest events. Login with a user and the name of an environment variable holding the
+  password; a self-signed certificate only on request. Repeated events are grouped in the summary; a user without
+  rights is told what is not readable instead of seeing extensions "not running".
+- `twincat_hmi_scaffold_symbol_view` turns an array of structs into a datagrid (one column per simple field, edits
+  written back to the symbol) instead of skipping it.
+- `twincat_hmi_publish` publishes the HMI project to a TF2000 server with a publish profile saved in the XAE (target,
+  user and password, which the XAE keeps encrypted — the Automation Interface does not take a plain password). It reads
+  the target before and after and reports success only when the target then names this project. No publish callback is
+  passed: the XAE keeps it and calls it on later builds, which hung the XAE once the MCP host had restarted; success is
+  proven by the target's "Publish finished" event instead. A popup asks first. The XAE rewrites
+  `Properties/tchmipublish.config.json` during a publish; the tool restores it afterwards.
 - `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
   kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after
   a type was deleted, and how `tchmi.project.Schema.tpl.json` differs.
@@ -23,12 +68,34 @@ pull-request numbers refer to those.
   through the server afterwards; one the runtime does not know gets its old entry back.
 
 ### Fixed
+- Without TwinCAT HMI Engineering (TE2000), `twincat_login` and other tools that have nothing to do with the HMI failed
+  with "Could not load file or assembly 'TcHmiAutomation'" (#43). A cached lambda of the HMI code shared a
+  compiler-generated class with the lambdas of every other tool, so the first of them loaded the HMI assembly. The HMI
+  code now has its own class: without TE2000 only the `twincat_hmi_*` tools refuse, with "TE2000 is not installed".
+- `twincat_set_library_version` on a placeholder wrote `Tc2_Standard, 3.3.3.0 (Beckhoff Automation GmbH), * (Beckhoff
+  Automation GmbH)` into the `.plcproj`, and the next build failed (#46). `SetEffectiveResolution` takes placeholder,
+  library, version and distributor as four arguments; it got the whole resolution string as the library name. The
+  tool now passes the four parts and reads the version back: a version that did not take effect is an `[Error]`.
+- `twincat_add_ethercat_box` and `twincat_apply_schema` could not add a box of another vendor than Beckhoff ("Invalid
+  item sub type", #52): the XAE refuses such a box by its ESI Type. `twincat_list_ethercat_box_catalog` now lists
+  these boxes as `V<vendorId>_P<productCode>_R<revision>` (8 hex digits each), which the XAE accepts, and a bare
+  third-party Type is translated to that form through the local ESI files.
+- With a client that declines a confirmation request without showing it, `twincat_activate_config`,
+  `twincat_set_system_mode` and the other confirmed actions answered "Declined by the human" although nobody had seen a
+  question (#51). A refusal faster than 1 s is no longer taken as a human's "No": the request goes to the Approvals
+  tab of the server window, where a human releases it.
+- `twincat_create_nc_task` with the name `NC-Task SAF` created `NC-Task SAF SAF`: the XAE appends ` SAF` itself (#53).
+  A trailing ` SAF` or ` SVB` is now removed and reported, and the description says so.
+- `twincat_umr_start` started a second process for a Usermode Runtime instance that was already running when another
+  process (another server, `Start.bat`, a service) had started it. It now asks the instance's NetId over ADS (port 10000,
+  1 s timeout) first and refuses the start when it answers.
 - `twincat_hmi_enable_runtime_tmc` failed on an ADS runtime that never had a `TMC` object (the server refuses a write
   to a leaf below a missing object). The tool now writes the object as a whole in that case.
 - `twincat_hmi_write_symbol` no longer reports a write to a server configuration symbol (`ADS.Config::…`,
   `TcHmiSrv.Config::…`) as "through to the PLC" (`writesToPlc` is now false).
 - `twincat_hmi_read_symbols` explains `HMI_ADS_E_USING_TMC` as TMC mode (types and mappings, no values) instead of
   "PLC presumably unreachable".
+- The JSON answers of the HMI tools keep quotes, `<`, `>` and umlauts readable instead of JSON unicode escapes.
 
 ### Changed
 - The server-side TMC route (`twincat_hmi_enable_runtime_tmc` / `_disable_runtime_tmc`) is verified on a live HMI
@@ -785,7 +852,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.1.0...HEAD
+[4.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.1.0
 [4.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.0.0
 [3.2.2]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.2
 [3.2.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.1

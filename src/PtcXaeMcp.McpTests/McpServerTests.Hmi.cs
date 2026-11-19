@@ -45,6 +45,21 @@ public partial class McpServerTests
         "twincat_hmi_list_project_datatypes",
         "twincat_hmi_create_project_datatype",
         "twincat_hmi_switch_mapping_to_plc",
+        // hmi-authoring
+        "twincat_hmi_list_components",
+        "twincat_hmi_check_bindings",
+        "twincat_hmi_list_localization",
+        "twincat_hmi_set_localized_texts",
+        "twincat_hmi_place_user_control",
+        "twincat_hmi_scaffold_symbol_view",
+        "twincat_hmi_check_liveview",
+        // hmi-controls
+        "twincat_hmi_describe_controls",
+        "twincat_hmi_place_control",
+        // hmi-tf2000
+        "twincat_hmi_check_access",
+        "twincat_hmi_server_diagnostics",
+        "twincat_hmi_publish",
         // hmi-internal-symbols (#165)
         "twincat_hmi_list_internal_symbols",
         "twincat_hmi_add_internal_symbol",
@@ -71,6 +86,11 @@ public partial class McpServerTests
         "twincat_hmi_map_offline_symbol",
         "twincat_hmi_create_project_datatype",
         "twincat_hmi_switch_mapping_to_plc",
+        "twincat_hmi_set_localized_texts",
+        "twincat_hmi_place_user_control",
+        "twincat_hmi_place_control",
+        "twincat_hmi_scaffold_symbol_view",
+        "twincat_hmi_publish",
     ];
 
     /// <summary>Calls <paramref name="tool"/> through the guarded <see cref="CallToolAsync"/> and

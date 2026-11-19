@@ -93,6 +93,27 @@ public sealed class EsiInstallHintTests : IDisposable
     }
 
     [Fact]
+    public void AddBox_BareThirdPartyType_IsCreatedThroughItsIdentityVInfo()
+    {
+        // #52: the XAE refuses a third-party box by its ESI Type, but accepts V<vendor>_P<product>_R<revision>.
+        WriteEsi("Acme.xml", "ACM1000");
+        var tree = new FakeSysManTree();
+        tree.Add("TIID");
+        tree.Add(Master, itemType: 2, subType: 111);
+        tree.RejectedVInfos.Add("ACM1000");
+        var adder = new EtherCatNodeAdder(tree, (_, _, _, _) => { }, vInfo => EsiInstallHint.For(vInfo, _dir),
+            vInfo => EsiCatalogScanner.ThirdPartyIdentityVInfos(vInfo, _dir));
+
+        int created = adder.AddBox(tree.Get(Master), new EtherCatBoxSpec("ACM1000", "Term 1 (ACM1000)"), null);
+
+        Assert.Equal(1, created);
+        Assert.True(tree.Exists(Master + "^Term 1 (ACM1000)"));
+        Assert.Equal(["V00000999_P03F03052_R00110000"],
+            EtherCatVInfo.GetCreateChildVInfoCandidates("ACM1000", v => EsiCatalogScanner.ThirdPartyIdentityVInfos(v, _dir))
+                .Skip(1));
+    }
+
+    [Fact]
     public void AddBox_RefusedType_WithoutHintProvider_KeepsTodaysMessage()
     {
         var tree = new FakeSysManTree();

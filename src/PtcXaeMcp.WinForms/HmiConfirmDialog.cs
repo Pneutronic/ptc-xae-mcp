@@ -129,6 +129,8 @@ internal static class HmiConfirmText
             "MCP wants to add project datatypes (from a PLC type of a TMC file) to Properties/tchmi.project.Schema.json",
         HmiWriteKind.SwitchMappingToPlc =>
             "MCP wants to switch HMI mappings from a TMC file to a real PLC (same mapped names, domain ADS)",
+        HmiWriteKind.Publish =>
+            "MCP wants to PUBLISH this HMI project to a TF2000 server (replaces the project running there)",
         _ => "MCP wants to write a value through the HMI server",
     };
 
@@ -149,6 +151,7 @@ internal static class HmiConfirmText
         HmiWriteKind.AddInternalSymbol or HmiWriteKind.RemoveInternalSymbol => "%i% symbol",
         HmiWriteKind.CreateProjectDatatype => "Datatype",
         HmiWriteKind.SwitchMappingToPlc => "Mappings",
+        HmiWriteKind.Publish => "Target",
         _ => "Symbol",
     };
 }

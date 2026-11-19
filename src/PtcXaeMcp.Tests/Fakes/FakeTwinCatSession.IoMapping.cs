@@ -35,5 +35,9 @@ internal sealed partial class FakeTwinCatSession
     {
         CallLog.Add($"SetDeviceDisabled({treePath}, {disabled})");
         if (SetDeviceDisabledThrows is not null) throw SetDeviceDisabledThrows;
+        OnSetDeviceDisabled?.Invoke(treePath, disabled);
     }
+
+    /// <summary>Called by SetDeviceDisabled after the log entry (e.g. to update <see cref="TreeItemXml"/>).</summary>
+    public Action<string, bool>? OnSetDeviceDisabled { get; set; }
 }

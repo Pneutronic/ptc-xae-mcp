@@ -785,7 +785,7 @@ internal interface ITwinCatSession : IDisposable
     void ConsumeTreeItemXml(string treePath, string xml);
 
     // ---- plc-task ----
-    /// <summary>Every real-time task under TIRT with its cycle time and priority as read from the item.</summary>
+    /// <summary>Every real-time task under TIRT and TINC (NC SAF/SVB) with its cycle time and priority as read from the item.</summary>
     IReadOnlyList<RealtimeTaskInfo> ListRealtimeTasks();
 
     /// <summary>
@@ -812,6 +812,44 @@ internal interface ITwinCatSession : IDisposable
     /// value read back from a fresh lookup.
     /// </summary>
     PlcTaskReferenceInfo SetPlcTaskLink(string taskReferencePath, string linkedTask);
+
+    // ---- io-tasks ----
+    /// <summary>
+    /// Tree paths of every real-time task, in tree order: the children of TIRT and the NC tasks under TINC (the SAF task and
+    /// its SVB child) — every item there whose ProduceXml carries a TaskDef.
+    /// </summary>
+    IReadOnlyList<string> ListTaskPaths();
+
+    /// <summary>The LinkedTask of every PLC task reference of every PLC project (e.g. "TIRT^PlcTask"); unreadable ones are left out.</summary>
+    IReadOnlyList<string> ListPlcTaskLinks();
+
+    /// <summary>
+    /// Name and ItemType of every child of <paramref name="treePath"/> through the item's enumerator, in tree order. Unlike
+    /// <see cref="ListTreeChildren"/> (ChildCount/Child(i)) it also returns the process-image folders of tasks and devices and
+    /// the SVB task below the SAF task.
+    /// </summary>
+    IReadOnlyList<TreeChildInfo> ListAllTreeChildren(string treePath);
+
+    /// <summary><c>LookupTreeItem("TIRT").CreateChild(name, 0)</c> — a real-time task with process image. Returns its tree path as read back.</summary>
+    string CreateImageTask(string name);
+
+    /// <summary>
+    /// <c>CreateChild(name, subType, "", vInfo)</c> under <paramref name="parentPath"/>; returns the new item's tree path as read
+    /// back (the XAE may choose another name than <paramref name="name"/>).
+    /// </summary>
+    string CreateTreeChild(string parentPath, string name, int subType, string? vInfo);
+
+    /// <summary><c>ExportChild(childName, filePath)</c> on <paramref name="parentPath"/>: the child as .xti file.</summary>
+    void ExportTreeChild(string parentPath, string childName, string filePath);
+
+    /// <summary><c>DeleteChild(childName)</c> on <paramref name="parentPath"/>.</summary>
+    void DeleteTreeChild(string parentPath, string childName);
+
+    /// <summary>
+    /// <c>ImportChild(filePath, beforeName ?? "", reconnect, name)</c> on <paramref name="parentPath"/>; with
+    /// <paramref name="reconnect"/> the XAE restores the variable links of the imported item. Returns its tree path.
+    /// </summary>
+    string ImportTreeChild(string parentPath, string filePath, string? beforeName, bool reconnect, string name);
 
     // ---- event-classes ----
     /// <summary>ExportXml(false) of every type-system type that has EventIds (the event classes), built-in ones included.</summary>

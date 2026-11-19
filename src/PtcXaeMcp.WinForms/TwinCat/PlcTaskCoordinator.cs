@@ -54,6 +54,7 @@ internal sealed class PlcTaskCoordinator(ITwinCatSession session)
         }
         catch (Exception ex) { return McpErrors.EnsureError(ComCall.Describe(ex)); }
 
+        // tasks: TIRT and TINC (NC SAF/SVB), so a priority used by an NC task is refused as well.
         var sameName = tasks.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
         if (sameName is not null)
             return $"[Error] A real-time task '{sameName.Name}' already exists ({sameName.Path}). Choose another name. Nothing was changed.";

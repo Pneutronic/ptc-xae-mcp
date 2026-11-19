@@ -123,7 +123,9 @@ internal static class ToolCatalog
             "twincat_read_coe_startup", "twincat_read_ethercat_startup", "twincat_read_soe_parameter",
             "twincat_link_variables", "twincat_unlink_variables", "twincat_get_mapping_info",
             "twincat_get_iolink_config", "twincat_import_iodd", "twincat_check_iodd_present", "twincat_apply_schema",
-            "twincat_validate_schema",
+            "twincat_validate_schema", "twincat_task_list", "twincat_task_configure", "twincat_io_task_create",
+            "twincat_io_device_sync_task", "twincat_profinet_device_add", "twincat_profinet_list_modules",
+            "twincat_profinet_module_add",
         ]),
         (Toolset.Scope,
         [

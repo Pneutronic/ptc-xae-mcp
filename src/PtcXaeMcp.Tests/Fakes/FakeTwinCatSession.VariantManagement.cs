@@ -100,7 +100,7 @@ internal sealed partial class FakeTwinCatSession
             throw new InvalidOperationException($"Tree path not found: {treePath}");
         string v = FakeVariantStatus.ActiveVariant;
         item.Disabled.TryGetValue(v, out bool disabled);
-        bool? sim = item.IsNcAxis ? (item.Simulation.TryGetValue(v, out bool s) && s) : null;
+        bool? sim = item.IsNcAxis && item.SimulationExposed ? (item.Simulation.TryGetValue(v, out bool s) && s) : null;
         return new VariantItemState(treePath, item.IsNcAxis, disabled, sim, item.PvDisable, item.PvParameter, item.PvLink);
     }
 
@@ -128,6 +128,8 @@ internal sealed partial class FakeTwinCatSession
 internal sealed class FakeVariantItem
 {
     public bool IsNcAxis { get; set; }
+    /// <summary>False: the axis XML carries no simulation flag (XAE 3.1.4026).</summary>
+    public bool SimulationExposed { get; set; } = true;
     public bool PvDisable { get; set; }
     public bool PvParameter { get; set; }
     public bool PvLink { get; set; }

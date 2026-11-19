@@ -16,8 +16,10 @@ pull-request numbers refer to those.
   rolled back; the active variant cannot be deleted.
 - `twincat_variant_set_item` sets `disabled` and/or the NC axis simulation flag of a tree item for one variant:
   it turns the item's variant-dependent flag on, switches to the variant, writes and reads back, switches back to
-  the original variant (also after an error) and saves. The result lists the value in every variant. The
-  simulation flag is only written when the axis XML of the XAE carries it; otherwise the call says so.
+  the original variant (also after an error) and saves. The result lists the value in every variant.
+  `axisSimulation` is refused before any change when the XAE does not expose the axis simulation flag; XAE 3.1.4026
+  does not (it is not part of the axis XML, and the variant-dependent parameter flag does not make the axis type
+  per variant).
 
 ## [4.1.0] - 2026-11-19
 

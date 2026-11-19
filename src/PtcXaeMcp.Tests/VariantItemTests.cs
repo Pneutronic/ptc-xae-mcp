@@ -160,6 +160,19 @@ public class VariantItemCoordinatorTests
     }
 
     [Fact]
+    public void SetItem_AxisSimulationNotExposedByTheXae_IsRefusedBeforeAnyChange()
+    {
+        var fake = Session();
+        fake.FakeVariantItems[Axis].SimulationExposed = false;
+        string result = new VariantEditingCoordinator(fake).SetItem(Axis, "Simulation", null, true);
+
+        Assert.StartsWith("[Error]", result);
+        Assert.Contains("does not carry the simulation flag", result);
+        Assert.DoesNotContain(fake.CallLog, c => c.StartsWith("SetVariantFlags", StringComparison.Ordinal));
+        Assert.DoesNotContain(fake.CallLog, c => c.StartsWith("SetActiveVariant", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SetItem_UnknownVariant_ErrorBeforeAnyChange()
     {
         var fake = Session();

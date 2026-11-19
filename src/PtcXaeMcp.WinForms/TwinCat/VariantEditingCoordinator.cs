@@ -148,6 +148,12 @@ internal sealed class VariantEditingCoordinator(ITwinCatSession session)
             return McpErrors.EnsureError(
                 $"axisSimulation applies to NC axes only, and '{item.Path}' is not an NC axis. Nothing was changed.");
 
+        if (axisSimulation is not null && item.AxisSimulation is null)
+            return McpErrors.EnsureError(
+                $"The axis XML of '{item.Path}' does not carry the simulation flag on this XAE build, so axisSimulation cannot " +
+                "be set through the Automation Interface (checked live on XAE 3.1.4026: not part of ProduceXml, and the " +
+                "variant-dependent parameter flag does not make the axis type per variant either). Nothing was changed.");
+
         string original = status.ActiveVariant;
         var notes = new List<string>();
         string? failure = null;

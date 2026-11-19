@@ -58,12 +58,13 @@ internal sealed partial class TwinCatMcpTools
                  "Turns the item's variant-dependent flag on, switches to the variant, writes and reads the value back, " +
                  "switches back to the original variant (also after an error) and saves. " +
                  "Returns JSON { treePath, variant, activeVariant, variants: [{ variant, disabled, axisSimulation }], notes } " +
-                 "with the value in every variant, or [Error]. Needs at least one of disabled or axisSimulation.")]
+                 "with the value in every variant, or [Error]. Needs at least one of disabled or axisSimulation. " +
+                 "axisSimulation is refused (nothing changed) when the XAE does not expose the axis simulation flag; XAE 3.1.4026 does not.")]
     public string VariantSetItem(
         [Description("Tree path of the item, e.g. TIID^Device 1 (I/O device or box) or an NC axis path from twincat_list_nc_tasks_axes.")] string treePath,
         [Description("Variant the setting belongs to, as listed by twincat_get_variant_status (a single variant, not [Group]).")] string variant,
         [Description("true disables the item in that variant, false enables it. Omit to leave unchanged.")] bool? disabled = null,
-        [Description("true makes the NC axis a simulation axis in that variant, false a real one. NC axes only. Omit to leave unchanged.")] bool? axisSimulation = null,
+        [Description("true makes the NC axis a simulation axis in that variant, false a real one. NC axes only; refused on XAE builds that do not expose the flag. Omit to leave unchanged.")] bool? axisSimulation = null,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_variant_set_item", new { treePath, variant, disabled, axisSimulation }, () =>
             bridge.Dispatcher.Run(() =>

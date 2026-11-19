@@ -104,4 +104,36 @@ public class VariantEditingIntegrationTests : IAsyncLifetime
         Assert.DoesNotContain("[Error]", deleted, StringComparison.Ordinal);
         Assert.Equal([original], Variants(await StatusAsync()).ToArray());
     }
+
+    [SkippableFact]
+    public async Task AxisSimulation_IsRefusedWhenTheXaeDoesNotExposeIt_AndChangesNothing()
+    {
+        LiveXae.GuardReady(_ready);
+
+        var variants = Variants(await StatusAsync());
+        if (!variants.Contains("Simulation"))
+        {
+            string created = await CallAsync("twincat_variant_create", new() { ["variantName"] = "Simulation" });
+            Assert.DoesNotContain("[Error]", created, StringComparison.Ordinal);
+        }
+
+        string list = await CallAsync("twincat_list_nc_tasks_axes", []);
+        var task = System.Text.RegularExpressions.Regex.Match(list, @"TINC\^[^
+,]*?SAF").Value;
+        Skip.If(task.Length == 0, "the fixture has no NC task");
+        string axis = task + "^Axes^Axis 1";
+        if (!list.Contains("Axis 1", StringComparison.Ordinal))
+            await CallAsync("twincat_create_axis", new() { ["ncTaskPath"] = task, ["axisName"] = "Axis 1" });
+
+        string before = (await StatusAsync()).GetProperty("activeVariant").GetString() ?? string.Empty;
+        string result = await CallAsync("twincat_variant_set_item", new()
+        {
+            ["treePath"] = axis,
+            ["variant"] = "Simulation",
+            ["axisSimulation"] = true,
+        });
+        Assert.StartsWith("[Error]", result, StringComparison.Ordinal);
+        Assert.Contains("simulation flag", result, StringComparison.Ordinal);
+        Assert.Equal(before, (await StatusAsync()).GetProperty("activeVariant").GetString());
+    }
 }

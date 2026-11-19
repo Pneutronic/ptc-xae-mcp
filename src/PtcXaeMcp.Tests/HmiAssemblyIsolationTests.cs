@@ -21,6 +21,7 @@ public class HmiAssemblyIsolationTests
 {
     private const string HmiAssembly = "TcHmiAutomation";
     private const string BridgeName = "TcHmiBridge";
+    private const string EventLoggerAssembly = "Beckhoff.TwinCAT.TcEventLoggerAdsProxy.Native.Interop";
 
     private static readonly Assembly Server = typeof(TwinCatComSession).Assembly;
 
@@ -30,20 +31,45 @@ public class HmiAssemblyIsolationTests
     public void Every_type_outside_the_HMI_bridge_loads_without_TcHmiAutomation()
     {
         Skip.IfNot(BuildHasHmi, "This build has no HMI support (TcHmi=false).");
+
+        LoadFailuresWithout(HmiAssembly, exempt: IsInsideBridge)
+            .Should().BeEmpty("a non-HMI tool must not need TE2000 (#43)");
+    }
+
+    /// <summary>
+    /// The EventLogger interop is resolved from the TwinCAT installation at runtime as well. Its
+    /// types sit in per-method compiler classes of the EventLogger methods only (dynamic call
+    /// sites, closures); none may reach a shared lambda cache, or every tool would need it.
+    /// </summary>
+    [SkippableFact]
+    public void Every_type_loads_without_the_EventLogger_interop()
+    {
+        Skip.IfNot(Server.GetReferencedAssemblies().Any(a => a.Name == EventLoggerAssembly),
+            "This build has no EventLogger interop (TwinCat=false).");
+
+        // The HMI bridge needs TcHmiAutomation, also missing here; the test above covers it.
+        LoadFailuresWithout(EventLoggerAssembly, exempt: IsInsideBridge)
+            .Should().BeEmpty("only the EventLogger tools may need the TwinCAT EventLogger component");
+    }
+
+    /// <summary>Loads every type of the server not <paramref name="exempt"/> and runs its lambda
+    /// caches; returns those that need <paramref name="assembly"/>.</summary>
+    private static List<string> LoadFailuresWithout(string assembly, Func<string, bool> exempt)
+    {
         // The test host has no BeckhoffAssemblyResolver and the DLL is not copied next to it
-        // (Private=$(BundleBeckhoffDlls)), so here it is as missing as on a machine without TE2000.
-        Skip.If(AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == HmiAssembly) ||
-                File.Exists(Path.Combine(AppContext.BaseDirectory, HmiAssembly + ".dll")),
-            "TcHmiAutomation is resolvable in this test host; the type-load check would prove nothing.");
+        // (Private=$(BundleBeckhoffDlls)), so here it is as missing as on a machine without it.
+        Skip.If(AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == assembly) ||
+                File.Exists(Path.Combine(AppContext.BaseDirectory, assembly + ".dll")),
+            $"{assembly} is resolvable in this test host; the type-load check would prove nothing.");
 
         var offenders = new List<string>();
-        foreach (string name in TypeNames().Where(n => !IsInsideBridge(n)))
+        foreach (string name in TypeNames().Where(n => !exempt(n)))
         {
             try
             {
                 Type type = Server.GetType(name, throwOnError: true)!;
                 // The lambda caches (<>c) are what every tool touches first; run their static
-                // initialisation as the first lambda of a non-HMI tool would.
+                // initialisation as the first lambda of an unrelated tool would.
                 if (type.Name == "<>c")
                 {
                     System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
@@ -51,13 +77,12 @@ public class HmiAssemblyIsolationTests
                         f.GetValue(null);
                 }
             }
-            catch (Exception ex) when (NeedsHmiAssembly(ex))
+            catch (Exception ex) when (NeedsAssembly(ex, assembly))
             {
                 offenders.Add($"{name}: {ex.Message}");
             }
         }
-
-        offenders.Should().BeEmpty("a non-HMI tool must not need TE2000 (#43)");
+        return offenders;
     }
 
     [SkippableFact]
@@ -72,7 +97,7 @@ public class HmiAssemblyIsolationTests
         {
             Type? type;
             try { type = Server.GetType(name, throwOnError: true); }
-            catch (Exception ex) when (NeedsHmiAssembly(ex))
+            catch (Exception ex) when (NeedsAssembly(ex, HmiAssembly))
             {
                 offenders.Add($"{name}: does not load ({ex.Message})");
                 continue;
@@ -85,7 +110,7 @@ public class HmiAssemblyIsolationTests
                     if (NamesHmiType(field.FieldType))
                         offenders.Add($"{name}.{field.Name} : {field.FieldType}");
                 }
-                catch (Exception ex) when (NeedsHmiAssembly(ex))
+                catch (Exception ex) when (NeedsAssembly(ex, HmiAssembly))
                 {
                     offenders.Add($"{name}.{field.Name} : needs {HmiAssembly}");
                 }
@@ -124,13 +149,13 @@ public class HmiAssemblyIsolationTests
         return ns.Length == 0 ? name : ns + "." + name;
     }
 
-    /// <summary>True when <paramref name="ex"/> (or an inner exception) is the missing TcHmiAutomation
-    /// assembly. The test host also lacks EnvDTE*, which the server resolves from the XAE at runtime.</summary>
-    private static bool NeedsHmiAssembly(Exception ex)
+    /// <summary>True when <paramref name="ex"/> (or an inner exception) is the missing <paramref name="assembly"/>.
+    /// The test host also lacks EnvDTE*, which the server resolves from the XAE at runtime.</summary>
+    private static bool NeedsAssembly(Exception ex, string assembly)
     {
         for (Exception? e = ex; e is not null; e = e.InnerException)
             if (e is TypeLoadException or FileNotFoundException or FileLoadException or TypeInitializationException &&
-                e.Message.Contains(HmiAssembly, StringComparison.Ordinal))
+                e.Message.Contains(assembly, StringComparison.Ordinal))
                 return true;
         return false;
     }

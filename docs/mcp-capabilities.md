@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-230 tools, generated from the source attributes — one section per
+232 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -24,7 +24,7 @@
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
 - [Hmi](#hmi) (8)
-- [HmiAuthoring](#hmiauthoring) (9)
+- [HmiAuthoring](#hmiauthoring) (11)
 - [HmiInternalSymbols](#hmiinternalsymbols) (4)
 - [HmiTmc](#hmitmc) (10)
 - [HmiViews](#hmiviews) (7)
@@ -738,6 +738,38 @@ Load the HMI live view in a headless browser and report what broke. Reports JS e
 | `screenshotPath` | `string?` | `null` | Absolute path of a PNG screenshot to write. |
 | `expression` | `string?` | `null` | JavaScript evaluated after load (promises awaited); its value is returned as JSON. |
 | `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_describe_controls`
+
+List the controls of the project's HMI packages, or one control's attributes. Read from each control's Description.json in the restored NuGet packages (framework and Beckhoff controls): type, container or not, design size; with type all attributes incl. the base chain (attribute name, propertyName, type, bindable, read-only, declaring control). Use it before twincat_hmi_place_control.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `type` | `string?` | `null` | Control type, full (TcHmi.Controls.Beckhoff.TcHmiButton) or short (TcHmiButton). Default: list all controls. |
+| `filter` | `string?` | `null` | Substring filter: on control names (list) or attribute name/propertyName/category (with type). |
+| `includeHidden` | `bool` | `false` | Also list controls/attributes the designer hides. |
+| `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_place_control`
+
+Place any control of the project's packages on a view, content or user control. Adds it as last child of the page root or of parentId (must be a container: TcHmiContainer, TcHmiGrid, …), or replaces the control with the same id and type. attributes by propertyName, displayName or attribute name, checked against the control's description: unknown, read-only, layout ones and bindings on non-bindable ones are refused; objects/arrays as JSON. E.g. a region: type TcHmiRegion, { "TargetContent": "Contents/A.content" }.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `page` | `string` |  | Target page, project-relative, e.g. 'Desktop.view' or 'Contents/Main.content'. |
+| `type` | `string` |  | Control type, full or short, e.g. 'TcHmiButton', 'TcHmi.Controls.System.TcHmiRegion'. |
+| `id` | `string` |  | Control id, unique in the page. |
+| `parentId` | `string?` | `null` | Id of the container control to place into. Default: the page's root control. |
+| `left` | `int` | `0` | Left in px. |
+| `top` | `int` | `0` | Top in px. |
+| `width` | `int?` | `null` | Width; default: the control's design width. |
+| `height` | `int?` | `null` | Height; default: the control's design height. |
+| `widthUnit` | `string?` | `null` | 'px' (default) or '%'. |
+| `heightUnit` | `string?` | `null` | 'px' (default) or '%'. |
+| `attributes` | `string?` | `null` | JSON object attribute → value, e.g. { "Text": "Start", "StateSymbol": "%s%PLC1.MAIN.bStart%/s%" }. |
+| `replace` | `bool` | `false` | Replace the existing control with this id (same type) instead of refusing. |
+| `hmiProject` | `string?` | `null` |  |
+| `confirmTimeoutSeconds` | `int` | `HmiCoordinator.DefaultConfirmTimeoutSeconds` |  |
 
 ### `twincat_hmi_check_access`
 

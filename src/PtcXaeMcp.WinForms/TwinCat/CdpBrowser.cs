@@ -164,8 +164,11 @@ internal sealed class CdpBrowser : IAsyncDisposable
             return (null, ex["exception"]?["description"]?.GetValue<string>() ?? ex["text"]?.GetValue<string>() ?? "exception");
         JsonNode? result = r["result"];
         if (result?["type"]?.GetValue<string>() == "undefined") return ("null", null);
-        return (result?["value"]?.ToJsonString() ?? "null", null);
+        return (result?["value"]?.ToJsonString(Readable) ?? "null", null);
     }
+
+    // The value goes back to the MCP client as text: keep umlauts and quotes readable ("Ölpumpe", not "Ölpumpe").
+    private static readonly JsonSerializerOptions Readable = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private async Task ReceiveLoop(CancellationToken ct)
     {

@@ -157,6 +157,38 @@ public class HmiAuthoringIntegrationTests(HmiFixture fx)
         Assert.Equal(["McpAuth.Shown:read", "McpAuth.Edited:read"], problems);     // ordered by line
     }
 
+    [SkippableFact(Timeout = 300_000)]
+    public async Task Controls_DescribeFromThePackages_PlaceIntoAContainer()
+    {
+        fx.Guard();
+        JsonElement list = Json(await fx.CallAsync("twincat_hmi_describe_controls", new() { ["filter"] = "Container" }));
+        Assert.Contains(list.GetProperty("controls").EnumerateArray(),
+            c => c.GetProperty("type").GetString() == "TcHmi.Controls.System.TcHmiContainer" && c.GetProperty("container").GetBoolean());
+        JsonElement button = Json(await fx.CallAsync("twincat_hmi_describe_controls", new() { ["type"] = "TcHmiButton", ["filter"] = "Text" }));
+        Assert.Contains(button.GetProperty("attributes").EnumerateArray(), a => a.GetProperty("propertyName").GetString() == "Text");
+
+        Skip.IfNot(HmiFixture.ExpectAutoConfirm, "needs the TEMP auto-confirm seam for the writes");
+        string page = $"McpAuth/Ctl{Run}.content";
+        Assert.StartsWith($"Created '{page}'", await fx.CallAsync("twincat_hmi_add_item", new()
+            { ["kind"] = "content", ["folder"] = "McpAuth", ["name"] = "Ctl" + Run, ["confirmTimeoutSeconds"] = 10 }, TimeSpan.FromMinutes(1)));
+        Assert.StartsWith("Placed TcHmiContainer 'Panel'", await fx.CallAsync("twincat_hmi_place_control", new()
+            { ["page"] = page, ["type"] = "TcHmiContainer", ["id"] = "Panel", ["width"] = 300, ["height"] = 200, ["confirmTimeoutSeconds"] = 10 },
+            TimeSpan.FromMinutes(1)));
+        string go = await fx.CallAsync("twincat_hmi_place_control", new()
+        {
+            ["page"] = page, ["type"] = "TcHmiButton", ["id"] = "Go", ["parentId"] = "Panel",
+            ["attributes"] = "{\"Text\": \"Start\"}", ["confirmTimeoutSeconds"] = 10,
+        }, TimeSpan.FromMinutes(1));
+        Assert.StartsWith("Placed TcHmiButton 'Go'", go);
+        Assert.Contains("(inside 'Panel')", go);
+        Assert.Contains("did you mean 'Text'", await fx.CallAsync("twincat_hmi_place_control", new()
+            { ["page"] = page, ["type"] = "TcHmiButton", ["id"] = "Go2", ["attributes"] = "{\"Txt\": \"x\"}", ["confirmTimeoutSeconds"] = 10 }));
+        Assert.Contains("takes no child controls", await fx.CallAsync("twincat_hmi_place_control", new()
+            { ["page"] = page, ["type"] = "TcHmiButton", ["id"] = "Go3", ["parentId"] = "Go", ["confirmTimeoutSeconds"] = 10 }));
+        string source = await fx.CallAsync("twincat_hmi_read_file", new() { ["path"] = page });
+        Assert.Contains("data-tchmi-text=\\\"Start\\\"", source.Replace("\\u0022", "\\\"", StringComparison.Ordinal));
+    }
+
     [SkippableFact(Timeout = 120_000)]
     public async Task Scaffold_DryRun_FromASample_WritesNothing()
     {

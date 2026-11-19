@@ -53,6 +53,9 @@ public partial class McpServerTests
         "twincat_hmi_place_user_control",
         "twincat_hmi_scaffold_symbol_view",
         "twincat_hmi_check_liveview",
+        // hmi-controls
+        "twincat_hmi_describe_controls",
+        "twincat_hmi_place_control",
         // hmi-tf2000
         "twincat_hmi_check_access",
         "twincat_hmi_server_diagnostics",
@@ -84,6 +87,7 @@ public partial class McpServerTests
         "twincat_hmi_switch_mapping_to_plc",
         "twincat_hmi_set_localized_texts",
         "twincat_hmi_place_user_control",
+        "twincat_hmi_place_control",
         "twincat_hmi_scaffold_symbol_view",
     ];
 

@@ -27,6 +27,12 @@ pull-request numbers refer to those.
 - `twincat_hmi_check_liveview` loads the live view in a headless Chromium (Edge, Chrome or a Playwright download) and
   reports exceptions, console and network errors, whether a view appears and the rendered controls; optionally another
   view, a PNG screenshot and a JavaScript expression evaluated in the page.
+- `twincat_hmi_describe_controls` lists the controls of the project's HMI packages (from each control's
+  `Description.json`: type, container or not, design size) or one control's attributes along its base chain (attribute,
+  propertyName, type, bindable, read-only).
+- `twincat_hmi_place_control` places any of these controls on a page, into the root or a container control, or
+  replaces a control of the same type. Attributes are checked against the control's description (unknown with a "did
+  you mean", read-only, layout, bindings on non-bindable ones); a region whose target content is missing is noted.
 - `twincat_hmi_check_access` checks, from the saved server configuration, whether the user groups may read every server
   symbol the pages bind and write every symbol a page writes (TwoWay binding, state symbol, WriteToSymbol action). The
   engineering server grants local clients everything, so missing rights otherwise show only on the TF2000 runtime.

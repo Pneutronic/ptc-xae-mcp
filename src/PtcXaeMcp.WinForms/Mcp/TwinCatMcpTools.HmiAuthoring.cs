@@ -147,6 +147,50 @@ internal sealed partial class TwinCatMcpTools
             return HmiResult((summary, json));
         }, cancellationToken);
 
+    [McpServerTool(Name = "twincat_hmi_describe_controls", ReadOnly = true)]
+    [Description("List the controls of the project's HMI packages, or one control's attributes. Read from each control's " +
+                 "Description.json in the restored NuGet packages (framework and Beckhoff controls): type, container or not, " +
+                 "design size; with type all attributes incl. the base chain (attribute name, propertyName, type, bindable, " +
+                 "read-only, declaring control). Use it before twincat_hmi_place_control.")]
+    public string HmiDescribeControls(
+        [Description("Control type, full (TcHmi.Controls.Beckhoff.TcHmiButton) or short (TcHmiButton). Default: list all controls.")] string? type = null,
+        [Description("Substring filter: on control names (list) or attribute name/propertyName/category (with type).")] string? filter = null,
+        [Description("Also list controls/attributes the designer hides.")] bool includeHidden = false,
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_hmi_describe_controls", new { hmiProject, type, filter, includeHidden }, () =>
+            bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).DescribeControls(hmiProject, type, filter, includeHidden))), cancellationToken);
+
+    [McpServerTool(Name = "twincat_hmi_place_control", ReadOnly = false, Destructive = false)]
+    [Description("Place any control of the project's packages on a view, content or user control. Adds it as last child of the " +
+                 "page root or of parentId (must be a container: TcHmiContainer, TcHmiGrid, …), or replaces the control with " +
+                 "the same id and type. attributes by propertyName, displayName or attribute name, checked against the " +
+                 "control's description: unknown, read-only, layout ones and bindings on non-bindable ones are refused; " +
+                 "objects/arrays as JSON. E.g. a region: type TcHmiRegion, { \"TargetContent\": \"Contents/A.content\" }. " + ConfirmNote)]
+    public string HmiPlaceControl(
+        [Description("Target page, project-relative, e.g. 'Desktop.view' or 'Contents/Main.content'.")] string page,
+        [Description("Control type, full or short, e.g. 'TcHmiButton', 'TcHmi.Controls.System.TcHmiRegion'.")] string type,
+        [Description("Control id, unique in the page.")] string id,
+        [Description("Id of the container control to place into. Default: the page's root control.")] string? parentId = null,
+        [Description("Left in px.")] int left = 0,
+        [Description("Top in px.")] int top = 0,
+        [Description("Width; default: the control's design width.")] int? width = null,
+        [Description("Height; default: the control's design height.")] int? height = null,
+        [Description("'px' (default) or '%'.")] string? widthUnit = null,
+        [Description("'px' (default) or '%'.")] string? heightUnit = null,
+        [Description("JSON object attribute → value, e.g. { \"Text\": \"Start\", \"StateSymbol\": \"%s%PLC1.MAIN.bStart%/s%\" }.")] string? attributes = null,
+        [Description("Replace the existing control with this id (same type) instead of refusing.")] bool replace = false,
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = HmiCoordinator.DefaultConfirmTimeoutSeconds,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_hmi_place_control",
+            new { hmiProject, page, type, id, parentId, left, top, width, height, widthUnit, heightUnit, attributes, replace, confirmTimeoutSeconds }, () =>
+            bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session, host.HmiConfirmer)
+                    .PlaceControl(hmiProject, page, type, id, parentId, left, top, width, height, widthUnit, heightUnit,
+                        attributes, replace, confirmTimeoutSeconds))), cancellationToken);
+
     [McpServerTool(Name = "twincat_hmi_check_access", ReadOnly = true)]
     [Description("Check that the user groups may read and write the symbols the HMI pages bind. Saved files: every %s% use against " +
                  "the group rights of the server configuration (SYMBOLACCESS default, explicit symbol entries). A symbol a " +

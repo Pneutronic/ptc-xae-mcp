@@ -304,6 +304,39 @@ public sealed class HmiTf2000Tests : IDisposable
     }
 
     [Fact]
+    public void Diagnose_AGuestOnARuntime_SaysNotReadable_NeverNotRunning()
+    {
+        // what a licensed TF2000 runtime with REQUIREAUTH answers __SystemGuest (live, server 24.0.7)
+        var answer = JsonNode.Parse("""
+            { "commands": [
+              { "symbol": "GetServerInformation", "error": { "code": 4101, "message": "INSUFFICIENT_ACCESS" } },
+              { "symbol": "Diagnostics", "error": { "code": 4101, "message": "INSUFFICIENT_ACCESS" } },
+              { "symbol": "ListDomains", "readValue": {
+                  "ADS": { "extension": "TcHmiAds", "version": "24.0.7.0" },
+                  "TcHmiSrv": { "extension": "TcHmiSrv", "version": "24.0.7.0" } } },
+              { "symbol": "GetCurrentUser", "readValue": { "name": "__SystemGuest" } } ] }
+            """)!.AsObject();
+        var (summary, _) = HmiServerApi.Diagnose(answer, "https://127.0.0.1:2020", null, 2, 5);
+        Assert.StartsWith("HMI server at https://127.0.0.1:2020 (server type not readable, as __SystemGuest): license not readable; " +
+                          "2 extension(s), states not readable", summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("not running", summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("[Warn]", summary, StringComparison.Ordinal);
+        Assert.EndsWith("Log in with user and passwordVariable for the server details.", summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CertificateError_IsFoundThroughTheWrappedChain_AndAllMessagesAreShown()
+    {
+        var tls = new System.Security.Authentication.AuthenticationException("The remote certificate is invalid according to the validation procedure.");
+        var http = new System.Net.Http.HttpRequestException("The SSL connection could not be established, see inner exception.", tls);
+        var ws = new System.Net.WebSockets.WebSocketException("Unable to connect to the remote server", http);
+        Assert.True(HmiServerApi.IsCertificateError(ws));
+        Assert.False(HmiServerApi.IsCertificateError(new System.Net.WebSockets.WebSocketException("Unable to connect to the remote server")));
+        Assert.Equal("Unable to connect to the remote server → The SSL connection could not be established, see inner exception. → " +
+                     "The remote certificate is invalid according to the validation procedure.", HmiServerApi.Messages(ws));
+    }
+
+    [Fact]
     public async Task RunDiagnostics_NothingListening_IsAnErrorNotAHang()
     {
         var (summary, _) = await HmiServerApi.RunDiagnosticsAsync("http://127.0.0.1:1", null, null, false, 2, 5, 5000, null,

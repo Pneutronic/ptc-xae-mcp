@@ -170,11 +170,30 @@ internal static class HmiServerApi
         catch (Exception ex) when (ex is WebSocketException or HmiServerApiException or System.Net.Http.HttpRequestException
                                        or System.Security.Authentication.AuthenticationException)
         {
-            string hint = ex.InnerException is System.Security.Authentication.AuthenticationException || ex is System.Security.Authentication.AuthenticationException
+            string hint = IsCertificateError(ex)
                 ? " The server certificate is not trusted — pass trustServerCertificate=true for a self-signed TF2000 certificate."
                 : "";
-            return ($"[Error] cannot talk to the HMI server at {http}: {ex.Message}{hint}", "{}");
+            string messages = Messages(ex);
+            if (hint.Length > 0 && !messages.EndsWith('.')) messages += ".";
+            return ($"[Error] cannot talk to the HMI server at {http}: {messages}{hint}", "{}");
         }
+    }
+
+    // ClientWebSocket wraps a TLS failure twice: WebSocketException → HttpRequestException → AuthenticationException.
+    internal static bool IsCertificateError(Exception ex)
+    {
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+            if (e is System.Security.Authentication.AuthenticationException) return true;
+        return false;
+    }
+
+    /// <summary>The messages of the exception chain, outer first, without repeats.</summary>
+    internal static string Messages(Exception ex)
+    {
+        var parts = new List<string>();
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+            if (!string.IsNullOrWhiteSpace(e.Message) && !parts.Contains(e.Message.Trim())) parts.Add(e.Message.Trim());
+        return string.Join(" → ", parts);
     }
 
     public static int? SeverityLevel(string? name)
@@ -262,24 +281,33 @@ internal static class HmiServerApi
         var activeAlarms = events.Where(IsActiveAlarm).ToList();
         int unconfirmed = events.Count(e => e.Alarm && e.AlarmState is "Raised" or "Cleared");
 
-        string version = info?["productVersion"]?.ToString() ?? diag?["VERSION"]?.ToString() ?? "?";
-        bool creator = info?["creatorMode"] is JsonValue cm && cm.TryGetValue(out bool cb) && cb;
-        string licenseState = license?["STATE"]?.ToString() ?? "unknown";
-        var notRunning = extensions?.Where(x => !string.Equals(x.state, "Initialized", StringComparison.OrdinalIgnoreCase)).ToList() ?? [];
+        // A user without rights (e.g. __SystemGuest on a runtime that requires login) gets ListDomains without states and
+        // no GetServerInformation/Diagnostics: report "not readable", never "not running" or a license problem.
+        string version = info?["productVersion"]?.ToString() ?? diag?["VERSION"]?.ToString() ?? "";
+        string kind = info?["creatorMode"] is JsonValue cm && cm.TryGetValue(out bool cb)
+            ? (cb ? "engineering server" : "runtime server")
+            : "server type not readable";
+        string? licenseState = license?["STATE"]?.ToString();
+        var notRunning = extensions?.Where(x => x.state is not null && !string.Equals(x.state, "Initialized", StringComparison.OrdinalIgnoreCase)).ToList() ?? [];
+        bool statesHidden = extensions is { Count: > 0 } && extensions.All(x => x.state is null);
         var unlicensed = extensions?.Where(x => x.licensed == false).Select(x => x.domain).ToList() ?? [];
 
         var sb = new StringBuilder();
-        bool warn = licenseState is not ("OK" or "Engineering") || notRunning.Count > 0 || unlicensed.Count > 0 || counts["error"] + counts["critical"] > 0;
+        bool warn = licenseState is not (null or "OK" or "Engineering") || notRunning.Count > 0 || unlicensed.Count > 0 || counts["error"] + counts["critical"] > 0;
         if (warn) sb.Append("[Warn] ");
-        sb.Append(CultureInfo.InvariantCulture, $"HMI server {version} '{info?["projectName"]}' at {endpoint} ({(creator ? "engineering server" : "runtime server")}");
+        sb.Append("HMI server");
+        if (version.Length > 0) sb.Append(' ').Append(version);
+        if (info?["projectName"]?.ToString() is { Length: > 0 } project) sb.Append(CultureInfo.InvariantCulture, $" '{project}'");
+        sb.Append(CultureInfo.InvariantCulture, $" at {endpoint} ({kind}");
         if (user is not null) sb.Append(CultureInfo.InvariantCulture, $", as {user}");
-        sb.Append(CultureInfo.InvariantCulture, $"): license {licenseState}");
+        sb.Append("): license ").Append(licenseState ?? "not readable");
         if (license?["CLIENTS"] is not null)
             sb.Append(CultureInfo.InvariantCulture, $" (clients {license["USEDCLIENTS"]}/{license["CLIENTS"]}, targets {license["USEDTARGETS"]}/{license["TARGETS"]})");
         if (extensions is not null)
         {
             sb.Append(CultureInfo.InvariantCulture, $"; {extensions.Count} extension(s)");
-            sb.Append(notRunning.Count == 0 ? ", all Initialized"
+            sb.Append(statesHidden ? ", states not readable"
+                : notRunning.Count == 0 ? ", all Initialized"
                 : ", not running: " + string.Join(", ", notRunning.Select(x => $"{x.domain} ({x.state})")));
         }
         if (unlicensed.Count > 0) sb.Append("; unlicensed: ").Append(string.Join(", ", unlicensed));
@@ -291,6 +319,8 @@ internal static class HmiServerApi
         if (shown.Count > 0) sb.Append(". Newest: ").Append(string.Join(" | ", shown.Take(3).Select(e => $"{e.Severity} {e.Domain}: {e.Text}")));
         sb.Append('.');
         if (denied.Count > 0) sb.Append(" Not readable for this user: ").Append(string.Join(", ", denied)).Append('.');
+        if (info is null && diag is null && denied.Count > 0)
+            sb.Append(" Log in with user and passwordVariable for the server details.");
         if (note is not null) sb.Append(' ').Append(note);
 
         return (sb.ToString(), new

@@ -548,6 +548,17 @@ internal interface ITwinCatSession : IDisposable
     void WriteProjectVariantConfig(string xml);
     /// <summary>The <c>ProjectVariantItems</c> XML (the per-variant settings of tree items); empty when unreadable.</summary>
     string ReadProjectVariantItems();
+    /// <summary>The state of a tree item in the active variant. Throws when the path does not resolve.</summary>
+    VariantItemState ReadVariantItem(string treePath);
+    /// <summary>Turns on (never off) the item's PvDisable / PvParameter flags so the value is stored per variant.</summary>
+    void SetVariantFlags(string treePath, bool pvDisable, bool pvParameter);
+    /// <summary>
+    /// Writes <c>Disabled</c> and/or the axis simulation flag in the ACTIVE variant and reads it back; does not save.
+    /// Throws when the XAE refuses it, the read-back differs, or the simulation flag is not reachable on this XAE.
+    /// </summary>
+    void WriteVariantItemValue(string treePath, bool? disabled, bool? axisSimulation);
+    /// <summary>Saves the solution (File.SaveAll).</summary>
+    void SaveVariantChanges();
 
     // ---- coredump-analysis ----
     /// <summary>

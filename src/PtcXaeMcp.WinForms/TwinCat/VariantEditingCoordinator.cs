@@ -105,6 +105,123 @@ internal sealed class VariantEditingCoordinator(ITwinCatSession session)
         return Report("deleted", canonical, null, groups, notes);
     }
 
+    private sealed record ItemVariantRow(string Variant, bool Disabled, bool? AxisSimulation);
+
+    private sealed record SetItemResult(
+        string TreePath,
+        string Variant,
+        string ActiveVariant,
+        IReadOnlyList<ItemVariantRow> Variants,
+        IReadOnlyList<string> Notes);
+
+    /// <summary>
+    /// Sets <c>Disabled</c> and/or the axis simulation flag of a tree item for ONE variant: turn the item's Pv*
+    /// flag on, switch to the variant, write, read back, switch back (also after an error), save. The result
+    /// lists the value of the item in every variant.
+    /// </summary>
+    public string SetItem(string treePath, string variantName, bool? disabled, bool? axisSimulation)
+    {
+        if (string.IsNullOrWhiteSpace(treePath)) return "[Error] treePath is required.";
+        if (string.IsNullOrWhiteSpace(variantName)) return "[Error] variant is required.";
+        if (disabled is null && axisSimulation is null)
+            return "[Error] Give at least one of disabled or axisSimulation.";
+
+        string? err = SessionGuards.RequireOpenSolution(session);
+        if (err is not null) return err;
+
+        VariantStatusResult status;
+        VariantItemState item;
+        try
+        {
+            status = session.GetVariantStatus();
+            item = session.ReadVariantItem(treePath.Trim());
+        }
+        catch (Exception ex) { return McpErrors.EnsureError(ex.Message); }
+
+        string requested = variantName.Trim();
+        if (requested.Length > 2 && requested[0] == '[' && requested[^1] == ']')
+            return McpErrors.EnsureError(
+                $"'{requested}' is a variant group; give a single variant. Per-variant item settings belong to one variant.");
+        var (canonical, resolveError) = VariantManagementCoordinator.ResolveVariantName(requested, status);
+        if (canonical is null) return resolveError!;
+        if (axisSimulation is not null && !item.IsNcAxis)
+            return McpErrors.EnsureError(
+                $"axisSimulation applies to NC axes only, and '{item.Path}' is not an NC axis. Nothing was changed.");
+
+        string original = status.ActiveVariant;
+        var notes = new List<string>();
+        string? failure = null;
+        var rows = new List<ItemVariantRow>();
+        try
+        {
+            bool needDisable = disabled is not null && !item.PvDisable;
+            bool needParameter = axisSimulation is not null && !item.PvParameter;
+            if (needDisable || needParameter)
+            {
+                session.SetVariantFlags(item.Path, needDisable, needParameter);
+                notes.Add("The variant-dependent flag of the item was turned on; the item's setting is now stored per variant.");
+            }
+
+            EnsureActive(canonical);
+            session.WriteVariantItemValue(item.Path, disabled, axisSimulation);
+
+            foreach (string v in status.AvailableVariants)
+            {
+                EnsureActive(v);
+                var state = session.ReadVariantItem(item.Path);
+                rows.Add(new ItemVariantRow(v, state.Disabled, state.AxisSimulation));
+            }
+        }
+        catch (Exception ex)
+        {
+            failure = ex.Message;
+        }
+        finally
+        {
+            var (restoreOk, restoreText) = RestoreActive(original);
+            if (failure is not null) failure += restoreText;
+            else if (!restoreOk) failure = restoreText.Trim();
+        }
+        if (failure is not null)
+            return McpErrors.EnsureError(
+                $"{failure} The item's variant-dependent flag(s) stay turned on if they were turned on by this call; nothing was saved.");
+
+        try { session.SaveVariantChanges(); }
+        catch (Exception ex) { notes.Add($"The change is applied in the open solution but saving failed: {ex.Message}"); }
+
+        return JsonSerializer.Serialize(
+            new SetItemResult(item.Path, canonical, original, rows, notes), JsonOpts);
+    }
+
+    private void EnsureActive(string variant)
+    {
+        string current = session.GetVariantStatus().ActiveVariant;
+        if (string.Equals(current, variant, StringComparison.OrdinalIgnoreCase)) return;
+        session.SetActiveVariant(variant);
+        string after = session.GetVariantStatus().ActiveVariant;
+        if (!string.Equals(after, variant, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"Switching to variant '{variant}' did not take effect: CurrentProjectVariant reads '{after}'.");
+    }
+
+    // Puts the original variant back. Ok is false only when it could not be restored.
+    private (bool Ok, string Text) RestoreActive(string original)
+    {
+        try
+        {
+            string now = session.GetVariantStatus().ActiveVariant;
+            if (string.Equals(now, original, StringComparison.OrdinalIgnoreCase)) return (true, string.Empty);
+            if (string.IsNullOrEmpty(original))
+                return (false, $" The active variant now reads '{now}'; there was no previous variant to restore.");
+            session.SetActiveVariant(original);
+            string restored = session.GetVariantStatus().ActiveVariant;
+            return string.Equals(restored, original, StringComparison.OrdinalIgnoreCase)
+                ? (true, $" Restored the previous variant '{original}'.")
+                : (false, $" Restoring the previous variant '{original}' FAILED — it now reads '{restored}'.");
+        }
+        catch (Exception ex) { return (false, $" Restoring the previous variant '{original}' FAILED: {ex.Message}"); }
+    }
+
     /// <summary>True when the variant is the active one, or a member of the active variant group.</summary>
     private static bool IsActive(VariantStatusResult status, string variant)
     {

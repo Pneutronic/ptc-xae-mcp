@@ -89,4 +89,48 @@ internal sealed partial class FakeTwinCatSession
         CallLog.Add("ReadProjectVariantItems()");
         return FakeVariantItemsXml;
     }
+
+    public Dictionary<string, FakeVariantItem> FakeVariantItems { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Exception? WriteVariantItemThrows { get; set; }
+
+    public VariantItemState ReadVariantItem(string treePath)
+    {
+        CallLog.Add($"ReadVariantItem({treePath})");
+        if (!FakeVariantItems.TryGetValue(treePath, out var item))
+            throw new InvalidOperationException($"Tree path not found: {treePath}");
+        string v = FakeVariantStatus.ActiveVariant;
+        item.Disabled.TryGetValue(v, out bool disabled);
+        bool? sim = item.IsNcAxis ? (item.Simulation.TryGetValue(v, out bool s) && s) : null;
+        return new VariantItemState(treePath, item.IsNcAxis, disabled, sim, item.PvDisable, item.PvParameter, item.PvLink);
+    }
+
+    public void SetVariantFlags(string treePath, bool pvDisable, bool pvParameter)
+    {
+        CallLog.Add($"SetVariantFlags({treePath}, pvDisable={pvDisable}, pvParameter={pvParameter})");
+        var item = FakeVariantItems[treePath];
+        item.PvDisable |= pvDisable;
+        item.PvParameter |= pvParameter;
+    }
+
+    public void WriteVariantItemValue(string treePath, bool? disabled, bool? axisSimulation)
+    {
+        CallLog.Add($"WriteVariantItemValue({treePath}, disabled={disabled}, axisSimulation={axisSimulation})");
+        if (WriteVariantItemThrows is not null) throw WriteVariantItemThrows;
+        var item = FakeVariantItems[treePath];
+        string v = FakeVariantStatus.ActiveVariant;
+        if (disabled is { } d) item.Disabled[v] = d;
+        if (axisSimulation is { } a) item.Simulation[v] = a;
+    }
+
+    public void SaveVariantChanges() => CallLog.Add("SaveVariantChanges()");
+}
+
+internal sealed class FakeVariantItem
+{
+    public bool IsNcAxis { get; set; }
+    public bool PvDisable { get; set; }
+    public bool PvParameter { get; set; }
+    public bool PvLink { get; set; }
+    public Dictionary<string, bool> Disabled { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, bool> Simulation { get; } = new(StringComparer.OrdinalIgnoreCase);
 }

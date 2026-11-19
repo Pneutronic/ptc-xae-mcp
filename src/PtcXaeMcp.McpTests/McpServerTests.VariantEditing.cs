@@ -17,6 +17,13 @@ public partial class McpServerTests
         Assert.Contains("variantName", create.JsonSchema.GetProperty("properties").EnumerateObject().Select(p => p.Name));
         Assert.Contains("group", create.JsonSchema.GetProperty("properties").EnumerateObject().Select(p => p.Name));
         Assert.Contains("variantName", delete.JsonSchema.GetProperty("properties").EnumerateObject().Select(p => p.Name));
+        var setItem = tools.Single(t => t.Name == "twincat_variant_set_item");
+        var setItemProps = setItem.JsonSchema.GetProperty("properties").EnumerateObject().Select(p => p.Name).ToList();
+        Assert.Contains("treePath", setItemProps);
+        Assert.Contains("variant", setItemProps);
+        Assert.Contains("disabled", setItemProps);
+        Assert.Contains("axisSimulation", setItemProps);
+        Assert.True(setItem.ProtocolTool.Annotations?.DestructiveHint);
         Assert.True(delete.ProtocolTool.Annotations?.DestructiveHint);
         Assert.False(create.ProtocolTool.Annotations?.ReadOnlyHint);
     }
@@ -36,6 +43,15 @@ public partial class McpServerTests
         SkipIfNotReachable();
         var result = await CallToolAsync("twincat_variant_delete",
             new Dictionary<string, object?> { ["variantName"] = "" });
+        Assert.StartsWith("[Error]", GetText(result));
+    }
+
+    [SkippableFact]
+    public async Task VariantEditing_SetItem_NothingToSet_ReturnsError()
+    {
+        SkipIfNotReachable();
+        var result = await CallToolAsync("twincat_variant_set_item",
+            new Dictionary<string, object?> { ["treePath"] = "TIID^Device 1", ["variant"] = "Simulation" });
         Assert.StartsWith("[Error]", GetText(result));
     }
 }

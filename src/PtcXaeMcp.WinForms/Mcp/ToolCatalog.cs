@@ -178,6 +178,7 @@ internal static class ToolCatalog
         ["twincat_ibn_propose"] = TargetRule.CheckedEarlier,
         ["twincat_persistent_snapshot_test_confirm"] = TargetRule.CheckedEarlier,
         ["twincat_hmi_write_symbol"] = TargetRule.Unknown,
+        ["twincat_hmi_publish"] = TargetRule.Unknown,
     };
 
     /// <summary>Tools that write one named PLC variable, with the argument that names it (the symbol lists of the access policy apply).</summary>

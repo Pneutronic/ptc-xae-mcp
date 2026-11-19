@@ -258,6 +258,80 @@ internal sealed partial class TwinCatMcpTools
             return HmiResult(result);
         }, cancellationToken);
 
+    [McpServerTool(Name = "twincat_hmi_publish", ReadOnly = false, Destructive = true)]
+    [Description("Publish the HMI project to a TF2000 server with a saved publish profile. It replaces the project there. " +
+                 "The profile, created once in the XAE, holds target, user and the password (the XAE keeps it encrypted; " +
+                 "the MCP never passes one). Reads the target before and after: success only when it then reports this project. user + " +
+                 "passwordVariable (NAME of an environment variable of the MCP host) are only for these reads. " + ConfirmNote)]
+    public async Task<string> HmiPublish(
+        [Description("Name of a publish profile saved in the project (create it once in the XAE's Publish dialog, password saved).")] string profile,
+        [Description("Optional check: the TF2000 server URL the profile must point at, e.g. https://192.168.1.10:2020.")] string? targetUrl = null,
+        [Description("User for reading the target before and after (default: the profile's user).")] string? user = null,
+        [Description("Name of an environment variable of the MCP host holding that user's password (the password itself is never a parameter).")] string? passwordVariable = null,
+        [Description("Accept a self-signed certificate for the reads before and after (https). Default false.")] bool trustServerCertificate = false,
+        [Description("Max seconds to wait for the publish, 30-1800. Default 300.")] int timeoutSeconds = 300,
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        [Description(ConfirmTimeoutParam)] int confirmTimeoutSeconds = 120,
+        CancellationToken cancellationToken = default)
+        => await bridge.Activity.TraceAsync("twincat_hmi_publish",
+            new { hmiProject, profile, targetUrl, user, passwordVariable, trustServerCertificate, timeoutSeconds },
+            async () =>
+        {
+            if (timeoutSeconds is < HmiCoordinator.MinPublishTimeoutSeconds or > HmiCoordinator.MaxPublishTimeoutSeconds)
+                return $"[Error] timeoutSeconds must be {HmiCoordinator.MinPublishTimeoutSeconds}-{HmiCoordinator.MaxPublishTimeoutSeconds}.";
+            if (string.IsNullOrWhiteSpace(profile))
+                return "[Error] pass profile: the name of a publish profile saved in the XAE (Publish dialog of the HMI project, " +
+                       "password saved). The Automation Interface publishes only with such a profile.";
+            string profileName = profile.Trim();
+            HmiCoordinator.HmiPublishProfileInfo? found = null;
+            string findError = bridge.Dispatcher.Run(() =>
+            {
+                var (p, e) = new HmiCoordinator(bridge.Dispatcher.Session).FindPublishProfile(hmiProject, profileName);
+                found = p;
+                return e ?? "";
+            });
+            if (found is null) return findError;
+            if (!string.IsNullOrWhiteSpace(targetUrl) && !SameServer(targetUrl, found.Url))
+                return $"[Error] targetUrl '{targetUrl}' is not the target of profile '{profileName}' ({found.Url}).";
+            string? profileUser = found.User;
+            if (!Uri.TryCreate(found.Url, UriKind.Absolute, out Uri? url) || url.Scheme is not ("http" or "https"))
+                return $"[Error] profile '{profileName}' points at '{found.Url}', not an http(s) URL of a TF2000 server.";
+            string target = url.GetLeftPart(UriPartial.Authority);
+            string? readUser = string.IsNullOrWhiteSpace(user) ? null : user.Trim();
+            string? password = null;
+            if (!string.IsNullOrWhiteSpace(passwordVariable))
+            {
+                readUser ??= profileUser;
+                if (string.IsNullOrEmpty(readUser)) return "[Error] passwordVariable needs user.";
+                password = Environment.GetEnvironmentVariable(passwordVariable.Trim());
+                if (password is null) return $"[Error] environment variable '{passwordVariable}' is not set in the MCP host process.";
+            }
+
+            // An unreachable or refusing target stops here; missing read rights only make the result unverifiable.
+            const int readTimeoutMs = 15000;
+            HmiPublishTargetState before = await HmiCoordinator.ReadPublishTargetAsync(target, readUser, password, trustServerCertificate,
+                readTimeoutMs, cancellationToken);
+            if (before.Error is { } readError && !readError.StartsWith(HmiCoordinator.NoRightsPrefix, StringComparison.Ordinal))
+                return $"[Error] {readError} Nothing was published.";
+
+            HmiPublishRun? run = null;
+            string dispatched = bridge.Dispatcher.Run(() =>
+            {
+                run = new HmiCoordinator(bridge.Dispatcher.Session, host.HmiConfirmer).PublishProject(hmiProject, profileName, target,
+                    profileUser, timeoutSeconds, confirmTimeoutSeconds, before);
+                return run.Refusal ?? "published";
+            });
+            if (run is null) return dispatched;
+            HmiPublishTargetState? after = run.Outcome is { Started: true, StillRunning: false }
+                ? await HmiCoordinator.ReadPublishTargetAsync(target, readUser, password, trustServerCertificate, readTimeoutMs, cancellationToken)
+                : null;
+            return HmiResult(HmiCoordinator.PublishReport(target, before, run, after));
+        }, cancellationToken);
+
+    private static bool SameServer(string a, string b) =>
+        Uri.TryCreate(a.Trim(), UriKind.Absolute, out Uri? x) && Uri.TryCreate(b.Trim(), UriKind.Absolute, out Uri? y)
+        && string.Equals(x.GetLeftPart(UriPartial.Authority), y.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase);
+
     [McpServerTool(Name = "twincat_hmi_scaffold_symbol_view", ReadOnly = false, Destructive = false)]
     [Description("Generate a .content with one row per field of a server symbol. Label + checkbox (BOOL), " +
                  "numeric input (number), textbox (string), or read-only textblocks; nested structs get a header. The shape " +

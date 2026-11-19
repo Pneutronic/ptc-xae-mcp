@@ -143,8 +143,24 @@ internal static class HmiServerApi
         bool trustAnyCertificate, int minSeverity, int maxEvents, int timeoutMs, string? note, JsonSerializerOptions jsonOptions,
         CancellationToken ct)
     {
+        var (answer, error) = await QueryAsync(endpoint, user, password, trustAnyCertificate, DiagnosticsCommands(), timeoutMs, ct)
+            .ConfigureAwait(false);
+        if (answer is null) return ($"[Error] {error}", "{}");
+        var (summary, json) = Diagnose(answer, HmiServerApiClient.ParseEndpoint(endpoint).Http!.GetLeftPart(UriPartial.Authority),
+            note, minSeverity, maxEvents);
+        return (summary, JsonSerializer.Serialize(json, jsonOptions));
+    }
+
+    /// <summary>
+    /// Connects, logs in when a user is given and sends one request with <paramref name="commands"/>. The answer, or a
+    /// sentence why there is none (no "[Error]" prefix): bad endpoint, connection or certificate, login, a refused
+    /// request, or no answer in time.
+    /// </summary>
+    public static async Task<(JsonObject? Answer, string? Error)> QueryAsync(string endpoint, string? user, string? password,
+        bool trustAnyCertificate, JsonArray commands, int timeoutMs, CancellationToken ct)
+    {
         var (ws, http, error) = HmiServerApiClient.ParseEndpoint(endpoint);
-        if (ws is null || http is null) return ($"[Error] {error}", "{}");
+        if (ws is null || http is null) return (null, error);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(timeoutMs);
@@ -154,18 +170,17 @@ internal static class HmiServerApi
             if (!string.IsNullOrEmpty(user))
             {
                 string? loginError = await client.LoginAsync(user, password ?? "", cts.Token).ConfigureAwait(false);
-                if (loginError is not null) return ($"[Error] login as '{user}' at {http} failed: {loginError}.", "{}");
+                if (loginError is not null) return (null, $"login as '{user}' at {http} failed: {loginError}.");
             }
-            JsonObject answer = await client.RequestAsync(DiagnosticsCommands(), cts.Token).ConfigureAwait(false);
+            JsonObject answer = await client.RequestAsync(commands, cts.Token).ConfigureAwait(false);
             if (ErrorOf(answer) is { } requestError && answer["commands"] is null)
-                return ($"[Error] the server at {http} refused the request: {requestError}.", "{}");
-            var (summary, json) = Diagnose(answer, http.GetLeftPart(UriPartial.Authority), note, minSeverity, maxEvents);
-            return (summary, JsonSerializer.Serialize(json, jsonOptions));
+                return (null, $"the server at {http} refused the request: {requestError}.");
+            return (answer, null);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            return ($"[Error] no answer from {http} within {timeoutMs} ms. A TF2000 server whose license expired accepts the " +
-                    "connection but never answers (its pages say 'License Expired').", "{}");
+            return (null, $"no answer from {http} within {timeoutMs} ms. A TF2000 server whose license expired accepts the " +
+                          "connection but never answers (its pages say 'License Expired').");
         }
         catch (Exception ex) when (ex is WebSocketException or HmiServerApiException or System.Net.Http.HttpRequestException
                                        or System.Security.Authentication.AuthenticationException)
@@ -175,9 +190,13 @@ internal static class HmiServerApi
                 : "";
             string messages = Messages(ex);
             if (hint.Length > 0 && !messages.EndsWith('.')) messages += ".";
-            return ($"[Error] cannot talk to the HMI server at {http}: {messages}{hint}", "{}");
+            return (null, $"cannot talk to the HMI server at {http}: {messages}{hint}");
         }
     }
+
+    /// <summary>readValue of one command in an answer, or null (also when that command failed).</summary>
+    public static JsonNode? ReadValue(JsonObject? answer, string symbol) =>
+        (answer?["commands"] as JsonArray)?.FirstOrDefault(c => c?["symbol"]?.ToString() == symbol && c?["error"] is null)?["readValue"];
 
     // ClientWebSocket wraps a TLS failure twice: WebSocketException → HttpRequestException → AuthenticationException.
     internal static bool IsCertificateError(Exception ex)

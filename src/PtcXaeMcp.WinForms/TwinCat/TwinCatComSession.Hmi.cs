@@ -95,7 +95,115 @@ internal sealed partial class TwinCatComSession
     public HmiOperationResult AddHmiInternalSymbol(string hmiProject, string name, string dataType, string? defaultValueJson, bool persist, bool readOnly) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult RemoveHmiInternalSymbol(string hmiProject, string name) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult MapHmiOfflineSymbol(string hmiProject, string mapName, string dataType, string? defaultValueJson, bool online, bool persist) => throw TwinCatNotBuilt.HmiException();
+    public HmiPublishOutcome PublishHmiProject(string hmiProject, HmiPublishTarget target, TimeSpan timeout) => throw TwinCatNotBuilt.HmiException();
 #else
+    // ---- hmi-tf2000: publish (members from reflection on TcHmiAutomation.dll, TE2000 14.x) ----
+    //   ITcHmiProject.Publish(profileName | ITcHmiProfile, updateUi, ITcHmiPublishCallback), GetProfileInstance(name),
+    //   IsPublishRunning(), GetPublishResult() → ITcHmiPublishResult.
+    // Live 2026-11-19 (TE2000 14.17, 64-bit XAE):
+    //   - Publish(ITcHmiProfile) SAVES the profile to Properties/tchmipublish.config.json (the coordinator restores the
+    //     file after every publish).
+    //   - ITcHmiProfile.ServerPassword goes unchanged into "encryptedTcHmiServerPassword" (IL of TcHmiProfile.ApplyTo);
+    //     the XAE then decrypts it with its own keys. A plain password AND an empty one both fail with "Der Wert darf
+    //     nicht NULL sein. Parametername: password" — an in-memory profile never publishes. So only Publish(profileName)
+    //     of a profile the engineer saved in the XAE (password encrypted there) is used; the MCP never sees a password.
+    //   - The callback's Progress(string) carries JSON {"MessageType","ImportanceLevel","Message"}.
+    // Publish is not retried after it was issued: only the setup and the polling go through ComBusyRetry.
+
+    public HmiPublishOutcome PublishHmiProject(string hmiProject, HmiPublishTarget target, TimeSpan timeout)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var collector = new HmiPublishCollector();
+        var (started, error) = ComBusyRetry.Run(() =>
+        {
+            ITcHmiProject project = RequireHmiProject(hmiProject);
+            if (project.IsPublishRunning()) return (false, "a publish of this project is already running");
+            if (!project.IsValidPublishProfile(target.ProfileName))
+                return (false, $"the XAE does not accept publish profile '{target.ProfileName}' as valid");
+            bool ok = project.Publish(target.ProfileName, false, collector);
+            return (ok, ok ? null : HmiLastError(project));
+        }, HmiTimeout);
+        if (!started)
+            return new HmiPublishOutcome(false, false, null, null, null, error, watch.Elapsed.TotalSeconds, collector.Messages);
+
+        // Wait for Finished; a publish that is no longer running without having called Finished gets 5 s grace.
+        bool running = true;
+        TimeSpan? stoppedAt = null;
+        while (watch.Elapsed < timeout && !collector.Done.Wait(1000))
+        {
+            running = ComBusyRetry.Run(() => RequireHmiProject(hmiProject).IsPublishRunning(), HmiTimeout);
+            if (running) { stoppedAt = null; continue; }
+            stoppedAt ??= watch.Elapsed;
+            if (watch.Elapsed - stoppedAt > TimeSpan.FromSeconds(5)) break;
+        }
+        if (collector.Done.IsSet) running = false;
+        var (completed, code, submission, lastError) = collector.Result is { } fin
+            ? (fin.Completed, fin.Code, fin.SubmissionId, (string?)null)
+            : ComBusyRetry.Run(() =>
+            {
+                ITcHmiProject project = RequireHmiProject(hmiProject);
+                return project.GetPublishResult() is TcHmiAutomation.Publish.ITcHmiPublishResult r
+                    ? ((bool?)r.IsCompleted, (int?)r.Result, (int?)r.SubmissionId, HmiLastError(project))
+                    : (null, null, null, HmiLastError(project));
+            }, HmiTimeout);
+        return new HmiPublishOutcome(true, running, completed, code, submission, lastError, watch.Elapsed.TotalSeconds,
+            collector.Messages);
+    }
+
+    /// <summary>Receives the XAE's publish progress through COM (calls arrive on RPC threads; .NET objects are agile).</summary>
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.None)]
+    public sealed class HmiPublishCollector : TcHmiAutomation.Publish.ITcHmiPublishCallback
+    {
+        private readonly List<string> _messages = [];
+        private (bool? Completed, int? Code, int? SubmissionId)? _result;
+
+        public ManualResetEventSlim Done { get; } = new(false);
+
+        internal IReadOnlyList<string> Messages { get { lock (_messages) return _messages.ToList(); } }
+
+        internal (bool? Completed, int? Code, int? SubmissionId)? Result { get { lock (_messages) return _result; } }
+
+        public void Progress(TcHmiAutomation.Publish.ITcHmiPublishProgress data)
+        {
+            string text;
+            try { text = $"[type {data.MessageType}, level {data.ImportanceLevel}] {data.Message}"; }
+            catch (Exception ex) when (ComCall.NotBusy(ex)) { text = "(unreadable progress message)"; }
+            Add(text);
+        }
+
+        // Live: the XAE sends JSON text {"MessageType":0,"ImportanceLevel":1,"Message":"Copy …"} through this overload.
+        public void Progress(string data) => Add(HmiCoordinator.PublishMessage(data));
+
+        public void Finished(TcHmiAutomation.Publish.ITcHmiPublishResult data)
+        {
+            (bool? Completed, int? Code, int? SubmissionId) r;
+            try { r = (data?.IsCompleted, data?.Result, data?.SubmissionId); }
+            catch (Exception ex) when (ComCall.NotBusy(ex)) { r = (null, null, null); }
+            lock (_messages) _result = r;
+            Done.Set();
+        }
+
+        // A publish sends one "Copy …" line per file (hundreds): those keep only the newest 20, everything else is kept.
+        private int _plain;
+
+        private void Add(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            string t = text.Trim();
+            lock (_messages)
+            {
+                bool plain = t.StartsWith("[type 0, level 1] Copy ", StringComparison.Ordinal);
+                if (plain && ++_plain > 20)
+                {
+                    int oldest = _messages.FindIndex(m => m.StartsWith("[type 0, level 1] Copy ", StringComparison.Ordinal));
+                    if (oldest >= 0) _messages.RemoveAt(oldest);
+                }
+                if (_messages.Count < 2000) _messages.Add(t);
+            }
+        }
+    }
+
     // ---- hmi-internal-symbols (#165) — decompiled TE2000 14.17.22.1, NOT verified live ----
     //   - AddInternalSymbol is void and adds without a duplicate check (List.Add), then
     //     SaveResync writes Properties\tchmiconfig.json — possibly asynchronously,

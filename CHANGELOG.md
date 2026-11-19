@@ -40,7 +40,13 @@ pull-request numbers refer to those.
 - `twincat_hmi_server_diagnostics` talks to an HMI server (TF2000 runtime or the engineering server) through its
   WebSocket API: version, license state with used clients/targets, extensions, outdated symbols, sessions, event counts,
   active and unconfirmed alarms, newest events. Login with a user and the name of an environment variable holding the
-  password; a self-signed certificate only on request.
+  password; a self-signed certificate only on request. Repeated events are grouped in the summary; a user without
+  rights is told what is not readable instead of seeing extensions "not running".
+- `twincat_hmi_publish` publishes the HMI project to a TF2000 server with a publish profile saved in the XAE (target,
+  user and password, which the XAE keeps encrypted — the Automation Interface does not take a plain password). It reads
+  the target before and after and reports success only when the target then names this project; the XAE's progress
+  messages come back through the publish callback. A popup asks first. The XAE rewrites
+  `Properties/tchmipublish.config.json` during a publish; the tool restores it afterwards.
 - `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
   kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after
   a type was deleted, and how `tchmi.project.Schema.tpl.json` differs.

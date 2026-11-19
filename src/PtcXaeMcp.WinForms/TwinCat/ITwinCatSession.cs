@@ -729,6 +729,13 @@ internal interface ITwinCatSession : IDisposable
         string? defaultValueJson, bool online, bool persist);
 
     /// <summary>
+    /// hmi-tf2000: <c>ITcHmiProject.Publish(profileName | in-memory profile, updateUi: false, callback)</c>, then waits up
+    /// to <paramref name="timeout"/> for the callback's Finished (or IsPublishRunning false). Raw call only —
+    /// confirmation and the read-back on the target are the coordinator's job.
+    /// </summary>
+    HmiPublishOutcome PublishHmiProject(string hmiProject, HmiPublishTarget target, TimeSpan timeout);
+
+    /// <summary>
     /// Title of an open TE2000 "Activate Engineering Server Trial License" window
     /// (a CAPTCHA the engineer must answer), or null. Detection only.
     /// </summary>

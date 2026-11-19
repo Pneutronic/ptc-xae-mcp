@@ -80,6 +80,7 @@ public class MutatingCallGuardTests
     [InlineData("twincat_hmi_set_localized_texts")]
     [InlineData("twincat_hmi_place_user_control")]
     [InlineData("twincat_hmi_place_control")]
+    [InlineData("twincat_hmi_publish")]
     [InlineData("twincat_hmi_scaffold_symbol_view")]
     [InlineData("twincat_hmi_check_liveview")]
     [InlineData("twincat_save_as_library")]

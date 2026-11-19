@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-232 tools, generated from the source attributes — one section per
+233 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -24,7 +24,7 @@
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
 - [Hmi](#hmi) (8)
-- [HmiAuthoring](#hmiauthoring) (11)
+- [HmiAuthoring](#hmiauthoring) (12)
 - [HmiInternalSymbols](#hmiinternalsymbols) (4)
 - [HmiTmc](#hmitmc) (10)
 - [HmiViews](#hmiviews) (7)
@@ -795,6 +795,21 @@ Diagnose a TF2000 or engineering HMI server through its WebSocket API. Reports v
 | `maxEvents` | `int` | `20` | Max events to list, 0-200. Default 20. |
 | `timeoutMs` | `int` | `15000` | Timeout in ms, 1000-60000. Default 15000. |
 | `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_publish`
+
+Publish the HMI project to a TF2000 server with a saved publish profile. It replaces the project there. The profile, created once in the XAE, holds target, user and the password (the XAE keeps it encrypted; the MCP never passes one). Reads the target before and after: success only when it then reports this project. user + passwordVariable (NAME of an environment variable of the MCP host) are only for these reads.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `profile` | `string` |  | Name of a publish profile saved in the project (create it once in the XAE's Publish dialog, password saved). |
+| `targetUrl` | `string?` | `null` | Optional check: the TF2000 server URL the profile must point at, e.g. https://192.168.1.10:2020. |
+| `user` | `string?` | `null` | User for reading the target before and after (default: the profile's user). |
+| `passwordVariable` | `string?` | `null` | Name of an environment variable of the MCP host holding that user's password (the password itself is never a parameter). |
+| `trustServerCertificate` | `bool` | `false` | Accept a self-signed certificate for the reads before and after (https). Default false. |
+| `timeoutSeconds` | `int` | `300` | Max seconds to wait for the publish, 30-1800. Default 300. |
+| `hmiProject` | `string?` | `null` |  |
+| `confirmTimeoutSeconds` | `int` | `120` |  |
 
 ### `twincat_hmi_scaffold_symbol_view`
 

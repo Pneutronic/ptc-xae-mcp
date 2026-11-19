@@ -77,6 +77,22 @@ internal sealed record HmiServerControlResult(
 /// return plus ITcHmiError.LastError when it returned false.</summary>
 internal sealed record HmiOperationResult(bool Ok, string? LastError);
 
+// ---- hmi-tf2000: publish ------------------------------------------------------------
+
+/// <summary>What <c>ITcHmiProject.Publish(profileName)</c> uses: a publish profile saved in the project (its target, user
+/// and password, encrypted by the XAE). The Automation Interface takes a password only in the XAE's encrypted form, so
+/// the MCP never passes one. <paramref name="TargetUrl"/> is the profile's target, for the log.</summary>
+internal sealed record HmiPublishTarget(string ProfileName, string TargetUrl);
+
+/// <summary>What the publish call and its result object reported.</summary>
+/// <param name="Started">Publish(profile) returned true.</param>
+/// <param name="StillRunning">IsPublishRunning was still true when the wait ended.</param>
+/// <param name="Completed">ITcHmiPublishResult.IsCompleted, null when there was no result object.</param>
+/// <param name="ResultCode">ITcHmiPublishResult.Result, null without a result object.</param>
+/// <param name="Messages">Progress messages the XAE sent through the publish callback, in order.</param>
+internal sealed record HmiPublishOutcome(bool Started, bool StillRunning, bool? Completed, int? ResultCode, int? SubmissionId,
+    string? LastError, double Seconds, IReadOnlyList<string>? Messages = null);
+
 // ---- hmi-ads-tmc --------------------------------
 
 /// <summary>

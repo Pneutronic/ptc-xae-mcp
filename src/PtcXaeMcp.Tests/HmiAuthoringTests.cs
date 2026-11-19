@@ -434,6 +434,31 @@ public sealed class HmiAuthoringTests : IDisposable
     }
 
     [Fact]
+    public void Scaffold_AnArrayOfStructs_BecomesADatagridWithOneColumnPerSimpleField()
+    {
+        var value = Json("{\"aMotors\": [{\"sName\": \"M1\", \"bOn\": true, \"fSpeed\": 1.5, \"stPos\": {\"x\": 1}}, {\"sName\": \"M2\", \"bOn\": false, \"fSpeed\": 0, \"stPos\": {\"x\": 2}}]," +
+                         " \"aEmpty\": []}");
+        var r = HmiScaffold.Build("PLC1.MAIN.st", value, "Plant", readOnly: false, maxDepth: 3);
+
+        var doc = HmiMarkup.Parse(r.Text);
+        Assert.Empty(doc.Problems);
+        var grid = doc.Elements.Single(e => e.Id == "Plant_aMotors_Grid");
+        Assert.Equal(HmiScaffold.Datagrid, grid.Type);
+        Assert.Equal("%s%PLC1.MAIN.st::aMotors%/s%", grid.Value(HmiScaffold.DataSymbolAttribute));
+        Assert.Contains("\"name\":\"sName\",\"label\":\"sName\",\"control\":\"TextBox\"", r.Text, StringComparison.Ordinal);
+        Assert.Contains("\"name\":\"bOn\",\"label\":\"bOn\",\"control\":\"CheckBox\"", r.Text, StringComparison.Ordinal);
+        Assert.Contains("\"name\":\"fSpeed\",\"label\":\"fSpeed\",\"control\":\"NumericInput\",\"width\":140,\"widthUnit\":\"px\",\"editable\":true",
+            r.Text, StringComparison.Ordinal);
+        Assert.Contains(r.Skipped, s => s == "PLC1.MAIN.st::aMotors: field 'stPos' (object) has no datagrid column");
+        Assert.Contains(r.Skipped, s => s.StartsWith("PLC1.MAIN.st::aEmpty: array — not scaffolded (empty", StringComparison.Ordinal));
+        Assert.Contains("%s%PLC1.MAIN.st::aMotors%/s%", r.Bindings);
+
+        var ro = HmiScaffold.Build("PLC1.MAIN.st", value, "Plant", readOnly: true, maxDepth: 3);
+        Assert.Contains("\"name\":\"fSpeed\",\"label\":\"fSpeed\",\"control\":\"TextBlock\",\"width\":140,\"widthUnit\":\"px\",\"editable\":false",
+            ro.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Scaffold_ReadOnly_UsesTextblocksAndDisabledCheckboxes_AndHonoursDepth()
     {
         var r = HmiScaffold.Build("S", Json("{\"b\": false, \"n\": 1, \"inner\": {\"deep\": {\"x\": 1}}}"), "V", readOnly: true, maxDepth: 1);

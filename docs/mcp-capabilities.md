@@ -817,7 +817,7 @@ Publish the HMI project to a TF2000 server with a saved publish profile. It repl
 
 ### `twincat_hmi_scaffold_symbol_view`
 
-Generate a .content with one row per field of a server symbol. Label + checkbox (BOOL), numeric input (number), textbox (string), or read-only textblocks; nested structs get a header. The shape comes from the symbol's current value read through the HMI server, or from sampleValue. Arrays are listed as skipped. dryRun returns the markup without writing.
+Generate a .content with one row per field of a server symbol. Label + checkbox (BOOL), numeric input (number), textbox (string), or read-only textblocks; nested structs get a header. The shape comes from the symbol's current value read through the HMI server, or from sampleValue. An array of structs becomes a datagrid (one column per simple field, edits written back); other arrays are listed as skipped. dryRun returns the markup without writing.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

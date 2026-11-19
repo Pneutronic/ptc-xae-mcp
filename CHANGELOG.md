@@ -43,6 +43,8 @@ pull-request numbers refer to those.
   active and unconfirmed alarms, newest events. Login with a user and the name of an environment variable holding the
   password; a self-signed certificate only on request. Repeated events are grouped in the summary; a user without
   rights is told what is not readable instead of seeing extensions "not running".
+- `twincat_hmi_scaffold_symbol_view` turns an array of structs into a datagrid (one column per simple field, edits
+  written back to the symbol) instead of skipping it.
 - `twincat_hmi_publish` publishes the HMI project to a TF2000 server with a publish profile saved in the XAE (target,
   user and password, which the XAE keeps encrypted — the Automation Interface does not take a plain password). It reads
   the target before and after and reports success only when the target then names this project; the XAE's progress

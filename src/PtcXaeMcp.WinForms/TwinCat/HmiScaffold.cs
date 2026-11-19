@@ -90,7 +90,24 @@ internal static partial class HmiScaffold
                         Row(p.Name, path.Length == 0 ? p.Name : path + "::" + p.Name, p.Value, path.Length == 0 ? depth : depth + 1);
                     return;
                 case JsonValueKind.Array:
-                    skipped.Add($"{expr}: array — not scaffolded (bind it to a datagrid or a user control)");
+                    if (DatagridColumns(v, readOnly, out var columns, out string? why))
+                    {
+                        int left0 = Margin + depth * Indent;
+                        // Live 2026-11-19: the grid adds a row-number column and scrollbars; without this room the last
+                        // row sat under the horizontal scrollbar.
+                        int width = Math.Clamp(columns.Sum(c => c.Width) + DatagridChromeWidth, 200, 900);
+                        int rowsShown = Math.Clamp(v.GetArrayLength(), 1, DatagridMaxRows);
+                        int height = DatagridHeaderHeight + rowsShown * DatagridRowHeight + DatagridChromeHeight;
+                        AppendTextblock(rows, idBase + "_Header", left0, y, LabelWidth + ValueWidth, label, bold: true);
+                        y += RowStep; count++;
+                        string dataBinding = "%s%" + expr + "%/s%";
+                        AppendDatagrid(rows, idBase + "_Grid", left0, y, width, height, dataBinding, columns);
+                        bindings.Add(dataBinding);
+                        maxRight = Math.Max(maxRight, left0 + width);
+                        y += height + (RowStep - RowHeight); count++;
+                        foreach (string c in columns.Where(c => c.Skipped is not null).Select(c => c.Skipped!)) skipped.Add($"{expr}: {c}");
+                    }
+                    else skipped.Add($"{expr}: array — not scaffolded ({why})");
                     return;
             }
 
@@ -128,6 +145,75 @@ internal static partial class HmiScaffold
             $"<div id=\"{contentId}\" data-tchmi-type=\"{Content}\" data-tchmi-top=\"0\" data-tchmi-left=\"0\" " +
             $"data-tchmi-width=\"{width}\" data-tchmi-height=\"{height}\">\n" + rows + "</div>\n";
         return new HmiScaffoldResult(text, count, width, height, skipped, bindings);
+    }
+
+    // ---- arrays of structs → TcHmiDatagrid -------------------------------------------------------------------------
+    // Description.json / Schema of TcHmiDatagrid (Controls 14.8.3): DataSymbol (a Symbol of an Array; "changes in the
+    // datagrid will be written back"), SrcColumn = list of { name, label, control (TextBox, TextBlock, CheckBox,
+    // NumericInput, …), width, widthUnit, editable, resize, minWidth, minWidthUnit, horizontalAlignment,
+    // verticalAlignment }. The columns are the simple fields of the first element; rows come from the symbol.
+
+    internal const string Datagrid = "TcHmi.Controls.Beckhoff.TcHmiDatagrid";
+    internal const string DataSymbolAttribute = "data-tchmi-data-symbol";
+    internal const string SrcColumnAttribute = "data-tchmi-src-column";
+    internal const int DatagridHeaderHeight = 30, DatagridRowHeight = 30, DatagridMaxRows = 10;
+    internal const int DatagridChromeWidth = 50, DatagridChromeHeight = 20;
+
+    /// <summary>One datagrid column; <paramref name="Skipped"/> names a field that got no column.</summary>
+    internal sealed record DatagridColumn(string Name, string Control, bool Editable, int Width, string? Skipped = null);
+
+    internal static bool DatagridColumns(JsonElement array, bool readOnly, out List<DatagridColumn> columns, out string? why)
+    {
+        columns = [];
+        why = null;
+        JsonElement first = array.EnumerateArray().FirstOrDefault();
+        if (array.GetArrayLength() == 0) { why = "empty — the element type is unknown"; return false; }
+        if (first.ValueKind != JsonValueKind.Object) { why = "of simple values; a datagrid needs named fields — bind it to a user control"; return false; }
+        foreach (var p in first.EnumerateObject())
+        {
+            switch (p.Value.ValueKind)
+            {
+                case JsonValueKind.True or JsonValueKind.False:
+                    columns.Add(new(p.Name, "CheckBox", !readOnly, 90));
+                    break;
+                case JsonValueKind.Number:
+                    columns.Add(new(p.Name, readOnly ? "TextBlock" : "NumericInput", !readOnly, 140));
+                    break;
+                case JsonValueKind.String:
+                    columns.Add(new(p.Name, readOnly ? "TextBlock" : "TextBox", !readOnly, 180));
+                    break;
+                case JsonValueKind.Null:
+                    columns.Add(new(p.Name, "TextBlock", false, 140));
+                    break;
+                default:
+                    columns.Add(new(p.Name, "", false, 0, $"field '{p.Name}' ({p.Value.ValueKind.ToString().ToLowerInvariant()}) has no datagrid column"));
+                    break;
+            }
+        }
+        if (!columns.Any(c => c.Skipped is null)) { why = "its elements have no simple field for a column"; return false; }
+        return true;
+    }
+
+    private static void AppendDatagrid(StringBuilder sb, string id, int left, int top, int width, int height, string dataBinding,
+        List<DatagridColumn> columns)
+    {
+        var list = new System.Text.Json.Nodes.JsonArray();
+        foreach (var c in columns.Where(c => c.Skipped is null))
+            list.Add(new System.Text.Json.Nodes.JsonObject
+            {
+                ["name"] = c.Name, ["label"] = c.Name, ["control"] = c.Control, ["width"] = c.Width, ["widthUnit"] = "px",
+                ["editable"] = c.Editable, ["resize"] = true, ["minWidth"] = 60, ["minWidthUnit"] = "px",
+                ["horizontalAlignment"] = c.Control is "CheckBox" ? "Center" : "Left", ["verticalAlignment"] = "Center",
+            });
+        sb.Append("  <div id=\"").Append(id).Append("\" data-tchmi-type=\"").Append(Datagrid).Append('"')
+          .Append(CultureInfo.InvariantCulture, $" data-tchmi-left=\"{left}\" data-tchmi-left-unit=\"px\" data-tchmi-top=\"{top}\" data-tchmi-top-unit=\"px\"")
+          .Append(CultureInfo.InvariantCulture, $" data-tchmi-width=\"{width}\" data-tchmi-width-unit=\"px\" data-tchmi-height=\"{height}\" data-tchmi-height-unit=\"px\"")
+          .Append(' ').Append(DataSymbolAttribute).Append("=\"").Append(HmiPlacement.Escape(dataBinding)).Append('"')
+          .Append(CultureInfo.InvariantCulture, $" data-tchmi-row-height=\"{DatagridRowHeight}\" data-tchmi-header-height=\"{DatagridHeaderHeight}\"")
+          .Append(" data-tchmi-header-height-unit=\"px\">\n")
+          .Append("    <script data-tchmi-target-attribute=\"").Append(SrcColumnAttribute).Append("\" type=\"application/json\">\n    ")
+          .Append(list.ToJsonString(new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+          .Append("\n    </script>\n  </div>\n");
     }
 
     // Labels sit in the middle of the 30 px row like the inputs next to them (live 2026-11-18: top-aligned looked off).

@@ -70,6 +70,7 @@ internal sealed partial class FakeTwinCatSession
             string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
         if (idx < 0)
             throw new InvalidOperationException($"Reference '{name}' not found.");
+        if (NoOpMutations.Contains(nameof(SetLibraryVersion))) return LibraryReferences;
         var old = LibraryReferences[idx];
         LibraryReferences[idx] = old with { Version = version, Publisher = company ?? old.Publisher };
         return LibraryReferences;

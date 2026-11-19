@@ -101,6 +101,39 @@ public class NcAxesCoordinatorTests
         Assert.Contains("CreateNcTask(NC-Task)", fake.CallLog);
     }
 
+    [Theory]
+    [InlineData("NC-Task SAF", "NC-Task", "SAF")]
+    [InlineData("NC-Task 1 saf", "NC-Task 1", "SAF")]
+    [InlineData("NC-Task SVB", "NC-Task", "SVB")]
+    public void CreateNcTask_TrailingXaeSuffix_IsRemovedAndReported(string given, string passed, string suffix)
+    {
+        // #53: the XAE appends " SAF" itself; "NC-Task SAF" became "TINC^NC-Task SAF SAF".
+        var fake = OpenFake();
+        fake.CreateNcTaskResult = $"TINC^{passed} SAF";
+        var summary = new NcAxesCoordinator(fake).CreateNcTask(given);
+        Assert.Contains($"CreateNcTask({passed})", fake.CallLog);
+        Assert.Contains($"TINC^{passed} SAF.", summary);
+        Assert.Contains($"'{suffix}' was removed", summary);
+    }
+
+    [Fact]
+    public void CreateNcTask_NameWithoutSuffix_IsPassedUnchangedWithoutNote()
+    {
+        var fake = OpenFake();
+        var summary = new NcAxesCoordinator(fake).CreateNcTask("SAFety task");
+        Assert.Contains("CreateNcTask(SAFety task)", fake.CallLog);
+        Assert.DoesNotContain("removed", summary);
+    }
+
+    [Fact]
+    public void CreateNcTask_OnlyTheSuffix_ErrorsBeforeSession()
+    {
+        var fake = OpenFake();
+        var summary = new NcAxesCoordinator(fake).CreateNcTask(" SAF");
+        Assert.StartsWith("[Error]", summary);
+        Assert.DoesNotContain(fake.CallLog, c => c.StartsWith("CreateNcTask", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void CreateNcTask_AlreadyExists_RewrittenToGuidance()
     {

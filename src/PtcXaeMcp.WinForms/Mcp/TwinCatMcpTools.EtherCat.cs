@@ -28,8 +28,9 @@ internal sealed partial class TwinCatMcpTools
         [Description("Parent tree path, e.g. 'TIID^Device 1 (EtherCAT)' or 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)'. " +
                      "From twincat_get_fieldbus_topology; the bare root 'TIID' is rejected.")]
         string parentPath,
-        [Description("Single box: type, bare 'EL9011' (latest installed revision) or revisioned 'AX5206-0000-0202' " +
-                     "(see twincat_list_ethercat_box_catalog). Excludes boxesJson.")]
+        [Description("Single box: type, bare 'EL9011' (latest installed revision) or revisioned 'AX5206-0000-0202'; other " +
+                     "vendors as 'V<vendorId>_P<productCode>_R<revision>' (8 hex digits each; a bare third-party ESI Type is " +
+                     "translated). See twincat_list_ethercat_box_catalog. Excludes boxesJson.")]
         string? vInfo = null,
         [Description("Single box: designation, e.g. 'A1.49 (EL9011)'. Default: vInfo.")]
         string? name = null,
@@ -50,7 +51,8 @@ internal sealed partial class TwinCatMcpTools
     [McpServerTool(Name = "twincat_list_ethercat_box_catalog", ReadOnly = true)]
     [Description("List installable EtherCAT box types and their vInfo from the local ESI files. " +
                  "vInfo is the input of twincat_add_ethercat_box. Scans <TwinCAT>\\3.1\\Config\\Io\\EtherCAT offline: no XAE, " +
-                 "solution or hardware needed. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017), ESI Type, name, " +
+                 "solution or hardware needed. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017; other vendors " +
+                 "V<vendorId>_P<productCode>_R<revision>, e.g. V00000059_P00000013_R00000002), ESI Type, name, " +
                  "productCode, revisionNo, vendor, source file. Malformed ESI files are skipped and counted. The first scan " +
                  "can take seconds; cached until an ESI file changes. Result: summary line + JSON { esiDirectory, filter, " +
                  "latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, " +

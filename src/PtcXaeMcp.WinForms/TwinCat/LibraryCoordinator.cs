@@ -455,6 +455,23 @@ internal sealed class LibraryCoordinator(ITwinCatSession session)
         IReadOnlyList<LibraryReference> refs;
         try { refs = session.SetLibraryVersion(name, version, company, plcProjectName); }
         catch (InvalidOperationException ex) { return ($"[Error] {ex.Message}", Array.Empty<LibraryReference>()); }
+
+        // Read back: a write the XAE accepted is not yet a pinned version (#46 — the XAE took the whole
+        // resolution string as the library name and kept "*"). "*" itself is reported as "* (newest)" or
+        // "newest", so only a concrete version is compared.
+        if (version.Trim() != "*")
+        {
+            var after = refs.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (after is null || !string.Equals(after.Version.Trim(), version.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                string seen = after is null
+                    ? "the reference is no longer listed under that name"
+                    : $"the XAE now reports version '{after.Version}' (resolution '{after.EffectiveResolution}')";
+                return ($"[Error] Setting '{name}' to version {version} did not take effect: {seen}. " +
+                        "Check the reference with twincat_list_library_references; remove it and add it again with " +
+                        "twincat_add_library_reference(version=...) if it is broken.", refs);
+            }
+        }
         return ($"Set '{name}' to version {version}.", refs);
     }
 }

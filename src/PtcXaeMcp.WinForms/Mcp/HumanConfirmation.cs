@@ -191,6 +191,12 @@ internal sealed class HumanConfirmation(
     /// <summary>How long an elicitation may stay unanswered before the call is refused.</summary>
     public TimeSpan AskTimeout { get; init; } = TimeSpan.FromSeconds(ConfirmationRegistry.TtlSeconds);
 
+    /// <summary>A refusal that comes back faster than this was not given by a human who read the question (#51): a
+    /// client declined the elicitation by itself without showing it (seen with the Claude desktop app, Code tab). The
+    /// server cannot tell such a refusal from a real "No" by its content, so a too-fast one goes the token path through
+    /// the window instead; a human still has to release the action there.</summary>
+    public TimeSpan MinHumanAnswer { get; init; } = TimeSpan.FromSeconds(1);
+
     private static readonly string[] Reserved = [TokenArgument, "requestKey"];
 
     // ---- the call-tool filter -------------------------------------------------------------------------------
@@ -229,7 +235,15 @@ internal sealed class HumanConfirmation(
         string? failure = null;
         if (asker.CanAsk)
         {
+            var asked = System.Diagnostics.Stopwatch.StartNew();
             var answer = await AskWithTimeoutAsync(asker, Question(toolName, target, summary), cancellationToken);
+            asked.Stop();
+            if (answer == ConfirmAnswer.No && asked.Elapsed < MinHumanAnswer)
+            {
+                failure = $"The client refused the confirmation after {asked.ElapsedMilliseconds} ms, too fast for a human " +
+                          "who read it: it probably declined the question without showing it.";
+                answer = ConfirmAnswer.Failed;
+            }
             switch (answer)
             {
                 case ConfirmAnswer.Yes:
@@ -240,7 +254,7 @@ internal sealed class HumanConfirmation(
                     Log(toolName, summary, declined, success: false, started);
                     return Error(declined);
                 default:
-                    failure = "The client did not answer the confirmation request.";
+                    failure ??= "The client did not answer the confirmation request.";
                     break;
             }
         }

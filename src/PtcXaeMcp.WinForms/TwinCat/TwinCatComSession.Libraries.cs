@@ -205,13 +205,17 @@ internal sealed partial class TwinCatComSession
                 }
             }
 
-            string setRes = BuildResolutionString(name, version, company);
             if (isPlaceholder)
             {
                 try
                 {
-                    // SetEffectiveResolution takes the full resolution string.
-                    libMgr.SetEffectiveResolution(name, setRes);
+                    // ITcPlcLibraryManager.SetEffectiveResolution(bstrPlaceholderName, bstrLibName, bstrVersion,
+                    // bstrDistributor): four parts (TCatSysManager.tlb 3.4), NOT one resolution string. Called with
+                    // (name, "<lib>, <ver> (<dist>)") the XAE took the whole string as the library name and kept the
+                    // old version: "Tc2_Standard, 3.3.3.0 (Beckhoff Automation GmbH), * (Beckhoff Automation GmbH)",
+                    // which no longer compiles (#46). Live 2026-11-19 (TC 4026.22): the four parts write
+                    // "Tc2_Standard, 3.4.5.0 (Beckhoff Automation GmbH)" and replace such a broken entry.
+                    libMgr.SetEffectiveResolution(name, name, version, company ?? string.Empty);
                 }
                 catch (Exception comEx) when (ComCall.NotBusy(comEx)) {
                     // NEVER Remove+AddPlaceholder here: that drops the placeholder's

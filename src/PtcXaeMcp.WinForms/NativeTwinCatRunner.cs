@@ -508,7 +508,8 @@ internal sealed class NativeTwinCatRunner
         BrownfieldGuard.AssertMasterEmpty(childCount, master.Name);
 
         Info("Creating EtherCAT topology...");
-        _topology = new EtherCatTopologyBuilder(_tree!, Info, Warn, _cancellationToken);
+        _topology = new EtherCatTopologyBuilder(_tree!, Info, Warn, _cancellationToken,
+            vInfo => EsiCatalogScanner.ThirdPartyIdentityVInfos(vInfo));
         _topology.Build(master, cfg.EtherCat.Root);
         Info("EtherCAT topology created.");
     }

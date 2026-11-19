@@ -38,9 +38,10 @@ internal sealed partial class TwinCatMcpTools
     [Description("Create an NC-Task under the Motion (TINC) root. " +
                  "Needs an open solution. Works only when the project has no NC-Task yet; otherwise it returns guidance to " +
                  "reuse the existing one (twincat_list_nc_tasks_axes + twincat_create_axis). Returns the created tree path " +
-                 "as read back. NOT saved: call twincat_save_project.")]
+                 "as read back. The XAE appends ' SAF' to the name itself ('NC-Task 1' → 'NC-Task 1 SAF'); a trailing " +
+                 "' SAF'/' SVB' in the given name is removed and reported. NOT saved: call twincat_save_project.")]
     public string CreateNcTask(
-        [Description("Name for the new NC-Task, e.g. 'NC-Task 1'.")] string name,
+        [Description("Base name for the new NC-Task without ' SAF', e.g. 'NC-Task 1'.")] string name,
         CancellationToken cancellationToken = default)
         => bridge.Activity.Trace("twincat_create_nc_task", new { name }, () =>
             bridge.Dispatcher.Run(() =>

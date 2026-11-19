@@ -48,7 +48,10 @@ public sealed class HumanConfirmationEndToEndTests : IAsyncLifetime
     {
         var confirmation = new HumanConfirmation(
             () => new AccessPolicy(AccessLevel.Runtime, AccessPolicy.ParseList(null), null, "test", Confirm: _mode),
-            () => _projectTarget, () => [], _registry, null, () => [Local]);
+            () => _projectTarget, () => [], _registry, null, () => [Local])
+        {
+            MinHumanAnswer = TimeSpan.Zero, // the test client answers at once; the too-fast rule has unit tests
+        };
 
         var receipts = new RequestReceipts(new ReceiptStore(Path.Combine(_receiptsDir, ReceiptStore.FileName)), () => _projectTarget);
 

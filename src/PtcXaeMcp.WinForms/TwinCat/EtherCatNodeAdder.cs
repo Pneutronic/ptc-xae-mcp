@@ -25,6 +25,7 @@ internal sealed class EtherCatNodeAdder
     private readonly ISysManTree _tree;
     private readonly Action<ITreeNode, string, string, string> _applyPreviousPort;
     private readonly Func<string, string?>? _esiHint;
+    private readonly Func<string, IReadOnlyList<string>>? _esiIdentities;
     private readonly List<string> _created = [];
 
     // Issue #190: the path of a CreateChild that was issued but whose node is not verified yet.
@@ -37,12 +38,15 @@ internal sealed class EtherCatNodeAdder
     /// <param name="applyPreviousPort">(slave, port, itemName, upstreamPhysAddr): selects and verifies the PreviousPort.</param>
     /// <param name="esiHint">vInfo → sentence on the ESI for that type (<see cref="EsiInstallHint.For"/>), added to the
     /// message when no box can be created; null or a null answer adds nothing.</param>
+    /// <param name="esiIdentities">vInfo → identity vInfos of a bare third-party Type
+    /// (<see cref="EsiCatalogScanner.ThirdPartyIdentityVInfos"/>), tried after the vInfo itself (#52).</param>
     public EtherCatNodeAdder(ISysManTree tree, Action<ITreeNode, string, string, string> applyPreviousPort,
-        Func<string, string?>? esiHint = null)
+        Func<string, string?>? esiHint = null, Func<string, IReadOnlyList<string>>? esiIdentities = null)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _applyPreviousPort = applyPreviousPort ?? throw new ArgumentNullException(nameof(applyPreviousPort));
         _esiHint = esiHint;
+        _esiIdentities = esiIdentities;
     }
 
     /// <summary>Paths created by this instance, in creation order.</summary>
@@ -123,7 +127,7 @@ internal sealed class EtherCatNodeAdder
     private ITreeNode CreateBox(ITreeNode parent, string name, string path, string vInfo, string? beforeSibling)
     {
         Exception? firstError = null;
-        foreach (string candidate in EtherCatVInfo.GetCreateChildVInfoCandidates(vInfo))
+        foreach (string candidate in EtherCatVInfo.GetCreateChildVInfoCandidates(vInfo, _esiIdentities))
         {
             ITreeNode created;
             try { created = parent.CreateChild(name, EtherCatVInfo.BoxItemSubType, beforeSibling ?? string.Empty, candidate); }

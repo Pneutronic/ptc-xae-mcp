@@ -72,6 +72,20 @@ and publish to a TF2000 server. Tested in the 32-bit and the 64-bit XAE and agai
   with "Could not load file or assembly 'TcHmiAutomation'" (#43). A cached lambda of the HMI code shared a
   compiler-generated class with the lambdas of every other tool, so the first of them loaded the HMI assembly. The HMI
   code now has its own class: without TE2000 only the `twincat_hmi_*` tools refuse, with "TE2000 is not installed".
+- `twincat_set_library_version` on a placeholder wrote `Tc2_Standard, 3.3.3.0 (Beckhoff Automation GmbH), * (Beckhoff
+  Automation GmbH)` into the `.plcproj`, and the next build failed (#46). `SetEffectiveResolution` takes placeholder,
+  library, version and distributor as four arguments; it got the whole resolution string as the library name. The
+  tool now passes the four parts and reads the version back: a version that did not take effect is an `[Error]`.
+- `twincat_add_ethercat_box` and `twincat_apply_schema` could not add a box of another vendor than Beckhoff ("Invalid
+  item sub type", #52): the XAE refuses such a box by its ESI Type. `twincat_list_ethercat_box_catalog` now lists
+  these boxes as `V<vendorId>_P<productCode>_R<revision>` (8 hex digits each), which the XAE accepts, and a bare
+  third-party Type is translated to that form through the local ESI files.
+- With a client that declines a confirmation request without showing it, `twincat_activate_config`,
+  `twincat_set_system_mode` and the other confirmed actions answered "Declined by the human" although nobody had seen a
+  question (#51). A refusal faster than 1 s is no longer taken as a human's "No": the request goes to the Approvals
+  tab of the server window, where a human releases it.
+- `twincat_create_nc_task` with the name `NC-Task SAF` created `NC-Task SAF SAF`: the XAE appends ` SAF` itself (#53).
+  A trailing ` SAF` or ` SVB` is now removed and reported, and the description says so.
 - `twincat_umr_start` started a second process for a Usermode Runtime instance that was already running when another
   process (another server, `Start.bat`, a service) had started it. It now asks the instance's NetId over ADS (port 10000,
   1 s timeout) first and refuses the start when it answers.

@@ -530,6 +530,34 @@ public class LibraryCoordinatorTests
         Assert.Contains("SetLibraryVersion(Tc2_Standard,*,Other Co)", fake.CallLog);
     }
 
+    [Fact]
+    public void SetVersion_XaeKeepsTheOldVersion_ReturnsErrorNotSuccess()
+    {
+        // #46: the XAE accepted the write but the placeholder still resolved to "*".
+        var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = true };
+        fake.LibraryReferences.Add(Ref("Tc2_Standard", "*"));
+        fake.NoOpMutations.Add(nameof(FakeTwinCatSession.SetLibraryVersion));
+
+        var (summary, refs) = new LibraryCoordinator(fake).SetVersion("Tc2_Standard", "3.3.3.0", null);
+
+        Assert.StartsWith("[Error]", summary);
+        Assert.Contains("did not take effect", summary);
+        Assert.Contains("'*'", summary);
+        Assert.Single(refs);
+    }
+
+    [Fact]
+    public void SetVersion_ToAnyVersion_IsNotComparedAgainstTheXaeSpelling()
+    {
+        var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = true };
+        fake.LibraryReferences.Add(Ref("Tc2_Standard", "* (newest)"));
+        fake.NoOpMutations.Add(nameof(FakeTwinCatSession.SetLibraryVersion));
+
+        var (summary, _) = new LibraryCoordinator(fake).SetVersion("Tc2_Standard", "*", null);
+
+        Assert.DoesNotContain("[Error]", summary);
+    }
+
     [Theory]
     [InlineData("*", true)]
     [InlineData("* (newest)", true)]

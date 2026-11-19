@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-233 tools, generated from the source attributes — one section per
+234 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -19,7 +19,7 @@
 - [Diagnostics](#diagnostics) (9)
 - [Doctor](#doctor) (1)
 - [EditorNavigation](#editornavigation) (2)
-- [EtherCat](#ethercat) (6)
+- [EtherCat](#ethercat) (7)
 - [EventClasses](#eventclasses) (4)
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
@@ -448,7 +448,7 @@ Add an EtherCAT box/terminal, or a whole subtree, under a TIID node. Same engine
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `parentPath` | `string` |  | Parent tree path, e.g. 'TIID^Device 1 (EtherCAT)' or 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)'. From twincat_get_fieldbus_topology; the bare root 'TIID' is rejected. |
-| `vInfo` | `string?` | `null` | Single box: type, bare 'EL9011' (latest installed revision) or revisioned 'AX5206-0000-0202' (see twincat_list_ethercat_box_catalog). Excludes boxesJson. |
+| `vInfo` | `string?` | `null` | Single box: type, bare 'EL9011' (latest installed revision) or revisioned 'AX5206-0000-0202'; other vendors as 'V<vendorId>_P<productCode>_R<revision>' (8 hex digits each; a bare third-party ESI Type is translated). See twincat_list_ethercat_box_catalog. Excludes boxesJson. |
 | `name` | `string?` | `null` | Single box: designation, e.g. 'A1.49 (EL9011)'. Default: vInfo. |
 | `previousPort` | `string?` | `null` | Single box: upstream port letter A/B/C/D. |
 | `beforeSibling` | `string?` | `null` | Name of an existing sibling to insert before. Default: append at the end. |
@@ -456,7 +456,7 @@ Add an EtherCAT box/terminal, or a whole subtree, under a TIID node. Same engine
 
 ### `twincat_list_ethercat_box_catalog`
 
-List installable EtherCAT box types and their vInfo from the local ESI files. vInfo is the input of twincat_add_ethercat_box. Scans <TwinCAT>\3.1\Config\Io\EtherCAT offline: no XAE, solution or hardware needed. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017), ESI Type, name, productCode, revisionNo, vendor, source file. Malformed ESI files are skipped and counted. The first scan can take seconds; cached until an ESI file changes. Result: summary line + JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }; total counts every match.
+List installable EtherCAT box types and their vInfo from the local ESI files. vInfo is the input of twincat_add_ethercat_box. Scans <TwinCAT>\3.1\Config\Io\EtherCAT offline: no XAE, solution or hardware needed. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017; other vendors V<vendorId>_P<productCode>_R<revision>, e.g. V00000059_P00000013_R00000002), ESI Type, name, productCode, revisionNo, vendor, source file. Malformed ESI files are skipped and counted. The first scan can take seconds; cached until an ESI file changes. Result: summary line + JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }; total counts every match.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -487,6 +487,14 @@ Set an EtherCAT box's upstream PreviousPort (A/B/C/D) and save the project. Need
 |---|---|---|---|
 | `treePath` | `string` |  | Tree path of the box, e.g. 'TIID^Device 1 (EtherCAT)^Box 2 (EK1122)^Box 3 (EK1100)'. |
 | `port` | `string` |  | Upstream port: A, B, C or D. |
+
+### `twincat_ethercat_scan_compare`
+
+Scan an EtherCAT master's network and compare it with the configured boxes. The XAE Scan in config mode, without activating a configuration (twincat_ethercat_read_identities needs one): a temporary master on the same adapter scans the real network and is removed again; the project is left unchanged and nothing is saved. Needs config mode (twincat_set_system_mode config) and a network adapter assigned to the master. Compares by position and identity (vendor, product code, revision), not by box name. Returns JSON { treePath, identical, summary, configured[], scanned[], differences[] } where a difference is { position, kind: missing | extra | different_product | different_revision, configured, scanned }, or [Error]; an [Error] that names a temporary device means it could not be removed and must be deleted by hand.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `treePath` | `string` |  | Tree path of the EtherCAT master under TIID, e.g. 'TIID^Device 1 (EtherCAT)' (twincat_get_fieldbus_topology). |
 
 ## EventClasses
 
@@ -1347,11 +1355,11 @@ _No parameters._
 
 ### `twincat_create_nc_task`
 
-Create an NC-Task under the Motion (TINC) root. Needs an open solution. Works only when the project has no NC-Task yet; otherwise it returns guidance to reuse the existing one (twincat_list_nc_tasks_axes + twincat_create_axis). Returns the created tree path as read back. NOT saved: call twincat_save_project.
+Create an NC-Task under the Motion (TINC) root. Needs an open solution. Works only when the project has no NC-Task yet; otherwise it returns guidance to reuse the existing one (twincat_list_nc_tasks_axes + twincat_create_axis). Returns the created tree path as read back. The XAE appends ' SAF' to the name itself ('NC-Task 1' → 'NC-Task 1 SAF'); a trailing ' SAF'/' SVB' in the given name is removed and reported. NOT saved: call twincat_save_project.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `name` | `string` |  | Name for the new NC-Task, e.g. 'NC-Task 1'. |
+| `name` | `string` |  | Base name for the new NC-Task without ' SAF', e.g. 'NC-Task 1'. |
 
 ### `twincat_create_axis`
 

@@ -10,6 +10,13 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_ethercat_scan_compare` runs the XAE Scan on an EtherCAT master in config mode, without an activated
+  configuration, and compares the real network with the configured boxes by position and identity (vendor, product
+  code, revision): identical, or per box `missing`, `extra`, `different_product`, `different_revision`. A box inserted
+  or pulled in the middle is one difference, not one per box behind it. The scan runs on a temporary device on the same
+  adapter that is removed again, also after an error; the project is left unchanged and nothing is saved.
+
 ## [4.1.0] - 2026-11-19
 
 HMI authoring and TF2000: check pages offline and in a headless live view, place controls, check group rights, diagnose

@@ -68,6 +68,10 @@ and publish to a TF2000 server. Tested in the 32-bit and the 64-bit XAE and agai
   through the server afterwards; one the runtime does not know gets its old entry back.
 
 ### Fixed
+- Without TwinCAT HMI Engineering (TE2000), `twincat_login` and other tools that have nothing to do with the HMI failed
+  with "Could not load file or assembly 'TcHmiAutomation'" (#43). A cached lambda of the HMI code shared a
+  compiler-generated class with the lambdas of every other tool, so the first of them loaded the HMI assembly. The HMI
+  code now has its own class: without TE2000 only the `twincat_hmi_*` tools refuse, with "TE2000 is not installed".
 - `twincat_umr_start` started a second process for a Usermode Runtime instance that was already running when another
   process (another server, `Start.bat`, a service) had started it. It now asks the instance's NetId over ADS (port 10000,
   1 s timeout) first and refuses the start when it answers.

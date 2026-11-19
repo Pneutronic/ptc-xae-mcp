@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-228 tools, generated from the source attributes — one section per
+230 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -24,7 +24,7 @@
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
 - [Hmi](#hmi) (8)
-- [HmiAuthoring](#hmiauthoring) (7)
+- [HmiAuthoring](#hmiauthoring) (9)
 - [HmiInternalSymbols](#hmiinternalsymbols) (4)
 - [HmiTmc](#hmitmc) (10)
 - [HmiViews](#hmiviews) (7)
@@ -737,6 +737,31 @@ Load the HMI live view in a headless browser and report what broke. Reports JS e
 | `height` | `int` | `800` | Viewport height in px. Default 800. |
 | `screenshotPath` | `string?` | `null` | Absolute path of a PNG screenshot to write. |
 | `expression` | `string?` | `null` | JavaScript evaluated after load (promises awaited); its value is returned as JSON. |
+| `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_check_access`
+
+Check that the user groups may read and write the symbols the HMI pages bind. Saved files: every %s% use against the group rights of the server configuration (SYMBOLACCESS default, explicit symbol entries). A symbol a page writes (TwoWay binding, state symbol, WriteToSymbol action) needs write access. In the engineering server everything runs as administrator; on a TF2000 runtime a missing right leaves the control empty or drops the write. Default groups: enabled groups with users, except administrators and guests.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `groups` | `string[]?` | `null` | User groups to check, e.g. ['Operators']. Default: every enabled group with users except __SystemAdministrators/__SystemGuests. |
+| `paths` | `string[]?` | `null` | Pages to check, project-relative (.view/.content/.usercontrol). Default: all. |
+| `hmiProject` | `string?` | `null` |  |
+
+### `twincat_hmi_server_diagnostics`
+
+Diagnose a TF2000 or engineering HMI server through its WebSocket API. Reports version, license state with used clients/targets, extensions and their state, outdated symbols, sessions, event-log counts per severity, active alarms and the newest events. Default target: the engineering server of the HMI project. For a runtime pass endpoint (e.g. https://192.168.1.10:2020) and, if it requires login, user plus the NAME of an environment variable of the MCP host holding the password.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `endpoint` | `string?` | `null` | Server URL, e.g. https://192.168.1.10:2020. Default: http://127.0.0.1:<HmiCommunicationServerPort> of the HMI project. |
+| `user` | `string?` | `null` | User to log in as. Default: no login (local engineering server). |
+| `passwordVariable` | `string?` | `null` | Name of an environment variable of the MCP host that holds the password (the password itself is never a parameter). |
+| `trustServerCertificate` | `bool` | `false` | Accept a self-signed server certificate (https/wss). Default false. |
+| `minSeverity` | `string?` | `null` | Lowest event severity to list: verbose, info, warning (default), error, critical. |
+| `maxEvents` | `int` | `20` | Max events to list, 0-200. Default 20. |
+| `timeoutMs` | `int` | `15000` | Timeout in ms, 1000-60000. Default 15000. |
 | `hmiProject` | `string?` | `null` |  |
 
 ### `twincat_hmi_scaffold_symbol_view`

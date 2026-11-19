@@ -33,7 +33,13 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        // The JSON goes back to an MCP client as text, never into an HTML page: keep quotes, <, > and umlauts
+        // readable ("%s%PLC1.Main.x%/s%" instead of " escapes in every binding and markup snippet).
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
+
+    /// <summary>The JSON options of every HMI tool answer (also for tools that build their JSON outside the coordinator).</summary>
+    internal static JsonSerializerOptions ToolJsonOptions => JsonOpts;
 
     // ---- read-only -----------------------------------------------------------
 

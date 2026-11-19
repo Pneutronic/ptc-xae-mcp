@@ -147,6 +147,73 @@ internal sealed partial class TwinCatMcpTools
             return HmiResult((summary, json));
         }, cancellationToken);
 
+    [McpServerTool(Name = "twincat_hmi_check_access", ReadOnly = true)]
+    [Description("Check that the user groups may read and write the symbols the HMI pages bind. Saved files: every %s% use against " +
+                 "the group rights of the server configuration (SYMBOLACCESS default, explicit symbol entries). A symbol a " +
+                 "page writes (TwoWay binding, state symbol, WriteToSymbol action) needs write access. In the engineering " +
+                 "server everything runs as administrator; on a TF2000 runtime a missing right leaves the control empty or " +
+                 "drops the write. Default groups: enabled groups with users, except administrators and guests.")]
+    public string HmiCheckAccess(
+        [Description("User groups to check, e.g. ['Operators']. Default: every enabled group with users except __SystemAdministrators/__SystemGuests.")] string[]? groups = null,
+        [Description("Pages to check, project-relative (.view/.content/.usercontrol). Default: all.")] string[]? paths = null,
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_hmi_check_access", new { hmiProject, groups, paths }, () =>
+            bridge.Dispatcher.Run(() =>
+                HmiResult(new HmiCoordinator(bridge.Dispatcher.Session).CheckAccess(hmiProject, groups, paths))), cancellationToken);
+
+    [McpServerTool(Name = "twincat_hmi_server_diagnostics", ReadOnly = true)]
+    [Description("Diagnose a TF2000 or engineering HMI server through its WebSocket API. " +
+                 "Reports version, license state with used clients/targets, extensions and their state, outdated symbols, " +
+                 "sessions, event-log counts per severity, active alarms and the newest events. Default target: the " +
+                 "engineering server of the HMI project. For a runtime pass endpoint (e.g. https://192.168.1.10:2020) and, " +
+                 "if it requires login, user plus the NAME of an environment variable of the MCP host holding the password.")]
+    public async Task<string> HmiServerDiagnostics(
+        [Description("Server URL, e.g. https://192.168.1.10:2020. Default: http://127.0.0.1:<HmiCommunicationServerPort> of the HMI project.")] string? endpoint = null,
+        [Description("User to log in as. Default: no login (local engineering server).")] string? user = null,
+        [Description("Name of an environment variable of the MCP host that holds the password (the password itself is never a parameter).")] string? passwordVariable = null,
+        [Description("Accept a self-signed server certificate (https/wss). Default false.")] bool trustServerCertificate = false,
+        [Description("Lowest event severity to list: verbose, info, warning (default), error, critical.")] string? minSeverity = null,
+        [Description("Max events to list, 0-200. Default 20.")] int maxEvents = 20,
+        [Description("Timeout in ms, 1000-60000. Default 15000.")] int timeoutMs = 15000,
+        [Description(HmiProjectParam)] string? hmiProject = null,
+        CancellationToken cancellationToken = default)
+        => await bridge.Activity.TraceAsync("twincat_hmi_server_diagnostics",
+            new { hmiProject, endpoint, user, passwordVariable, trustServerCertificate, minSeverity, maxEvents, timeoutMs }, async () =>
+        {
+            if (maxEvents is < 0 or > 200) return "[Error] maxEvents must be 0-200.";
+            if (timeoutMs is < 1000 or > 60000) return "[Error] timeoutMs must be 1000-60000.";
+            int? level = string.IsNullOrWhiteSpace(minSeverity) ? 2 : HmiServerApi.SeverityLevel(minSeverity);
+            if (level is null) return "[Error] minSeverity must be verbose, info, warning, error or critical.";
+            string? password = null;
+            if (!string.IsNullOrWhiteSpace(passwordVariable))
+            {
+                if (string.IsNullOrEmpty(user)) return "[Error] passwordVariable needs user.";
+                password = Environment.GetEnvironmentVariable(passwordVariable.Trim());
+                if (password is null) return $"[Error] environment variable '{passwordVariable}' is not set in the MCP host process.";
+            }
+
+            string target;
+            string? note = null;
+            if (!string.IsNullOrWhiteSpace(endpoint)) target = endpoint.Trim();
+            else
+            {
+                string? found = null;
+                string error = bridge.Dispatcher.Run(() =>
+                {
+                    var (e, err) = new HmiCoordinator(bridge.Dispatcher.Session).EngineeringEndpoint(hmiProject);
+                    found = e;
+                    return err ?? "";
+                });
+                if (found is null) return error;
+                target = found;
+                note = "Engineering server: local clients get every right and the license state is 'Engineering'; a runtime may differ.";
+            }
+            var result = await HmiServerApi.RunDiagnosticsAsync(target, user, password, trustServerCertificate, level.Value, maxEvents,
+                timeoutMs, note, HmiCoordinator.ToolJsonOptions, cancellationToken);
+            return HmiResult(result);
+        }, cancellationToken);
+
     [McpServerTool(Name = "twincat_hmi_scaffold_symbol_view", ReadOnly = false, Destructive = false)]
     [Description("Generate a .content with one row per field of a server symbol. Label + checkbox (BOOL), " +
                  "numeric input (number), textbox (string), or read-only textblocks; nested structs get a header. The shape " +

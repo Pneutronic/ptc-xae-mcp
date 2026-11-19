@@ -128,6 +128,35 @@ public class HmiAuthoringIntegrationTests(HmiFixture fx)
             n => n == "TcHmi.Controls.System.TcHmiUserControlHost");
     }
 
+    [SkippableFact(Timeout = 300_000)]
+    public async Task Tf2000_AccessCheckAndServerDiagnostics_OnTheEngineeringServer()
+    {
+        fx.Guard();
+
+        // diagnostics through the server's WebSocket API (no login: the local engineering server)
+        string diag = await fx.CallAsync("twincat_hmi_server_diagnostics", new() { ["hmiProject"] = fx.ProjectName, ["maxEvents"] = 5 });
+        Assert.Contains("(engineering server", diag);
+        JsonElement d = Json(diag);
+        Assert.Equal("Engineering", d.GetProperty("license").GetProperty("STATE").GetString());
+        Assert.Contains(d.GetProperty("extensions").EnumerateArray().Select(e => e.GetProperty("domain").GetString()), n => n == "TcHmiSrv");
+
+        // a page that reads one symbol and writes another: the guests (SYMBOLACCESS 0 in the template) may do neither
+        Skip.IfNot(HmiFixture.ExpectAutoConfirm, "needs the TEMP auto-confirm seam for the page write");
+        string page = $"McpAuth/Access{Run}.content";
+        Assert.StartsWith($"Created '{page}'", await fx.CallAsync("twincat_hmi_add_item", new()
+            { ["kind"] = "content", ["folder"] = "McpAuth", ["name"] = "Access" + Run, ["confirmTimeoutSeconds"] = 10 }, TimeSpan.FromMinutes(1)));
+        await Write(page,
+            $"<div id=\"Access{Run}\" data-tchmi-type=\"TcHmi.Controls.System.TcHmiContent\" data-tchmi-width=\"100\" data-tchmi-height=\"100\">\n" +
+            "  <div id=\"Show\" data-tchmi-type=\"TcHmi.Controls.Beckhoff.TcHmiTextblock\" data-tchmi-text=\"%s%McpAuth.Shown%/s%\"></div>\n" +
+            "  <div id=\"Edit\" data-tchmi-type=\"TcHmi.Controls.Beckhoff.TcHmiNumericInput\" data-tchmi-value=\"%s%McpAuth.Edited|BindingMode=TwoWay%/s%\"></div>\n</div>\n");
+        string access = await fx.CallAsync("twincat_hmi_check_access", new() { ["groups"] = new[] { "__SystemGuests" }, ["paths"] = new[] { page } });
+        JsonElement a = Json(access);
+        Assert.Equal(2, a.GetProperty("usesChecked").GetInt32());
+        var problems = a.GetProperty("findings").EnumerateArray()
+            .Select(f => f.GetProperty("symbol").GetString() + ":" + f.GetProperty("problem").GetString()).ToList();
+        Assert.Equal(["McpAuth.Shown:read", "McpAuth.Edited:read"], problems);     // ordered by line
+    }
+
     [SkippableFact(Timeout = 120_000)]
     public async Task Scaffold_DryRun_FromASample_WritesNothing()
     {

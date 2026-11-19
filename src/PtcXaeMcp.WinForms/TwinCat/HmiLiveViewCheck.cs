@@ -218,7 +218,11 @@ internal static class HmiLiveViewCheck
         return (summary, JsonSerializer.Serialize(json, Indented));
     }
 
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     private static string Shorten(string? s) => s is null ? "null" : s.Length <= 200 ? s : s[..200] + "…";
 

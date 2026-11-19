@@ -634,6 +634,8 @@ public sealed class HmiAuthoringTests : IDisposable
             "{\"b\": true, \"n\": 2}", dryRun: true, overwrite: false, 60);
         Assert.Contains("dry run", dry, StringComparison.Ordinal);
         Assert.Contains("PLC1.MAIN.st::b", dryJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u0022", dryJson, StringComparison.Ordinal);      // markup stays readable for the client
+        Assert.DoesNotContain("\\u003C", dryJson, StringComparison.Ordinal);
         Assert.False(Wrote(f));
 
         f.HmiSymbolValues["PLC1.MAIN.st"] = "{\"b\": true, \"n\": 2}";

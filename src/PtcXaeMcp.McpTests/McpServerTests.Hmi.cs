@@ -53,6 +53,9 @@ public partial class McpServerTests
         "twincat_hmi_place_user_control",
         "twincat_hmi_scaffold_symbol_view",
         "twincat_hmi_check_liveview",
+        // hmi-tf2000
+        "twincat_hmi_check_access",
+        "twincat_hmi_server_diagnostics",
         // hmi-internal-symbols (#165)
         "twincat_hmi_list_internal_symbols",
         "twincat_hmi_add_internal_symbol",

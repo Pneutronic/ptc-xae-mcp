@@ -27,6 +27,14 @@ pull-request numbers refer to those.
 - `twincat_hmi_check_liveview` loads the live view in a headless Chromium (Edge, Chrome or a Playwright download) and
   reports exceptions, console and network errors, whether a view appears and the rendered controls; optionally another
   view, a PNG screenshot and a JavaScript expression evaluated in the page.
+- `twincat_hmi_check_access` checks, from the saved server configuration, whether the user groups may read every server
+  symbol the pages bind and write every symbol a page writes (TwoWay binding, state symbol, WriteToSymbol action). The
+  engineering server grants local clients everything, so missing rights otherwise show only on the TF2000 runtime.
+  Also reports REQUIREAUTH of the published server, groups without users and users without a password.
+- `twincat_hmi_server_diagnostics` talks to an HMI server (TF2000 runtime or the engineering server) through its
+  WebSocket API: version, license state with used clients/targets, extensions, outdated symbols, sessions, event counts,
+  active and unconfirmed alarms, newest events. Login with a user and the name of an environment variable holding the
+  password; a self-signed certificate only on request.
 - `twincat_hmi_list_project_datatypes` lists the project datatypes of an HMI project (`Properties/tchmi.project.Schema.json`):
   kind, namespace and its source (attached TMC file or ADS runtime), `$ref` targets, dangling `$ref`s left behind after
   a type was deleted, and how `tchmi.project.Schema.tpl.json` differs.
@@ -45,6 +53,7 @@ pull-request numbers refer to those.
   `TcHmiSrv.Config::…`) as "through to the PLC" (`writesToPlc` is now false).
 - `twincat_hmi_read_symbols` explains `HMI_ADS_E_USING_TMC` as TMC mode (types and mappings, no values) instead of
   "PLC presumably unreachable".
+- The JSON answers of the HMI tools keep quotes, `<`, `>` and umlauts readable instead of `"`-style escapes.
 
 ### Changed
 - The server-side TMC route (`twincat_hmi_enable_runtime_tmc` / `_disable_runtime_tmc`) is verified on a live HMI

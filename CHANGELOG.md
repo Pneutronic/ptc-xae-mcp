@@ -10,6 +10,25 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_task_list` lists every real-time task under SYSTEM > Tasks and the NC tasks SAF/SVB with kind (plc, io, nc,
+  other), process image, priority, cycle time, AMS port, auto start and disabled flag (#48).
+- `twincat_task_configure` changes priority, cycle time, AMS port and/or the disabled flag of one task, the NC SAF/SVB
+  tasks included. Collisions with another task's priority or AMS port are refused before anything changes; every value
+  is read back (#48).
+- `twincat_io_task_create` creates a task with process image for I/O devices, e.g. with AMS port 301. The XAE gives a
+  new image task priority 1; the tool writes the requested or next free priority right away (#48).
+- `twincat_profinet_device_add` creates a Profinet device (RT) on an EL6631-0010: the I/O device bound to the terminal
+  and its Profinet box from the newest EL6631 GSDML file, with a selectable DAP (#49).
+- `twincat_profinet_list_modules` and `twincat_profinet_module_add` list the modules a Profinet device's DAP offers and
+  place one in a slot (#49).
+- `twincat_io_device_sync_task` reads or sets the sync task of an I/O device such as the Profinet device and warns when
+  no task has the AMS port it points to (the cause of "target port not found" at activation). The setting is not
+  reachable through ConsumeXml, so the device is exported, changed and imported again with its links reconnected (#49).
+
+### Changed
+- `twincat_plc_task_create` now also refuses a priority used by an NC task (SAF/SVB under TINC).
+
 ## [4.1.0] - 2026-11-19
 
 HMI authoring and TF2000: check pages offline and in a headless live view, place controls, check group rights, diagnose

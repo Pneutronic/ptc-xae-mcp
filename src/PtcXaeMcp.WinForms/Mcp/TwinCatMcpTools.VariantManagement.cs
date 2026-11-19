@@ -27,4 +27,29 @@ internal sealed partial class TwinCatMcpTools
             bridge.Dispatcher.Run(() =>
                 new VariantManagementCoordinator(bridge.Dispatcher.Session)
                     .SetActiveVariant(variantName, rebuildAfter)), cancellationToken);
+
+    [McpServerTool(Name = "twincat_variant_create", ReadOnly = false, Destructive = false)]
+    [Description("Create a project variant, optionally as a member of an existing variant group. " +
+                 "A duplicate or invalid name returns [Error] and changes nothing; the variant list is read back and a write " +
+                 "that does not land is rolled back. The first variant of a project becomes the active variant. " +
+                 "Returns JSON { variant, group, activeVariant, availableVariants, groups, notes } or [Error].")]
+    public string VariantCreate(
+        [Description("Name of the new variant, e.g. Machine or Simulation. Must not contain [ ] ^ < > & quotes or slashes.")] string variantName,
+        [Description("Optional name of an existing variant group to add the variant to.")] string? group = null,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_variant_create", new { variantName, group }, () =>
+            bridge.Dispatcher.Run(() =>
+                new VariantEditingCoordinator(bridge.Dispatcher.Session).Create(variantName, group)), cancellationToken);
+
+    [McpServerTool(Name = "twincat_variant_delete", ReadOnly = false, Destructive = true)]
+    [Description("Delete a project variant and its memberships in variant groups. " +
+                 "The active variant (or a member of the active group) is refused with a hint to switch first; an unknown name " +
+                 "returns [Error] and changes nothing. Per-variant settings of tree items that remain are named in the result. " +
+                 "Returns JSON { variant, removedFromGroups, availableVariants, groups, notes } or [Error].")]
+    public string VariantDelete(
+        [Description("Name of the variant to delete, as listed by twincat_get_variant_status.")] string variantName,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_variant_delete", new { variantName }, () =>
+            bridge.Dispatcher.Run(() =>
+                new VariantEditingCoordinator(bridge.Dispatcher.Session).Delete(variantName)), cancellationToken);
 }

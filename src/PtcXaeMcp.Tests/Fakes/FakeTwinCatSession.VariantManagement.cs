@@ -44,4 +44,49 @@ internal sealed partial class FakeTwinCatSession
         VariantAfterSet = null;
         return FakeSetActiveVariantResult;
     }
+
+    // ---- variant-editing ----
+    /// <summary>The ProjectVariantConfig XML the fake holds; null derives it from <see cref="FakeVariantStatus"/>.</summary>
+    public string? FakeVariantConfigXml { get; set; }
+    public string FakeVariantItemsXml { get; set; } = string.Empty;
+    public Exception? ReadVariantConfigThrows { get; set; }
+    public Exception? WriteVariantConfigThrows { get; set; }
+    /// <summary>When true a write is accepted but the read-back shows the previous XML (a setter that does not land).</summary>
+    public bool WriteVariantConfigIsIgnored { get; set; }
+    public List<string> WrittenVariantConfigs { get; } = [];
+
+    public string ReadProjectVariantConfig()
+    {
+        CallLog.Add("ReadProjectVariantConfig()");
+        if (ReadVariantConfigThrows is not null) throw ReadVariantConfigThrows;
+        if (FakeVariantConfigXml is not null) return FakeVariantConfigXml;
+        var xml = new System.Xml.Linq.XElement("ProjectVariants");
+        foreach (var v in FakeVariantStatus.AvailableVariants)
+            xml.Add(new System.Xml.Linq.XElement("Variant", new System.Xml.Linq.XElement("Name", v)));
+        foreach (var g in FakeVariantStatus.Groups)
+        {
+            var ge = new System.Xml.Linq.XElement("VariantGroup", new System.Xml.Linq.XElement("Name", g.Name));
+            foreach (var m in g.Members)
+                ge.Add(new System.Xml.Linq.XElement("Variant", new System.Xml.Linq.XElement("Name", m)));
+            xml.Add(ge);
+        }
+        return FakeVariantStatus.AvailableVariants.Count + FakeVariantStatus.Groups.Count == 0 ? string.Empty : xml.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
+    }
+
+    public void WriteProjectVariantConfig(string xml)
+    {
+        CallLog.Add("WriteProjectVariantConfig()");
+        if (WriteVariantConfigThrows is not null) throw WriteVariantConfigThrows;
+        WrittenVariantConfigs.Add(xml);
+        if (WriteVariantConfigIsIgnored) return;
+        FakeVariantConfigXml = xml;
+        var (variants, groups) = VariantConfigParser.Parse(xml);
+        FakeVariantStatus = FakeVariantStatus with { AvailableVariants = variants, Groups = groups };
+    }
+
+    public string ReadProjectVariantItems()
+    {
+        CallLog.Add("ReadProjectVariantItems()");
+        return FakeVariantItemsXml;
+    }
 }

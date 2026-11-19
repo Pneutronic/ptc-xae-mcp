@@ -64,7 +64,7 @@ internal static class ToolCatalog
         [
             "twincat_open_project", "twincat_close_project", "twincat_save_project", "twincat_get_active_project",
             "twincat_solution_open_archive", "twincat_solution_save_archive", "twincat_set_active_variant",
-            "twincat_get_variant_status", "twincat_force_close_xae", "twincat_plc_project_create",
+            "twincat_get_variant_status", "twincat_variant_create", "twincat_variant_delete", "twincat_force_close_xae", "twincat_plc_project_create",
             "twincat_plc_project_add_existing", "twincat_plc_project_export", "twincat_plc_project_import",
             "twincat_plc_project_info", "twincat_plc_instance_from_tmc", "twincat_open_object", "twincat_close_object",
         ]),

@@ -541,6 +541,14 @@ internal interface ITwinCatSession : IDisposable
     VariantStatusResult GetVariantStatus();
     string SetActiveVariant(string variantName);
 
+    // ---- variant-editing ----
+    /// <summary>The <c>ProjectVariantConfig</c> XML as the XAE holds it (empty when the project has no variants).</summary>
+    string ReadProjectVariantConfig();
+    /// <summary>Replaces <c>ProjectVariantConfig</c> as a whole and saves the solution. Throws when the XAE refuses it.</summary>
+    void WriteProjectVariantConfig(string xml);
+    /// <summary>The <c>ProjectVariantItems</c> XML (the per-variant settings of tree items); empty when unreadable.</summary>
+    string ReadProjectVariantItems();
+
     // ---- coredump-analysis ----
     /// <summary>
     /// Inventory .core dump files for a UM instance/port. File-based; no XAE required.

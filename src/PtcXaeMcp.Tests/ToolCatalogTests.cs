@@ -90,6 +90,6 @@ public class ToolCatalogTests
     {
         var core = ToolProfiles.Parse(ToolProfiles.Core, ProfileSource.Default, "test");
         int count = ToolCatalog.Tools.Values.Count(t => core.Shows(t.Toolset));
-        Assert.InRange(count, 1, 120);
+        Assert.InRange(count, 1, 125);
     }
 }

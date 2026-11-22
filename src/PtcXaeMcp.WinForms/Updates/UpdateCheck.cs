@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using Microsoft.Win32;
+using PtcXaeMcp.WinForms.Localization;
 
 namespace PtcXaeMcp.WinForms.Updates;
 
@@ -21,9 +22,14 @@ internal enum UpdateCheckKind
 /// <param name="Kind">See <see cref="UpdateCheckKind"/>.</param>
 /// <param name="Current">The installed version (without build metadata), or <c>null</c> when unparsable.</param>
 /// <param name="Latest">The latest released version, when known.</param>
-/// <param name="Message">One English sentence for the log and the GUI.</param>
-internal sealed record UpdateCheckOutcome(UpdateCheckKind Kind, Version? Current, Version? Latest, string Message)
+/// <param name="Message">One sentence for the GUI, in the host language.</param>
+/// <param name="EnglishMessage">The same sentence in English, for the run log; <c>null</c> when <paramref name="Message"/> already is.</param>
+internal sealed record UpdateCheckOutcome(UpdateCheckKind Kind, Version? Current, Version? Latest, string Message,
+    string? EnglishMessage = null)
 {
+    /// <summary>The sentence for the run log (always English).</summary>
+    public string LogText => EnglishMessage ?? Message;
+
     /// <summary>The page a person should open: the latest release when one is newer, else the releases list.</summary>
     public string Url => Latest is { } v && Kind == UpdateCheckKind.UpdateAvailable
         ? UpdateCheck.ReleaseTagUrl(v)
@@ -100,9 +106,9 @@ internal static class UpdateCheck
     /// <summary>The Settings-dialog row text: "on", "off", "off (machine policy)" or "off (PTC_XAE_MCP_UPDATE_CHECK=0)".</summary>
     public static string DescribeState(bool userOptIn, bool disabledByPolicy, Func<string, string?> getEnv)
     {
-        if (disabledByPolicy) return "off (machine policy)";
-        if (IsDisabledByEnvironment(getEnv)) return $"off ({EnvVar}=0)";
-        return userOptIn ? "on" : "off";
+        if (disabledByPolicy) return Loc.Get("update.state.offPolicy");
+        if (IsDisabledByEnvironment(getEnv)) return Loc.Format("update.state.offEnv", EnvVar);
+        return Loc.Get(userOptIn ? "update.state.on" : "update.state.off");
     }
 
     // ---- pure evaluation ----------------------------------------------------------------------
@@ -153,15 +159,17 @@ internal static class UpdateCheck
         Version? latest = ParseTagVersion(latestLocation);
         if (latest is null)
             return new UpdateCheckOutcome(UpdateCheckKind.Unavailable, current, null,
-                "Update check: the latest release could not be determined.");
+                Loc.Get("update.latestUnknown"), Loc.English("update.latestUnknown"));
         if (current is null)
             return new UpdateCheckOutcome(UpdateCheckKind.Unavailable, null, latest,
-                $"Update check: the installed version is unknown; the latest release is {latest.ToString(3)}.");
+                Loc.Format("update.currentUnknown", latest.ToString(3)),
+                Loc.FormatEnglish("update.currentUnknown", latest.ToString(3)));
         if (latest > current)
             return new UpdateCheckOutcome(UpdateCheckKind.UpdateAvailable, current, latest,
-                $"Update available: {latest.ToString(3)} (installed: {current.ToString(3)}). {ReleaseTagUrl(latest)}");
+                Loc.Format("update.available", latest.ToString(3), current.ToString(3), ReleaseTagUrl(latest)),
+                Loc.FormatEnglish("update.available", latest.ToString(3), current.ToString(3), ReleaseTagUrl(latest)));
         return new UpdateCheckOutcome(UpdateCheckKind.UpToDate, current, latest,
-            $"Up to date: {current.ToString(3)} is the latest release.");
+            Loc.Format("update.upToDate", current.ToString(3)), Loc.FormatEnglish("update.upToDate", current.ToString(3)));
     }
 
     // ---- the one network request ------------------------------------------------------------
@@ -182,7 +190,8 @@ internal static class UpdateCheck
                                        or InvalidOperationException or UriFormatException)
         {
             return new UpdateCheckOutcome(UpdateCheckKind.Unavailable, ParseCurrent(currentInformationalVersion), null,
-                $"Update check: github.com not reachable ({ex.GetType().Name}: {ex.Message}).");
+                Loc.Format("update.unreachable", ex.GetType().Name, ex.Message),
+                Loc.FormatEnglish("update.unreachable", ex.GetType().Name, ex.Message));
         }
         return Evaluate(currentInformationalVersion, location);
     }

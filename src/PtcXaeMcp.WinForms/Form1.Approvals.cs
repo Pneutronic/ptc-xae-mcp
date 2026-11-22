@@ -1,3 +1,4 @@
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.Views;
 
@@ -24,7 +25,7 @@ public partial class Form1
         _flpApprovalsChip.Cursor = Cursors.Hand;
         foreach (Control c in new Control[] { _flpApprovalsChip, _lblApprovalsDot, _lblApprovalsState })
             c.Click += (_, _) => _tabControl.SelectedTab = _tabApprovals;
-        _toolTip.SetToolTip(_lblApprovalsState, "Open the Approvals view");
+        _toolTip.SetToolTip(_lblApprovalsState, Loc.Get("main.approvals.chip.tooltip"));
         _flpStatusChips.Controls.Add(_flpApprovalsChip);
 
         // The form's poster and the form as popup owner: a view on a tab that was never shown

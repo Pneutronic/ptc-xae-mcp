@@ -29,6 +29,11 @@ internal sealed class UiSettings
     /// <c>all</c>, <c>core</c> or a toolset list.</summary>
     public string ToolProfile { get; set; } = Mcp.ToolProfiles.Automatic;
 
+    /// <summary>The language chosen in the Settings dialog (<c>language</c>, a shipped code such as <c>de</c>), or
+    /// <c>null</c> when none was chosen: then the installer's value or the Windows language decides
+    /// (<see cref="Localization.HostLanguage.Resolve"/>).</summary>
+    public string? Language { get; set; }
+
     public static UiSettings Parse(string? json)
     {
         var s = new UiSettings();
@@ -53,6 +58,11 @@ internal sealed class UiSettings
             if (root.TryGetProperty("toolProfile", out var p) && p.ValueKind == JsonValueKind.String
                 && !string.IsNullOrWhiteSpace(p.GetString()))
                 s.ToolProfile = p.GetString()!.Trim();
+
+            // Only a language this version ships counts; anything else leaves "no choice" (a file written by a newer
+            // version with another language must not pin this one to English by accident).
+            if (root.TryGetProperty("language", out var lang) && lang.ValueKind == JsonValueKind.String)
+                s.Language = Localization.HostLanguage.Match(lang.GetString());
 
             if (root.TryGetProperty("window", out var w) && w.ValueKind == JsonValueKind.Object
                 && TryInt(w, "x", out int x) && TryInt(w, "y", out int y)
@@ -85,6 +95,8 @@ internal sealed class UiSettings
             ["checkForUpdates"] = CheckForUpdates,
             ["toolProfile"] = ToolProfile,
         };
+        if (!string.IsNullOrEmpty(Language))
+            root["language"] = Language;
         if (Window is { } w)
             root["window"] = new JsonObject
             {

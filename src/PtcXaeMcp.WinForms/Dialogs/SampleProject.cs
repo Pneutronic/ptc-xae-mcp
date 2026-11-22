@@ -1,3 +1,5 @@
+using PtcXaeMcp.WinForms.Localization;
+
 namespace PtcXaeMcp.WinForms.Dialogs;
 
 /// <summary>
@@ -41,7 +43,7 @@ internal static class SampleProject
     public static string CopyTo(string source, string target)
     {
         if (!Directory.Exists(source))
-            throw new DirectoryNotFoundException($"The sample project is missing: {source}");
+            throw new DirectoryNotFoundException(Loc.Format("sample.missing", source));
         Directory.CreateDirectory(target);
         foreach (string dir in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
             Directory.CreateDirectory(Path.Combine(target, Path.GetRelativePath(source, dir)));
@@ -53,7 +55,7 @@ internal static class SampleProject
         }
         string sln = Path.Combine(target, SolutionFileName);
         if (!File.Exists(sln))
-            throw new FileNotFoundException($"The sample copy has no {SolutionFileName}.", sln);
+            throw new FileNotFoundException(Loc.Format("sample.noSolution", SolutionFileName), sln);
         return sln;
     }
 }

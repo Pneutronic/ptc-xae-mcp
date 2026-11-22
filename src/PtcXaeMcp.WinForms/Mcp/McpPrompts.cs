@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using PtcXaeMcp.WinForms.Localization;
 
 namespace PtcXaeMcp.WinForms.Mcp;
 
@@ -60,13 +61,19 @@ internal sealed class McpPrompts
     {
         string text = Text(name);
         foreach (var (key, value) in arguments)
-            text = text.Replace("{{" + key + "}}", string.IsNullOrWhiteSpace(value) ? "(not given)" : value.Trim(), StringComparison.Ordinal);
+            text = text.Replace("{{" + key + "}}", string.IsNullOrWhiteSpace(value) ? Loc.Get("prompt.notGiven") : value.Trim(), StringComparison.Ordinal);
         return text;
     }
 
-    internal static string Text(string name)
+    /// <summary>The prompt text in the host language; a prompt without a text in that language is the English one.</summary>
+    internal static string Text(string name) => Text(name, HostLanguage.Current);
+
+    internal static string Text(string name, string language)
     {
-        using var stream = typeof(McpPrompts).Assembly.GetManifestResourceStream($"PtcXaeMcp.WinForms.Prompts.{name}.md")
+        var assembly = typeof(McpPrompts).Assembly;
+        using var stream =
+            (language == HostLanguage.Fallback ? null : assembly.GetManifestResourceStream($"PtcXaeMcp.WinForms.Prompts.{language}.{name}.md"))
+            ?? assembly.GetManifestResourceStream($"PtcXaeMcp.WinForms.Prompts.{name}.md")
             ?? throw new InvalidOperationException($"The prompt text '{name}' is not embedded.");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();

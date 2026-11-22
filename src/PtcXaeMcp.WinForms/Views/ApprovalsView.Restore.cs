@@ -1,3 +1,4 @@
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.TwinCat;
 
 namespace PtcXaeMcp.WinForms.Views;
@@ -65,16 +66,17 @@ internal sealed partial class ApprovalsView
             if (answer == DialogResult.OK)
             {
                 await RunGuiComActionAsync(
-                    () => SummariseRestore(Host.SnapshotRestore.ConfirmProposal(p.RestoreId)),
-                    text =>
+                    () => Host.SnapshotRestore.ConfirmProposal(p.RestoreId),
+                    done =>
                     {
-                        ShowLastAction(text, !text.StartsWith("Restore " + p.RestoreId + " executed", StringComparison.Ordinal));
-                        AppendLog(text);
+                        // The operator reads the host language; the run log keeps English.
+                        ShowLastAction(SummariseRestore(done), done.State != SnapshotRestoreState.Executed);
+                        AppendLog(SummariseRestore(done, english: true));
                     },
                     text =>
                     {
                         // Busy lock: nothing was written and the proposal is still pending — ask again.
-                        ShowLastAction($"Restore {p.RestoreId} not executed: {text}", isError: true);
+                        ShowLastAction(Loc.Format("approvals.restore.not_executed", p.RestoreId, text), isError: true);
                         AppendLog(text);
                         AskRestoreAgainIfStillPending(p);
                     });
@@ -82,10 +84,12 @@ internal sealed partial class ApprovalsView
             else if (IsRestorePending(p.RestoreId))
             {
                 bool expired = answer == DialogResult.Abort;
-                string reason = expired ? "confirm popup expired" : "operator cancelled";
+                // The reason goes to the agent and the log (English); the operator reads it in the host language.
+                string reasonKey = expired ? "approvals.reason.expired" : "approvals.reason.cancelled";
+                string reason = Loc.English(reasonKey);
                 Host.SnapshotRestore.RejectProposal(p.RestoreId, reason);
-                ShowLastAction($"Restore {p.RestoreId} rejected ({reason}).", isError: false);
-                AppendLog($"Restore {p.RestoreId} rejected ({reason}).");
+                ShowLastAction(Loc.Format("approvals.restore.rejected", p.RestoreId, Loc.Get(reasonKey)), isError: false);
+                AppendLog(Loc.FormatEnglish("approvals.restore.rejected", p.RestoreId, reason));
             }
             RefreshIbnState();
         });
@@ -97,13 +101,31 @@ internal sealed partial class ApprovalsView
             OnRestoreProposalRaised(p);
     }
 
-    internal static string SummariseRestore(RestoreProposal done)
+    /// <summary>One line about a finished restore: host language for the operator, <paramref name="english"/> for the run log.</summary>
+    internal static string SummariseRestore(RestoreProposal done, bool english = false)
     {
         if (done.State != SnapshotRestoreState.Executed)
-            return $"Restore {done.RestoreId} {SnapshotRestoreCoordinator.StateName(done.State)}: {done.Reason ?? "not executed"}";
+        {
+            return english
+                ? Loc.FormatEnglish("approvals.restore.summary.not_executed", done.RestoreId, SnapshotRestoreCoordinator.StateName(done.State),
+                    done.Reason ?? Loc.English("approvals.restore.reason_default"))
+                : Loc.Format("approvals.restore.summary.not_executed", done.RestoreId, RestoreStateText(done.State),
+                    done.Reason ?? Loc.Get("approvals.restore.reason_default"));
+        }
         int written = done.Report?.Count(r => r.Outcome == "written") ?? 0;
         int failed = done.Report?.Count(r => r.Outcome == "failed") ?? 0;
         int skipped = done.Report?.Count(r => r.Outcome == "skipped") ?? 0;
-        return $"Restore {done.RestoreId} executed: {written} written, {failed} failed, {skipped} skipped.";
+        return english
+            ? Loc.FormatEnglish("approvals.restore.summary.executed", done.RestoreId, written, failed, skipped)
+            : Loc.Format("approvals.restore.summary.executed", done.RestoreId, written, failed, skipped);
     }
+
+    private static string RestoreStateText(SnapshotRestoreState state) => state switch
+    {
+        SnapshotRestoreState.Pending => Loc.Get("approvals.restore.state.pending"),
+        SnapshotRestoreState.Confirmed => Loc.Get("approvals.restore.state.confirmed"),
+        SnapshotRestoreState.Executed => Loc.Get("approvals.restore.state.executed"),
+        SnapshotRestoreState.Rejected => Loc.Get("approvals.restore.state.rejected"),
+        _ => Loc.Get("approvals.restore.state.expired"),
+    };
 }

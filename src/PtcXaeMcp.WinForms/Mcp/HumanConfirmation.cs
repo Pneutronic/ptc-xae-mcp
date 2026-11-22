@@ -6,6 +6,7 @@ using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using PtcXaeMcp.WinForms.Diagnostics;
+using PtcXaeMcp.WinForms.Localization;
 
 namespace PtcXaeMcp.WinForms.Mcp;
 
@@ -228,7 +229,8 @@ internal sealed class HumanConfirmation(
         if (activity?.AccessGate is { } gate && Safe(gate, toolName, args)?.Denied is not null) return null;
 
         string hash = ArgumentHash(arguments);
-        string target = Describe(netId, isLocal);
+        string target = Describe(netId, isLocal);                      // wire / log copy: English
+        string humanTarget = Describe(netId, isLocal, forHuman: true); // the question: host language
         string summary = Summarise(arguments);
         var started = DateTimeOffset.UtcNow;
 
@@ -236,7 +238,7 @@ internal sealed class HumanConfirmation(
         if (asker.CanAsk)
         {
             var asked = System.Diagnostics.Stopwatch.StartNew();
-            var answer = await AskWithTimeoutAsync(asker, Question(toolName, target, summary), cancellationToken);
+            var answer = await AskWithTimeoutAsync(asker, Question(toolName, humanTarget, summary), cancellationToken);
             asked.Stop();
             if (answer == ConfirmAnswer.No && asked.Elapsed < MinHumanAnswer)
             {
@@ -361,16 +363,19 @@ internal sealed class HumanConfirmation(
               $"({(current.EffectiveConfirm == ConfirmMode.All ? "activate, restart, stop and mode switches everywhere, the rest on other systems" : "actions on other systems")}); {how}.";
     }
 
-    internal static string Describe(string? netId, bool isLocal) => netId switch
+    /// <summary>The target as the agent reads it (English); <paramref name="forHuman"/> gives the host-language copy for the question.</summary>
+    internal static string Describe(string? netId, bool isLocal, bool forHuman = false) => netId switch
     {
-        null => "an unknown target system",
-        _ when netId == AccessPolicy.LocalKeyword => "the local system",
-        _ => isLocal ? $"{netId} (this machine)" : $"{netId} (another system)",
+        null => forHuman ? Loc.Get("confirm.target.unknown") : "an unknown target system",
+        _ when netId == AccessPolicy.LocalKeyword => forHuman ? Loc.Get("confirm.target.local") : "the local system",
+        _ => isLocal
+            ? (forHuman ? Loc.Format("confirm.target.thismachine", netId) : $"{netId} (this machine)")
+            : (forHuman ? Loc.Format("confirm.target.another", netId) : $"{netId} (another system)"),
     };
 
+    /// <summary>The question a human reads in the client's window (host language); <paramref name="summary"/> stays English.</summary>
     internal static string Question(string tool, string target, string summary) =>
-        $"{tool} on {target}.\nArguments: {(summary.Length == 0 ? "(none)" : summary)}.\n" +
-        "This changes a running system. Allow it? The agent waits for your answer.";
+        Loc.Format("confirm.question", tool, target, summary.Length == 0 ? Loc.Get("confirm.question.none") : summary);
 
     /// <summary>The arguments as a short line for the question and the window; secrets are replaced.</summary>
     internal static string Summarise(IDictionary<string, JsonElement>? arguments)
@@ -471,8 +476,8 @@ internal sealed class HumanConfirmation(
                         {
                             [Field] = new ElicitRequestParams.BooleanSchema
                             {
-                                Title = "Allow this action",
-                                Description = "Tick to allow, leave unticked or decline to refuse.",
+                                Title = Loc.Get("confirm.field.title"),
+                                Description = Loc.Get("confirm.field.description"),
                                 Default = false,
                             },
                         },

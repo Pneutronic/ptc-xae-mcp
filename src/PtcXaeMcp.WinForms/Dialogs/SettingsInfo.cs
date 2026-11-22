@@ -1,4 +1,5 @@
 using PtcXaeMcp.WinForms.Diagnostics;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Security;
 using PtcXaeMcp.WinForms.TwinCat;
 
@@ -19,44 +20,56 @@ internal static class SettingsInfo
     public static IReadOnlyList<SettingsRow> Rows(
         int port, bool diagnosticsEnabled, Func<string, string?> getEnv, string? updateCheckState = null)
     {
-        static string Env(string name) => "Environment variable " + name;
-        static string OnOff(bool on) => on ? "on" : "off";
+        static string Env(string name) => Loc.Format("settings.how.env", name);
+        static string OnOff(bool on) => Loc.Get(on ? "settings.value.on" : "settings.value.off");
         string Raw(string name, string unset) => getEnv(name) is { Length: > 0 } v ? v : unset;
+        string none = Loc.Get("settings.value.none");
 
         bool tokenSet = !string.IsNullOrEmpty(getEnv(LocalhostGuard.TokenEnvVar));
         var rows = new List<SettingsRow>
         {
-            new("Port", port.ToString(System.Globalization.CultureInfo.InvariantCulture), "Fixed (http://localhost only)"),
-            new("Access token", tokenSet ? "set" : "not set", Env(LocalhostGuard.TokenEnvVar)),
-            new("Allowed paths", Raw(PathPolicy.AllowedPathsEnvVar, "(none: open solution, %TEMP%, log folder, TwinCAT install)"),
+            new(Loc.Get("settings.row.port"), port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Loc.Get("settings.how.port")),
+            new(Loc.Get("settings.row.token"), Loc.Get(tokenSet ? "settings.value.set" : "settings.value.notSet"),
+                Env(LocalhostGuard.TokenEnvVar)),
+            new(Loc.Get("settings.row.allowedPaths"), Raw(PathPolicy.AllowedPathsEnvVar, Loc.Get("settings.value.allowedPaths.none")),
                 Env(PathPolicy.AllowedPathsEnvVar)),
-            new("Diagnostics tools", OnOff(diagnosticsEnabled),
-                $"Start with --diagnostics or {Env(McpBridge.DiagnosticsEnvVar)}=1"),
-            new("Safety signal prefixes", Raw(SafetySdsParser.PrefixesEnvVar, SafetySdsParser.DefaultPrefixes + " (default)"),
+            new(Loc.Get("settings.row.diagnostics"), OnOff(diagnosticsEnabled),
+                Loc.Format("settings.how.diagnostics", Env(McpBridge.DiagnosticsEnvVar))),
+            new(Loc.Get("settings.row.safetyPrefixes"),
+                Raw(SafetySdsParser.PrefixesEnvVar, Loc.Format("settings.value.default", SafetySdsParser.DefaultPrefixes)),
                 Env(SafetySdsParser.PrefixesEnvVar)),
-            new("Keep logs: runs", LogRetention.ResolveKeepRuns(getEnv).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            new(Loc.Get("settings.row.keepRuns"), LogRetention.ResolveKeepRuns(getEnv).ToString(System.Globalization.CultureInfo.InvariantCulture),
                 Env(LogRetention.KeepRunsEnvVar)),
-            new("Keep logs: days", LogRetention.ResolveKeepDays(getEnv).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            new(Loc.Get("settings.row.keepDays"), LogRetention.ResolveKeepDays(getEnv).ToString(System.Globalization.CultureInfo.InvariantCulture),
                 Env(LogRetention.KeepDaysEnvVar)),
-            new("Mirror reports into the repo", OnOff(getEnv(McpBridge.ReportsMirrorEnvVar) == "1"),
+            new(Loc.Get("settings.row.reportsMirror"), OnOff(getEnv(McpBridge.ReportsMirrorEnvVar) == "1"),
                 $"{Env(McpBridge.ReportsMirrorEnvVar)}=1"),
-            new("Auto-confirm HMI writes (TEMP fixtures)", OnOff(getEnv(HmiAutoConfirmPolicy.EnvVar)?.Trim() == "1"),
+            new(Loc.Get("settings.row.hmiAutoConfirm"), OnOff(getEnv(HmiAutoConfirmPolicy.EnvVar)?.Trim() == "1"),
                 $"{Env(HmiAutoConfirmPolicy.EnvVar)}=1"),
-            new("Tool profile override", Raw(Mcp.ToolProfiles.EnvVar, "(none: the choice above)"),
-                Env(Mcp.ToolProfiles.EnvVar) + " (all, core or toolsets like plc,hmi)"),
-            new("Access level (environment)", Raw(Mcp.AccessPolicy.LevelEnvVar, "(none)"),
-                Env(Mcp.AccessPolicy.LevelEnvVar) + " (read, engineer, runtime; the stricter of this and the choice above applies)"),
-            new("Blocked NetIds (environment)", Raw(Mcp.AccessPolicy.BlockedEnvVar, "(none)"), Env(Mcp.AccessPolicy.BlockedEnvVar)),
-            new("Allowed NetIds (environment)", Raw(Mcp.AccessPolicy.AllowedEnvVar, "(none)"), Env(Mcp.AccessPolicy.AllowedEnvVar)),
-            new("Allowed variable writes (environment)", Raw(Mcp.AccessPolicy.AdsWriteAllowEnvVar, "(none)"),
-                Env(Mcp.AccessPolicy.AdsWriteAllowEnvVar) + " (symbol patterns, e.g. MAIN.stTest.*; the lists of both sources are intersected)"),
-            new("Denied variable writes (environment)", Raw(Mcp.AccessPolicy.AdsWriteDenyEnvVar, "(none)"), Env(Mcp.AccessPolicy.AdsWriteDenyEnvVar)),
-            new("Human confirmation (environment)", Raw(Mcp.AccessPolicy.ConfirmEnvVar, "(none)"),
-                Env(Mcp.AccessPolicy.ConfirmEnvVar) + " (off, remote, all; the stricter of this and the choice above applies)"),
+            new(Loc.Get("settings.row.toolProfileOverride"), Raw(Mcp.ToolProfiles.EnvVar, Loc.Get("settings.value.toolProfileOverride.none")),
+                Loc.Format("settings.how.toolProfileOverride", Env(Mcp.ToolProfiles.EnvVar))),
+            new(Loc.Get("settings.row.accessLevelEnv"), Raw(Mcp.AccessPolicy.LevelEnvVar, none),
+                Loc.Format("settings.how.accessLevelEnv", Env(Mcp.AccessPolicy.LevelEnvVar))),
+            new(Loc.Get("settings.row.blockedEnv"), Raw(Mcp.AccessPolicy.BlockedEnvVar, none), Env(Mcp.AccessPolicy.BlockedEnvVar)),
+            new(Loc.Get("settings.row.allowedEnv"), Raw(Mcp.AccessPolicy.AllowedEnvVar, none), Env(Mcp.AccessPolicy.AllowedEnvVar)),
+            new(Loc.Get("settings.row.writeAllowEnv"), Raw(Mcp.AccessPolicy.AdsWriteAllowEnvVar, none),
+                Loc.Format("settings.how.writeAllowEnv", Env(Mcp.AccessPolicy.AdsWriteAllowEnvVar))),
+            new(Loc.Get("settings.row.writeDenyEnv"), Raw(Mcp.AccessPolicy.AdsWriteDenyEnvVar, none), Env(Mcp.AccessPolicy.AdsWriteDenyEnvVar)),
+            new(Loc.Get("settings.row.confirmEnv"), Raw(Mcp.AccessPolicy.ConfirmEnvVar, none),
+                Loc.Format("settings.how.confirmEnv", Env(Mcp.AccessPolicy.ConfirmEnvVar))),
         };
+        HostLanguage.Resolve(getEnv, null, null, null, out string? ignoredLanguage);
+        rows.Add(new(Loc.Get("settings.row.language"),
+            ignoredLanguage is null
+                ? HostLanguage.Current
+                : Loc.Format("settings.row.language.ignored", HostLanguage.EnvVar, ignoredLanguage),
+            Loc.Format("settings.row.language.how", HostLanguage.EnvVar,
+                string.Join(", ", HostLanguage.Shipped.Select(l => l.Code)))));
         if (updateCheckState is not null)
-            rows.Add(new("Update check at start", updateCheckState,
-                $"Checkbox above; {Env(Updates.UpdateCheck.EnvVar)}=0 or the machine policy HKLM\\{Updates.UpdateCheck.PolicyKeyPath}\\{Updates.UpdateCheck.PolicyValueName}=1 switch it off"));
+            rows.Add(new(Loc.Get("settings.row.updateCheck"), updateCheckState,
+                Loc.Format("settings.how.updateCheck", Env(Updates.UpdateCheck.EnvVar),
+                    Updates.UpdateCheck.PolicyKeyPath, Updates.UpdateCheck.PolicyValueName)));
         return rows;
     }
 }

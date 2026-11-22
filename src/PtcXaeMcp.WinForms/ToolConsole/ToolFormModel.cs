@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using PtcXaeMcp.WinForms.Localization;
 
 namespace PtcXaeMcp.WinForms.ToolConsole;
 
@@ -229,7 +230,7 @@ internal static class ToolArgumentBuilder
                     }
                     catch (JsonException ex)
                     {
-                        errors.Add($"{f.Name}: invalid JSON ({ex.Message})");
+                        errors.Add(Loc.Format("toolconsole.error.invalidjson", f.Name, ex.Message));
                     }
                     break;
             }
@@ -258,7 +259,7 @@ internal static class ToolArgumentBuilder
         {
             if (!arguments.TryGetPropertyValue(f.Name, out var node) || node is null)
             {
-                if (f.Required) { incomplete = true; warnings.Add($"required '{f.Name}' was not recorded"); }
+                if (f.Required) { incomplete = true; warnings.Add(Loc.Format("toolconsole.warning.requirednotrecorded", f.Name)); }
                 continue;
             }
 
@@ -278,7 +279,7 @@ internal static class ToolArgumentBuilder
                     if (match is null)
                     {
                         incomplete = mismatch = true;
-                        warnings.Add($"'{f.Name}': recorded value {node.ToJsonString()} is not one of [{string.Join(", ", f.Choices)}]; left unselected");
+                        warnings.Add(Loc.Format("toolconsole.warning.notachoice", f.Name, node.ToJsonString(), string.Join(", ", f.Choices)));
                     }
                     else
                     {
@@ -302,12 +303,12 @@ internal static class ToolArgumentBuilder
         if (unknown.Count > 0)
         {
             incomplete = mismatch = true;
-            warnings.Add($"not in the tool's schema, ignored: {string.Join(", ", unknown)}");
+            warnings.Add(Loc.Format("toolconsole.warning.unknownkeys", string.Join(", ", unknown)));
         }
         if (arguments.Count == 0 && fields.Count > 0)
         {
             incomplete = true;
-            warnings.Add("no arguments were recorded");
+            warnings.Add(Loc.Get("toolconsole.warning.noarguments"));
         }
         return new ToolReplay(values, unknown, warnings, incomplete, mismatch);
     }
@@ -322,7 +323,7 @@ internal static class ToolArgumentBuilder
 
     private static void MissingIfRequired(ToolField f, List<string> errors)
     {
-        if (f.Required) errors.Add($"{f.Name}: required");
+        if (f.Required) errors.Add(Loc.Format("toolconsole.error.required", f.Name));
     }
 
     private static void AddNumberOrText(
@@ -333,12 +334,12 @@ internal static class ToolArgumentBuilder
         {
             case ToolFieldKind.Integer:
                 if (long.TryParse(t, NumberStyles.Integer, CultureInfo.InvariantCulture, out long l)) args[f.Name] = l;
-                else errors.Add($"{f.Name}: '{raw}' is not an integer");
+                else errors.Add(Loc.Format("toolconsole.error.notinteger", f.Name, raw));
                 break;
             case ToolFieldKind.Number:
                 if (double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) &&
                     double.IsFinite(d)) args[f.Name] = d;
-                else errors.Add($"{f.Name}: '{raw}' is not a number");
+                else errors.Add(Loc.Format("toolconsole.error.notnumber", f.Name, raw));
                 break;
             default:
                 args[f.Name] = raw;

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using PtcXaeMcp.WinForms.Diagnostics;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.TwinCat;
 
@@ -29,7 +30,6 @@ public partial class Form1
         _mnuForceCloseXae.Click += (_, _) => ForceCloseXaeFromGui();
         _mnuOpenLogFolder.Click += (_, _) => OpenLogFolder();
         _mnuToggleTheme.Click += (_, _) => ThemeManager.Toggle();
-        _toolTip.SetToolTip(_btnStop, "Cancel the running schema apply (same as twincat_stop).");
     }
 
     /// <summary>
@@ -41,7 +41,7 @@ public partial class Form1
     {
         if (!_host.Dispatcher.TryAcquire())
         {
-            ShowTransientRunState("Busy: a TwinCAT operation is running.");
+            ShowTransientRunState(Loc.Get("main.runstate.busy"));
             return;
         }
         try { UpdateEnvironmentStatus("Manual check"); }
@@ -52,7 +52,7 @@ public partial class Form1
     private void StopFromGui()
     {
         bool cancelled = StopActiveProcess();
-        ShowTransientRunState(cancelled ? "Cancellation requested." : "Nothing to stop.");
+        ShowTransientRunState(Loc.Get(cancelled ? "main.runstate.cancelrequested" : "main.runstate.nothingtostop"));
     }
 
     private System.Windows.Forms.Timer? _runStateRestore;
@@ -80,15 +80,15 @@ public partial class Form1
     private void ForceCloseXaeFromGui()
     {
         if (MessageBox.Show(this,
-                "Close the TwinCAT XAE instance now?\n\nUse this only when the XAE hangs. Unsaved changes in the XAE are lost.",
-                "Close XAE instance (recovery)", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+                Loc.Get("main.closexae.confirm"),
+                Loc.Get("main.closexae.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2) != DialogResult.Yes)
             return;
 
         var result = new RecoveryCoordinator(_session).ForceCloseXae();
         bool ok = McpErrors.IsOk(result);
         AppendLog(result);
-        MessageBox.Show(this, result, ok ? "XAE recovery executed" : "XAE recovery failed",
+        MessageBox.Show(this, result, Loc.Get(ok ? "main.closexae.done" : "main.closexae.failed"),
             MessageBoxButtons.OK, ok ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
         UpdateEnvironmentStatus("After XAE recovery");
     }
@@ -98,7 +98,7 @@ public partial class Form1
         var result = new BuildCoordinator(_session).DismissSecurityDialog();
         bool dismissed = result.StartsWith("Security dialog dismissed", StringComparison.Ordinal);
         AppendLog(result);
-        MessageBox.Show(this, result, dismissed ? "Security dialog resolved" : "Security dialog not resolved",
+        MessageBox.Show(this, result, Loc.Get(dismissed ? "main.security.resolved" : "main.security.notresolved"),
             MessageBoxButtons.OK, dismissed ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }
 
@@ -112,7 +112,7 @@ public partial class Form1
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            MessageBox.Show(this, $"Could not open {ProductInfo.WebsiteUrl}:\n{ex.Message}",
+            MessageBox.Show(this, Loc.Format("main.error.openurl", ProductInfo.WebsiteUrl, ex.Message),
                 ProductInfo.DisplayName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
@@ -127,8 +127,8 @@ public partial class Form1
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Could not open the log folder:\n{dir}\n\n{ex.Message}",
-                "Open log folder", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, Loc.Format("main.error.openlogfolder", dir, ex.Message),
+                Loc.Get("main.openlogfolder.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 }

@@ -21,7 +21,7 @@
 ;   dotnet msbuild Directory.Build.props -getProperty:Version
 ; so it never drifts from the assembly.) Compiling without /DAppVersion falls
 ; back to the DefaultAppVersion below and still works from the IDE.
-#define DefaultAppVersion "4.2.0"
+#define DefaultAppVersion "4.2.1"
 #ifndef AppVersion
   #define AppVersion DefaultAppVersion
 #endif
@@ -53,22 +53,44 @@ UninstallDisplayIcon={app}\{#AppExe}
 SetupIconFile=..\src\PtcXaeMcp.WinForms\favicon.ico
 MinVersion=10.0.19041
 ; The wizard follows the language of Windows. English comes first and is the fallback; the language dialog only
-; appears when Windows is neither English nor German. Silent installs (/SILENT, winget) never show it; /LANG=english
-; or /LANG=german forces a language.
+; appears when Windows is none of the languages below. Silent installs (/SILENT, winget) never show it;
+; /LANG=<name> (e.g. /LANG=french) forces a language. The language of the wizard is left for the app
+; (HKLM\SOFTWARE\Pneutronic\ptc-xae-mcp, value InstallLanguage) as its language for the first start.
 ShowLanguageDialog=auto
 LanguageDetectionMethod=uilanguage
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
+Name: "dutch"; MessagesFile: "compiler:Languages\Dutch.isl"
+Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
+Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
+Name: "czech"; MessagesFile: "compiler:Languages\Czech.isl"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
+Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 
 [CustomMessages]
+; The name of the uninstall shortcut in the start menu group, one per wizard language. English and German keep the
+; names of earlier versions; the others are the wording of the Inno Setup language file ("UninstallProgram").
+; Every name is also in [InstallDelete], so a reinstall in another language leaves no second shortcut behind.
 english.UninstallShortcut=Uninstall {#AppName}
 german.UninstallShortcut={#AppName} deinstallieren
-english.DesktopIconTask=Create a desktop shortcut
-german.DesktopIconTask=Desktop-Verknüpfung erstellen
-english.AdditionalIconsGroup=Additional icons:
-german.AdditionalIconsGroup=Zusätzliche Symbole:
+french.UninstallShortcut=Désinstaller {#AppName}
+italian.UninstallShortcut=Disinstalla {#AppName}
+spanish.UninstallShortcut=Desinstalar {#AppName}
+brazilianportuguese.UninstallShortcut=Desinstalar o {#AppName}
+dutch.UninstallShortcut=Verwijder {#AppName}
+polish.UninstallShortcut=Dezinstalacja aplikacji {#AppName}
+turkish.UninstallShortcut={#AppName} uygulamasını kaldır
+czech.UninstallShortcut=Odinstalovat aplikaci {#AppName}
+russian.UninstallShortcut=Деинсталлировать {#AppName}
+japanese.UninstallShortcut={#AppName} をアンインストールする
+korean.UninstallShortcut={#AppName} 제거
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -81,6 +103,17 @@ Type: files; Name: "{commondesktop}\ptc-xae-mcp.lnk"
 ; The uninstall shortcut of the other language, so a reinstall in a different language leaves no second one behind.
 Type: files; Name: "{group}\{#AppName} deinstallieren.lnk"
 Type: files; Name: "{group}\Uninstall {#AppName}.lnk"
+Type: files; Name: "{group}\Désinstaller {#AppName}.lnk"
+Type: files; Name: "{group}\Disinstalla {#AppName}.lnk"
+Type: files; Name: "{group}\Desinstalar {#AppName}.lnk"
+Type: files; Name: "{group}\Desinstalar o {#AppName}.lnk"
+Type: files; Name: "{group}\Verwijder {#AppName}.lnk"
+Type: files; Name: "{group}\Dezinstalacja aplikacji {#AppName}.lnk"
+Type: files; Name: "{group}\Odinstalovat aplikaci {#AppName}.lnk"
+Type: files; Name: "{group}\Деинсталлировать {#AppName}.lnk"
+Type: files; Name: "{group}\{#AppName} uygulamasını kaldır.lnk"
+Type: files; Name: "{group}\{#AppName} をアンインストールする.lnk"
+Type: files; Name: "{group}\{#AppName} 제거.lnk"
 
 [Icons]
 Name: "{group}\{#AppName}";         Filename: "{app}\{#AppExe}"
@@ -88,5 +121,30 @@ Name: "{group}\{cm:UninstallShortcut}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Tasks]
-Name: desktopicon; Description: "{cm:DesktopIconTask}"; GroupDescription: "{cm:AdditionalIconsGroup}"; Flags: unchecked
+Name: desktopicon; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+[Registry]
+; The language of the wizard becomes the app's language for its first start (the app reads this value only when the
+; user has not chosen one in its settings, and ignores a language it has no texts for).
+Root: HKLM; Subkey: "SOFTWARE\Pneutronic\ptc-xae-mcp"; ValueType: string; ValueName: "InstallLanguage"; ValueData: "{code:HostLanguageCode}"; Check: HostHasLanguage; Flags: uninsdeletevalue uninsdeletekeyifempty
+
+[Code]
+// The app's language code for the wizard language, or '' when the app has no texts in it (it then follows Windows).
+function HostLanguageCode(Param: String): String;
+begin
+  if ActiveLanguage = 'english' then Result := 'en'
+  else if ActiveLanguage = 'german' then Result := 'de'
+  else if ActiveLanguage = 'french' then Result := 'fr'
+  else if ActiveLanguage = 'italian' then Result := 'it'
+  else if ActiveLanguage = 'spanish' then Result := 'es'
+  else if ActiveLanguage = 'brazilianportuguese' then Result := 'pt'
+  else if ActiveLanguage = 'dutch' then Result := 'nl'
+  else if ActiveLanguage = 'polish' then Result := 'pl'
+  else if ActiveLanguage = 'turkish' then Result := 'tr'
+  else Result := '';
+end;
+
+function HostHasLanguage: Boolean;
+begin
+  Result := HostLanguageCode('') <> '';
+end;

@@ -1,3 +1,4 @@
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.Updates;
@@ -23,17 +24,19 @@ internal sealed class SettingsDialog : Form
     /// <param name="updateCheckLocked">True when the machine policy or <see cref="UpdateCheck.EnvVar"/>
     /// forbids the check: the box is shown unchecked and disabled, so nobody can opt in here.</param>
     /// <param name="access">The tool profile and access policy to edit; null leaves the section out.</param>
+    /// <param name="language">The language code in force, preselected in the language list.</param>
     public SettingsDialog(int port, bool darkTheme, bool rememberWindowPosition, bool diagnosticsEnabled,
-        bool checkForUpdates = false, bool updateCheckLocked = false, McpAccessSettings? access = null)
+        bool checkForUpdates = false, bool updateCheckLocked = false, McpAccessSettings? access = null,
+        string language = HostLanguage.Fallback)
     {
-        Text = "Settings";
+        Text = Loc.Get("settings.title");
         FormBorderStyle = FormBorderStyle.Sizable;
         StartPosition = FormStartPosition.CenterParent;
         MinimizeBox = false;
         MaximizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(760, access is null ? 520 : 920);
-        MinimumSize = new Size(600, access is null ? 440 : 780);
+        ClientSize = new Size(760, access is null ? 610 : 1010);
+        MinimumSize = new Size(600, access is null ? 530 : 870);
 
         var layout = new TableLayoutPanel
         {
@@ -44,34 +47,47 @@ internal sealed class SettingsDialog : Form
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        AddRow(layout, 0, "Theme", _cmbTheme);
+        AddRow(layout, 0, Loc.Get("settings.theme"), _cmbTheme);
         _cmbTheme.DropDownStyle = ComboBoxStyle.DropDownList;
-        _cmbTheme.Items.AddRange(["Light", "Dark"]);
+        _cmbTheme.Items.AddRange([Loc.Get("settings.theme.light"), Loc.Get("settings.theme.dark")]);
         _cmbTheme.SelectedIndex = darkTheme ? 1 : 0;
         _cmbTheme.Width = 160;
 
-        _chkRemember.Text = "Remember window position and size";
+        _chkRemember.Text = Loc.Get("settings.remember");
         _chkRemember.Checked = rememberWindowPosition;
         _chkRemember.AutoSize = true;
+        _chkRemember.MaximumSize = new Size(560, 0);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(new Label { Text = string.Empty, AutoSize = true }, 0, 1);
         layout.Controls.Add(_chkRemember, 1, 1);
 
-        _chkUpdates.Text = "Check for a new release at start (one request to github.com, nothing is downloaded)";
+        _chkUpdates.Text = Loc.Get("settings.updates.check");
         _chkUpdates.Checked = checkForUpdates && !updateCheckLocked;
         _chkUpdates.Enabled = !updateCheckLocked;
         _chkUpdates.AutoSize = true;
+        _chkUpdates.MaximumSize = new Size(560, 0);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(new Label { Text = string.Empty, AutoSize = true }, 0, 2);
         layout.Controls.Add(_chkUpdates, 1, 2);
 
         int row = 3;
+        _cmbLanguage.DropDownStyle = ComboBoxStyle.DropDownList;
+        foreach (var l in HostLanguage.Shipped)
+            _cmbLanguage.Items.Add(l.Reviewed ? l.NativeName : Loc.Format("settings.language.unreviewed", l.NativeName));
+        _cmbLanguage.SelectedIndex = Math.Max(0, IndexOfLanguage(language));
+        _cmbLanguage.Width = 300;
+        AddRow(layout, row++, Loc.Get("settings.language.label"), _cmbLanguage);
+        AddNote(layout, row++, Loc.Get("settings.language.note"));
+        if (Environment.GetEnvironmentVariable(HostLanguage.EnvVar) is { Length: > 0 } envLanguage
+            && HostLanguage.Match(envLanguage) is not null)
+            AddNote(layout, row++, Loc.Format("settings.language.envOverride", HostLanguage.EnvVar, envLanguage));
+
         if (access is not null)
             row = AddAccessRows(layout, row, access);
 
         var caption = new Label
         {
-            Text = "Server settings (read-only). They are read once at start: set the environment variable, then restart the app.",
+            Text = Loc.Get("settings.serverCaption"),
             AutoSize = true,
             MaximumSize = new Size(700, 0),
             Margin = new Padding(0, 16, 0, 6),
@@ -93,8 +109,8 @@ internal sealed class SettingsDialog : Form
             AutoSize = true,
             Margin = new Padding(0, 10, 0, 0),
         };
-        var cancel = new Button { Text = "Cancel", AutoSize = true, DialogResult = DialogResult.Cancel };
-        var ok = new Button { Text = "OK", AutoSize = true, DialogResult = DialogResult.OK, Tag = "primary" };
+        var cancel = new Button { Text = Loc.Get("settings.button.cancel"), AutoSize = true, DialogResult = DialogResult.Cancel };
+        var ok = new Button { Text = Loc.Get("settings.button.ok"), AutoSize = true, DialogResult = DialogResult.OK, Tag = "primary" };
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(ok);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -112,6 +128,18 @@ internal sealed class SettingsDialog : Form
     public bool RememberWindowPosition => _chkRemember.Checked;
 
     public bool CheckForUpdates => _chkUpdates.Checked;
+
+    /// <summary>The code of the language chosen in the list.</summary>
+    public string Language => HostLanguage.Shipped[Math.Max(0, _cmbLanguage.SelectedIndex)].Code;
+
+    private readonly ComboBox _cmbLanguage = new();
+
+    private static int IndexOfLanguage(string code)
+    {
+        for (int i = 0; i < HostLanguage.Shipped.Count; i++)
+            if (HostLanguage.Shipped[i].Code == code) return i;
+        return -1;
+    }
 
     /// <summary>The tool profile chosen: <see cref="ToolProfiles.Automatic"/>, <c>all</c>, <c>core</c> or a toolset list.</summary>
     public string ToolProfile => _cmbProfile.SelectedIndex == 0 || string.IsNullOrWhiteSpace(_cmbProfile.Text)
@@ -136,13 +164,13 @@ internal sealed class SettingsDialog : Form
     private readonly TextBox _txtWriteDeny = new();
     private readonly ComboBox _cmbConfirm = new();
 
-    private const string AutomaticLabel = "Automatic (by client: Claude all, Cursor/VS Code/Windsurf/Hermes core)";
+    private static string AutomaticLabel() => Loc.Get("settings.profile.automatic");
 
     private int AddAccessRows(TableLayoutPanel layout, int row, McpAccessSettings access)
     {
         var heading = new Label
         {
-            Text = "MCP access. Saved when you press OK and applied at once; connected clients are told to reload their tool list.",
+            Text = Loc.Get("settings.access.heading"),
             AutoSize = true,
             MaximumSize = new Size(700, 0),
             Margin = new Padding(0, 16, 0, 6),
@@ -153,58 +181,56 @@ internal sealed class SettingsDialog : Form
         row++;
 
         _cmbProfile.DropDownStyle = ComboBoxStyle.DropDown;
-        _cmbProfile.Items.AddRange([AutomaticLabel, ToolProfiles.All, ToolProfiles.Core]);
+        _cmbProfile.Items.AddRange([AutomaticLabel(), ToolProfiles.All, ToolProfiles.Core]);
         _cmbProfile.Width = 460;
         if (string.Equals(access.ToolProfile, ToolProfiles.Automatic, StringComparison.OrdinalIgnoreCase))
             _cmbProfile.SelectedIndex = 0;
         else
             _cmbProfile.Text = access.ToolProfile;
-        AddRow(layout, row++, "Tool profile", _cmbProfile);
+        AddRow(layout, row++, Loc.Get("settings.access.profile"), _cmbProfile);
         if (access.ToolProfileEnvironment is { } env)
-            AddNote(layout, row++, $"{ToolProfiles.EnvVar}={env} is set and overrides this choice.");
+            AddNote(layout, row++, Loc.Format("settings.access.profileEnv", ToolProfiles.EnvVar, env));
 
         _cmbAccess.DropDownStyle = ComboBoxStyle.DropDownList;
-        _cmbAccess.Items.AddRange(["read — only tools that change nothing",
-                                   "engineer — also change the project (no activate, login, ADS write)",
-                                   "runtime — also change target systems"]);
+        _cmbAccess.Items.AddRange([Loc.Get("settings.access.level.read"),
+                                   Loc.Get("settings.access.level.engineer"),
+                                   Loc.Get("settings.access.level.runtime")]);
         _cmbAccess.SelectedIndex = (int)access.Window.Level;
         _cmbAccess.Width = 460;
-        AddRow(layout, row++, "Access level", _cmbAccess);
+        AddRow(layout, row++, Loc.Get("settings.access.level"), _cmbAccess);
 
         _txtBlocked.Text = string.Join("; ", access.Window.BlockedNetIds.Order());
         _txtBlocked.Width = 460;
-        AddRow(layout, row++, "Blocked NetIds", _txtBlocked);
-        AddNote(layout, row++, "No runtime action on these systems; reading stays allowed. Separate with ';'. 'local' = this PC and its User Mode Runtimes.");
+        AddRow(layout, row++, Loc.Get("settings.access.blocked"), _txtBlocked);
+        AddNote(layout, row++, Loc.Get("settings.access.blocked.note"));
 
         _txtAllowed.Text = access.Window.AllowedNetIds is { } allowed ? string.Join("; ", allowed.Order()) : string.Empty;
         _txtAllowed.Width = 460;
-        AddRow(layout, row++, "Allowed NetIds", _txtAllowed);
-        AddNote(layout, row++, "When set, runtime actions only on these systems. Empty = no allow list.");
+        AddRow(layout, row++, Loc.Get("settings.access.allowed"), _txtAllowed);
+        AddNote(layout, row++, Loc.Get("settings.access.allowed.note"));
 
         _txtWriteAllow.Text = access.Window.AdsWriteAllow is { } writeAllow ? string.Join("; ", writeAllow.Order()) : string.Empty;
         _txtWriteAllow.Width = 460;
-        AddRow(layout, row++, "Allowed variable writes", _txtWriteAllow);
-        AddNote(layout, row++, "When set, ADS and HMI writes and a snapshot restore reach only matching symbols, e.g. MAIN.stTest.*; GVL_Param.r*. " +
-                               "'*' is any text, '?' one character, case is ignored. Empty = no list (all symbols).");
+        AddRow(layout, row++, Loc.Get("settings.access.writeAllow"), _txtWriteAllow);
+        AddNote(layout, row++, Loc.Get("settings.access.writeAllow.note"));
 
         _txtWriteDeny.Text = access.Window.AdsWriteDeny is { } writeDeny ? string.Join("; ", writeDeny.Order()) : string.Empty;
         _txtWriteDeny.Width = 460;
-        AddRow(layout, row++, "Denied variable writes", _txtWriteDeny);
-        AddNote(layout, row++, "Never written, whatever the allowed list says, e.g. *.bEmergency*; GVL_Safety.*.");
+        AddRow(layout, row++, Loc.Get("settings.access.writeDeny"), _txtWriteDeny);
+        AddNote(layout, row++, Loc.Get("settings.access.writeDeny.note"));
 
         _cmbConfirm.DropDownStyle = ComboBoxStyle.DropDownList;
-        _cmbConfirm.Items.AddRange(["default — remote",
-                                    "remote — a human confirms activate, restart, stop, ADS write and login on other systems",
-                                    "all — also activate, restart, stop and mode switches on this machine",
-                                    "off — nobody is asked"]);
+        _cmbConfirm.Items.AddRange([Loc.Get("settings.confirm.default"),
+                                    Loc.Get("settings.confirm.remote"),
+                                    Loc.Get("settings.confirm.all"),
+                                    Loc.Get("settings.confirm.off")]);
         _cmbConfirm.SelectedIndex = access.Window.Confirm switch { ConfirmMode.Remote => 1, ConfirmMode.All => 2, ConfirmMode.Off => 3, _ => 0 };
         _cmbConfirm.Width = 460;
-        AddRow(layout, row++, "Human confirmation", _cmbConfirm);
-        AddNote(layout, row++, "A client that supports MCP elicitation asks the human in its own window; any other client gets a token " +
-                               "that you release in the Approvals tab here. The stricter of this and the environment applies.");
+        AddRow(layout, row++, Loc.Get("settings.access.confirm"), _cmbConfirm);
+        AddNote(layout, row++, Loc.Get("settings.access.confirm.note"));
 
         if (access.Environment is { } envPolicy)
-            AddNote(layout, row++, $"The environment sets {envPolicy.Summary()}; the stricter of both applies.");
+            AddNote(layout, row++, Loc.Format("settings.access.envPolicy", envPolicy.Summary()));
         return row;
     }
 
@@ -243,9 +269,9 @@ internal sealed class SettingsDialog : Form
             AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
         };
-        grid.Columns.Add("setting", "Setting");
-        grid.Columns.Add("value", "Value");
-        grid.Columns.Add("howto", "Set by");
+        grid.Columns.Add("setting", Loc.Get("settings.grid.setting"));
+        grid.Columns.Add("value", Loc.Get("settings.grid.value"));
+        grid.Columns.Add("howto", Loc.Get("settings.grid.howto"));
         grid.Columns[0].FillWeight = 28;
         grid.Columns[1].FillWeight = 36;
         grid.Columns[2].FillWeight = 36;

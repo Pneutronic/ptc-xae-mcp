@@ -80,6 +80,28 @@ machine-readable value.
   `StringComparison.Ordinal` — the comparison is exact-byte, not "does this
   read the same in the user's language".
 
+## Translations
+
+The host speaks English, German, French, Italian, Spanish, Brazilian Portuguese, Dutch, Polish, Turkish and
+Simplified Chinese (README, section *Language*). English is the source. The other nine languages are machine
+translated and are labeled *translation not yet reviewed* in the language list until a native speaker has checked
+them, so corrections are welcome as a pull request or an issue.
+
+- **Texts:** `src/PtcXaeMcp.WinForms/Resources/Strings.resx` (English) and `Strings.<code>.resx`. One key per text.
+  `{0}`, `{1}` are filled in by the code and stay as they are, `{{` and `}}` are literal braces, a `&` before a letter
+  is a keyboard accelerator.
+- **Prompts:** `src/PtcXaeMcp.WinForms/Mcp/Prompts/<code>/<name>.md`. Keep the `{{placeholders}}`, the `twincat_*` tool
+  names, the code spans and the number of lines exactly as in the English file.
+- **Stays English on purpose:** tool results, error messages, tool names and tool descriptions. An AI client reads
+  them, and it answers in the language of its user.
+- **Checks:** `LocalizationCompletenessTests` compares every language with English (keys, placeholders, format
+  strings, prompt parts, unused keys); run `dotnet test src/PtcXaeMcp.Tests`. German uses the Swiss spelling (`ss`,
+  no `ß`). `EnglishOnlyCodeTests` keeps German umlauts out of C# source, so write the own name of a language with
+  Unicode escapes in `HostLanguage.cs`.
+- **A new language:** `Strings.<code>.resx` with every key, the prompt folder and its `EmbeddedResource` line in
+  the host project, an entry in `HostLanguage.Shipped`, and, when Inno Setup ships a language file for it, the
+  installer (`setup/setup.iss`: `[Languages]`, `[CustomMessages]`, the code mapping at the end).
+
 ## Licensing of contributions: Developer Certificate of Origin
 
 This project is licensed under the Apache License 2.0; by section 5 of that

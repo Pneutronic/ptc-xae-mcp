@@ -1,3 +1,4 @@
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Theme;
 
 namespace PtcXaeMcp.WinForms.Dialogs;
@@ -20,7 +21,7 @@ internal sealed class ConnectClientDialog : Form
         _port = port;
         bool tokenSet = ClientConnectInfo.TokenIsSet();
 
-        Text = "Connect a client";
+        Text = Loc.Get("connect.title");
         FormBorderStyle = FormBorderStyle.Sizable;
         StartPosition = FormStartPosition.CenterParent;
         MinimizeBox = false;
@@ -39,32 +40,31 @@ internal sealed class ConnectClientDialog : Form
 
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(Caption(
-            $"The MCP server listens on {ClientConnectInfo.Url(port)}. Add it to your MCP client:"), 0, 0);
+            Loc.Format("connect.intro", ClientConnectInfo.Url(port))), 0, 0);
 
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(Caption("Claude Code: run this command"), 0, 1);
+        layout.Controls.Add(Caption(Loc.Get("connect.claudeCode")), 0, 1);
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
         layout.Controls.Add(CodeBox(ClientConnectInfo.ClaudeMcpAddCommand(port, tokenSet), out var cmdBox), 0, 2);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(CopyButton("Copy command", cmdBox), 0, 3);
+        layout.Controls.Add(CopyButton(Loc.Get("connect.copyCommand"), cmdBox), 0, 3);
 
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(Caption("Any client: .mcp.json snippet"), 0, 4);
+        layout.Controls.Add(Caption(Loc.Get("connect.json")), 0, 4);
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.Controls.Add(CodeBox(ClientConnectInfo.McpJsonSnippet(port, tokenSet), out var jsonBox), 0, 5);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(CopyButton("Copy snippet", jsonBox), 0, 6);
+        layout.Controls.Add(CopyButton(Loc.Get("connect.copySnippet"), jsonBox), 0, 6);
 
         if (tokenSet)
         {
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.Controls.Add(Caption(
-                $"An access token is set: replace {ClientConnectInfo.TokenPlaceholder} with the value of " +
-                "PTC_XAE_MCP_TOKEN. The token itself is not shown here."), 0, 7);
+                Loc.Format("connect.tokenNote", ClientConnectInfo.TokenPlaceholder)), 0, 7);
         }
 
         var testRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
-        _btnTest.Text = "Test connection";
+        _btnTest.Text = Loc.Get("connect.test");
         _btnTest.AutoSize = true;
         _btnTest.Tag = "primary";
         _btnTest.Click += async (_, _) => await TestConnectionAsync();
@@ -76,7 +76,7 @@ internal sealed class ConnectClientDialog : Form
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(testRow, 0, 8);
 
-        var close = new Button { Text = "Close", AutoSize = true, DialogResult = DialogResult.OK, Anchor = AnchorStyles.Right };
+        var close = new Button { Text = Loc.Get("connect.close"), AutoSize = true, DialogResult = DialogResult.OK, Anchor = AnchorStyles.Right };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(close, 0, 9);
         AcceptButton = close;
@@ -124,7 +124,7 @@ internal sealed class ConnectClientDialog : Form
     {
         _btnTest.Enabled = false;
         _lblResult.ForeColor = ThemeManager.Palette.TextMuted;
-        _lblResult.Text = "Testing...";
+        _lblResult.Text = Loc.Get("connect.testing");
         try
         {
             // Off the UI thread: Task.Run keeps a slow answer from blocking the dialog.
@@ -143,7 +143,8 @@ internal sealed class ConnectClientDialog : Form
         {
             if (IsDisposed) return;
             _lblResult.ForeColor = ThemeManager.Palette.Error;
-            _lblResult.Text = "Not reachable: " + (ex is TaskCanceledException ? "timeout after 5 s" : ex.Message);
+            _lblResult.Text = Loc.Format("connect.notReachable",
+                ex is TaskCanceledException ? Loc.Get("connect.timeout") : ex.Message);
         }
         finally
         {

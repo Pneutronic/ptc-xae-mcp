@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.ToolConsole;
 
@@ -48,6 +49,7 @@ internal sealed class ConsoleView : UserControl
     private bool _loading;
     private bool _running;
     private bool _suppressTreeEvent;
+    private bool _toolNameIsPlaceholder = true;
     private (string Tool, string Arguments)? _pendingLoad;
     private CancellationTokenSource? _runCts;
 
@@ -89,10 +91,10 @@ internal sealed class ConsoleView : UserControl
         {
             Name = "_txtConsoleSearch",
             Dock = DockStyle.Fill,
-            PlaceholderText = "Search tools...",
+            PlaceholderText = Loc.Get("console.search.placeholder"),
         };
         _txtSearch.TextChanged += (_, _) => RebuildTree();
-        _btnReload = new Button { Name = "_btnConsoleReload", Text = "Reload", AutoSize = true };
+        _btnReload = new Button { Name = "_btnConsoleReload", Text = Loc.Get("console.reload"), AutoSize = true };
         _btnReload.Click += (_, _) => FireAndForget(async () =>
         {
             await LoadToolsAsync(force: true);
@@ -137,7 +139,7 @@ internal sealed class ConsoleView : UserControl
             Dock = DockStyle.Fill,
             AutoSize = true,
             Font = new Font(Font.FontFamily, 11f, FontStyle.Bold),
-            Text = "Select a tool on the left",
+            Text = Loc.Get("console.tool.placeholder"),
         };
         _txtDescription = new TextBox
         {
@@ -168,12 +170,12 @@ internal sealed class ConsoleView : UserControl
             WrapContents = true,
             Padding = new Padding(0, 4, 0, 4),
         };
-        _btnRun = new Button { Name = "_btnConsoleRun", Text = "Run", AutoSize = true, Enabled = false };
+        _btnRun = new Button { Name = "_btnConsoleRun", Text = Loc.Get("console.run"), AutoSize = true, Enabled = false };
         _btnRun.Click += (_, _) => FireAndForget(RunAsync);
         _btnSaveFavourite = new Button
         {
             Name = "_btnConsoleSaveFavourite",
-            Text = "Save as favourite",
+            Text = Loc.Get("console.favourite.save"),
             AutoSize = true,
             Enabled = false,
         };
@@ -181,7 +183,7 @@ internal sealed class ConsoleView : UserControl
         _btnRemoveFavourite = new Button
         {
             Name = "_btnConsoleRemoveFavourite",
-            Text = "Remove favourite",
+            Text = Loc.Get("console.favourite.remove"),
             AutoSize = true,
             Visible = false,
         };
@@ -189,12 +191,12 @@ internal sealed class ConsoleView : UserControl
         _chkRaw = new CheckBox
         {
             Name = "_chkConsoleRaw",
-            Text = "Raw JSON",
+            Text = Loc.Get("console.raw"),
             AutoSize = true,
             Padding = new Padding(8, 4, 8, 0),
         };
         _chkRaw.CheckedChanged += (_, _) => ShowOutput();
-        _btnCopy = new Button { Name = "_btnConsoleCopy", Text = "Copy", AutoSize = true };
+        _btnCopy = new Button { Name = "_btnConsoleCopy", Text = Loc.Get("console.copy"), AutoSize = true };
         _btnCopy.Click += (_, _) => CopyOutput();
         buttons.Controls.AddRange([_btnRun, _btnSaveFavourite, _btnRemoveFavourite, _chkRaw, _btnCopy]);
 
@@ -251,8 +253,26 @@ internal sealed class ConsoleView : UserControl
         }
         catch (Exception ex)
         {
-            if (!_disposed && !IsDisposed) SetStatus("Unexpected error: " + ex.Message, StatusKind.Error);
+            if (!_disposed && !IsDisposed) SetStatus(Loc.Format("console.status.unexpected", ex.Message), StatusKind.Error);
         }
+    }
+
+    /// <summary>
+    /// Sets every static text again after a language change. The form generated for the selected tool and the
+    /// last status line keep their language until the next selection or action (rebuilding the form would drop
+    /// what the user typed); the tool tree (group titles, Favourites) is rebuilt.
+    /// </summary>
+    public void ApplyLanguage()
+    {
+        _txtSearch.PlaceholderText = Loc.Get("console.search.placeholder");
+        _btnReload.Text = Loc.Get("console.reload");
+        _btnRun.Text = Loc.Get("console.run");
+        _btnSaveFavourite.Text = Loc.Get("console.favourite.save");
+        _btnRemoveFavourite.Text = Loc.Get("console.favourite.remove");
+        _chkRaw.Text = Loc.Get("console.raw");
+        _btnCopy.Text = Loc.Get("console.copy");
+        if (_toolNameIsPlaceholder) _lblToolName.Text = Loc.Get("console.tool.placeholder");
+        if (_toolsLoaded) RebuildTree();
     }
 
     /// <summary>Points the view at the in-process server. Does not connect yet.</summary>
@@ -285,14 +305,14 @@ internal sealed class ConsoleView : UserControl
         if (_toolsLoaded && !force) return;
         _loading = true;
         _btnReload.Enabled = false;
-        SetStatus("Loading tools...", StatusKind.Info);
+        SetStatus(Loc.Get("console.status.loading"), StatusKind.Info);
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             _tools = await _client.ListToolsAsync(cts.Token);
             if (_disposed || IsDisposed) return;
             _toolsLoaded = true;
-            SetStatus($"{_tools.Count} tools loaded.", StatusKind.Info);
+            SetStatus(Loc.Format("console.status.loaded", _tools.Count), StatusKind.Info);
             RebuildTree();
         }
         catch (Exception ex) when (!_disposed && !IsDisposed)
@@ -325,7 +345,7 @@ internal sealed class ConsoleView : UserControl
                 .ToList();
             if (favs.Count > 0)
             {
-                var favNode = new TreeNode($"Favourites ({favs.Count})");
+                var favNode = new TreeNode(Loc.Format("console.tree.favourites", favs.Count));
                 foreach (var p in favs)
                     favNode.Nodes.Add(new TreeNode(p.Name) { Tag = p, ToolTipText = p.Tool });
                 _tree.Nodes.Add(favNode);
@@ -334,7 +354,7 @@ internal sealed class ConsoleView : UserControl
 
             foreach (var g in ToolGrouping.Build(_tools, filter))
             {
-                var node = new TreeNode($"{g.Title} ({g.Tools.Count})");
+                var node = new TreeNode($"{ToolGrouping.DisplayTitle(g.Title)} ({g.Tools.Count})");
                 foreach (var name in g.Tools)
                     node.Nodes.Add(new TreeNode(name) { Tag = name });
                 _tree.Nodes.Add(node);
@@ -411,16 +431,18 @@ internal sealed class ConsoleView : UserControl
 
         if (_selected is null)
         {
+            _toolNameIsPlaceholder = false;
             _lblToolName.Text = toolName;
             _txtDescription.Text = _toolsLoaded
-                ? "This tool is not offered by the server (any more)."
-                : "Tool list not loaded.";
+                ? Loc.Get("console.tool.notoffered")
+                : Loc.Get("console.tool.notloaded");
             _btnRun.Enabled = false;
             _btnSaveFavourite.Enabled = false;
             _formHost.ResumeLayout();
             return;
         }
 
+        _toolNameIsPlaceholder = false;
         _lblToolName.Text = _selected.Name;
         _txtDescription.Text = _selected.Description;
         _fields = ToolFormModel.FromSchema(_selected.InputSchema);
@@ -432,8 +454,7 @@ internal sealed class ConsoleView : UserControl
             var parsed = ToolArgumentBuilder.TryParseArguments(argumentsJson);
             if (parsed is null)
             {
-                ShowBanner("Recorded arguments are incomplete - check every field before running. " +
-                           "They are not a complete JSON object (possibly truncated); defaults are shown.");
+                ShowBanner(Loc.Get("console.banner.notjson"));
             }
             else
             {
@@ -443,8 +464,7 @@ internal sealed class ConsoleView : UserControl
                 // arguments, so any gap warns; a favourite was saved from this form, so only a mismatch does.
                 if (recorded ? replay.Incomplete : replay.HasMismatch)
                 {
-                    ShowBanner("Recorded arguments are incomplete - check every field before running. " +
-                               string.Join("; ", replay.Warnings) + ".");
+                    ShowBanner(Loc.Format("console.banner.incomplete", string.Join("; ", replay.Warnings)));
                 }
             }
         }
@@ -471,7 +491,7 @@ internal sealed class ConsoleView : UserControl
 
         if (_fields.Count == 0)
         {
-            table.Controls.Add(new Label { Text = "This tool takes no arguments.", AutoSize = true }, 0, 0);
+            table.Controls.Add(new Label { Text = Loc.Get("console.form.noarguments"), AutoSize = true }, 0, 0);
             table.SetColumnSpan(table.GetControlFromPosition(0, 0)!, 2);
         }
 
@@ -490,7 +510,7 @@ internal sealed class ConsoleView : UserControl
             editor.Control.Margin = new Padding(0, 2, 0, 2);
             string tip = f.Description ?? string.Empty;
             if (f.Kind == ToolFieldKind.Text)
-                tip = (tip.Length > 0 ? tip + "\r\n" : "") + "Leave empty to omit; type \"\" (two double quotes) to send an empty string.";
+                tip = (tip.Length > 0 ? tip + "\r\n" : "") + Loc.Get("console.form.emptytip");
             if (tip.Length > 0)
             {
                 _tips.SetToolTip(label, tip);
@@ -505,8 +525,9 @@ internal sealed class ConsoleView : UserControl
         {
             var hint = new Label
             {
-                Text = "Empty optional text fields are omitted. Type \"\" (two double quotes) to send an empty string.",
+                Text = Loc.Get("console.form.emptyhint"),
                 AutoSize = true,
+                MaximumSize = new Size(900, 0),
                 Margin = new Padding(0, 6, 0, 2),
             };
             table.Controls.Add(hint, 0, row);
@@ -564,7 +585,7 @@ internal sealed class ConsoleView : UserControl
                 };
                 // Always an empty first entry, so a required enum without a default starts unselected
                 // (the required check then fires) and an optional one can stay unset.
-                cmb.Items.Add(new ChoiceItem(string.Empty, "(choose)"));
+                cmb.Items.Add(new ChoiceItem(string.Empty, Loc.Get("console.form.choose")));
                 foreach (var c in f.Choices) cmb.Items.Add(new ChoiceItem(c, c));
                 return new FieldEditor(f, cmb, () => (cmb.SelectedItem as ChoiceItem)?.Value ?? string.Empty, v =>
                 {
@@ -596,8 +617,8 @@ internal sealed class ConsoleView : UserControl
                     Dock = DockStyle.Fill,
                     PlaceholderText = f.Kind switch
                     {
-                        ToolFieldKind.Integer => "integer",
-                        ToolFieldKind.Number => "number",
+                        ToolFieldKind.Integer => Loc.Get("console.form.integer"),
+                        ToolFieldKind.Number => Loc.Get("console.form.number"),
                         _ => string.Empty,
                     },
                 };
@@ -614,7 +635,7 @@ internal sealed class ConsoleView : UserControl
         var result = ToolArgumentBuilder.Build(_fields, values);
         if (!result.IsValid)
         {
-            SetStatus("Cannot run: " + string.Join("; ", result.Errors), StatusKind.Error);
+            SetStatus(Loc.Format("console.status.cannotrun", string.Join("; ", result.Errors)), StatusKind.Error);
             return (null, false);
         }
         return (result.Arguments, true);
@@ -638,7 +659,7 @@ internal sealed class ConsoleView : UserControl
 
         _running = true;
         _btnRun.Enabled = false;
-        SetStatus($"Running {tool.Name}...", StatusKind.Info);
+        SetStatus(Loc.Format("console.status.running", tool.Name), StatusKind.Info);
         var cts = _runCts = new CancellationTokenSource(TimeSpan.FromMinutes(15));
         try
         {
@@ -654,10 +675,9 @@ internal sealed class ConsoleView : UserControl
             if (outcome.NotReachable)
                 SetStatus($"{outcome.Text} ({duration})", StatusKind.Error);
             else if (outcome.OutcomeUnknown)
-                SetStatus($"Outcome unknown after {duration} - the tool may have run; check the Activity view before retrying.",
-                    StatusKind.Warn);
+                SetStatus(Loc.Format("console.status.outcomeunknown", duration), StatusKind.Warn);
             else
-                SetStatus($"{(outcome.IsError ? "Tool reported an error" : "OK")} - {duration}",
+                SetStatus(Loc.Format(outcome.IsError ? "console.status.toolerror" : "console.status.ok", duration),
                     outcome.IsError ? StatusKind.Error : StatusKind.Ok);
         }
         finally
@@ -672,12 +692,12 @@ internal sealed class ConsoleView : UserControl
     private bool ConfirmWrite(ToolSummary tool)
     {
         string kind = tool.Destructive == true
-            ? "It is marked DESTRUCTIVE: it can delete or overwrite project or plant data."
-            : "It is not marked read-only: it may change the project, the XAE or the PLC.";
+            ? Loc.Get("console.confirm.destructive")
+            : Loc.Get("console.confirm.notreadonly");
         var answer = MessageBox.Show(
             FindForm(),
-            $"Run '{tool.Name}'?\r\n\r\n{kind}\r\n\r\nThe call goes through the same path as an AI client's call.",
-            "Confirm tool call",
+            Loc.Format("console.confirm.body", tool.Name, kind),
+            Loc.Get("console.confirm.title"),
             MessageBoxButtons.OKCancel,
             tool.Destructive == true ? MessageBoxIcon.Warning : MessageBoxIcon.Question,
             MessageBoxDefaultButton.Button2);
@@ -705,11 +725,11 @@ internal sealed class ConsoleView : UserControl
         try
         {
             Clipboard.SetText(_txtOutput.Text);
-            SetStatus("Copied to clipboard.", StatusKind.Info);
+            SetStatus(Loc.Get("console.status.copied"), StatusKind.Info);
         }
         catch (System.Runtime.InteropServices.ExternalException)
         {
-            SetStatus("The clipboard is in use by another program; try again.", StatusKind.Warn);
+            SetStatus(Loc.Get("console.status.clipboardbusy"), StatusKind.Warn);
         }
     }
 
@@ -735,8 +755,8 @@ internal sealed class ConsoleView : UserControl
         _presetList = _presets.Upsert(_presetList, preset, out bool saved);
         _selectedPreset = preset;
         RebuildTree();
-        if (saved) SetStatus($"Saved favourite '{preset.Name}'.", StatusKind.Info);
-        else SetStatus($"Favourite '{preset.Name}' is only kept until the app closes: {_presets.Path} could not be written.", StatusKind.Error);
+        if (saved) SetStatus(Loc.Format("console.status.favsaved", preset.Name), StatusKind.Info);
+        else SetStatus(Loc.Format("console.status.favsavefailed", preset.Name, _presets.Path), StatusKind.Error);
     }
 
     private void RemoveFavourite()
@@ -747,32 +767,32 @@ internal sealed class ConsoleView : UserControl
         _selectedPreset = null;
         _btnRemoveFavourite.Visible = false;
         RebuildTree();
-        if (saved) SetStatus($"Removed favourite '{name}'.", StatusKind.Info);
-        else SetStatus($"Removed '{name}' for now, but {_presets.Path} could not be written; it may come back after a restart.", StatusKind.Error);
+        if (saved) SetStatus(Loc.Format("console.status.favremoved", name), StatusKind.Info);
+        else SetStatus(Loc.Format("console.status.favremovefailed", name, _presets.Path), StatusKind.Error);
     }
 
     private string? PromptName(string suggestion)
     {
         using var dlg = new Form
         {
-            Text = "Save as favourite",
+            Text = Loc.Get("console.favourite.save"),
             FormBorderStyle = FormBorderStyle.FixedDialog,
             StartPosition = FormStartPosition.CenterParent,
             MinimizeBox = false,
             MaximizeBox = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(380, 96),
+            ClientSize = new Size(380, 120),
         };
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(10) };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var box = new TextBox { Dock = DockStyle.Top, Text = suggestion };
-        var ok = new Button { Text = "Save", DialogResult = DialogResult.OK, AutoSize = true };
-        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, AutoSize = true };
+        var ok = new Button { Text = Loc.Get("console.dialog.save"), DialogResult = DialogResult.OK, AutoSize = true };
+        var cancel = new Button { Text = Loc.Get("console.dialog.cancel"), DialogResult = DialogResult.Cancel, AutoSize = true };
         var row = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
         row.Controls.AddRange([cancel, ok]);
-        layout.Controls.Add(new Label { Text = "Name (an existing favourite with this name is replaced):", AutoSize = true }, 0, 0);
+        layout.Controls.Add(new Label { Text = Loc.Get("console.dialog.name"), AutoSize = true, MaximumSize = new Size(360, 0) }, 0, 0);
         layout.Controls.Add(box, 0, 1);
         layout.Controls.Add(row, 0, 2);
         dlg.Controls.Add(layout);

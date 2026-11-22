@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Theme;
 
@@ -59,12 +60,12 @@ internal sealed class ActivityView : UserControl
             Padding = new Padding(0, 0, 0, 6),
         };
 
-        _btnActivityClear = new Button { Name = "_btnActivityClear", Text = "Clear (new run)", AutoSize = true };
+        _btnActivityClear = new Button { Name = "_btnActivityClear", Text = Loc.Get("activity.clear"), AutoSize = true };
 
         _chkActivityAutoScroll = new CheckBox
         {
             Name = "_chkActivityAutoScroll",
-            Text = "Auto-Scroll",
+            Text = Loc.Get("activity.autoscroll"),
             Checked = true,
             AutoSize = true,
             Padding = new Padding(8, 4, 8, 0),
@@ -74,7 +75,7 @@ internal sealed class ActivityView : UserControl
         {
             Name = "_chkActivitySingleStep",
             Visible = false, // diagnostics only, see Attach
-            Text = "Single-step (pause the suite)",
+            Text = Loc.Get("activity.singlestep"),
             AutoSize = true,
             Padding = new Padding(8, 4, 8, 0),
         };
@@ -86,10 +87,10 @@ internal sealed class ActivityView : UserControl
                 : McpTestGateMode.Run;
         };
 
-        _btnActivityContinue = new Button { Name = "_btnActivityContinue", Text = "Next ▶", AutoSize = true, Visible = false };
+        _btnActivityContinue = new Button { Name = "_btnActivityContinue", Text = Loc.Get("activity.next"), AutoSize = true, Visible = false };
         _btnActivityContinue.Click += (_, _) => _mcpActivity?.Gate.Continue();
 
-        _btnActivityStop = new Button { Name = "_btnActivityStop", Text = "Stop ■", AutoSize = true, Visible = false };
+        _btnActivityStop = new Button { Name = "_btnActivityStop", Text = Loc.Get("activity.stop"), AutoSize = true, Visible = false };
         _btnActivityStop.Click += (_, _) => _mcpActivity?.Gate.Stop();
 
         toolbar.Controls.Add(_btnActivityClear);
@@ -129,7 +130,7 @@ internal sealed class ActivityView : UserControl
             Dock = DockStyle.Top,
             AutoSize = false,
             Height = 22,
-            Text = "JSON log: (no run yet)",
+            Text = Loc.Get("activity.jsonlog.none"),
             LinkColor = ThemeManager.Palette.Accent,
             ActiveLinkColor = ThemeManager.Palette.AccentHover,
             VisitedLinkColor = ThemeManager.Palette.Accent,
@@ -161,13 +162,13 @@ internal sealed class ActivityView : UserControl
         _gridActivity.Columns.Add(new DataGridViewTextBoxColumn
         { Name = "Nr", HeaderText = "#", FillWeight = 8 });
         _gridActivity.Columns.Add(new DataGridViewTextBoxColumn
-        { Name = "Time", HeaderText = "Time", FillWeight = 18 });
+        { Name = "Time", HeaderText = Loc.Get("activity.column.time"), FillWeight = 18 });
         _gridActivity.Columns.Add(new DataGridViewTextBoxColumn
-        { Name = "Tool", HeaderText = "Tool / Test", FillWeight = 42 });
+        { Name = "Tool", HeaderText = Loc.Get("activity.column.tool"), FillWeight = 42 });
         _gridActivity.Columns.Add(new DataGridViewTextBoxColumn
-        { Name = "Ms", HeaderText = "Duration (ms)", FillWeight = 16 });
+        { Name = "Ms", HeaderText = Loc.Get("activity.column.duration"), FillWeight = 16 });
         _gridActivity.Columns.Add(new DataGridViewTextBoxColumn
-        { Name = "Status", HeaderText = "Status", FillWeight = 16 });
+        { Name = "Status", HeaderText = Loc.Get("activity.column.status"), FillWeight = 16 });
         _gridActivity.SelectionChanged += (_, _) => ShowActivityDetail();
         _btnActivityClear.Click += (_, _) =>
         {
@@ -190,7 +191,7 @@ internal sealed class ActivityView : UserControl
         _btnRunAgain = new Button
         {
             Name = "_btnRunAgain",
-            Text = "Run again in Console",
+            Text = Loc.Get("activity.runagain"),
             AutoSize = true,
             Enabled = false,
         };
@@ -220,6 +221,27 @@ internal sealed class ActivityView : UserControl
         Controls.Add(_lblActivityLogPath);
         Controls.Add(_lblActivityNarration);
         Controls.Add(toolbar);
+    }
+
+    /// <summary>
+    /// Sets every static text again after a language change: buttons, check boxes, column headers, and the
+    /// report link, gate and narration lines. Rows already in the grid keep their text (tool names, test
+    /// names and the detail text of the selected row are not re-rendered).
+    /// </summary>
+    public void ApplyLanguage()
+    {
+        _btnActivityClear.Text = Loc.Get("activity.clear");
+        _chkActivityAutoScroll.Text = Loc.Get("activity.autoscroll");
+        _chkActivitySingleStep.Text = Loc.Get("activity.singlestep");
+        _btnActivityContinue.Text = Loc.Get("activity.next");
+        _btnActivityStop.Text = Loc.Get("activity.stop");
+        _btnRunAgain.Text = Loc.Get("activity.runagain");
+        _gridActivity.Columns["Time"]!.HeaderText = Loc.Get("activity.column.time");
+        _gridActivity.Columns["Tool"]!.HeaderText = Loc.Get("activity.column.tool");
+        _gridActivity.Columns["Ms"]!.HeaderText = Loc.Get("activity.column.duration");
+        _gridActivity.Columns["Status"]!.HeaderText = Loc.Get("activity.column.status");
+        if (_mcpActivity is null) _lblActivityLogPath.Text = Loc.Get("activity.jsonlog.none");
+        else RenderMcpActivity();
     }
 
     /// <summary>
@@ -267,11 +289,11 @@ internal sealed class ActivityView : UserControl
     /// </summary>
     private void SetReportLink(string? jsonPath)
     {
-        const string prefix = "HTML report: ";
+        string prefix = Loc.Get("activity.report.prefix");
         _lblActivityLogPath.Links.Clear();
         if (string.IsNullOrEmpty(jsonPath))
         {
-            _lblActivityLogPath.Text = prefix + "(no run yet)";
+            _lblActivityLogPath.Text = prefix + Loc.Get("activity.report.none");
             return;
         }
         var htmlPath = Path.ChangeExtension(jsonPath, ".html");
@@ -293,8 +315,8 @@ internal sealed class ActivityView : UserControl
         var boundaries = _mcpActivity.CurrentTest.Boundaries();
         if (jsonPath is null && entries.Count == 0)
         {
-            MessageBox.Show("No run yet — nothing to report.",
-                "HTML report", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(Loc.Get("activity.report.norun"),
+                Loc.Get("activity.report.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -314,8 +336,8 @@ internal sealed class ActivityView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Could not generate/open the HTML report:\n{ex.Message}",
-                "HTML report", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(Loc.Format("activity.report.failed", ex.Message),
+                Loc.Get("activity.report.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 
@@ -334,9 +356,9 @@ internal sealed class ActivityView : UserControl
         string? pending = _mcpActivity.Gate.PendingToolName;
         _lblActivityPending.Text = pending is null
             ? (_mcpActivity.Gate.Mode == McpTestGateMode.SingleStep
-                ? "Single-step active — waiting for the next call…"
+                ? Loc.Get("activity.pending.singlestep")
                 : "")
-            : $"⏸ Waiting at the gate: {pending}  —  check the state in XAE, then click “Next”.";
+            : Loc.Format("activity.pending.gate", pending);
 
         bool stepping = _mcpActivity.Gate.Mode == McpTestGateMode.SingleStep;
         _btnActivityContinue.Enabled = stepping;
@@ -430,8 +452,8 @@ internal sealed class ActivityView : UserControl
         string desc = string.IsNullOrWhiteSpace(cur.Description) ? "" : $" — {cur.Description}";
         bool running = _mcpActivity!.CurrentTest.Running;
         _lblActivityNarration.Text = running
-            ? $"▶ Running ({ofN}): {cur.Name}{desc}"
-            : $"✓ ({ofN}) {cur.Name}{desc}";
+            ? Loc.Format("activity.narration.running", ofN, cur.Name, desc)
+            : Loc.Format("activity.narration.done", ofN, cur.Name, desc);
     }
 
     /// <summary>A single grid row in the unified timeline: either a test
@@ -467,8 +489,8 @@ internal sealed class ActivityView : UserControl
         {
             var sep = new List<string>
             {
-                $"Test  : {tb.Name}",
-                $"Index : {tb.Index}",
+                Loc.Format("activity.detail.test.name", tb.Name),
+                Loc.Format("activity.detail.test.index", tb.Index),
             };
             if (!string.IsNullOrEmpty(tb.Description))
             {
@@ -489,22 +511,22 @@ internal sealed class ActivityView : UserControl
 
         var lines = new List<string>
         {
-            $"Tool      : {e.ToolName}",
-            $"Time (UTC): {e.TimestampUtc:o}",
-            $"Duration  : {e.Duration.TotalMilliseconds:0.###} ms",
-            $"Status    : {(e.Success ? "OK" : "ERROR")}",
+            Loc.Format("activity.detail.tool", e.ToolName),
+            Loc.Format("activity.detail.time", $"{e.TimestampUtc:o}"),
+            Loc.Format("activity.detail.duration", $"{e.Duration.TotalMilliseconds:0.###}"),
+            Loc.Format("activity.detail.status", Loc.Get(e.Success ? "activity.detail.status.ok" : "activity.detail.status.error")),
         };
         if (owner is not null)
         {
-            lines.Add($"Test      : {owner.Name}");
+            lines.Add(Loc.Format("activity.detail.owner.test", owner.Name));
             if (!string.IsNullOrEmpty(owner.Description))
-                lines.Add($"Descr.    : {owner.Description}");
+                lines.Add(Loc.Format("activity.detail.owner.description", owner.Description));
         }
         lines.Add("");
-        lines.Add("── Arguments ──────────────────────────────");
+        lines.Add(Loc.Get("activity.detail.arguments"));
         lines.Add(e.Arguments);
         lines.Add("");
-        lines.Add("── Response / Error ──────────────────────");
+        lines.Add(Loc.Get("activity.detail.response"));
         lines.Add(e.Response);
         _txtActivityDetail.Text = string.Join(Environment.NewLine, lines);
     }

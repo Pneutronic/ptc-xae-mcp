@@ -1,0 +1,1284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Simplified Chinese texts. Not yet reviewed by a native speaker; see HostLanguage.Shipped.
+    One key per text a human reads. {0}, {1} ... are filled by Loc.Format; {{ and }} are literal braces.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="activity.autoscroll" xml:space="preserve">
+    <value>自动滚动</value>
+  </data>
+  <data name="activity.clear" xml:space="preserve">
+    <value>清除（新运行）</value>
+  </data>
+  <data name="activity.column.duration" xml:space="preserve">
+    <value>耗时 (ms)</value>
+  </data>
+  <data name="activity.column.status" xml:space="preserve">
+    <value>状态</value>
+  </data>
+  <data name="activity.column.time" xml:space="preserve">
+    <value>时间</value>
+  </data>
+  <data name="activity.column.tool" xml:space="preserve">
+    <value>工具 / 测试</value>
+  </data>
+  <data name="activity.detail.arguments" xml:space="preserve">
+    <value>── 参数 ──────────────────────────────</value>
+  </data>
+  <data name="activity.detail.duration" xml:space="preserve">
+    <value>耗时        : {0} ms</value>
+  </data>
+  <data name="activity.detail.owner.description" xml:space="preserve">
+    <value>描述        : {0}</value>
+  </data>
+  <data name="activity.detail.owner.test" xml:space="preserve">
+    <value>测试        : {0}</value>
+  </data>
+  <data name="activity.detail.response" xml:space="preserve">
+    <value>── 响应 / 错误 ──────────────────────</value>
+  </data>
+  <data name="activity.detail.status" xml:space="preserve">
+    <value>状态        : {0}</value>
+  </data>
+  <data name="activity.detail.status.error" xml:space="preserve">
+    <value>错误</value>
+  </data>
+  <data name="activity.detail.status.ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="activity.detail.test.index" xml:space="preserve">
+    <value>序号  : {0}</value>
+  </data>
+  <data name="activity.detail.test.name" xml:space="preserve">
+    <value>测试  : {0}</value>
+  </data>
+  <data name="activity.detail.time" xml:space="preserve">
+    <value>时间(UTC)   : {0}</value>
+  </data>
+  <data name="activity.detail.tool" xml:space="preserve">
+    <value>工具        : {0}</value>
+  </data>
+  <data name="activity.jsonlog.none" xml:space="preserve">
+    <value>JSON 日志：（尚无运行）</value>
+  </data>
+  <data name="activity.narration.done" xml:space="preserve">
+    <value>✓ ({0}) {1}{2}</value>
+  </data>
+  <data name="activity.narration.running" xml:space="preserve">
+    <value>▶ 运行中 ({0})：{1}{2}</value>
+  </data>
+  <data name="activity.next" xml:space="preserve">
+    <value>下一步 ▶</value>
+  </data>
+  <data name="activity.pending.gate" xml:space="preserve">
+    <value>⏸ 在检查点等待：{0}  —  请在 XAE 中检查状态，然后点击“下一步”。</value>
+  </data>
+  <data name="activity.pending.singlestep" xml:space="preserve">
+    <value>单步模式已启用 — 等待下一次调用…</value>
+  </data>
+  <data name="activity.report.failed" xml:space="preserve">
+    <value>无法生成或打开 HTML 报告：
+{0}</value>
+  </data>
+  <data name="activity.report.none" xml:space="preserve">
+    <value>（尚无运行）</value>
+  </data>
+  <data name="activity.report.norun" xml:space="preserve">
+    <value>尚无运行 — 没有可报告的内容。</value>
+  </data>
+  <data name="activity.report.prefix" xml:space="preserve">
+    <value>HTML 报告： </value>
+  </data>
+  <data name="activity.report.title" xml:space="preserve">
+    <value>HTML 报告</value>
+  </data>
+  <data name="activity.runagain" xml:space="preserve">
+    <value>在控制台中再次运行</value>
+  </data>
+  <data name="activity.singlestep" xml:space="preserve">
+    <value>单步（暂停测试套件）</value>
+  </data>
+  <data name="activity.stop" xml:space="preserve">
+    <value>停止 ■</value>
+  </data>
+  <data name="approvals.button.abort" xml:space="preserve">
+    <value>■ 中止 / 全部批准</value>
+  </data>
+  <data name="approvals.button.arm" xml:space="preserve">
+    <value>布防</value>
+  </data>
+  <data name="approvals.button.deny" xml:space="preserve">
+    <value>拒绝</value>
+  </data>
+  <data name="approvals.button.disarm" xml:space="preserve">
+    <value>撤防</value>
+  </data>
+  <data name="approvals.button.release" xml:space="preserve">
+    <value>批准</value>
+  </data>
+  <data name="approvals.chip.armed" xml:space="preserve">
+    <value>IBN 已布防 — {0} 秒</value>
+  </data>
+  <data name="approvals.chip.pending_armed" xml:space="preserve">
+    <value>{0} · IBN 已布防 {1} 秒</value>
+  </data>
+  <data name="approvals.chip.pending_many" xml:space="preserve">
+    <value>{0} 项审批待处理</value>
+  </data>
+  <data name="approvals.chip.pending_one" xml:space="preserve">
+    <value>1 项审批待处理</value>
+  </data>
+  <data name="approvals.column.arguments" xml:space="preserve">
+    <value>参数</value>
+  </data>
+  <data name="approvals.column.item" xml:space="preserve">
+    <value>符号 / 项目</value>
+  </data>
+  <data name="approvals.column.kind" xml:space="preserve">
+    <value>类型</value>
+  </data>
+  <data name="approvals.column.outcome" xml:space="preserve">
+    <value>结果</value>
+  </data>
+  <data name="approvals.column.project" xml:space="preserve">
+    <value>项目</value>
+  </data>
+  <data name="approvals.column.request" xml:space="preserve">
+    <value>请求</value>
+  </data>
+  <data name="approvals.column.status" xml:space="preserve">
+    <value>状态</value>
+  </data>
+  <data name="approvals.column.target" xml:space="preserve">
+    <value>目标</value>
+  </data>
+  <data name="approvals.column.time" xml:space="preserve">
+    <value>时间</value>
+  </data>
+  <data name="approvals.column.tool" xml:space="preserve">
+    <value>工具</value>
+  </data>
+  <data name="approvals.column.value" xml:space="preserve">
+    <value>值</value>
+  </data>
+  <data name="approvals.confirm.denied" xml:space="preserve">
+    <value>请求 {0} 已拒绝。</value>
+  </data>
+  <data name="approvals.confirm.deny_failed" xml:space="preserve">
+    <value>请求 {0} 无法拒绝（已过期或已被答复）。</value>
+  </data>
+  <data name="approvals.confirm.hint" xml:space="preserve">
+    <value>等待中的代理的客户端无法自行询问您。请检查工具、目标和参数，然后点击“批准”：代理会用其 token 重复调用，该操作只执行一次。</value>
+  </data>
+  <data name="approvals.confirm.release_failed" xml:space="preserve">
+    <value>请求 {0} 无法批准（已过期或已被答复）。</value>
+  </data>
+  <data name="approvals.confirm.released" xml:space="preserve">
+    <value>请求 {0} 已批准。</value>
+  </data>
+  <data name="approvals.group.audit" xml:space="preserve">
+    <value>IBN Live 审计日志</value>
+  </data>
+  <data name="approvals.group.confirmations" xml:space="preserve">
+    <value>确认请求</value>
+  </data>
+  <data name="approvals.group.hmi" xml:space="preserve">
+    <value>HMI 写入审批</value>
+  </data>
+  <data name="approvals.hint.arming" xml:space="preserve">
+    <value>布防只能在此处进行。MCP 客户端可以提出步骤；每个步骤都会打开确认弹窗，未经您点击不会有任何动作。中止、撤防和全部批准始终允许。</value>
+  </data>
+  <data name="approvals.label.allowlist" xml:space="preserve">
+    <value>允许列表：</value>
+  </data>
+  <data name="approvals.label.port" xml:space="preserve">
+    <value>端口：</value>
+  </data>
+  <data name="approvals.label.target_netid" xml:space="preserve">
+    <value>目标 NetId：</value>
+  </data>
+  <data name="approvals.last.abort.failed" xml:space="preserve">
+    <value>中止 / 全部批准失败：{0}</value>
+  </data>
+  <data name="approvals.last.abort.ok" xml:space="preserve">
+    <value>中止 / 全部批准成功。</value>
+  </data>
+  <data name="approvals.last.arm.failed" xml:space="preserve">
+    <value>布防失败：{0}</value>
+  </data>
+  <data name="approvals.last.arm.ok" xml:space="preserve">
+    <value>布防成功。</value>
+  </data>
+  <data name="approvals.last.arm.refused" xml:space="preserve">
+    <value>布防被拒绝：{0}</value>
+  </data>
+  <data name="approvals.last.disarm.failed" xml:space="preserve">
+    <value>撤防失败：{0}</value>
+  </data>
+  <data name="approvals.last.disarm.ok" xml:space="preserve">
+    <value>撤防成功。</value>
+  </data>
+  <data name="approvals.last.step.executed" xml:space="preserve">
+    <value>步骤 {0} 已执行。</value>
+  </data>
+  <data name="approvals.last.step.not_executed" xml:space="preserve">
+    <value>步骤 {0} 未执行：{1}</value>
+  </data>
+  <data name="approvals.last.step.not_rejected" xml:space="preserve">
+    <value>步骤 {0} 未被拒绝：{1}</value>
+  </data>
+  <data name="approvals.last.step.not_rejected_pending" xml:space="preserve">
+    <value>步骤 {0} 未被拒绝（仍待处理）：{1}</value>
+  </data>
+  <data name="approvals.last.step.rejected" xml:space="preserve">
+    <value>步骤 {0} 已拒绝（{1}）。</value>
+  </data>
+  <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
+    <value>已自动确认</value>
+  </data>
+  <data name="approvals.outcome.confirmed" xml:space="preserve">
+    <value>已确认</value>
+  </data>
+  <data name="approvals.outcome.pending" xml:space="preserve">
+    <value>待处理</value>
+  </data>
+  <data name="approvals.outcome.rejected" xml:space="preserve">
+    <value>已拒绝</value>
+  </data>
+  <data name="approvals.outcome.timed_out" xml:space="preserve">
+    <value>已超时</value>
+  </data>
+  <data name="approvals.outcome.unavailable" xml:space="preserve">
+    <value>不可用</value>
+  </data>
+  <data name="approvals.pending.many" xml:space="preserve">
+    <value> · {0} 个请求等待您的答复</value>
+  </data>
+  <data name="approvals.pending.one" xml:space="preserve">
+    <value> · 1 个请求等待您的答复</value>
+  </data>
+  <data name="approvals.placeholder.allowlist" xml:space="preserve">
+    <value>Cyl1, Cyl2（以逗号分隔）</value>
+  </data>
+  <data name="approvals.placeholder.netid" xml:space="preserve">
+    <value>项目目标</value>
+  </data>
+  <data name="approvals.reason.cancelled" xml:space="preserve">
+    <value>操作员已取消</value>
+  </data>
+  <data name="approvals.reason.expired" xml:space="preserve">
+    <value>确认弹窗已过期</value>
+  </data>
+  <data name="approvals.restore.not_executed" xml:space="preserve">
+    <value>恢复 {0} 未执行：{1}</value>
+  </data>
+  <data name="approvals.restore.reason_default" xml:space="preserve">
+    <value>未执行</value>
+  </data>
+  <data name="approvals.restore.rejected" xml:space="preserve">
+    <value>恢复 {0} 已拒绝（{1}）。</value>
+  </data>
+  <data name="approvals.restore.state.confirmed" xml:space="preserve">
+    <value>已确认</value>
+  </data>
+  <data name="approvals.restore.state.executed" xml:space="preserve">
+    <value>已执行</value>
+  </data>
+  <data name="approvals.restore.state.expired" xml:space="preserve">
+    <value>已过期</value>
+  </data>
+  <data name="approvals.restore.state.pending" xml:space="preserve">
+    <value>待处理</value>
+  </data>
+  <data name="approvals.restore.state.rejected" xml:space="preserve">
+    <value>已拒绝</value>
+  </data>
+  <data name="approvals.restore.summary.executed" xml:space="preserve">
+    <value>恢复 {0} 已执行：已写入 {1} 项，失败 {2} 项，跳过 {3} 项。</value>
+  </data>
+  <data name="approvals.restore.summary.not_executed" xml:space="preserve">
+    <value>恢复 {0} {1}：{2}</value>
+  </data>
+  <data name="approvals.state.armed" xml:space="preserve">
+    <value>已布防 — 剩余 {0} 秒 · GVL {1}{2}</value>
+  </data>
+  <data name="approvals.state.denied" xml:space="preserve">
+    <value>已拒绝</value>
+  </data>
+  <data name="approvals.state.disarmed" xml:space="preserve">
+    <value>已撤防。</value>
+  </data>
+  <data name="approvals.state.expired" xml:space="preserve">
+    <value>已过期</value>
+  </data>
+  <data name="approvals.state.pending" xml:space="preserve">
+    <value>待处理</value>
+  </data>
+  <data name="approvals.state.released" xml:space="preserve">
+    <value>已批准</value>
+  </data>
+  <data name="approvals.state.used" xml:space="preserve">
+    <value>已使用</value>
+  </data>
+  <data name="approvals.tab.caption" xml:space="preserve">
+    <value>审批</value>
+  </data>
+  <data name="approvals.tab.caption_pending" xml:space="preserve">
+    <value>审批 ({0})</value>
+  </data>
+  <data name="approvals.target.local" xml:space="preserve">
+    <value>本地</value>
+  </data>
+  <data name="approvals.target.unknown" xml:space="preserve">
+    <value>未知</value>
+  </data>
+  <data name="confirm.button.cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="confirm.field.description" xml:space="preserve">
+    <value>勾选表示允许，不勾选或拒绝表示不允许。</value>
+  </data>
+  <data name="confirm.field.title" xml:space="preserve">
+    <value>允许此操作</value>
+  </data>
+  <data name="confirm.question" xml:space="preserve">
+    <value>{0}，目标：{1}。
+参数：{2}。
+这会更改正在运行的系统。是否允许？代理正在等待您的答复。</value>
+  </data>
+  <data name="confirm.question.none" xml:space="preserve">
+    <value>（无）</value>
+  </data>
+  <data name="confirm.target.another" xml:space="preserve">
+    <value>{0}（另一个系统）</value>
+  </data>
+  <data name="confirm.target.local" xml:space="preserve">
+    <value>本地系统</value>
+  </data>
+  <data name="confirm.target.thismachine" xml:space="preserve">
+    <value>{0}（本机）</value>
+  </data>
+  <data name="confirm.target.unknown" xml:space="preserve">
+    <value>未知的目标系统</value>
+  </data>
+  <data name="connect.claudeCode" xml:space="preserve">
+    <value>Claude Code：运行此命令</value>
+  </data>
+  <data name="connect.close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="connect.copyCommand" xml:space="preserve">
+    <value>复制命令</value>
+  </data>
+  <data name="connect.copySnippet" xml:space="preserve">
+    <value>复制代码片段</value>
+  </data>
+  <data name="connect.health.no" xml:space="preserve">
+    <value>否</value>
+  </data>
+  <data name="connect.health.ok" xml:space="preserve">
+    <value>服务器可访问：状态 {0}，版本 {1}，需要 token：{2}。</value>
+  </data>
+  <data name="connect.health.unexpected" xml:space="preserve">
+    <value>服务器已应答，但返回的不是预期的 /health JSON。</value>
+  </data>
+  <data name="connect.health.yes" xml:space="preserve">
+    <value>是</value>
+  </data>
+  <data name="connect.intro" xml:space="preserve">
+    <value>MCP 服务器正在监听 {0}。请将其添加到您的 MCP 客户端：</value>
+  </data>
+  <data name="connect.json" xml:space="preserve">
+    <value>任意客户端：.mcp.json 代码片段</value>
+  </data>
+  <data name="connect.notReachable" xml:space="preserve">
+    <value>无法访问：{0}</value>
+  </data>
+  <data name="connect.test" xml:space="preserve">
+    <value>测试连接</value>
+  </data>
+  <data name="connect.testing" xml:space="preserve">
+    <value>正在测试…</value>
+  </data>
+  <data name="connect.timeout" xml:space="preserve">
+    <value>5 秒后超时</value>
+  </data>
+  <data name="connect.title" xml:space="preserve">
+    <value>连接客户端</value>
+  </data>
+  <data name="connect.tokenNote" xml:space="preserve">
+    <value>已设置访问 token：请将 {0} 替换为 PTC_XAE_MCP_TOKEN 的值。此处不显示 token 本身。</value>
+  </data>
+  <data name="console.banner.incomplete" xml:space="preserve">
+    <value>记录的参数不完整 - 运行前请检查每个字段。{0}。</value>
+  </data>
+  <data name="console.banner.notjson" xml:space="preserve">
+    <value>记录的参数不完整 - 运行前请检查每个字段。它们不是完整的 JSON 对象（可能已被截断）；此处显示默认值。</value>
+  </data>
+  <data name="console.confirm.body" xml:space="preserve">
+    <value>运行“{0}”？
+
+{1}
+
+该调用与 AI 客户端的调用走相同的路径。</value>
+  </data>
+  <data name="console.confirm.destructive" xml:space="preserve">
+    <value>它被标记为破坏性：可能删除或覆盖项目数据或设备数据。</value>
+  </data>
+  <data name="console.confirm.notreadonly" xml:space="preserve">
+    <value>它未被标记为只读：可能更改项目、XAE 或 PLC。</value>
+  </data>
+  <data name="console.confirm.title" xml:space="preserve">
+    <value>确认工具调用</value>
+  </data>
+  <data name="console.copy" xml:space="preserve">
+    <value>复制</value>
+  </data>
+  <data name="console.dialog.cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="console.dialog.name" xml:space="preserve">
+    <value>名称（同名的现有收藏将被替换）：</value>
+  </data>
+  <data name="console.dialog.save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="console.favourite.remove" xml:space="preserve">
+    <value>移除收藏</value>
+  </data>
+  <data name="console.favourite.save" xml:space="preserve">
+    <value>保存为收藏</value>
+  </data>
+  <data name="console.form.choose" xml:space="preserve">
+    <value>（请选择）</value>
+  </data>
+  <data name="console.form.emptyhint" xml:space="preserve">
+    <value>留空的可选文本字段将被省略。输入 ""（两个双引号）可发送空字符串。</value>
+  </data>
+  <data name="console.form.emptytip" xml:space="preserve">
+    <value>留空表示省略；输入 ""（两个双引号）可发送空字符串。</value>
+  </data>
+  <data name="console.form.integer" xml:space="preserve">
+    <value>整数</value>
+  </data>
+  <data name="console.form.noarguments" xml:space="preserve">
+    <value>此工具没有参数。</value>
+  </data>
+  <data name="console.form.number" xml:space="preserve">
+    <value>数字</value>
+  </data>
+  <data name="console.raw" xml:space="preserve">
+    <value>原始 JSON</value>
+  </data>
+  <data name="console.reload" xml:space="preserve">
+    <value>重新加载</value>
+  </data>
+  <data name="console.run" xml:space="preserve">
+    <value>运行</value>
+  </data>
+  <data name="console.search.placeholder" xml:space="preserve">
+    <value>搜索工具…</value>
+  </data>
+  <data name="console.status.cannotrun" xml:space="preserve">
+    <value>无法运行：{0}</value>
+  </data>
+  <data name="console.status.clipboardbusy" xml:space="preserve">
+    <value>剪贴板正被其他程序占用；请重试。</value>
+  </data>
+  <data name="console.status.copied" xml:space="preserve">
+    <value>已复制到剪贴板。</value>
+  </data>
+  <data name="console.status.favremoved" xml:space="preserve">
+    <value>已移除收藏“{0}”。</value>
+  </data>
+  <data name="console.status.favremovefailed" xml:space="preserve">
+    <value>已暂时移除“{0}”，但无法写入 {1}；重启后它可能会恢复。</value>
+  </data>
+  <data name="console.status.favsaved" xml:space="preserve">
+    <value>已保存收藏“{0}”。</value>
+  </data>
+  <data name="console.status.favsavefailed" xml:space="preserve">
+    <value>收藏“{0}”仅保留到应用关闭：无法写入 {1}。</value>
+  </data>
+  <data name="console.status.loaded" xml:space="preserve">
+    <value>已加载 {0} 个工具。</value>
+  </data>
+  <data name="console.status.loading" xml:space="preserve">
+    <value>正在加载工具…</value>
+  </data>
+  <data name="console.status.ok" xml:space="preserve">
+    <value>OK - {0}</value>
+  </data>
+  <data name="console.status.outcomeunknown" xml:space="preserve">
+    <value>{0}后结果未知 - 该工具可能已运行；重试前请查看“活动”视图。</value>
+  </data>
+  <data name="console.status.running" xml:space="preserve">
+    <value>正在运行 {0}…</value>
+  </data>
+  <data name="console.status.toolerror" xml:space="preserve">
+    <value>工具报告错误 - {0}</value>
+  </data>
+  <data name="console.status.unexpected" xml:space="preserve">
+    <value>意外错误：{0}</value>
+  </data>
+  <data name="console.tool.notloaded" xml:space="preserve">
+    <value>工具列表未加载。</value>
+  </data>
+  <data name="console.tool.notoffered" xml:space="preserve">
+    <value>服务器不再提供此工具。</value>
+  </data>
+  <data name="console.tool.placeholder" xml:space="preserve">
+    <value>请在左侧选择工具</value>
+  </data>
+  <data name="console.tree.favourites" xml:space="preserve">
+    <value>收藏 ({0})</value>
+  </data>
+  <data name="hmiconfirm.button.execute" xml:space="preserve">
+    <value>执行</value>
+  </data>
+  <data name="hmiconfirm.countdown" xml:space="preserve">
+    <value>未经确认不会写入任何内容 — {0} 秒后过期。</value>
+  </data>
+  <data name="hmiconfirm.details.current" xml:space="preserve">
+    <value>当前</value>
+  </data>
+  <data name="hmiconfirm.details.directory" xml:space="preserve">
+    <value>目录</value>
+  </data>
+  <data name="hmiconfirm.details.domain" xml:space="preserve">
+    <value>域</value>
+  </data>
+  <data name="hmiconfirm.details.new" xml:space="preserve">
+    <value>新值</value>
+  </data>
+  <data name="hmiconfirm.details.project" xml:space="preserve">
+    <value>HMI 项目</value>
+  </data>
+  <data name="hmiconfirm.effect.plc" xml:space="preserve">
+    <value>⚠ 通过 HMI 服务器写入正在运行的 PLC。</value>
+  </data>
+  <data name="hmiconfirm.effect.server" xml:space="preserve">
+    <value>更改 HMI 项目的服务器配置（不访问 PLC）。</value>
+  </data>
+  <data name="hmiconfirm.headline.addinternalsymbol" xml:space="preserve">
+    <value>MCP 想要向 HMI 项目添加客户端内部符号 (%i%)</value>
+  </data>
+  <data name="hmiconfirm.headline.additem" xml:space="preserve">
+    <value>MCP 想要在 HMI 项目中创建文件</value>
+  </data>
+  <data name="hmiconfirm.headline.applybundle" xml:space="preserve">
+    <value>MCP 想要向 HMI 项目写入一组文件</value>
+  </data>
+  <data name="hmiconfirm.headline.attachtmcfile" xml:space="preserve">
+    <value>MCP 想要将 TMC 文件附加到 ADS 运行时（无需 PLC 的符号）</value>
+  </data>
+  <data name="hmiconfirm.headline.createprojectdatatype" xml:space="preserve">
+    <value>MCP 想要将项目数据类型（来自 TMC 文件中的 PLC 类型）添加到 Properties/tchmi.project.Schema.json</value>
+  </data>
+  <data name="hmiconfirm.headline.default" xml:space="preserve">
+    <value>MCP 想要通过 HMI 服务器写入一个值</value>
+  </data>
+  <data name="hmiconfirm.headline.deleteitem" xml:space="preserve">
+    <value>MCP 想要从 HMI 项目中删除（同时从磁盘删除）</value>
+  </data>
+  <data name="hmiconfirm.headline.detachtmcfile" xml:space="preserve">
+    <value>MCP 想要从 ADS 运行时移除 TMC 文件（恢复为 ADS 上传）</value>
+  </data>
+  <data name="hmiconfirm.headline.disableruntimetmc" xml:space="preserve">
+    <value>MCP 想要让此 ADS 运行时重新从 PLC 上传其符号（关闭 TMC 文件）</value>
+  </data>
+  <data name="hmiconfirm.headline.enableruntimetmc" xml:space="preserve">
+    <value>MCP 想要让 HMI 服务器从 TMC 文件提供此 ADS 运行时的 PLC 符号（无 PLC 连接）</value>
+  </data>
+  <data name="hmiconfirm.headline.importfile" xml:space="preserve">
+    <value>MCP 想要向 HMI 项目导入文件</value>
+  </data>
+  <data name="hmiconfirm.headline.mapofflinesymbol" xml:space="preserve">
+    <value>MCP 想要在 HMI 服务器中创建服务器符号（TcHmiSrv 域）</value>
+  </data>
+  <data name="hmiconfirm.headline.mapsymbol" xml:space="preserve">
+    <value>MCP 想要将符号映射到 HMI</value>
+  </data>
+  <data name="hmiconfirm.headline.publish" xml:space="preserve">
+    <value>MCP 想要将此 HMI 项目发布到 TF2000 服务器（替换其上运行的项目）</value>
+  </data>
+  <data name="hmiconfirm.headline.removeinternalsymbol" xml:space="preserve">
+    <value>MCP 想要从 HMI 项目中移除客户端内部符号 (%i%)</value>
+  </data>
+  <data name="hmiconfirm.headline.switchmappingtoplc" xml:space="preserve">
+    <value>MCP 想要将 HMI 映射从 TMC 文件切换到真实的 PLC（映射名称不变，域为 ADS）</value>
+  </data>
+  <data name="hmiconfirm.headline.unmapsymbol" xml:space="preserve">
+    <value>MCP 想要移除符号映射</value>
+  </data>
+  <data name="hmiconfirm.headline.writefile" xml:space="preserve">
+    <value>MCP 想要更改 HMI 项目中的文件</value>
+  </data>
+  <data name="hmiconfirm.subject.datatype" xml:space="preserve">
+    <value>数据类型</value>
+  </data>
+  <data name="hmiconfirm.subject.internal" xml:space="preserve">
+    <value>%i% 符号</value>
+  </data>
+  <data name="hmiconfirm.subject.mappings" xml:space="preserve">
+    <value>映射</value>
+  </data>
+  <data name="hmiconfirm.subject.runtime" xml:space="preserve">
+    <value>ADS 运行时</value>
+  </data>
+  <data name="hmiconfirm.subject.symbol" xml:space="preserve">
+    <value>符号</value>
+  </data>
+  <data name="hmiconfirm.subject.target" xml:space="preserve">
+    <value>目标</value>
+  </data>
+  <data name="hmiconfirm.title" xml:space="preserve">
+    <value>TwinCAT HMI — 确认更改</value>
+  </data>
+  <data name="hmiconfirm.value.unknown" xml:space="preserve">
+    <value>（未知）</value>
+  </data>
+  <data name="ibnconfirm.button.execute" xml:space="preserve">
+    <value>执行步骤</value>
+  </data>
+  <data name="ibnconfirm.countdown" xml:space="preserve">
+    <value>未经您确认不会有任何动作 — 此提议 {0} 秒后过期。</value>
+  </data>
+  <data name="ibnconfirm.details.action" xml:space="preserve">
+    <value>动作</value>
+  </data>
+  <data name="ibnconfirm.details.actuator" xml:space="preserve">
+    <value>执行器</value>
+  </data>
+  <data name="ibnconfirm.details.chain" xml:space="preserve">
+    <value>链</value>
+  </data>
+  <data name="ibnconfirm.details.proposal" xml:space="preserve">
+    <value>提议</value>
+  </data>
+  <data name="ibnconfirm.details.requested" xml:space="preserve">
+    <value>请求时间</value>
+  </data>
+  <data name="ibnconfirm.effect" xml:space="preserve">
+    <value>⚠ 执行会向测试 PRG 写入一个命令位 (bStepReq) — 机器可能会动作。取消、按 Esc 或关闭此窗口不会写入任何内容。</value>
+  </data>
+  <data name="ibnconfirm.headline" xml:space="preserve">
+    <value>MCP 客户端提议了一个调试步骤</value>
+  </data>
+  <data name="ibnconfirm.title" xml:space="preserve">
+    <value>IBN Live — 确认步骤</value>
+  </data>
+  <data name="main.approvals.chip.tooltip" xml:space="preserve">
+    <value>打开“审批”视图</value>
+  </data>
+  <data name="main.button.menu" xml:space="preserve">
+    <value>菜单 ▾</value>
+  </data>
+  <data name="main.button.stop" xml:space="preserve">
+    <value>停止</value>
+  </data>
+  <data name="main.closexae.confirm" xml:space="preserve">
+    <value>现在关闭 TwinCAT XAE 实例吗？
+
+仅在 XAE 卡死时使用。XAE 中未保存的更改将丢失。</value>
+  </data>
+  <data name="main.closexae.done" xml:space="preserve">
+    <value>XAE 恢复已执行</value>
+  </data>
+  <data name="main.closexae.failed" xml:space="preserve">
+    <value>XAE 恢复失败</value>
+  </data>
+  <data name="main.closexae.title" xml:space="preserve">
+    <value>关闭 XAE 实例（恢复）</value>
+  </data>
+  <data name="main.error.openlogfolder" xml:space="preserve">
+    <value>无法打开日志文件夹：
+{0}
+
+{1}</value>
+  </data>
+  <data name="main.error.openurl" xml:space="preserve">
+    <value>无法打开 {0}：
+{1}</value>
+  </data>
+  <data name="main.mcperror.title" xml:space="preserve">
+    <value>MCP 错误</value>
+  </data>
+  <data name="main.openlink.title" xml:space="preserve">
+    <value>打开链接</value>
+  </data>
+  <data name="main.openlogfolder.title" xml:space="preserve">
+    <value>打开日志文件夹</value>
+  </data>
+  <data name="main.policy.savefailed" xml:space="preserve">
+    <value>无法将访问策略保存到 {0}：
+{1}
+
+先前的策略继续有效。</value>
+  </data>
+  <data name="main.policy.title" xml:space="preserve">
+    <value>访问策略</value>
+  </data>
+  <data name="main.runstate.busy" xml:space="preserve">
+    <value>忙碌：TwinCAT 操作正在运行。</value>
+  </data>
+  <data name="main.runstate.cancelrequested" xml:space="preserve">
+    <value>已请求取消。</value>
+  </data>
+  <data name="main.runstate.checkingupdates" xml:space="preserve">
+    <value>正在检查 github.com 上是否有较新的版本…</value>
+  </data>
+  <data name="main.runstate.copyingsample" xml:space="preserve">
+    <value>正在复制示例项目…</value>
+  </data>
+  <data name="main.runstate.nothingtostop" xml:space="preserve">
+    <value>没有可停止的内容。</value>
+  </data>
+  <data name="main.runstate.openingsample" xml:space="preserve">
+    <value>正在打开示例项目…</value>
+  </data>
+  <data name="main.runstate.samplenotopened" xml:space="preserve">
+    <value>示例项目未打开。</value>
+  </data>
+  <data name="main.runstate.sampleopened" xml:space="preserve">
+    <value>示例项目已打开。</value>
+  </data>
+  <data name="main.runstate.updateavailable" xml:space="preserve">
+    <value>有可用更新：{0}（菜单 &gt; 有可用更新）。</value>
+  </data>
+  <data name="main.runstate.updatecheckfailed" xml:space="preserve">
+    <value>更新检查失败；请查看运行日志。</value>
+  </data>
+  <data name="main.runstate.uptodate" xml:space="preserve">
+    <value>已是最新。</value>
+  </data>
+  <data name="main.sample.closeconfirm" xml:space="preserve">
+    <value>TwinCAT XAE 中已打开一个解决方案。是否不保存直接关闭并打开示例项目？</value>
+  </data>
+  <data name="main.sample.copyfailed" xml:space="preserve">
+    <value>无法将示例项目复制到
+{0}
+
+{1}</value>
+  </data>
+  <data name="main.sample.missing" xml:space="preserve">
+    <value>此安装不包含示例项目：
+{0}</value>
+  </data>
+  <data name="main.sample.title" xml:space="preserve">
+    <value>打开示例项目</value>
+  </data>
+  <data name="main.security.notresolved" xml:space="preserve">
+    <value>安全对话框未处理</value>
+  </data>
+  <data name="main.security.resolved" xml:space="preserve">
+    <value>安全对话框已处理</value>
+  </data>
+  <data name="main.stop.tooltip" xml:space="preserve">
+    <value>取消正在运行的架构应用（与 twincat_stop 相同）。</value>
+  </data>
+  <data name="main.tab.activity" xml:space="preserve">
+    <value>活动</value>
+  </data>
+  <data name="main.tab.console" xml:space="preserve">
+    <value>控制台</value>
+  </data>
+  <data name="main.theme.dark" xml:space="preserve">
+    <value>深色</value>
+  </data>
+  <data name="main.theme.light" xml:space="preserve">
+    <value>浅色</value>
+  </data>
+  <data name="main.theme.tooltip.dark" xml:space="preserve">
+    <value>切换到深色主题</value>
+  </data>
+  <data name="main.theme.tooltip.light" xml:space="preserve">
+    <value>切换到浅色主题</value>
+  </data>
+  <data name="main.title.engineer" xml:space="preserve">
+    <value>{0} — ENGINEER（无运行时操作）</value>
+  </data>
+  <data name="main.title.readonly" xml:space="preserve">
+    <value>{0} — 只读</value>
+  </data>
+  <data name="main.updates.openpage" xml:space="preserve">
+    <value>打开发布页面吗？此应用不会下载任何内容。</value>
+  </data>
+  <data name="main.updates.title" xml:space="preserve">
+    <value>检查更新</value>
+  </data>
+  <data name="menu.checkupdates" xml:space="preserve">
+    <value>检查更新…</value>
+  </data>
+  <data name="menu.closexae" xml:space="preserve">
+    <value>关闭 XAE 实例（恢复）…</value>
+  </data>
+  <data name="menu.connectclient" xml:space="preserve">
+    <value>连接客户端…</value>
+  </data>
+  <data name="menu.dismisssecurity" xml:space="preserve">
+    <value>关闭安全对话框</value>
+  </data>
+  <data name="menu.openlogfolder" xml:space="preserve">
+    <value>打开日志文件夹</value>
+  </data>
+  <data name="menu.opensample" xml:space="preserve">
+    <value>打开示例项目</value>
+  </data>
+  <data name="menu.refresh" xml:space="preserve">
+    <value>刷新状态</value>
+  </data>
+  <data name="menu.settings" xml:space="preserve">
+    <value>设置…</value>
+  </data>
+  <data name="menu.toggletheme" xml:space="preserve">
+    <value>浅色 / 深色主题</value>
+  </data>
+  <data name="menu.updateavailable" xml:space="preserve">
+    <value>有可用更新：{0}…</value>
+  </data>
+  <data name="prompt.notGiven" xml:space="preserve">
+    <value>（未提供）</value>
+  </data>
+  <data name="restoreconfirm.button.restore" xml:space="preserve">
+    <value>恢复值</value>
+  </data>
+  <data name="restoreconfirm.countdown" xml:space="preserve">
+    <value>未经您确认不会写入任何内容 — 此提议 {0} 秒后过期。</value>
+  </data>
+  <data name="restoreconfirm.details.proposal" xml:space="preserve">
+    <value>提议</value>
+  </data>
+  <data name="restoreconfirm.details.requested" xml:space="preserve">
+    <value>请求时间</value>
+  </data>
+  <data name="restoreconfirm.details.snapshot" xml:space="preserve">
+    <value>快照</value>
+  </data>
+  <data name="restoreconfirm.details.taken" xml:space="preserve">
+    <value>创建时间</value>
+  </data>
+  <data name="restoreconfirm.details.taken.value" xml:space="preserve">
+    <value>{0} (UTC)</value>
+  </data>
+  <data name="restoreconfirm.details.target" xml:space="preserve">
+    <value>目标</value>
+  </data>
+  <data name="restoreconfirm.details.towrite" xml:space="preserve">
+    <value>待写入</value>
+  </data>
+  <data name="restoreconfirm.details.towrite.value" xml:space="preserve">
+    <value>{0} 个叶节点（{1} 个已相同，{2} 个已跳过）</value>
+  </data>
+  <data name="restoreconfirm.differences" xml:space="preserve">
+    <value>差异（PLC 当前值 -&gt; 快照）：</value>
+  </data>
+  <data name="restoreconfirm.effect" xml:space="preserve">
+    <value>⚠ 恢复会覆盖 PLC 的实时值。取消、按 Esc 或关闭此窗口不会写入任何内容。确认后会再次检查 PLC；如果自审阅以来它已发生变化，则不会写入任何内容。</value>
+  </data>
+  <data name="restoreconfirm.headline" xml:space="preserve">
+    <value>MCP 客户端提议将快照恢复到 PLC</value>
+  </data>
+  <data name="restoreconfirm.more" xml:space="preserve">
+    <value>  … 另有 {0} 项</value>
+  </data>
+  <data name="restoreconfirm.skipped" xml:space="preserve">
+    <value>已跳过 ({0})：</value>
+  </data>
+  <data name="restoreconfirm.state.other" xml:space="preserve">
+    <value>PLC 状态：{0}</value>
+  </data>
+  <data name="restoreconfirm.state.run" xml:space="preserve">
+    <value>PLC 状态：RUN — 值在程序运行时写入，可能被程序覆盖</value>
+  </data>
+  <data name="restoreconfirm.title" xml:space="preserve">
+    <value>持久快照 — 确认恢复</value>
+  </data>
+  <data name="sample.missing" xml:space="preserve">
+    <value>示例项目缺失：{0}</value>
+  </data>
+  <data name="sample.noSolution" xml:space="preserve">
+    <value>示例副本中没有 {0}。</value>
+  </data>
+  <data name="settings.access.allowed" xml:space="preserve">
+    <value>允许的 NetId</value>
+  </data>
+  <data name="settings.access.allowed.note" xml:space="preserve">
+    <value>设置后，运行时操作仅限这些系统。留空 = 无允许列表。</value>
+  </data>
+  <data name="settings.access.blocked" xml:space="preserve">
+    <value>禁止的 NetId</value>
+  </data>
+  <data name="settings.access.blocked.note" xml:space="preserve">
+    <value>不得对这些系统执行运行时操作；仍可读取。以 ';' 分隔。'local' = 本机及其用户模式运行时。</value>
+  </data>
+  <data name="settings.access.confirm" xml:space="preserve">
+    <value>人工确认</value>
+  </data>
+  <data name="settings.access.confirm.note" xml:space="preserve">
+    <value>支持 MCP elicitation 的客户端会在其自己的窗口中询问用户；其他客户端会得到一个 token，您可在此处的“审批”选项卡中批准。以此处与环境变量中更严格的设置为准。</value>
+  </data>
+  <data name="settings.access.envPolicy" xml:space="preserve">
+    <value>环境变量设置了 {0}；以两者中更严格的为准。</value>
+  </data>
+  <data name="settings.access.heading" xml:space="preserve">
+    <value>MCP 访问。按“确定”后保存并立即生效；已连接的客户端会被通知重新加载其工具列表。</value>
+  </data>
+  <data name="settings.access.level" xml:space="preserve">
+    <value>访问级别</value>
+  </data>
+  <data name="settings.access.level.engineer" xml:space="preserve">
+    <value>engineer — 还可更改项目（不可激活、登录、ADS 写入）</value>
+  </data>
+  <data name="settings.access.level.read" xml:space="preserve">
+    <value>read — 仅限不会更改任何内容的工具</value>
+  </data>
+  <data name="settings.access.level.runtime" xml:space="preserve">
+    <value>runtime — 还可更改目标系统</value>
+  </data>
+  <data name="settings.access.profile" xml:space="preserve">
+    <value>工具配置</value>
+  </data>
+  <data name="settings.access.profileEnv" xml:space="preserve">
+    <value>已设置 {0}={1}，它会覆盖此选择。</value>
+  </data>
+  <data name="settings.access.writeAllow" xml:space="preserve">
+    <value>允许的变量写入</value>
+  </data>
+  <data name="settings.access.writeAllow.note" xml:space="preserve">
+    <value>设置后，ADS 和 HMI 写入以及快照恢复只会作用于匹配的符号，例如 MAIN.stTest.*; GVL_Param.r*。'*' 表示任意文本，'?' 表示单个字符，不区分大小写。留空 = 无列表（所有符号）。</value>
+  </data>
+  <data name="settings.access.writeDeny" xml:space="preserve">
+    <value>禁止的变量写入</value>
+  </data>
+  <data name="settings.access.writeDeny.note" xml:space="preserve">
+    <value>无论允许列表如何设置，一律不写入，例如 *.bEmergency*; GVL_Safety.*。</value>
+  </data>
+  <data name="settings.button.cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="settings.button.ok" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="settings.confirm.all" xml:space="preserve">
+    <value>all — 还包括本机上的激活、重启、停止和模式切换</value>
+  </data>
+  <data name="settings.confirm.default" xml:space="preserve">
+    <value>默认 — remote</value>
+  </data>
+  <data name="settings.confirm.off" xml:space="preserve">
+    <value>off — 不询问任何人</value>
+  </data>
+  <data name="settings.confirm.remote" xml:space="preserve">
+    <value>remote — 由人工确认其他系统上的激活、重启、停止、ADS 写入和登录</value>
+  </data>
+  <data name="settings.grid.howto" xml:space="preserve">
+    <value>设置方式</value>
+  </data>
+  <data name="settings.grid.setting" xml:space="preserve">
+    <value>设置项</value>
+  </data>
+  <data name="settings.grid.value" xml:space="preserve">
+    <value>值</value>
+  </data>
+  <data name="settings.how.accessLevelEnv" xml:space="preserve">
+    <value>{0}（read、engineer、runtime；以此处与上方选择中更严格的为准）</value>
+  </data>
+  <data name="settings.how.confirmEnv" xml:space="preserve">
+    <value>{0}（off、remote、all；以此处与上方选择中更严格的为准）</value>
+  </data>
+  <data name="settings.how.diagnostics" xml:space="preserve">
+    <value>使用 --diagnostics 或 {0}=1 启动</value>
+  </data>
+  <data name="settings.how.env" xml:space="preserve">
+    <value>环境变量 {0}</value>
+  </data>
+  <data name="settings.how.port" xml:space="preserve">
+    <value>固定（仅 http://localhost）</value>
+  </data>
+  <data name="settings.how.toolProfileOverride" xml:space="preserve">
+    <value>{0}（all、core 或工具集，如 plc,hmi）</value>
+  </data>
+  <data name="settings.how.updateCheck" xml:space="preserve">
+    <value>上方复选框；{0}=0 或计算机策略 HKLM\{1}\{2}=1 可将其关闭</value>
+  </data>
+  <data name="settings.how.writeAllowEnv" xml:space="preserve">
+    <value>{0}（符号模式，如 MAIN.stTest.*；两个来源的列表取交集）</value>
+  </data>
+  <data name="settings.language.envOverride" xml:space="preserve">
+    <value>已设置 {0}={1}，它会覆盖此选择。</value>
+  </data>
+  <data name="settings.language.label" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="settings.language.note" xml:space="preserve">
+    <value>窗口、对话框和提示词所用的语言。工具结果和错误消息仍为英文。按“确定”后生效。</value>
+  </data>
+  <data name="settings.language.unreviewed" xml:space="preserve">
+    <value>{0}（翻译尚未审校）</value>
+  </data>
+  <data name="settings.profile.automatic" xml:space="preserve">
+    <value>自动（按客户端：Claude 用 all，Cursor/VS Code/Windsurf/Hermes 用 core）</value>
+  </data>
+  <data name="settings.remember" xml:space="preserve">
+    <value>记住窗口位置和大小</value>
+  </data>
+  <data name="settings.row.accessLevelEnv" xml:space="preserve">
+    <value>访问级别（环境变量）</value>
+  </data>
+  <data name="settings.row.allowedEnv" xml:space="preserve">
+    <value>允许的 NetId（环境变量）</value>
+  </data>
+  <data name="settings.row.allowedPaths" xml:space="preserve">
+    <value>允许的路径</value>
+  </data>
+  <data name="settings.row.blockedEnv" xml:space="preserve">
+    <value>禁止的 NetId（环境变量）</value>
+  </data>
+  <data name="settings.row.confirmEnv" xml:space="preserve">
+    <value>人工确认（环境变量）</value>
+  </data>
+  <data name="settings.row.diagnostics" xml:space="preserve">
+    <value>诊断工具</value>
+  </data>
+  <data name="settings.row.hmiAutoConfirm" xml:space="preserve">
+    <value>自动确认 HMI 写入（TEMP 测试夹具）</value>
+  </data>
+  <data name="settings.row.keepDays" xml:space="preserve">
+    <value>日志保留：天数</value>
+  </data>
+  <data name="settings.row.keepRuns" xml:space="preserve">
+    <value>日志保留：运行次数</value>
+  </data>
+  <data name="settings.row.language" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="settings.row.language.how" xml:space="preserve">
+    <value>上方的列表；环境变量 {0}（{1}）会覆盖它</value>
+  </data>
+  <data name="settings.row.language.ignored" xml:space="preserve">
+    <value>{0}='{1}' 不是此版本支持的语言，已被忽略</value>
+  </data>
+  <data name="settings.row.port" xml:space="preserve">
+    <value>端口</value>
+  </data>
+  <data name="settings.row.reportsMirror" xml:space="preserve">
+    <value>将报告镜像到仓库</value>
+  </data>
+  <data name="settings.row.safetyPrefixes" xml:space="preserve">
+    <value>安全信号前缀</value>
+  </data>
+  <data name="settings.row.token" xml:space="preserve">
+    <value>访问 token</value>
+  </data>
+  <data name="settings.row.toolProfileOverride" xml:space="preserve">
+    <value>工具配置覆盖</value>
+  </data>
+  <data name="settings.row.updateCheck" xml:space="preserve">
+    <value>启动时检查更新</value>
+  </data>
+  <data name="settings.row.writeAllowEnv" xml:space="preserve">
+    <value>允许的变量写入（环境变量）</value>
+  </data>
+  <data name="settings.row.writeDenyEnv" xml:space="preserve">
+    <value>禁止的变量写入（环境变量）</value>
+  </data>
+  <data name="settings.serverCaption" xml:space="preserve">
+    <value>服务器设置（只读）。它们仅在启动时读取一次：请设置环境变量，然后重启应用。</value>
+  </data>
+  <data name="settings.theme" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="settings.theme.dark" xml:space="preserve">
+    <value>深色</value>
+  </data>
+  <data name="settings.theme.light" xml:space="preserve">
+    <value>浅色</value>
+  </data>
+  <data name="settings.title" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="settings.updates.check" xml:space="preserve">
+    <value>启动时检查是否有新版本（向 github.com 发送一次请求，不下载任何内容）</value>
+  </data>
+  <data name="settings.value.allowedPaths.none" xml:space="preserve">
+    <value>（无：已打开的解决方案、%TEMP%、日志文件夹、TwinCAT 安装目录）</value>
+  </data>
+  <data name="settings.value.default" xml:space="preserve">
+    <value>{0}（默认）</value>
+  </data>
+  <data name="settings.value.none" xml:space="preserve">
+    <value>（无）</value>
+  </data>
+  <data name="settings.value.notSet" xml:space="preserve">
+    <value>未设置</value>
+  </data>
+  <data name="settings.value.off" xml:space="preserve">
+    <value>关</value>
+  </data>
+  <data name="settings.value.on" xml:space="preserve">
+    <value>开</value>
+  </data>
+  <data name="settings.value.set" xml:space="preserve">
+    <value>已设置</value>
+  </data>
+  <data name="settings.value.toolProfileOverride.none" xml:space="preserve">
+    <value>（无：使用上方的选择）</value>
+  </data>
+  <data name="status.mcp.active" xml:space="preserve">
+    <value>MCP :{0}{1}</value>
+  </data>
+  <data name="status.mcp.clients.many" xml:space="preserve">
+    <value> — {0} 个客户端（{1} +{2}）</value>
+  </data>
+  <data name="status.mcp.clients.none" xml:space="preserve">
+    <value> — 0 个客户端</value>
+  </data>
+  <data name="status.mcp.clients.one" xml:space="preserve">
+    <value> — 1 个客户端（{0}）</value>
+  </data>
+  <data name="status.mcp.inactive" xml:space="preserve">
+    <value>MCP：未活动</value>
+  </data>
+  <data name="status.project.notchecked" xml:space="preserve">
+    <value>项目：未检查</value>
+  </data>
+  <data name="status.project.noxae.tip" xml:space="preserve">
+    <value>没有 TwinCAT XAE 实例，因此没有项目。</value>
+  </data>
+  <data name="status.project.probe.tip" xml:space="preserve">
+    <value>TwinCAT 项目探测：{0}</value>
+  </data>
+  <data name="status.project.unavailable" xml:space="preserve">
+    <value>项目：不可用</value>
+  </data>
+  <data name="status.project.value" xml:space="preserve">
+    <value>项目：{0}</value>
+  </data>
+  <data name="status.xae.active" xml:space="preserve">
+    <value>XAE：活动</value>
+  </data>
+  <data name="status.xae.active.tip" xml:space="preserve">
+    <value>TwinCAT XAE 实例：活动</value>
+  </data>
+  <data name="status.xae.inactive" xml:space="preserve">
+    <value>XAE：未活动</value>
+  </data>
+  <data name="status.xae.inactive.tip" xml:space="preserve">
+    <value>没有正在运行的 TwinCAT XAE 实例。</value>
+  </data>
+  <data name="status.xae.notchecked" xml:space="preserve">
+    <value>XAE：未检查</value>
+  </data>
+  <data name="toolconsole.client.cancelledaftersend" xml:space="preserve">
+    <value>请求发送后已取消、超时或关闭 - 该工具可能仍在运行，或已经运行。重试前请查看“活动”视图。</value>
+  </data>
+  <data name="toolconsole.client.cancelledbeforesend" xml:space="preserve">
+    <value>请求发送前已取消。</value>
+  </data>
+  <data name="toolconsole.client.closed" xml:space="preserve">
+    <value>控制台已关闭。</value>
+  </data>
+  <data name="toolconsole.client.notreachable" xml:space="preserve">
+    <value>无法访问 {0} 上的 MCP 服务器（{1}）。它可能仍在启动；请重试。</value>
+  </data>
+  <data name="toolconsole.client.outcomeunknown" xml:space="preserve">
+    <value>结果未知 - 该工具可能已运行（{0}）。重试前请查看“活动”视图。</value>
+  </data>
+  <data name="toolconsole.error.invalidjson" xml:space="preserve">
+    <value>{0}：JSON 无效（{1}）</value>
+  </data>
+  <data name="toolconsole.error.notinteger" xml:space="preserve">
+    <value>{0}：“{1}”不是整数</value>
+  </data>
+  <data name="toolconsole.error.notnumber" xml:space="preserve">
+    <value>{0}：“{1}”不是数字</value>
+  </data>
+  <data name="toolconsole.error.required" xml:space="preserve">
+    <value>{0}：必填</value>
+  </data>
+  <data name="toolconsole.group.approvals" xml:space="preserve">
+    <value>审批</value>
+  </data>
+  <data name="toolconsole.group.diagnostics" xml:space="preserve">
+    <value>诊断</value>
+  </data>
+  <data name="toolconsole.group.general" xml:space="preserve">
+    <value>常规</value>
+  </data>
+  <data name="toolconsole.group.safety" xml:space="preserve">
+    <value>安全</value>
+  </data>
+  <data name="toolconsole.preset.buildplc" xml:space="preserve">
+    <value>快速入门：构建 PLC</value>
+  </data>
+  <data name="toolconsole.preset.corrupt" xml:space="preserve">
+    <value>presets.json 已损坏并被移开（presets.json.corrupt-*）；已恢复默认值。</value>
+  </data>
+  <data name="toolconsole.preset.errorlist" xml:space="preserve">
+    <value>快速入门：错误列表</value>
+  </data>
+  <data name="toolconsole.preset.listplc" xml:space="preserve">
+    <value>快速入门：列出 PLC 对象</value>
+  </data>
+  <data name="toolconsole.preset.openproject" xml:space="preserve">
+    <value>快速入门：打开项目</value>
+  </data>
+  <data name="toolconsole.preset.status" xml:space="preserve">
+    <value>快速入门：状态</value>
+  </data>
+  <data name="toolconsole.preset.unreadable" xml:space="preserve">
+    <value>无法读取 presets.json（{0}）；显示默认值。该文件未被改动，在可读取之前无法保存收藏（请按“重新加载”）。</value>
+  </data>
+  <data name="toolconsole.warning.noarguments" xml:space="preserve">
+    <value>未记录任何参数</value>
+  </data>
+  <data name="toolconsole.warning.notachoice" xml:space="preserve">
+    <value>“{0}”：记录的值 {1} 不在 [{2}] 之内；保持未选择</value>
+  </data>
+  <data name="toolconsole.warning.requirednotrecorded" xml:space="preserve">
+    <value>必填项“{0}”未被记录</value>
+  </data>
+  <data name="toolconsole.warning.unknownkeys" xml:space="preserve">
+    <value>不在该工具的架构中，已忽略：{0}</value>
+  </data>
+  <data name="update.available" xml:space="preserve">
+    <value>有可用更新：{0}（已安装：{1}）。{2}</value>
+  </data>
+  <data name="update.currentUnknown" xml:space="preserve">
+    <value>更新检查：已安装的版本未知；最新版本为 {0}。</value>
+  </data>
+  <data name="update.latestUnknown" xml:space="preserve">
+    <value>更新检查：无法确定最新版本。</value>
+  </data>
+  <data name="update.state.off" xml:space="preserve">
+    <value>关</value>
+  </data>
+  <data name="update.state.offEnv" xml:space="preserve">
+    <value>关（{0}=0）</value>
+  </data>
+  <data name="update.state.offPolicy" xml:space="preserve">
+    <value>关（计算机策略）</value>
+  </data>
+  <data name="update.state.on" xml:space="preserve">
+    <value>开</value>
+  </data>
+  <data name="update.unreachable" xml:space="preserve">
+    <value>更新检查：无法访问 github.com（{0}：{1}）。</value>
+  </data>
+  <data name="update.upToDate" xml:space="preserve">
+    <value>已是最新：{0} 是最新版本。</value>
+  </data>
+</root>

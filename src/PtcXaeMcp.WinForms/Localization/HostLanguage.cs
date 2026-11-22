@@ -35,6 +35,12 @@ internal static class HostLanguage
         new("de", "Deutsch", Reviewed: false),
         new("fr", "Français", Reviewed: false),
         new("it", "Italiano", Reviewed: false),
+        new("es", "Español", Reviewed: false),
+        new("pt", "Português (Brasil)", Reviewed: false),
+        new("nl", "Nederlands", Reviewed: false),
+        new("pl", "Polski", Reviewed: false),
+        new("tr", "T\u00fcrk\u00e7e", Reviewed: false), // escaped: the source stays free of German umlauts (EnglishOnlyCodeTests)
+        new("zh", "中文（简体）", Reviewed: false),
     ];
 
     private static string _current = Fallback;
@@ -58,6 +64,7 @@ internal static class HostLanguage
             if (string.Equals(text, language.NativeName, StringComparison.OrdinalIgnoreCase)) return language.Code;
             if (string.Equals(text, EnglishName(language.Code), StringComparison.OrdinalIgnoreCase)) return language.Code;
         }
+        if (IsTraditionalChinese(text)) return null;
         int cut = text.IndexOfAny(['-', '_']);
         string primary = (cut < 0 ? text : text[..cut]).ToLowerInvariant();
         return Shipped.Any(l => l.Code == primary) ? primary : null;
@@ -65,8 +72,18 @@ internal static class HostLanguage
 
     private static string EnglishName(string code) => code switch
     {
-        "en" => "English", "de" => "German", "fr" => "French", "it" => "Italian", _ => code,
+        "en" => "English", "de" => "German", "fr" => "French", "it" => "Italian", "es" => "Spanish",
+        "pt" => "Portuguese", "nl" => "Dutch", "pl" => "Polish", "tr" => "Turkish", "zh" => "Chinese", _ => code,
     };
+
+    // Traditional Chinese (zh-TW, zh-HK, zh-MO, zh-Hant) is not Simplified Chinese: such a Windows gets English, not text
+    // in a script its user does not read.
+    private static bool IsTraditionalChinese(string text) =>
+        text.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+        && (text.Contains("Hant", StringComparison.OrdinalIgnoreCase)
+            || text.EndsWith("-TW", StringComparison.OrdinalIgnoreCase) || text.EndsWith("-HK", StringComparison.OrdinalIgnoreCase)
+            || text.EndsWith("-MO", StringComparison.OrdinalIgnoreCase) || text.EndsWith("_TW", StringComparison.OrdinalIgnoreCase)
+            || text.EndsWith("_HK", StringComparison.OrdinalIgnoreCase) || text.EndsWith("_MO", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// The language to use: <see cref="EnvVar"/>, then the saved choice (<c>ui.json</c>), then the one the installer left,

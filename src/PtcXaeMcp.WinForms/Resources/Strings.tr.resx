@@ -1,0 +1,1284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Turkish texts. Not yet reviewed by a native speaker; see HostLanguage.Shipped.
+    One key per text a human reads. {0}, {1} ... are filled by Loc.Format; {{ and }} are literal braces.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="activity.autoscroll" xml:space="preserve">
+    <value>Otomatik kaydırma</value>
+  </data>
+  <data name="activity.clear" xml:space="preserve">
+    <value>Temizle (yeni çalıştırma)</value>
+  </data>
+  <data name="activity.column.duration" xml:space="preserve">
+    <value>Süre (ms)</value>
+  </data>
+  <data name="activity.column.status" xml:space="preserve">
+    <value>Durum</value>
+  </data>
+  <data name="activity.column.time" xml:space="preserve">
+    <value>Zaman</value>
+  </data>
+  <data name="activity.column.tool" xml:space="preserve">
+    <value>Araç / Test</value>
+  </data>
+  <data name="activity.detail.arguments" xml:space="preserve">
+    <value>── Argümanlar ─────────────────────────────</value>
+  </data>
+  <data name="activity.detail.duration" xml:space="preserve">
+    <value>Süre      : {0} ms</value>
+  </data>
+  <data name="activity.detail.owner.description" xml:space="preserve">
+    <value>Açıkl.    : {0}</value>
+  </data>
+  <data name="activity.detail.owner.test" xml:space="preserve">
+    <value>Test      : {0}</value>
+  </data>
+  <data name="activity.detail.response" xml:space="preserve">
+    <value>── Yanıt / Hata ──────────────────────────</value>
+  </data>
+  <data name="activity.detail.status" xml:space="preserve">
+    <value>Durum     : {0}</value>
+  </data>
+  <data name="activity.detail.status.error" xml:space="preserve">
+    <value>HATA</value>
+  </data>
+  <data name="activity.detail.status.ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="activity.detail.test.index" xml:space="preserve">
+    <value>Sıra  : {0}</value>
+  </data>
+  <data name="activity.detail.test.name" xml:space="preserve">
+    <value>Test  : {0}</value>
+  </data>
+  <data name="activity.detail.time" xml:space="preserve">
+    <value>Saat (UTC): {0}</value>
+  </data>
+  <data name="activity.detail.tool" xml:space="preserve">
+    <value>Araç      : {0}</value>
+  </data>
+  <data name="activity.jsonlog.none" xml:space="preserve">
+    <value>JSON günlüğü: (henüz çalıştırma yok)</value>
+  </data>
+  <data name="activity.narration.done" xml:space="preserve">
+    <value>✓ ({0}) {1}{2}</value>
+  </data>
+  <data name="activity.narration.running" xml:space="preserve">
+    <value>▶ Çalışıyor ({0}): {1}{2}</value>
+  </data>
+  <data name="activity.next" xml:space="preserve">
+    <value>İleri ▶</value>
+  </data>
+  <data name="activity.pending.gate" xml:space="preserve">
+    <value>⏸ Geçitte bekliyor: {0}  —  XAE'deki durumu kontrol edin, ardından “İleri”ye tıklayın.</value>
+  </data>
+  <data name="activity.pending.singlestep" xml:space="preserve">
+    <value>Tek adım etkin — sonraki çağrı bekleniyor…</value>
+  </data>
+  <data name="activity.report.failed" xml:space="preserve">
+    <value>HTML raporu oluşturulamadı/açılamadı:
+{0}</value>
+  </data>
+  <data name="activity.report.none" xml:space="preserve">
+    <value>(henüz çalıştırma yok)</value>
+  </data>
+  <data name="activity.report.norun" xml:space="preserve">
+    <value>Henüz çalıştırma yok — raporlanacak bir şey yok.</value>
+  </data>
+  <data name="activity.report.prefix" xml:space="preserve">
+    <value>HTML raporu: </value>
+  </data>
+  <data name="activity.report.title" xml:space="preserve">
+    <value>HTML raporu</value>
+  </data>
+  <data name="activity.runagain" xml:space="preserve">
+    <value>Konsol'da yeniden çalıştır</value>
+  </data>
+  <data name="activity.singlestep" xml:space="preserve">
+    <value>Tek adım (test paketini duraklat)</value>
+  </data>
+  <data name="activity.stop" xml:space="preserve">
+    <value>Durdur ■</value>
+  </data>
+  <data name="approvals.button.abort" xml:space="preserve">
+    <value>■ SONLANDIR / TÜMÜNÜ ONAYLA</value>
+  </data>
+  <data name="approvals.button.arm" xml:space="preserve">
+    <value>Devreye al</value>
+  </data>
+  <data name="approvals.button.deny" xml:space="preserve">
+    <value>Reddet</value>
+  </data>
+  <data name="approvals.button.disarm" xml:space="preserve">
+    <value>Devreden çıkar</value>
+  </data>
+  <data name="approvals.button.release" xml:space="preserve">
+    <value>Onayla</value>
+  </data>
+  <data name="approvals.chip.armed" xml:space="preserve">
+    <value>IBN devrede — {0} sn</value>
+  </data>
+  <data name="approvals.chip.pending_armed" xml:space="preserve">
+    <value>{0} · IBN devrede {1} sn</value>
+  </data>
+  <data name="approvals.chip.pending_many" xml:space="preserve">
+    <value>{0} onay bekliyor</value>
+  </data>
+  <data name="approvals.chip.pending_one" xml:space="preserve">
+    <value>1 onay bekliyor</value>
+  </data>
+  <data name="approvals.column.arguments" xml:space="preserve">
+    <value>Argümanlar</value>
+  </data>
+  <data name="approvals.column.item" xml:space="preserve">
+    <value>Sembol / öğe</value>
+  </data>
+  <data name="approvals.column.kind" xml:space="preserve">
+    <value>Tür</value>
+  </data>
+  <data name="approvals.column.outcome" xml:space="preserve">
+    <value>Sonuç</value>
+  </data>
+  <data name="approvals.column.project" xml:space="preserve">
+    <value>Proje</value>
+  </data>
+  <data name="approvals.column.request" xml:space="preserve">
+    <value>İstek</value>
+  </data>
+  <data name="approvals.column.status" xml:space="preserve">
+    <value>Durum</value>
+  </data>
+  <data name="approvals.column.target" xml:space="preserve">
+    <value>Hedef</value>
+  </data>
+  <data name="approvals.column.time" xml:space="preserve">
+    <value>Zaman</value>
+  </data>
+  <data name="approvals.column.tool" xml:space="preserve">
+    <value>Araç</value>
+  </data>
+  <data name="approvals.column.value" xml:space="preserve">
+    <value>Değer</value>
+  </data>
+  <data name="approvals.confirm.denied" xml:space="preserve">
+    <value>{0} isteği reddedildi.</value>
+  </data>
+  <data name="approvals.confirm.deny_failed" xml:space="preserve">
+    <value>{0} isteği reddedilemedi (süresi doldu veya zaten yanıtlandı).</value>
+  </data>
+  <data name="approvals.confirm.hint" xml:space="preserve">
+    <value>Bekleyen bir ajanın istemcisi size kendisi soramaz. Aracı, hedefi ve argümanları kontrol edin, ardından Onayla'ya tıklayın: ajan çağrısını token'ı ile tekrarlar ve eylem bir kez çalışır.</value>
+  </data>
+  <data name="approvals.confirm.release_failed" xml:space="preserve">
+    <value>{0} isteği onaylanamadı (süresi doldu veya zaten yanıtlandı).</value>
+  </data>
+  <data name="approvals.confirm.released" xml:space="preserve">
+    <value>{0} isteği onaylandı.</value>
+  </data>
+  <data name="approvals.group.audit" xml:space="preserve">
+    <value>IBN Live denetim günlüğü</value>
+  </data>
+  <data name="approvals.group.confirmations" xml:space="preserve">
+    <value>Onay istekleri</value>
+  </data>
+  <data name="approvals.group.hmi" xml:space="preserve">
+    <value>HMI yazma onayları</value>
+  </data>
+  <data name="approvals.hint.arming" xml:space="preserve">
+    <value>Devreye alma yalnızca burada yapılır. MCP istemcisi adım önerebilir; her biri bir onay penceresi açar ve tıklamanız olmadan hiçbir şey hareket etmez. Sonlandırma, devreden çıkarma ve tümünü onaylama her zaman serbesttir.</value>
+  </data>
+  <data name="approvals.label.allowlist" xml:space="preserve">
+    <value>İzin listesi:</value>
+  </data>
+  <data name="approvals.label.port" xml:space="preserve">
+    <value>Port:</value>
+  </data>
+  <data name="approvals.label.target_netid" xml:space="preserve">
+    <value>Hedef NetId:</value>
+  </data>
+  <data name="approvals.last.abort.failed" xml:space="preserve">
+    <value>SONLANDIRMA / TÜMÜNÜ ONAYLAMA BAŞARISIZ: {0}</value>
+  </data>
+  <data name="approvals.last.abort.ok" xml:space="preserve">
+    <value>Sonlandırma / tümünü onaylama tamam.</value>
+  </data>
+  <data name="approvals.last.arm.failed" xml:space="preserve">
+    <value>Devreye alma başarısız: {0}</value>
+  </data>
+  <data name="approvals.last.arm.ok" xml:space="preserve">
+    <value>Devreye alma tamam.</value>
+  </data>
+  <data name="approvals.last.arm.refused" xml:space="preserve">
+    <value>Devreye alma reddedildi: {0}</value>
+  </data>
+  <data name="approvals.last.disarm.failed" xml:space="preserve">
+    <value>Devreden çıkarma BAŞARISIZ: {0}</value>
+  </data>
+  <data name="approvals.last.disarm.ok" xml:space="preserve">
+    <value>Devreden çıkarma tamam.</value>
+  </data>
+  <data name="approvals.last.step.executed" xml:space="preserve">
+    <value>Adım {0} yürütüldü.</value>
+  </data>
+  <data name="approvals.last.step.not_executed" xml:space="preserve">
+    <value>Adım {0} yürütülmedi: {1}</value>
+  </data>
+  <data name="approvals.last.step.not_rejected" xml:space="preserve">
+    <value>Adım {0} REDDEDİLMEDİ: {1}</value>
+  </data>
+  <data name="approvals.last.step.not_rejected_pending" xml:space="preserve">
+    <value>Adım {0} REDDEDİLMEDİ (hâlâ bekliyor): {1}</value>
+  </data>
+  <data name="approvals.last.step.rejected" xml:space="preserve">
+    <value>Adım {0} reddedildi ({1}).</value>
+  </data>
+  <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
+    <value>Otomatik onaylandı</value>
+  </data>
+  <data name="approvals.outcome.confirmed" xml:space="preserve">
+    <value>Onaylandı</value>
+  </data>
+  <data name="approvals.outcome.pending" xml:space="preserve">
+    <value>Bekliyor</value>
+  </data>
+  <data name="approvals.outcome.rejected" xml:space="preserve">
+    <value>Reddedildi</value>
+  </data>
+  <data name="approvals.outcome.timed_out" xml:space="preserve">
+    <value>Zaman aşımı</value>
+  </data>
+  <data name="approvals.outcome.unavailable" xml:space="preserve">
+    <value>Kullanılamıyor</value>
+  </data>
+  <data name="approvals.pending.many" xml:space="preserve">
+    <value> · {0} istek yanıtınızı bekliyor</value>
+  </data>
+  <data name="approvals.pending.one" xml:space="preserve">
+    <value> · 1 istek yanıtınızı bekliyor</value>
+  </data>
+  <data name="approvals.placeholder.allowlist" xml:space="preserve">
+    <value>Cyl1, Cyl2 (virgülle ayrılmış)</value>
+  </data>
+  <data name="approvals.placeholder.netid" xml:space="preserve">
+    <value>proje hedefi</value>
+  </data>
+  <data name="approvals.reason.cancelled" xml:space="preserve">
+    <value>operatör iptal etti</value>
+  </data>
+  <data name="approvals.reason.expired" xml:space="preserve">
+    <value>onay penceresinin süresi doldu</value>
+  </data>
+  <data name="approvals.restore.not_executed" xml:space="preserve">
+    <value>Geri yükleme {0} yürütülmedi: {1}</value>
+  </data>
+  <data name="approvals.restore.reason_default" xml:space="preserve">
+    <value>yürütülmedi</value>
+  </data>
+  <data name="approvals.restore.rejected" xml:space="preserve">
+    <value>Geri yükleme {0} reddedildi ({1}).</value>
+  </data>
+  <data name="approvals.restore.state.confirmed" xml:space="preserve">
+    <value>onaylandı</value>
+  </data>
+  <data name="approvals.restore.state.executed" xml:space="preserve">
+    <value>yürütüldü</value>
+  </data>
+  <data name="approvals.restore.state.expired" xml:space="preserve">
+    <value>süresi doldu</value>
+  </data>
+  <data name="approvals.restore.state.pending" xml:space="preserve">
+    <value>bekliyor</value>
+  </data>
+  <data name="approvals.restore.state.rejected" xml:space="preserve">
+    <value>reddedildi</value>
+  </data>
+  <data name="approvals.restore.summary.executed" xml:space="preserve">
+    <value>Geri yükleme {0} yürütüldü: {1} yazıldı, {2} başarısız, {3} atlandı.</value>
+  </data>
+  <data name="approvals.restore.summary.not_executed" xml:space="preserve">
+    <value>Geri yükleme {0} {1}: {2}</value>
+  </data>
+  <data name="approvals.state.armed" xml:space="preserve">
+    <value>DEVREDE — {0} sn kaldı · GVL {1}{2}</value>
+  </data>
+  <data name="approvals.state.denied" xml:space="preserve">
+    <value>Reddedildi</value>
+  </data>
+  <data name="approvals.state.disarmed" xml:space="preserve">
+    <value>Devreden çıkarıldı.</value>
+  </data>
+  <data name="approvals.state.expired" xml:space="preserve">
+    <value>Süresi doldu</value>
+  </data>
+  <data name="approvals.state.pending" xml:space="preserve">
+    <value>Bekliyor</value>
+  </data>
+  <data name="approvals.state.released" xml:space="preserve">
+    <value>Onaylandı</value>
+  </data>
+  <data name="approvals.state.used" xml:space="preserve">
+    <value>Kullanıldı</value>
+  </data>
+  <data name="approvals.tab.caption" xml:space="preserve">
+    <value>Onaylar</value>
+  </data>
+  <data name="approvals.tab.caption_pending" xml:space="preserve">
+    <value>Onaylar ({0})</value>
+  </data>
+  <data name="approvals.target.local" xml:space="preserve">
+    <value>yerel</value>
+  </data>
+  <data name="approvals.target.unknown" xml:space="preserve">
+    <value>bilinmiyor</value>
+  </data>
+  <data name="confirm.button.cancel" xml:space="preserve">
+    <value>İptal</value>
+  </data>
+  <data name="confirm.field.description" xml:space="preserve">
+    <value>İzin vermek için işaretleyin; reddetmek için işaretsiz bırakın veya vazgeçin.</value>
+  </data>
+  <data name="confirm.field.title" xml:space="preserve">
+    <value>Bu eyleme izin ver</value>
+  </data>
+  <data name="confirm.question" xml:space="preserve">
+    <value>{0}, hedef: {1}.
+Argümanlar: {2}.
+Bu, çalışan bir sistemi değiştirir. İzin verilsin mi? Ajan yanıtınızı bekliyor.</value>
+  </data>
+  <data name="confirm.question.none" xml:space="preserve">
+    <value>(yok)</value>
+  </data>
+  <data name="confirm.target.another" xml:space="preserve">
+    <value>{0} (başka bir sistem)</value>
+  </data>
+  <data name="confirm.target.local" xml:space="preserve">
+    <value>yerel sistem</value>
+  </data>
+  <data name="confirm.target.thismachine" xml:space="preserve">
+    <value>{0} (bu makine)</value>
+  </data>
+  <data name="confirm.target.unknown" xml:space="preserve">
+    <value>bilinmeyen bir hedef sistem</value>
+  </data>
+  <data name="connect.claudeCode" xml:space="preserve">
+    <value>Claude Code: bu komutu çalıştırın</value>
+  </data>
+  <data name="connect.close" xml:space="preserve">
+    <value>Kapat</value>
+  </data>
+  <data name="connect.copyCommand" xml:space="preserve">
+    <value>Komutu kopyala</value>
+  </data>
+  <data name="connect.copySnippet" xml:space="preserve">
+    <value>Kod parçasını kopyala</value>
+  </data>
+  <data name="connect.health.no" xml:space="preserve">
+    <value>hayır</value>
+  </data>
+  <data name="connect.health.ok" xml:space="preserve">
+    <value>Sunucuya ulaşılabiliyor: durum {0}, sürüm {1}, token gerekli: {2}.</value>
+  </data>
+  <data name="connect.health.unexpected" xml:space="preserve">
+    <value>Sunucu yanıt verdi, ancak beklenen /health JSON'u dönmedi.</value>
+  </data>
+  <data name="connect.health.yes" xml:space="preserve">
+    <value>evet</value>
+  </data>
+  <data name="connect.intro" xml:space="preserve">
+    <value>MCP sunucusu şu adreste dinliyor: {0}. MCP istemcinize ekleyin:</value>
+  </data>
+  <data name="connect.json" xml:space="preserve">
+    <value>Herhangi bir istemci: .mcp.json parçası</value>
+  </data>
+  <data name="connect.notReachable" xml:space="preserve">
+    <value>Ulaşılamıyor: {0}</value>
+  </data>
+  <data name="connect.test" xml:space="preserve">
+    <value>Bağlantıyı sına</value>
+  </data>
+  <data name="connect.testing" xml:space="preserve">
+    <value>Sınanıyor...</value>
+  </data>
+  <data name="connect.timeout" xml:space="preserve">
+    <value>5 sn sonra zaman aşımı</value>
+  </data>
+  <data name="connect.title" xml:space="preserve">
+    <value>İstemci bağla</value>
+  </data>
+  <data name="connect.tokenNote" xml:space="preserve">
+    <value>Bir erişim token'ı ayarlı: {0} yerine PTC_XAE_MCP_TOKEN değerini yazın. Token'ın kendisi burada gösterilmez.</value>
+  </data>
+  <data name="console.banner.incomplete" xml:space="preserve">
+    <value>Kaydedilen argümanlar eksik - çalıştırmadan önce her alanı kontrol edin. {0}.</value>
+  </data>
+  <data name="console.banner.notjson" xml:space="preserve">
+    <value>Kaydedilen argümanlar eksik - çalıştırmadan önce her alanı kontrol edin. Tam bir JSON nesnesi değiller (kesilmiş olabilir); varsayılanlar gösteriliyor.</value>
+  </data>
+  <data name="console.confirm.body" xml:space="preserve">
+    <value>'{0}' çalıştırılsın mı?
+
+{1}
+
+Çağrı, bir yapay zeka istemcisinin çağrısıyla aynı yoldan geçer.</value>
+  </data>
+  <data name="console.confirm.destructive" xml:space="preserve">
+    <value>YIKICI olarak işaretlenmiş: proje veya tesis verilerini silebilir ya da üzerine yazabilir.</value>
+  </data>
+  <data name="console.confirm.notreadonly" xml:space="preserve">
+    <value>Salt okunur olarak işaretlenmemiş: projeyi, XAE'yi veya PLC'yi değiştirebilir.</value>
+  </data>
+  <data name="console.confirm.title" xml:space="preserve">
+    <value>Araç çağrısını onayla</value>
+  </data>
+  <data name="console.copy" xml:space="preserve">
+    <value>Kopyala</value>
+  </data>
+  <data name="console.dialog.cancel" xml:space="preserve">
+    <value>İptal</value>
+  </data>
+  <data name="console.dialog.name" xml:space="preserve">
+    <value>Ad (bu adla var olan bir favori değiştirilir):</value>
+  </data>
+  <data name="console.dialog.save" xml:space="preserve">
+    <value>Kaydet</value>
+  </data>
+  <data name="console.favourite.remove" xml:space="preserve">
+    <value>Favoriyi kaldır</value>
+  </data>
+  <data name="console.favourite.save" xml:space="preserve">
+    <value>Favori olarak kaydet</value>
+  </data>
+  <data name="console.form.choose" xml:space="preserve">
+    <value>(seçin)</value>
+  </data>
+  <data name="console.form.emptyhint" xml:space="preserve">
+    <value>Boş isteğe bağlı metin alanları atlanır. Boş bir dize göndermek için "" (iki çift tırnak) yazın.</value>
+  </data>
+  <data name="console.form.emptytip" xml:space="preserve">
+    <value>Atlamak için boş bırakın; boş bir dize göndermek için "" (iki çift tırnak) yazın.</value>
+  </data>
+  <data name="console.form.integer" xml:space="preserve">
+    <value>tam sayı</value>
+  </data>
+  <data name="console.form.noarguments" xml:space="preserve">
+    <value>Bu araç argüman almaz.</value>
+  </data>
+  <data name="console.form.number" xml:space="preserve">
+    <value>sayı</value>
+  </data>
+  <data name="console.raw" xml:space="preserve">
+    <value>Ham JSON</value>
+  </data>
+  <data name="console.reload" xml:space="preserve">
+    <value>Yeniden yükle</value>
+  </data>
+  <data name="console.run" xml:space="preserve">
+    <value>Çalıştır</value>
+  </data>
+  <data name="console.search.placeholder" xml:space="preserve">
+    <value>Araç ara...</value>
+  </data>
+  <data name="console.status.cannotrun" xml:space="preserve">
+    <value>Çalıştırılamıyor: {0}</value>
+  </data>
+  <data name="console.status.clipboardbusy" xml:space="preserve">
+    <value>Pano başka bir program tarafından kullanılıyor; tekrar deneyin.</value>
+  </data>
+  <data name="console.status.copied" xml:space="preserve">
+    <value>Panoya kopyalandı.</value>
+  </data>
+  <data name="console.status.favremoved" xml:space="preserve">
+    <value>'{0}' favorisi kaldırıldı.</value>
+  </data>
+  <data name="console.status.favremovefailed" xml:space="preserve">
+    <value>'{0}' şimdilik kaldırıldı, ancak {1} yazılamadı; yeniden başlatmadan sonra geri gelebilir.</value>
+  </data>
+  <data name="console.status.favsaved" xml:space="preserve">
+    <value>'{0}' favorisi kaydedildi.</value>
+  </data>
+  <data name="console.status.favsavefailed" xml:space="preserve">
+    <value>'{0}' favorisi yalnızca uygulama kapanana kadar saklanır: {1} yazılamadı.</value>
+  </data>
+  <data name="console.status.loaded" xml:space="preserve">
+    <value>{0} araç yüklendi.</value>
+  </data>
+  <data name="console.status.loading" xml:space="preserve">
+    <value>Araçlar yükleniyor...</value>
+  </data>
+  <data name="console.status.ok" xml:space="preserve">
+    <value>Tamam - {0}</value>
+  </data>
+  <data name="console.status.outcomeunknown" xml:space="preserve">
+    <value>{0} sonra sonuç bilinmiyor - araç çalışmış olabilir; yeniden denemeden önce Etkinlik görünümünü kontrol edin.</value>
+  </data>
+  <data name="console.status.running" xml:space="preserve">
+    <value>Çalışıyor: {0}...</value>
+  </data>
+  <data name="console.status.toolerror" xml:space="preserve">
+    <value>Araç hata bildirdi - {0}</value>
+  </data>
+  <data name="console.status.unexpected" xml:space="preserve">
+    <value>Beklenmeyen hata: {0}</value>
+  </data>
+  <data name="console.tool.notloaded" xml:space="preserve">
+    <value>Araç listesi yüklenmedi.</value>
+  </data>
+  <data name="console.tool.notoffered" xml:space="preserve">
+    <value>Bu araç sunucu tarafından (artık) sunulmuyor.</value>
+  </data>
+  <data name="console.tool.placeholder" xml:space="preserve">
+    <value>Soldan bir araç seçin</value>
+  </data>
+  <data name="console.tree.favourites" xml:space="preserve">
+    <value>Favoriler ({0})</value>
+  </data>
+  <data name="hmiconfirm.button.execute" xml:space="preserve">
+    <value>Yürüt</value>
+  </data>
+  <data name="hmiconfirm.countdown" xml:space="preserve">
+    <value>Onay olmadan hiçbir şey yazılmaz — {0} sn içinde süresi dolar.</value>
+  </data>
+  <data name="hmiconfirm.details.current" xml:space="preserve">
+    <value>Geçerli</value>
+  </data>
+  <data name="hmiconfirm.details.directory" xml:space="preserve">
+    <value>Dizin</value>
+  </data>
+  <data name="hmiconfirm.details.domain" xml:space="preserve">
+    <value>Etki alanı</value>
+  </data>
+  <data name="hmiconfirm.details.new" xml:space="preserve">
+    <value>Yeni</value>
+  </data>
+  <data name="hmiconfirm.details.project" xml:space="preserve">
+    <value>HMI projesi</value>
+  </data>
+  <data name="hmiconfirm.effect.plc" xml:space="preserve">
+    <value>⚠ HMI sunucusu üzerinden çalışan PLC'ye yazar.</value>
+  </data>
+  <data name="hmiconfirm.effect.server" xml:space="preserve">
+    <value>HMI projesinin sunucu yapılandırmasını değiştirir (PLC erişimi yok).</value>
+  </data>
+  <data name="hmiconfirm.headline.addinternalsymbol" xml:space="preserve">
+    <value>MCP, HMI projesine bir istemci iç sembolü (%i%) eklemek istiyor</value>
+  </data>
+  <data name="hmiconfirm.headline.additem" xml:space="preserve">
+    <value>MCP, HMI projesinde bir dosya oluşturmak istiyor</value>
+  </data>
+  <data name="hmiconfirm.headline.applybundle" xml:space="preserve">
+    <value>MCP, HMI projesine bir dosya paketi yazmak istiyor</value>
+  </data>
+  <data name="hmiconfirm.headline.attachtmcfile" xml:space="preserve">
+    <value>MCP, bir ADS runtime'a TMC dosyası eklemek istiyor (PLC olmadan semboller)</value>
+  </data>
+  <data name="hmiconfirm.headline.createprojectdatatype" xml:space="preserve">
+    <value>MCP, Properties/tchmi.project.Schema.json dosyasına proje veri türleri eklemek istiyor (bir TMC dosyasındaki PLC türünden)</value>
+  </data>
+  <data name="hmiconfirm.headline.default" xml:space="preserve">
+    <value>MCP, HMI sunucusu üzerinden bir değer yazmak istiyor</value>
+  </data>
+  <data name="hmiconfirm.headline.deleteitem" xml:space="preserve">
+    <value>MCP, HMI projesinden SİLMEK istiyor (diskten de)</value>
+  </data>
+  <data name="hmiconfirm.headline.detachtmcfile" xml:space="preserve">
+    <value>MCP, TMC dosyasını bir ADS runtime'dan kaldırmak istiyor (ADS yüklemesine geri dönüş)</value>
+  </data>
+  <data name="hmiconfirm.headline.disableruntimetmc" xml:space="preserve">
+    <value>MCP, bu ADS runtime'ın sembollerini PLC'den yeniden yüklemesini istiyor (TMC dosyası kapalı)</value>
+  </data>
+  <data name="hmiconfirm.headline.enableruntimetmc" xml:space="preserve">
+    <value>MCP, HMI sunucusunun bu ADS runtime'ın PLC sembollerini bir TMC dosyasından sunmasını istiyor (PLC bağlantısı yok)</value>
+  </data>
+  <data name="hmiconfirm.headline.importfile" xml:space="preserve">
+    <value>MCP, HMI projesine bir dosya içe aktarmak istiyor</value>
+  </data>
+  <data name="hmiconfirm.headline.mapofflinesymbol" xml:space="preserve">
+    <value>MCP, HMI sunucusunda bir sunucu sembolü oluşturmak istiyor (TcHmiSrv etki alanı)</value>
+  </data>
+  <data name="hmiconfirm.headline.mapsymbol" xml:space="preserve">
+    <value>MCP, bir sembolü HMI'ya eşlemek istiyor</value>
+  </data>
+  <data name="hmiconfirm.headline.publish" xml:space="preserve">
+    <value>MCP, bu HMI projesini bir TF2000 sunucusuna YAYINLAMAK istiyor (orada çalışan projenin yerini alır)</value>
+  </data>
+  <data name="hmiconfirm.headline.removeinternalsymbol" xml:space="preserve">
+    <value>MCP, HMI projesinden bir istemci iç sembolünü (%i%) kaldırmak istiyor</value>
+  </data>
+  <data name="hmiconfirm.headline.switchmappingtoplc" xml:space="preserve">
+    <value>MCP, HMI eşlemelerini bir TMC dosyasından gerçek bir PLC'ye geçirmek istiyor (aynı eşlenen adlar, etki alanı ADS)</value>
+  </data>
+  <data name="hmiconfirm.headline.unmapsymbol" xml:space="preserve">
+    <value>MCP, bir sembol eşlemesini kaldırmak istiyor</value>
+  </data>
+  <data name="hmiconfirm.headline.writefile" xml:space="preserve">
+    <value>MCP, HMI projesindeki bir dosyayı değiştirmek istiyor</value>
+  </data>
+  <data name="hmiconfirm.subject.datatype" xml:space="preserve">
+    <value>Veri türü</value>
+  </data>
+  <data name="hmiconfirm.subject.internal" xml:space="preserve">
+    <value>%i% sembolü</value>
+  </data>
+  <data name="hmiconfirm.subject.mappings" xml:space="preserve">
+    <value>Eşlemeler</value>
+  </data>
+  <data name="hmiconfirm.subject.runtime" xml:space="preserve">
+    <value>ADS runtime</value>
+  </data>
+  <data name="hmiconfirm.subject.symbol" xml:space="preserve">
+    <value>Sembol</value>
+  </data>
+  <data name="hmiconfirm.subject.target" xml:space="preserve">
+    <value>Hedef</value>
+  </data>
+  <data name="hmiconfirm.title" xml:space="preserve">
+    <value>TwinCAT HMI — değişikliği onayla</value>
+  </data>
+  <data name="hmiconfirm.value.unknown" xml:space="preserve">
+    <value>(bilinmiyor)</value>
+  </data>
+  <data name="ibnconfirm.button.execute" xml:space="preserve">
+    <value>Adımı yürüt</value>
+  </data>
+  <data name="ibnconfirm.countdown" xml:space="preserve">
+    <value>Onayınız olmadan hiçbir şey hareket etmez — bu önerinin süresi {0} sn içinde dolar.</value>
+  </data>
+  <data name="ibnconfirm.details.action" xml:space="preserve">
+    <value>Eylem</value>
+  </data>
+  <data name="ibnconfirm.details.actuator" xml:space="preserve">
+    <value>Aktüatör</value>
+  </data>
+  <data name="ibnconfirm.details.chain" xml:space="preserve">
+    <value>Zincir</value>
+  </data>
+  <data name="ibnconfirm.details.proposal" xml:space="preserve">
+    <value>Öneri</value>
+  </data>
+  <data name="ibnconfirm.details.requested" xml:space="preserve">
+    <value>İstenen</value>
+  </data>
+  <data name="ibnconfirm.effect" xml:space="preserve">
+    <value>⚠ Yürüt, test PRG'sine TEK bir komut biti (bStepReq) yazar — makine HAREKET EDEBİLİR. İptal, Esc veya bu pencereyi kapatmak hiçbir şey yazmaz.</value>
+  </data>
+  <data name="ibnconfirm.headline" xml:space="preserve">
+    <value>MCP istemcisi bir devreye alma adımı öneriyor</value>
+  </data>
+  <data name="ibnconfirm.title" xml:space="preserve">
+    <value>IBN Live — adımı onayla</value>
+  </data>
+  <data name="main.approvals.chip.tooltip" xml:space="preserve">
+    <value>Onaylar görünümünü aç</value>
+  </data>
+  <data name="main.button.menu" xml:space="preserve">
+    <value>Menü ▾</value>
+  </data>
+  <data name="main.button.stop" xml:space="preserve">
+    <value>Durdur</value>
+  </data>
+  <data name="main.closexae.confirm" xml:space="preserve">
+    <value>TwinCAT XAE örneği şimdi kapatılsın mı?
+
+Bunu yalnızca XAE donduğunda kullanın. XAE'deki kaydedilmemiş değişiklikler kaybolur.</value>
+  </data>
+  <data name="main.closexae.done" xml:space="preserve">
+    <value>XAE kurtarma yürütüldü</value>
+  </data>
+  <data name="main.closexae.failed" xml:space="preserve">
+    <value>XAE kurtarma başarısız</value>
+  </data>
+  <data name="main.closexae.title" xml:space="preserve">
+    <value>XAE örneğini kapat (kurtarma)</value>
+  </data>
+  <data name="main.error.openlogfolder" xml:space="preserve">
+    <value>Günlük klasörü açılamadı:
+{0}
+
+{1}</value>
+  </data>
+  <data name="main.error.openurl" xml:space="preserve">
+    <value>{0} açılamadı:
+{1}</value>
+  </data>
+  <data name="main.mcperror.title" xml:space="preserve">
+    <value>MCP Hatası</value>
+  </data>
+  <data name="main.openlink.title" xml:space="preserve">
+    <value>Bağlantıyı aç</value>
+  </data>
+  <data name="main.openlogfolder.title" xml:space="preserve">
+    <value>Günlük klasörünü aç</value>
+  </data>
+  <data name="main.policy.savefailed" xml:space="preserve">
+    <value>Erişim ilkesi şuraya kaydedilemedi: {0}:
+{1}
+
+Önceki ilke yürürlükte kalır.</value>
+  </data>
+  <data name="main.policy.title" xml:space="preserve">
+    <value>Erişim ilkesi</value>
+  </data>
+  <data name="main.runstate.busy" xml:space="preserve">
+    <value>Meşgul: bir TwinCAT işlemi çalışıyor.</value>
+  </data>
+  <data name="main.runstate.cancelrequested" xml:space="preserve">
+    <value>İptal istendi.</value>
+  </data>
+  <data name="main.runstate.checkingupdates" xml:space="preserve">
+    <value>github.com'da daha yeni bir sürüm aranıyor...</value>
+  </data>
+  <data name="main.runstate.copyingsample" xml:space="preserve">
+    <value>Örnek proje kopyalanıyor...</value>
+  </data>
+  <data name="main.runstate.nothingtostop" xml:space="preserve">
+    <value>Durdurulacak bir şey yok.</value>
+  </data>
+  <data name="main.runstate.openingsample" xml:space="preserve">
+    <value>Örnek proje açılıyor...</value>
+  </data>
+  <data name="main.runstate.samplenotopened" xml:space="preserve">
+    <value>Örnek proje açılmadı.</value>
+  </data>
+  <data name="main.runstate.sampleopened" xml:space="preserve">
+    <value>Örnek proje açıldı.</value>
+  </data>
+  <data name="main.runstate.updateavailable" xml:space="preserve">
+    <value>Güncelleme var: {0} (Menü &gt; Güncelleme var).</value>
+  </data>
+  <data name="main.runstate.updatecheckfailed" xml:space="preserve">
+    <value>Güncelleme denetimi başarısız; çalışma günlüğüne bakın.</value>
+  </data>
+  <data name="main.runstate.uptodate" xml:space="preserve">
+    <value>Güncel.</value>
+  </data>
+  <data name="main.sample.closeconfirm" xml:space="preserve">
+    <value>TwinCAT XAE'de bir çözüm açık. Kaydedilmeden kapatılıp örnek proje açılsın mı?</value>
+  </data>
+  <data name="main.sample.copyfailed" xml:space="preserve">
+    <value>Örnek proje şuraya kopyalanamadı:
+{0}
+
+{1}</value>
+  </data>
+  <data name="main.sample.missing" xml:space="preserve">
+    <value>Örnek proje bu kurulumun parçası değil:
+{0}</value>
+  </data>
+  <data name="main.sample.title" xml:space="preserve">
+    <value>Örnek projeyi aç</value>
+  </data>
+  <data name="main.security.notresolved" xml:space="preserve">
+    <value>Güvenlik iletişim kutusu çözülmedi</value>
+  </data>
+  <data name="main.security.resolved" xml:space="preserve">
+    <value>Güvenlik iletişim kutusu çözüldü</value>
+  </data>
+  <data name="main.stop.tooltip" xml:space="preserve">
+    <value>Çalışan şema uygulamasını iptal et (twincat_stop ile aynı).</value>
+  </data>
+  <data name="main.tab.activity" xml:space="preserve">
+    <value>Etkinlik</value>
+  </data>
+  <data name="main.tab.console" xml:space="preserve">
+    <value>Konsol</value>
+  </data>
+  <data name="main.theme.dark" xml:space="preserve">
+    <value>Koyu</value>
+  </data>
+  <data name="main.theme.light" xml:space="preserve">
+    <value>Açık</value>
+  </data>
+  <data name="main.theme.tooltip.dark" xml:space="preserve">
+    <value>Koyu temaya geç</value>
+  </data>
+  <data name="main.theme.tooltip.light" xml:space="preserve">
+    <value>Açık temaya geç</value>
+  </data>
+  <data name="main.title.engineer" xml:space="preserve">
+    <value>{0} — ENGINEER (runtime eylemi yok)</value>
+  </data>
+  <data name="main.title.readonly" xml:space="preserve">
+    <value>{0} — SALT OKUNUR</value>
+  </data>
+  <data name="main.updates.openpage" xml:space="preserve">
+    <value>Sürüm sayfası açılsın mı? Bu uygulama hiçbir şey indirmez.</value>
+  </data>
+  <data name="main.updates.title" xml:space="preserve">
+    <value>Güncelleme denetimi</value>
+  </data>
+  <data name="menu.checkupdates" xml:space="preserve">
+    <value>Güncellemeleri denetle…</value>
+  </data>
+  <data name="menu.closexae" xml:space="preserve">
+    <value>XAE örneğini kapat (kurtarma)…</value>
+  </data>
+  <data name="menu.connectclient" xml:space="preserve">
+    <value>İstemci bağla…</value>
+  </data>
+  <data name="menu.dismisssecurity" xml:space="preserve">
+    <value>Güvenlik iletişim kutusunu kapat</value>
+  </data>
+  <data name="menu.openlogfolder" xml:space="preserve">
+    <value>Günlük klasörünü aç</value>
+  </data>
+  <data name="menu.opensample" xml:space="preserve">
+    <value>Örnek projeyi aç</value>
+  </data>
+  <data name="menu.refresh" xml:space="preserve">
+    <value>Durumu yenile</value>
+  </data>
+  <data name="menu.settings" xml:space="preserve">
+    <value>Ayarlar…</value>
+  </data>
+  <data name="menu.toggletheme" xml:space="preserve">
+    <value>Açık / koyu tema</value>
+  </data>
+  <data name="menu.updateavailable" xml:space="preserve">
+    <value>Güncelleme var: {0}…</value>
+  </data>
+  <data name="prompt.notGiven" xml:space="preserve">
+    <value>(verilmedi)</value>
+  </data>
+  <data name="restoreconfirm.button.restore" xml:space="preserve">
+    <value>Değerleri geri yükle</value>
+  </data>
+  <data name="restoreconfirm.countdown" xml:space="preserve">
+    <value>Onayınız olmadan hiçbir şey yazılmaz — bu önerinin süresi {0} sn içinde dolar.</value>
+  </data>
+  <data name="restoreconfirm.details.proposal" xml:space="preserve">
+    <value>Öneri</value>
+  </data>
+  <data name="restoreconfirm.details.requested" xml:space="preserve">
+    <value>İstenen</value>
+  </data>
+  <data name="restoreconfirm.details.snapshot" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="restoreconfirm.details.taken" xml:space="preserve">
+    <value>Alınma zamanı</value>
+  </data>
+  <data name="restoreconfirm.details.taken.value" xml:space="preserve">
+    <value>{0} (UTC)</value>
+  </data>
+  <data name="restoreconfirm.details.target" xml:space="preserve">
+    <value>Hedef</value>
+  </data>
+  <data name="restoreconfirm.details.towrite" xml:space="preserve">
+    <value>Yazılacak</value>
+  </data>
+  <data name="restoreconfirm.details.towrite.value" xml:space="preserve">
+    <value>{0} tekil değer ({1} zaten eşit, {2} atlandı)</value>
+  </data>
+  <data name="restoreconfirm.differences" xml:space="preserve">
+    <value>Farklar (PLC şimdi -&gt; snapshot):</value>
+  </data>
+  <data name="restoreconfirm.effect" xml:space="preserve">
+    <value>⚠ Geri yükleme, canlı PLC değerlerinin üzerine yazar. İptal, Esc veya bu pencereyi kapatmak hiçbir şey yazmaz. Onayınızdan sonra PLC bir kez daha kontrol edilir; incelemeden bu yana değiştiyse hiçbir şey yazılmaz.</value>
+  </data>
+  <data name="restoreconfirm.headline" xml:space="preserve">
+    <value>MCP istemcisi bir snapshot'ı PLC'ye geri yüklemeyi öneriyor</value>
+  </data>
+  <data name="restoreconfirm.more" xml:space="preserve">
+    <value>  ... ve {0} tane daha</value>
+  </data>
+  <data name="restoreconfirm.skipped" xml:space="preserve">
+    <value>Atlanan ({0}):</value>
+  </data>
+  <data name="restoreconfirm.state.other" xml:space="preserve">
+    <value>PLC durumu: {0}</value>
+  </data>
+  <data name="restoreconfirm.state.run" xml:space="preserve">
+    <value>PLC durumu: RUN — değerler program çalışırken yazılır ve program tarafından üzerine yazılabilir</value>
+  </data>
+  <data name="restoreconfirm.title" xml:space="preserve">
+    <value>Kalıcı snapshot — geri yüklemeyi onayla</value>
+  </data>
+  <data name="sample.missing" xml:space="preserve">
+    <value>Örnek proje bulunamadı: {0}</value>
+  </data>
+  <data name="sample.noSolution" xml:space="preserve">
+    <value>Örnek kopyada {0} yok.</value>
+  </data>
+  <data name="settings.access.allowed" xml:space="preserve">
+    <value>İzin verilen NetId'ler</value>
+  </data>
+  <data name="settings.access.allowed.note" xml:space="preserve">
+    <value>Ayarlıysa runtime eylemleri yalnızca bu sistemlerde yapılır. Boş = izin listesi yok.</value>
+  </data>
+  <data name="settings.access.blocked" xml:space="preserve">
+    <value>Engellenen NetId'ler</value>
+  </data>
+  <data name="settings.access.blocked.note" xml:space="preserve">
+    <value>Bu sistemlerde runtime eylemi yapılmaz; okuma serbest kalır. ';' ile ayırın. 'local' = bu PC ve User Mode Runtime'ları.</value>
+  </data>
+  <data name="settings.access.confirm" xml:space="preserve">
+    <value>İnsan onayı</value>
+  </data>
+  <data name="settings.access.confirm.note" xml:space="preserve">
+    <value>MCP elicitation destekleyen bir istemci insana kendi penceresinde sorar; diğer istemciler, buradaki Onaylar sekmesinde sizin onayladığınız bir token alır. Bunun ve ortamın daha katı olanı geçerlidir.</value>
+  </data>
+  <data name="settings.access.envPolicy" xml:space="preserve">
+    <value>Ortam şunu ayarlıyor: {0}; ikisinin daha katı olanı geçerlidir.</value>
+  </data>
+  <data name="settings.access.heading" xml:space="preserve">
+    <value>MCP erişimi. Tamam'a bastığınızda kaydedilir ve hemen uygulanır; bağlı istemcilere araç listelerini yeniden yüklemeleri bildirilir.</value>
+  </data>
+  <data name="settings.access.level" xml:space="preserve">
+    <value>Erişim düzeyi</value>
+  </data>
+  <data name="settings.access.level.engineer" xml:space="preserve">
+    <value>engineer — ayrıca projeyi değiştirir (etkinleştirme, login, ADS yazma yok)</value>
+  </data>
+  <data name="settings.access.level.read" xml:space="preserve">
+    <value>read — yalnızca hiçbir şeyi değiştirmeyen araçlar</value>
+  </data>
+  <data name="settings.access.level.runtime" xml:space="preserve">
+    <value>runtime — ayrıca hedef sistemleri değiştirir</value>
+  </data>
+  <data name="settings.access.profile" xml:space="preserve">
+    <value>Araç profili</value>
+  </data>
+  <data name="settings.access.profileEnv" xml:space="preserve">
+    <value>{0}={1} ayarlı ve bu seçimi geçersiz kılar.</value>
+  </data>
+  <data name="settings.access.writeAllow" xml:space="preserve">
+    <value>İzin verilen değişken yazmaları</value>
+  </data>
+  <data name="settings.access.writeAllow.note" xml:space="preserve">
+    <value>Ayarlıysa ADS ve HMI yazmaları ile snapshot geri yüklemesi yalnızca eşleşen sembollere ulaşır, örn. MAIN.stTest.*; GVL_Param.r*. '*' herhangi bir metin, '?' tek bir karakter; büyük/küçük harf yok sayılır. Boş = liste yok (tüm semboller).</value>
+  </data>
+  <data name="settings.access.writeDeny" xml:space="preserve">
+    <value>Engellenen değişken yazmaları</value>
+  </data>
+  <data name="settings.access.writeDeny.note" xml:space="preserve">
+    <value>İzin listesi ne derse desin asla yazılmaz, örn. *.bEmergency*; GVL_Safety.*.</value>
+  </data>
+  <data name="settings.button.cancel" xml:space="preserve">
+    <value>İptal</value>
+  </data>
+  <data name="settings.button.ok" xml:space="preserve">
+    <value>Tamam</value>
+  </data>
+  <data name="settings.confirm.all" xml:space="preserve">
+    <value>all — ayrıca bu makinede etkinleştirme, yeniden başlatma, durdurma ve mod değiştirme</value>
+  </data>
+  <data name="settings.confirm.default" xml:space="preserve">
+    <value>Varsayılan — remote</value>
+  </data>
+  <data name="settings.confirm.off" xml:space="preserve">
+    <value>off — kimseye sorulmaz</value>
+  </data>
+  <data name="settings.confirm.remote" xml:space="preserve">
+    <value>remote — diğer sistemlerde etkinleştirme, yeniden başlatma, durdurma, ADS yazma ve login işlemlerini bir insan onaylar</value>
+  </data>
+  <data name="settings.grid.howto" xml:space="preserve">
+    <value>Ayarlama yolu</value>
+  </data>
+  <data name="settings.grid.setting" xml:space="preserve">
+    <value>Ayar</value>
+  </data>
+  <data name="settings.grid.value" xml:space="preserve">
+    <value>Değer</value>
+  </data>
+  <data name="settings.how.accessLevelEnv" xml:space="preserve">
+    <value>{0} (read, engineer, runtime; bunun ve yukarıdaki seçimin daha katı olanı geçerlidir)</value>
+  </data>
+  <data name="settings.how.confirmEnv" xml:space="preserve">
+    <value>{0} (off, remote, all; bunun ve yukarıdaki seçimin daha katı olanı geçerlidir)</value>
+  </data>
+  <data name="settings.how.diagnostics" xml:space="preserve">
+    <value>--diagnostics ile veya {0}=1 ile başlatın</value>
+  </data>
+  <data name="settings.how.env" xml:space="preserve">
+    <value>Ortam değişkeni {0}</value>
+  </data>
+  <data name="settings.how.port" xml:space="preserve">
+    <value>Sabit (yalnızca http://localhost)</value>
+  </data>
+  <data name="settings.how.toolProfileOverride" xml:space="preserve">
+    <value>{0} (all, core veya plc,hmi gibi toolset'ler)</value>
+  </data>
+  <data name="settings.how.updateCheck" xml:space="preserve">
+    <value>Yukarıdaki onay kutusu; {0}=0 veya HKLM\{1}\{2}=1 makine ilkesi bunu kapatır</value>
+  </data>
+  <data name="settings.how.writeAllowEnv" xml:space="preserve">
+    <value>{0} (sembol kalıpları, örn. MAIN.stTest.*; iki kaynağın listelerinin kesişimi alınır)</value>
+  </data>
+  <data name="settings.language.envOverride" xml:space="preserve">
+    <value>{0}={1} ayarlı ve bu seçimi geçersiz kılar.</value>
+  </data>
+  <data name="settings.language.label" xml:space="preserve">
+    <value>Dil</value>
+  </data>
+  <data name="settings.language.note" xml:space="preserve">
+    <value>Pencerenin, iletişim kutularının ve istemlerin dili. Araç sonuçları ve hata iletileri İngilizce kalır. Tamam'a bastığınızda uygulanır.</value>
+  </data>
+  <data name="settings.language.unreviewed" xml:space="preserve">
+    <value>{0} (çeviri henüz gözden geçirilmedi)</value>
+  </data>
+  <data name="settings.profile.automatic" xml:space="preserve">
+    <value>Otomatik (istemciye göre: Claude all, Cursor/VS Code/Windsurf/Hermes core)</value>
+  </data>
+  <data name="settings.remember" xml:space="preserve">
+    <value>Pencere konumunu ve boyutunu hatırla</value>
+  </data>
+  <data name="settings.row.accessLevelEnv" xml:space="preserve">
+    <value>Erişim düzeyi (ortam)</value>
+  </data>
+  <data name="settings.row.allowedEnv" xml:space="preserve">
+    <value>İzin verilen NetId'ler (ortam)</value>
+  </data>
+  <data name="settings.row.allowedPaths" xml:space="preserve">
+    <value>İzin verilen yollar</value>
+  </data>
+  <data name="settings.row.blockedEnv" xml:space="preserve">
+    <value>Engellenen NetId'ler (ortam)</value>
+  </data>
+  <data name="settings.row.confirmEnv" xml:space="preserve">
+    <value>İnsan onayı (ortam)</value>
+  </data>
+  <data name="settings.row.diagnostics" xml:space="preserve">
+    <value>Tanılama araçları</value>
+  </data>
+  <data name="settings.row.hmiAutoConfirm" xml:space="preserve">
+    <value>HMI yazmalarını otomatik onayla (TEMP fixture'ları)</value>
+  </data>
+  <data name="settings.row.keepDays" xml:space="preserve">
+    <value>Günlükleri sakla: gün</value>
+  </data>
+  <data name="settings.row.keepRuns" xml:space="preserve">
+    <value>Günlükleri sakla: çalıştırma</value>
+  </data>
+  <data name="settings.row.language" xml:space="preserve">
+    <value>Dil</value>
+  </data>
+  <data name="settings.row.language.how" xml:space="preserve">
+    <value>Yukarıdaki liste; {0} ortam değişkeni ({1}) bunu geçersiz kılar</value>
+  </data>
+  <data name="settings.row.language.ignored" xml:space="preserve">
+    <value>{0}='{1}' bu sürümün bir dili değil ve yok sayılır (İngilizce kullanılır)</value>
+  </data>
+  <data name="settings.row.port" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="settings.row.reportsMirror" xml:space="preserve">
+    <value>Raporları depoya yansıt</value>
+  </data>
+  <data name="settings.row.safetyPrefixes" xml:space="preserve">
+    <value>Safety sinyal önekleri</value>
+  </data>
+  <data name="settings.row.token" xml:space="preserve">
+    <value>Erişim token'ı</value>
+  </data>
+  <data name="settings.row.toolProfileOverride" xml:space="preserve">
+    <value>Araç profili geçersiz kılma</value>
+  </data>
+  <data name="settings.row.updateCheck" xml:space="preserve">
+    <value>Başlangıçta güncelleme denetimi</value>
+  </data>
+  <data name="settings.row.writeAllowEnv" xml:space="preserve">
+    <value>İzin verilen değişken yazmaları (ortam)</value>
+  </data>
+  <data name="settings.row.writeDenyEnv" xml:space="preserve">
+    <value>Engellenen değişken yazmaları (ortam)</value>
+  </data>
+  <data name="settings.serverCaption" xml:space="preserve">
+    <value>Sunucu ayarları (salt okunur). Başlangıçta bir kez okunurlar: ortam değişkenini ayarlayın, ardından uygulamayı yeniden başlatın.</value>
+  </data>
+  <data name="settings.theme" xml:space="preserve">
+    <value>Tema</value>
+  </data>
+  <data name="settings.theme.dark" xml:space="preserve">
+    <value>Koyu</value>
+  </data>
+  <data name="settings.theme.light" xml:space="preserve">
+    <value>Açık</value>
+  </data>
+  <data name="settings.title" xml:space="preserve">
+    <value>Ayarlar</value>
+  </data>
+  <data name="settings.updates.check" xml:space="preserve">
+    <value>Başlangıçta yeni sürümü denetle (github.com'a tek istek, hiçbir şey indirilmez)</value>
+  </data>
+  <data name="settings.value.allowedPaths.none" xml:space="preserve">
+    <value>(yok: açık çözüm, %TEMP%, günlük klasörü, TwinCAT kurulumu)</value>
+  </data>
+  <data name="settings.value.default" xml:space="preserve">
+    <value>{0} (varsayılan)</value>
+  </data>
+  <data name="settings.value.none" xml:space="preserve">
+    <value>(yok)</value>
+  </data>
+  <data name="settings.value.notSet" xml:space="preserve">
+    <value>ayarlı değil</value>
+  </data>
+  <data name="settings.value.off" xml:space="preserve">
+    <value>kapalı</value>
+  </data>
+  <data name="settings.value.on" xml:space="preserve">
+    <value>açık</value>
+  </data>
+  <data name="settings.value.set" xml:space="preserve">
+    <value>ayarlı</value>
+  </data>
+  <data name="settings.value.toolProfileOverride.none" xml:space="preserve">
+    <value>(yok: yukarıdaki seçim)</value>
+  </data>
+  <data name="status.mcp.active" xml:space="preserve">
+    <value>MCP :{0}{1}</value>
+  </data>
+  <data name="status.mcp.clients.many" xml:space="preserve">
+    <value> — {0} istemci ({1} +{2})</value>
+  </data>
+  <data name="status.mcp.clients.none" xml:space="preserve">
+    <value> — 0 istemci</value>
+  </data>
+  <data name="status.mcp.clients.one" xml:space="preserve">
+    <value> — 1 istemci ({0})</value>
+  </data>
+  <data name="status.mcp.inactive" xml:space="preserve">
+    <value>MCP: etkin değil</value>
+  </data>
+  <data name="status.project.notchecked" xml:space="preserve">
+    <value>Proje: denetlenmedi</value>
+  </data>
+  <data name="status.project.noxae.tip" xml:space="preserve">
+    <value>TwinCAT XAE örneği yok, dolayısıyla proje yok.</value>
+  </data>
+  <data name="status.project.probe.tip" xml:space="preserve">
+    <value>TwinCAT proje sorgusu: {0}</value>
+  </data>
+  <data name="status.project.unavailable" xml:space="preserve">
+    <value>Proje: Kullanılamıyor</value>
+  </data>
+  <data name="status.project.value" xml:space="preserve">
+    <value>Proje: {0}</value>
+  </data>
+  <data name="status.xae.active" xml:space="preserve">
+    <value>XAE: Etkin</value>
+  </data>
+  <data name="status.xae.active.tip" xml:space="preserve">
+    <value>TwinCAT XAE örneği: etkin</value>
+  </data>
+  <data name="status.xae.inactive" xml:space="preserve">
+    <value>XAE: Etkin değil</value>
+  </data>
+  <data name="status.xae.inactive.tip" xml:space="preserve">
+    <value>Çalışan bir TwinCAT XAE örneği yok.</value>
+  </data>
+  <data name="status.xae.notchecked" xml:space="preserve">
+    <value>XAE: denetlenmedi</value>
+  </data>
+  <data name="toolconsole.client.cancelledaftersend" xml:space="preserve">
+    <value>İstek gönderildikten sonra iptal edildi, zaman aşımına uğradı veya kapatıldı - araç hâlâ çalışıyor olabilir ya da çalışmış olabilir. Yeniden denemeden önce Etkinlik görünümünü kontrol edin.</value>
+  </data>
+  <data name="toolconsole.client.cancelledbeforesend" xml:space="preserve">
+    <value>İstek gönderilmeden önce iptal edildi.</value>
+  </data>
+  <data name="toolconsole.client.closed" xml:space="preserve">
+    <value>Konsol kapatıldı.</value>
+  </data>
+  <data name="toolconsole.client.notreachable" xml:space="preserve">
+    <value>MCP sunucusuna ulaşılamıyor: {0} ({1}). Henüz başlıyor olabilir; tekrar deneyin.</value>
+  </data>
+  <data name="toolconsole.client.outcomeunknown" xml:space="preserve">
+    <value>Sonuç bilinmiyor - araç çalışmış olabilir ({0}). Yeniden denemeden önce Etkinlik görünümünü kontrol edin.</value>
+  </data>
+  <data name="toolconsole.error.invalidjson" xml:space="preserve">
+    <value>{0}: geçersiz JSON ({1})</value>
+  </data>
+  <data name="toolconsole.error.notinteger" xml:space="preserve">
+    <value>{0}: '{1}' bir tam sayı değil</value>
+  </data>
+  <data name="toolconsole.error.notnumber" xml:space="preserve">
+    <value>{0}: '{1}' bir sayı değil</value>
+  </data>
+  <data name="toolconsole.error.required" xml:space="preserve">
+    <value>{0}: gerekli</value>
+  </data>
+  <data name="toolconsole.group.approvals" xml:space="preserve">
+    <value>Onaylar</value>
+  </data>
+  <data name="toolconsole.group.diagnostics" xml:space="preserve">
+    <value>Tanılama</value>
+  </data>
+  <data name="toolconsole.group.general" xml:space="preserve">
+    <value>Genel</value>
+  </data>
+  <data name="toolconsole.group.safety" xml:space="preserve">
+    <value>Safety</value>
+  </data>
+  <data name="toolconsole.preset.buildplc" xml:space="preserve">
+    <value>Başlarken: PLC derle</value>
+  </data>
+  <data name="toolconsole.preset.corrupt" xml:space="preserve">
+    <value>presets.json bozuktu ve kenara taşındı (presets.json.corrupt-*); varsayılanlar geri geldi.</value>
+  </data>
+  <data name="toolconsole.preset.errorlist" xml:space="preserve">
+    <value>Başlarken: hata listesi</value>
+  </data>
+  <data name="toolconsole.preset.listplc" xml:space="preserve">
+    <value>Başlarken: PLC nesnelerini listele</value>
+  </data>
+  <data name="toolconsole.preset.openproject" xml:space="preserve">
+    <value>Başlarken: projeyi aç</value>
+  </data>
+  <data name="toolconsole.preset.status" xml:space="preserve">
+    <value>Başlarken: durum</value>
+  </data>
+  <data name="toolconsole.preset.unreadable" xml:space="preserve">
+    <value>presets.json okunamadı ({0}); varsayılanlar gösteriliyor. Dosyaya dokunulmadı ve okunabilir olana kadar favoriler kaydedilemez (Yeniden yükle'ye basın).</value>
+  </data>
+  <data name="toolconsole.warning.noarguments" xml:space="preserve">
+    <value>hiç argüman kaydedilmedi</value>
+  </data>
+  <data name="toolconsole.warning.notachoice" xml:space="preserve">
+    <value>'{0}': kaydedilen değer {1}, [{2}] içinde yok; seçimsiz bırakıldı</value>
+  </data>
+  <data name="toolconsole.warning.requirednotrecorded" xml:space="preserve">
+    <value>gerekli '{0}' kaydedilmedi</value>
+  </data>
+  <data name="toolconsole.warning.unknownkeys" xml:space="preserve">
+    <value>aracın şemasında yok, yok sayıldı: {0}</value>
+  </data>
+  <data name="update.available" xml:space="preserve">
+    <value>Güncelleme var: {0} (kurulu: {1}). {2}</value>
+  </data>
+  <data name="update.currentUnknown" xml:space="preserve">
+    <value>Güncelleme denetimi: kurulu sürüm bilinmiyor; en son sürüm {0}.</value>
+  </data>
+  <data name="update.latestUnknown" xml:space="preserve">
+    <value>Güncelleme denetimi: en son sürüm belirlenemedi.</value>
+  </data>
+  <data name="update.state.off" xml:space="preserve">
+    <value>kapalı</value>
+  </data>
+  <data name="update.state.offEnv" xml:space="preserve">
+    <value>kapalı ({0}=0)</value>
+  </data>
+  <data name="update.state.offPolicy" xml:space="preserve">
+    <value>kapalı (makine ilkesi)</value>
+  </data>
+  <data name="update.state.on" xml:space="preserve">
+    <value>açık</value>
+  </data>
+  <data name="update.unreachable" xml:space="preserve">
+    <value>Güncelleme denetimi: github.com'a ulaşılamıyor ({0}: {1}).</value>
+  </data>
+  <data name="update.upToDate" xml:space="preserve">
+    <value>Güncel: en son sürüm {0}.</value>
+  </data>
+</root>

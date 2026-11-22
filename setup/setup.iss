@@ -136,6 +136,11 @@ begin
   else if ActiveLanguage = 'german' then Result := 'de'
   else if ActiveLanguage = 'french' then Result := 'fr'
   else if ActiveLanguage = 'italian' then Result := 'it'
+  else if ActiveLanguage = 'spanish' then Result := 'es'
+  else if ActiveLanguage = 'brazilianportuguese' then Result := 'pt'
+  else if ActiveLanguage = 'dutch' then Result := 'nl'
+  else if ActiveLanguage = 'polish' then Result := 'pl'
+  else if ActiveLanguage = 'turkish' then Result := 'tr'
   else Result := '';
 end;
 

@@ -28,6 +28,21 @@ public class HostLanguageTests
     [InlineData("Deutsch", "de")]
     [InlineData("Français", "fr")]
     [InlineData("italian", "it")]
+    [InlineData("es-MX", "es")]
+    [InlineData("Español", "es")]
+    [InlineData("pt-BR", "pt")]
+    [InlineData("pt-PT", "pt")]
+    [InlineData("Português (Brasil)", "pt")]
+    [InlineData("nl-BE", "nl")]
+    [InlineData("pl-PL", "pl")]
+    [InlineData("tr-TR", "tr")]
+    [InlineData("Turkish", "tr")]
+    [InlineData("zh", "zh")]
+    [InlineData("zh-CN", "zh")]
+    [InlineData("zh-SG", "zh")]
+    [InlineData("zh-Hans", "zh")]
+    [InlineData("zh-Hans-CN", "zh")]
+    [InlineData("中文（简体）", "zh")]
     public void Match_AcceptsCodesRegionalFormsAndNames(string value, string expected) =>
         HostLanguage.Match(value).Should().Be(expected);
 
@@ -36,7 +51,13 @@ public class HostLanguageTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("xx")]
-    [InlineData("pt-BR")]
+    [InlineData("zh-TW")]
+    [InlineData("zh-HK")]
+    [InlineData("zh_MO")]
+    [InlineData("zh-Hant")]
+    [InlineData("zh-Hant-TW")]
+    [InlineData("ja-JP")]
+    [InlineData("ru")]
     [InlineData("Deutschland")]
     [InlineData("d")]
     public void Match_RejectsEmptyAndUnknown(string? value) => HostLanguage.Match(value).Should().BeNull();
@@ -161,7 +182,7 @@ public class HostLanguageTests
     {
         var ok = SettingsInfo.Rows(5010, false, n => null).Single(r => r.Name == "Language");
         ok.Value.Should().Be(HostLanguage.Current);
-        ok.HowToChange.Should().Contain(HostLanguage.EnvVar).And.Contain("en, de, fr, it");
+        ok.HowToChange.Should().Contain(HostLanguage.EnvVar).And.Contain(string.Join(", ", HostLanguage.Shipped.Select(l => l.Code)));
 
         var bad = SettingsInfo.Rows(5010, false, n => n == HostLanguage.EnvVar ? "klingon" : null).Single(r => r.Name == "Language");
         bad.Value.Should().Contain("klingon").And.Contain("ignored");

@@ -12,17 +12,16 @@ pull-request numbers refer to those.
 
 ## [4.2.1] - 2026-11-22
 
-The host window, its dialogs, the confirmation texts and the prompts come in English, German, French and Italian; the
-installer comes in 13 languages.
+The host window, its dialogs, the confirmation texts and the prompts come in ten languages (English, German, French, Italian, Spanish, Brazilian Portuguese, Dutch, Polish, Turkish,
+Simplified Chinese); the installer comes in 13.
 
 ### Added
 - Host language: *Settings… → Language* (applied when you press OK) or the environment variable
-  `PTC_XAE_MCP_LANGUAGE` (`en`, `de`, `fr`, `it`). Without a choice the language of the installer wizard, then the
+  `PTC_XAE_MCP_LANGUAGE` (`en`, `de`, `fr`, `it`, `es`, `pt`, `nl`, `pl`, `tr`, `zh`). Without a choice the language of the installer wizard, then the
   Windows display language, then English decides. A value the app has no texts for is skipped and named in the settings
   list. Texts of a language that no native speaker has checked yet are marked *translation not yet reviewed* in the
   language list. Tool results, error messages, tool names and tool descriptions stay English on purpose.
-- The six prompts (`plc-change`, `commission-ethercat`, `diagnose-runtime`, `run-tcunit`, `scope-measure`, `doctor`) in
-  German, French and Italian; a prompt without a text in the chosen language is shown in English.
+- The six prompts (`plc-change`, `commission-ethercat`, `diagnose-runtime`, `run-tcunit`, `scope-measure`, `doctor`) in the nine other languages; a prompt without a text in the chosen language is shown in English.
 - The installer wizard in English, German, French, Italian, Spanish, Brazilian Portuguese, Dutch, Polish, Turkish,
   Czech, Russian, Japanese and Korean (Inno Setup's own language files). The language of the wizard is left for the app
   (`HKLM\SOFTWARE\Pneutronic\ptc-xae-mcp`, value `InstallLanguage`) as its language for the first start; a reinstall in

@@ -1,0 +1,1284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Dutch texts. Not yet reviewed by a native speaker; see HostLanguage.Shipped.
+    One key per text a human reads. {0}, {1} ... are filled by Loc.Format; {{ and }} are literal braces.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="activity.autoscroll" xml:space="preserve">
+    <value>Automatisch scrollen</value>
+  </data>
+  <data name="activity.clear" xml:space="preserve">
+    <value>Wissen (nieuwe run)</value>
+  </data>
+  <data name="activity.column.duration" xml:space="preserve">
+    <value>Duur (ms)</value>
+  </data>
+  <data name="activity.column.status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="activity.column.time" xml:space="preserve">
+    <value>Tijd</value>
+  </data>
+  <data name="activity.column.tool" xml:space="preserve">
+    <value>Tool / Test</value>
+  </data>
+  <data name="activity.detail.arguments" xml:space="preserve">
+    <value>── Argumenten ─────────────────────────────</value>
+  </data>
+  <data name="activity.detail.duration" xml:space="preserve">
+    <value>Duur      : {0} ms</value>
+  </data>
+  <data name="activity.detail.owner.description" xml:space="preserve">
+    <value>Omschr.   : {0}</value>
+  </data>
+  <data name="activity.detail.owner.test" xml:space="preserve">
+    <value>Test      : {0}</value>
+  </data>
+  <data name="activity.detail.response" xml:space="preserve">
+    <value>── Antwoord / Fout ───────────────────────</value>
+  </data>
+  <data name="activity.detail.status" xml:space="preserve">
+    <value>Status    : {0}</value>
+  </data>
+  <data name="activity.detail.status.error" xml:space="preserve">
+    <value>FOUT</value>
+  </data>
+  <data name="activity.detail.status.ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="activity.detail.test.index" xml:space="preserve">
+    <value>Index : {0}</value>
+  </data>
+  <data name="activity.detail.test.name" xml:space="preserve">
+    <value>Test  : {0}</value>
+  </data>
+  <data name="activity.detail.time" xml:space="preserve">
+    <value>Tijd (UTC): {0}</value>
+  </data>
+  <data name="activity.detail.tool" xml:space="preserve">
+    <value>Tool      : {0}</value>
+  </data>
+  <data name="activity.jsonlog.none" xml:space="preserve">
+    <value>JSON-log: (nog geen run)</value>
+  </data>
+  <data name="activity.narration.done" xml:space="preserve">
+    <value>✓ ({0}) {1}{2}</value>
+  </data>
+  <data name="activity.narration.running" xml:space="preserve">
+    <value>▶ Wordt uitgevoerd ({0}): {1}{2}</value>
+  </data>
+  <data name="activity.next" xml:space="preserve">
+    <value>Volgende ▶</value>
+  </data>
+  <data name="activity.pending.gate" xml:space="preserve">
+    <value>⏸ Wacht bij de gate: {0}  —  controleer de status in XAE en klik op “Volgende”.</value>
+  </data>
+  <data name="activity.pending.singlestep" xml:space="preserve">
+    <value>Stap voor stap actief — wacht op de volgende aanroep…</value>
+  </data>
+  <data name="activity.report.failed" xml:space="preserve">
+    <value>Het HTML-rapport kon niet worden gemaakt of geopend:
+{0}</value>
+  </data>
+  <data name="activity.report.none" xml:space="preserve">
+    <value>(nog geen run)</value>
+  </data>
+  <data name="activity.report.norun" xml:space="preserve">
+    <value>Nog geen run — er is niets te rapporteren.</value>
+  </data>
+  <data name="activity.report.prefix" xml:space="preserve">
+    <value>HTML-rapport: </value>
+  </data>
+  <data name="activity.report.title" xml:space="preserve">
+    <value>HTML-rapport</value>
+  </data>
+  <data name="activity.runagain" xml:space="preserve">
+    <value>Opnieuw uitvoeren in Console</value>
+  </data>
+  <data name="activity.singlestep" xml:space="preserve">
+    <value>Stap voor stap (suite pauzeren)</value>
+  </data>
+  <data name="activity.stop" xml:space="preserve">
+    <value>Stoppen ■</value>
+  </data>
+  <data name="approvals.button.abort" xml:space="preserve">
+    <value>■ AFBREKEN / ALLES VRIJGEVEN</value>
+  </data>
+  <data name="approvals.button.arm" xml:space="preserve">
+    <value>Inschakelen</value>
+  </data>
+  <data name="approvals.button.deny" xml:space="preserve">
+    <value>Weigeren</value>
+  </data>
+  <data name="approvals.button.disarm" xml:space="preserve">
+    <value>Uitschakelen</value>
+  </data>
+  <data name="approvals.button.release" xml:space="preserve">
+    <value>Vrijgeven</value>
+  </data>
+  <data name="approvals.chip.armed" xml:space="preserve">
+    <value>IBN ingeschakeld — {0} s</value>
+  </data>
+  <data name="approvals.chip.pending_armed" xml:space="preserve">
+    <value>{0} · IBN ingeschakeld {1} s</value>
+  </data>
+  <data name="approvals.chip.pending_many" xml:space="preserve">
+    <value>{0} goedkeuringen in afwachting</value>
+  </data>
+  <data name="approvals.chip.pending_one" xml:space="preserve">
+    <value>1 goedkeuring in afwachting</value>
+  </data>
+  <data name="approvals.column.arguments" xml:space="preserve">
+    <value>Argumenten</value>
+  </data>
+  <data name="approvals.column.item" xml:space="preserve">
+    <value>Symbool / item</value>
+  </data>
+  <data name="approvals.column.kind" xml:space="preserve">
+    <value>Soort</value>
+  </data>
+  <data name="approvals.column.outcome" xml:space="preserve">
+    <value>Resultaat</value>
+  </data>
+  <data name="approvals.column.project" xml:space="preserve">
+    <value>Project</value>
+  </data>
+  <data name="approvals.column.request" xml:space="preserve">
+    <value>Aanvraag</value>
+  </data>
+  <data name="approvals.column.status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="approvals.column.target" xml:space="preserve">
+    <value>Doel</value>
+  </data>
+  <data name="approvals.column.time" xml:space="preserve">
+    <value>Tijd</value>
+  </data>
+  <data name="approvals.column.tool" xml:space="preserve">
+    <value>Tool</value>
+  </data>
+  <data name="approvals.column.value" xml:space="preserve">
+    <value>Waarde</value>
+  </data>
+  <data name="approvals.confirm.denied" xml:space="preserve">
+    <value>Aanvraag {0} geweigerd.</value>
+  </data>
+  <data name="approvals.confirm.deny_failed" xml:space="preserve">
+    <value>Aanvraag {0} kon niet worden geweigerd (verlopen of al beantwoord).</value>
+  </data>
+  <data name="approvals.confirm.hint" xml:space="preserve">
+    <value>De client van een wachtende agent kan u zelf niets vragen. Controleer tool, doel en argumenten en kies dan Vrijgeven: de agent herhaalt zijn aanroep met zijn token en de actie wordt één keer uitgevoerd.</value>
+  </data>
+  <data name="approvals.confirm.release_failed" xml:space="preserve">
+    <value>Aanvraag {0} kon niet worden vrijgegeven (verlopen of al beantwoord).</value>
+  </data>
+  <data name="approvals.confirm.released" xml:space="preserve">
+    <value>Aanvraag {0} vrijgegeven.</value>
+  </data>
+  <data name="approvals.group.audit" xml:space="preserve">
+    <value>IBN Live-auditlog</value>
+  </data>
+  <data name="approvals.group.confirmations" xml:space="preserve">
+    <value>Bevestigingsaanvragen</value>
+  </data>
+  <data name="approvals.group.hmi" xml:space="preserve">
+    <value>HMI-schrijfgoedkeuringen</value>
+  </data>
+  <data name="approvals.hint.arming" xml:space="preserve">
+    <value>Inschakelen gebeurt alleen hier. De MCP-client kan stappen voorstellen; elke stap opent een bevestigingsvenster en zonder uw klik beweegt er niets. Afbreken, uitschakelen en alles vrijgeven zijn altijd toegestaan.</value>
+  </data>
+  <data name="approvals.label.allowlist" xml:space="preserve">
+    <value>Toelatingslijst:</value>
+  </data>
+  <data name="approvals.label.port" xml:space="preserve">
+    <value>Poort:</value>
+  </data>
+  <data name="approvals.label.target_netid" xml:space="preserve">
+    <value>Doel-NetId:</value>
+  </data>
+  <data name="approvals.last.abort.failed" xml:space="preserve">
+    <value>AFBREKEN / ALLES VRIJGEVEN MISLUKT: {0}</value>
+  </data>
+  <data name="approvals.last.abort.ok" xml:space="preserve">
+    <value>Afbreken / alles vrijgeven gelukt.</value>
+  </data>
+  <data name="approvals.last.arm.failed" xml:space="preserve">
+    <value>Inschakelen mislukt: {0}</value>
+  </data>
+  <data name="approvals.last.arm.ok" xml:space="preserve">
+    <value>Inschakelen gelukt.</value>
+  </data>
+  <data name="approvals.last.arm.refused" xml:space="preserve">
+    <value>Inschakelen geweigerd: {0}</value>
+  </data>
+  <data name="approvals.last.disarm.failed" xml:space="preserve">
+    <value>Uitschakelen MISLUKT: {0}</value>
+  </data>
+  <data name="approvals.last.disarm.ok" xml:space="preserve">
+    <value>Uitschakelen gelukt.</value>
+  </data>
+  <data name="approvals.last.step.executed" xml:space="preserve">
+    <value>Stap {0} uitgevoerd.</value>
+  </data>
+  <data name="approvals.last.step.not_executed" xml:space="preserve">
+    <value>Stap {0} niet uitgevoerd: {1}</value>
+  </data>
+  <data name="approvals.last.step.not_rejected" xml:space="preserve">
+    <value>Stap {0} NIET afgewezen: {1}</value>
+  </data>
+  <data name="approvals.last.step.not_rejected_pending" xml:space="preserve">
+    <value>Stap {0} NIET afgewezen (nog in afwachting): {1}</value>
+  </data>
+  <data name="approvals.last.step.rejected" xml:space="preserve">
+    <value>Stap {0} afgewezen ({1}).</value>
+  </data>
+  <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
+    <value>Automatisch bevestigd</value>
+  </data>
+  <data name="approvals.outcome.confirmed" xml:space="preserve">
+    <value>Bevestigd</value>
+  </data>
+  <data name="approvals.outcome.pending" xml:space="preserve">
+    <value>In afwachting</value>
+  </data>
+  <data name="approvals.outcome.rejected" xml:space="preserve">
+    <value>Afgewezen</value>
+  </data>
+  <data name="approvals.outcome.timed_out" xml:space="preserve">
+    <value>Time-out</value>
+  </data>
+  <data name="approvals.outcome.unavailable" xml:space="preserve">
+    <value>Niet beschikbaar</value>
+  </data>
+  <data name="approvals.pending.many" xml:space="preserve">
+    <value> · {0} aanvragen wachten op uw antwoord</value>
+  </data>
+  <data name="approvals.pending.one" xml:space="preserve">
+    <value> · 1 aanvraag wacht op uw antwoord</value>
+  </data>
+  <data name="approvals.placeholder.allowlist" xml:space="preserve">
+    <value>Cyl1, Cyl2 (gescheiden door komma’s)</value>
+  </data>
+  <data name="approvals.placeholder.netid" xml:space="preserve">
+    <value>projectdoel</value>
+  </data>
+  <data name="approvals.reason.cancelled" xml:space="preserve">
+    <value>door de operator geannuleerd</value>
+  </data>
+  <data name="approvals.reason.expired" xml:space="preserve">
+    <value>bevestigingsvenster verlopen</value>
+  </data>
+  <data name="approvals.restore.not_executed" xml:space="preserve">
+    <value>Herstel {0} niet uitgevoerd: {1}</value>
+  </data>
+  <data name="approvals.restore.reason_default" xml:space="preserve">
+    <value>niet uitgevoerd</value>
+  </data>
+  <data name="approvals.restore.rejected" xml:space="preserve">
+    <value>Herstel {0} afgewezen ({1}).</value>
+  </data>
+  <data name="approvals.restore.state.confirmed" xml:space="preserve">
+    <value>bevestigd</value>
+  </data>
+  <data name="approvals.restore.state.executed" xml:space="preserve">
+    <value>uitgevoerd</value>
+  </data>
+  <data name="approvals.restore.state.expired" xml:space="preserve">
+    <value>verlopen</value>
+  </data>
+  <data name="approvals.restore.state.pending" xml:space="preserve">
+    <value>in afwachting</value>
+  </data>
+  <data name="approvals.restore.state.rejected" xml:space="preserve">
+    <value>afgewezen</value>
+  </data>
+  <data name="approvals.restore.summary.executed" xml:space="preserve">
+    <value>Herstel {0} uitgevoerd: {1} geschreven, {2} mislukt, {3} overgeslagen.</value>
+  </data>
+  <data name="approvals.restore.summary.not_executed" xml:space="preserve">
+    <value>Herstel {0} {1}: {2}</value>
+  </data>
+  <data name="approvals.state.armed" xml:space="preserve">
+    <value>INGESCHAKELD — nog {0} s · GVL {1}{2}</value>
+  </data>
+  <data name="approvals.state.denied" xml:space="preserve">
+    <value>Geweigerd</value>
+  </data>
+  <data name="approvals.state.disarmed" xml:space="preserve">
+    <value>Uitgeschakeld.</value>
+  </data>
+  <data name="approvals.state.expired" xml:space="preserve">
+    <value>Verlopen</value>
+  </data>
+  <data name="approvals.state.pending" xml:space="preserve">
+    <value>In afwachting</value>
+  </data>
+  <data name="approvals.state.released" xml:space="preserve">
+    <value>Vrijgegeven</value>
+  </data>
+  <data name="approvals.state.used" xml:space="preserve">
+    <value>Gebruikt</value>
+  </data>
+  <data name="approvals.tab.caption" xml:space="preserve">
+    <value>Goedkeuringen</value>
+  </data>
+  <data name="approvals.tab.caption_pending" xml:space="preserve">
+    <value>Goedkeuringen ({0})</value>
+  </data>
+  <data name="approvals.target.local" xml:space="preserve">
+    <value>lokaal</value>
+  </data>
+  <data name="approvals.target.unknown" xml:space="preserve">
+    <value>onbekend</value>
+  </data>
+  <data name="confirm.button.cancel" xml:space="preserve">
+    <value>Annuleren</value>
+  </data>
+  <data name="confirm.field.description" xml:space="preserve">
+    <value>Aanvinken om toe te staan; niet aanvinken of afwijzen om te weigeren.</value>
+  </data>
+  <data name="confirm.field.title" xml:space="preserve">
+    <value>Deze actie toestaan</value>
+  </data>
+  <data name="confirm.question" xml:space="preserve">
+    <value>{0} op {1}.
+Argumenten: {2}.
+Dit wijzigt een actief systeem. Toestaan? De agent wacht op uw antwoord.</value>
+  </data>
+  <data name="confirm.question.none" xml:space="preserve">
+    <value>(geen)</value>
+  </data>
+  <data name="confirm.target.another" xml:space="preserve">
+    <value>{0} (ander systeem)</value>
+  </data>
+  <data name="confirm.target.local" xml:space="preserve">
+    <value>het lokale systeem</value>
+  </data>
+  <data name="confirm.target.thismachine" xml:space="preserve">
+    <value>{0} (deze machine)</value>
+  </data>
+  <data name="confirm.target.unknown" xml:space="preserve">
+    <value>een onbekend doelsysteem</value>
+  </data>
+  <data name="connect.claudeCode" xml:space="preserve">
+    <value>Claude Code: voer dit commando uit</value>
+  </data>
+  <data name="connect.close" xml:space="preserve">
+    <value>Sluiten</value>
+  </data>
+  <data name="connect.copyCommand" xml:space="preserve">
+    <value>Commando kopiëren</value>
+  </data>
+  <data name="connect.copySnippet" xml:space="preserve">
+    <value>Snippet kopiëren</value>
+  </data>
+  <data name="connect.health.no" xml:space="preserve">
+    <value>nee</value>
+  </data>
+  <data name="connect.health.ok" xml:space="preserve">
+    <value>Server bereikbaar: status {0}, versie {1}, token vereist: {2}.</value>
+  </data>
+  <data name="connect.health.unexpected" xml:space="preserve">
+    <value>De server antwoordde, maar niet met de verwachte /health-JSON.</value>
+  </data>
+  <data name="connect.health.yes" xml:space="preserve">
+    <value>ja</value>
+  </data>
+  <data name="connect.intro" xml:space="preserve">
+    <value>De MCP-server luistert op {0}. Voeg hem toe aan uw MCP-client:</value>
+  </data>
+  <data name="connect.json" xml:space="preserve">
+    <value>Elke client: .mcp.json-snippet</value>
+  </data>
+  <data name="connect.notReachable" xml:space="preserve">
+    <value>Niet bereikbaar: {0}</value>
+  </data>
+  <data name="connect.test" xml:space="preserve">
+    <value>Verbinding testen</value>
+  </data>
+  <data name="connect.testing" xml:space="preserve">
+    <value>Bezig met testen...</value>
+  </data>
+  <data name="connect.timeout" xml:space="preserve">
+    <value>time-out na 5 s</value>
+  </data>
+  <data name="connect.title" xml:space="preserve">
+    <value>Een client verbinden</value>
+  </data>
+  <data name="connect.tokenNote" xml:space="preserve">
+    <value>Er is een toegangstoken ingesteld: vervang {0} door de waarde van PTC_XAE_MCP_TOKEN. Het token zelf wordt hier niet getoond.</value>
+  </data>
+  <data name="console.banner.incomplete" xml:space="preserve">
+    <value>De vastgelegde argumenten zijn onvolledig - controleer elk veld voordat u uitvoert. {0}.</value>
+  </data>
+  <data name="console.banner.notjson" xml:space="preserve">
+    <value>De vastgelegde argumenten zijn onvolledig - controleer elk veld voordat u uitvoert. Het is geen volledig JSON-object (mogelijk afgekapt); er worden standaardwaarden getoond.</value>
+  </data>
+  <data name="console.confirm.body" xml:space="preserve">
+    <value>'{0}' uitvoeren?
+
+{1}
+
+De aanroep loopt via hetzelfde pad als een aanroep van een AI-client.</value>
+  </data>
+  <data name="console.confirm.destructive" xml:space="preserve">
+    <value>Gemarkeerd als DESTRUCTIEF: kan project- of installatiegegevens verwijderen of overschrijven.</value>
+  </data>
+  <data name="console.confirm.notreadonly" xml:space="preserve">
+    <value>Niet als alleen-lezen gemarkeerd: kan het project, de XAE of de PLC wijzigen.</value>
+  </data>
+  <data name="console.confirm.title" xml:space="preserve">
+    <value>Toolaanroep bevestigen</value>
+  </data>
+  <data name="console.copy" xml:space="preserve">
+    <value>Kopiëren</value>
+  </data>
+  <data name="console.dialog.cancel" xml:space="preserve">
+    <value>Annuleren</value>
+  </data>
+  <data name="console.dialog.name" xml:space="preserve">
+    <value>Naam (een bestaande favoriet met deze naam wordt vervangen):</value>
+  </data>
+  <data name="console.dialog.save" xml:space="preserve">
+    <value>Opslaan</value>
+  </data>
+  <data name="console.favourite.remove" xml:space="preserve">
+    <value>Favoriet verwijderen</value>
+  </data>
+  <data name="console.favourite.save" xml:space="preserve">
+    <value>Opslaan als favoriet</value>
+  </data>
+  <data name="console.form.choose" xml:space="preserve">
+    <value>(kiezen)</value>
+  </data>
+  <data name="console.form.emptyhint" xml:space="preserve">
+    <value>Lege optionele tekstvelden worden weggelaten. Typ "" (twee dubbele aanhalingstekens) om een lege tekenreeks te verzenden.</value>
+  </data>
+  <data name="console.form.emptytip" xml:space="preserve">
+    <value>Leeg laten om weg te laten; typ "" (twee dubbele aanhalingstekens) om een lege tekenreeks te verzenden.</value>
+  </data>
+  <data name="console.form.integer" xml:space="preserve">
+    <value>geheel getal</value>
+  </data>
+  <data name="console.form.noarguments" xml:space="preserve">
+    <value>Deze tool heeft geen argumenten.</value>
+  </data>
+  <data name="console.form.number" xml:space="preserve">
+    <value>getal</value>
+  </data>
+  <data name="console.raw" xml:space="preserve">
+    <value>Ruwe JSON</value>
+  </data>
+  <data name="console.reload" xml:space="preserve">
+    <value>Opnieuw laden</value>
+  </data>
+  <data name="console.run" xml:space="preserve">
+    <value>Uitvoeren</value>
+  </data>
+  <data name="console.search.placeholder" xml:space="preserve">
+    <value>Tools zoeken...</value>
+  </data>
+  <data name="console.status.cannotrun" xml:space="preserve">
+    <value>Uitvoeren niet mogelijk: {0}</value>
+  </data>
+  <data name="console.status.clipboardbusy" xml:space="preserve">
+    <value>Het klembord wordt door een ander programma gebruikt; probeer het opnieuw.</value>
+  </data>
+  <data name="console.status.copied" xml:space="preserve">
+    <value>Naar het klembord gekopieerd.</value>
+  </data>
+  <data name="console.status.favremoved" xml:space="preserve">
+    <value>Favoriet '{0}' verwijderd.</value>
+  </data>
+  <data name="console.status.favremovefailed" xml:space="preserve">
+    <value>'{0}' is voorlopig verwijderd, maar {1} kon niet worden geschreven; het kan na een herstart terugkomen.</value>
+  </data>
+  <data name="console.status.favsaved" xml:space="preserve">
+    <value>Favoriet '{0}' opgeslagen.</value>
+  </data>
+  <data name="console.status.favsavefailed" xml:space="preserve">
+    <value>Favoriet '{0}' blijft alleen bewaard tot de app wordt gesloten: {1} kon niet worden geschreven.</value>
+  </data>
+  <data name="console.status.loaded" xml:space="preserve">
+    <value>{0} tools geladen.</value>
+  </data>
+  <data name="console.status.loading" xml:space="preserve">
+    <value>Tools laden...</value>
+  </data>
+  <data name="console.status.ok" xml:space="preserve">
+    <value>OK - {0}</value>
+  </data>
+  <data name="console.status.outcomeunknown" xml:space="preserve">
+    <value>Resultaat onbekend na {0} - de tool kan zijn uitgevoerd; controleer de weergave Activiteit voordat u het opnieuw probeert.</value>
+  </data>
+  <data name="console.status.running" xml:space="preserve">
+    <value>{0} wordt uitgevoerd...</value>
+  </data>
+  <data name="console.status.toolerror" xml:space="preserve">
+    <value>De tool meldde een fout - {0}</value>
+  </data>
+  <data name="console.status.unexpected" xml:space="preserve">
+    <value>Onverwachte fout: {0}</value>
+  </data>
+  <data name="console.tool.notloaded" xml:space="preserve">
+    <value>Toollijst niet geladen.</value>
+  </data>
+  <data name="console.tool.notoffered" xml:space="preserve">
+    <value>Deze tool wordt niet (meer) door de server aangeboden.</value>
+  </data>
+  <data name="console.tool.placeholder" xml:space="preserve">
+    <value>Kies links een tool</value>
+  </data>
+  <data name="console.tree.favourites" xml:space="preserve">
+    <value>Favorieten ({0})</value>
+  </data>
+  <data name="hmiconfirm.button.execute" xml:space="preserve">
+    <value>Uitvoeren</value>
+  </data>
+  <data name="hmiconfirm.countdown" xml:space="preserve">
+    <value>Er wordt niets geschreven zonder bevestiging — verloopt over {0} s.</value>
+  </data>
+  <data name="hmiconfirm.details.current" xml:space="preserve">
+    <value>Huidig</value>
+  </data>
+  <data name="hmiconfirm.details.directory" xml:space="preserve">
+    <value>Map</value>
+  </data>
+  <data name="hmiconfirm.details.domain" xml:space="preserve">
+    <value>Domein</value>
+  </data>
+  <data name="hmiconfirm.details.new" xml:space="preserve">
+    <value>Nieuw</value>
+  </data>
+  <data name="hmiconfirm.details.project" xml:space="preserve">
+    <value>HMI-project</value>
+  </data>
+  <data name="hmiconfirm.effect.plc" xml:space="preserve">
+    <value>⚠ Schrijft via de HMI-server naar de actieve PLC.</value>
+  </data>
+  <data name="hmiconfirm.effect.server" xml:space="preserve">
+    <value>Wijzigt de serverconfiguratie van het HMI-project (geen PLC-toegang).</value>
+  </data>
+  <data name="hmiconfirm.headline.addinternalsymbol" xml:space="preserve">
+    <value>MCP wil een client-intern symbool (%i%) aan het HMI-project toevoegen</value>
+  </data>
+  <data name="hmiconfirm.headline.additem" xml:space="preserve">
+    <value>MCP wil een bestand in het HMI-project aanmaken</value>
+  </data>
+  <data name="hmiconfirm.headline.applybundle" xml:space="preserve">
+    <value>MCP wil een bundel bestanden naar het HMI-project schrijven</value>
+  </data>
+  <data name="hmiconfirm.headline.attachtmcfile" xml:space="preserve">
+    <value>MCP wil een TMC-bestand aan een ADS-runtime koppelen (symbolen zonder PLC)</value>
+  </data>
+  <data name="hmiconfirm.headline.createprojectdatatype" xml:space="preserve">
+    <value>MCP wil projectdatatypes (uit een PLC-type van een TMC-bestand) toevoegen aan Properties/tchmi.project.Schema.json</value>
+  </data>
+  <data name="hmiconfirm.headline.default" xml:space="preserve">
+    <value>MCP wil een waarde via de HMI-server schrijven</value>
+  </data>
+  <data name="hmiconfirm.headline.deleteitem" xml:space="preserve">
+    <value>MCP wil uit het HMI-project VERWIJDEREN (ook van schijf)</value>
+  </data>
+  <data name="hmiconfirm.headline.detachtmcfile" xml:space="preserve">
+    <value>MCP wil het TMC-bestand van een ADS-runtime loskoppelen (terug naar de ADS-upload)</value>
+  </data>
+  <data name="hmiconfirm.headline.disableruntimetmc" xml:space="preserve">
+    <value>MCP wil dat deze ADS-runtime zijn symbolen weer uit de PLC uploadt (TMC-bestand uit)</value>
+  </data>
+  <data name="hmiconfirm.headline.enableruntimetmc" xml:space="preserve">
+    <value>MCP wil dat de HMI-server de PLC-symbolen van deze ADS-runtime uit een TMC-bestand aanbiedt (geen PLC-verbinding)</value>
+  </data>
+  <data name="hmiconfirm.headline.importfile" xml:space="preserve">
+    <value>MCP wil een bestand in het HMI-project importeren</value>
+  </data>
+  <data name="hmiconfirm.headline.mapofflinesymbol" xml:space="preserve">
+    <value>MCP wil een serversymbool in de HMI-server aanmaken (domein TcHmiSrv)</value>
+  </data>
+  <data name="hmiconfirm.headline.mapsymbol" xml:space="preserve">
+    <value>MCP wil een symbool in de HMI koppelen</value>
+  </data>
+  <data name="hmiconfirm.headline.publish" xml:space="preserve">
+    <value>MCP wil dit HMI-project naar een TF2000-server PUBLICEREN (vervangt het project dat daar draait)</value>
+  </data>
+  <data name="hmiconfirm.headline.removeinternalsymbol" xml:space="preserve">
+    <value>MCP wil een client-intern symbool (%i%) uit het HMI-project verwijderen</value>
+  </data>
+  <data name="hmiconfirm.headline.switchmappingtoplc" xml:space="preserve">
+    <value>MCP wil HMI-koppelingen van een TMC-bestand naar een echte PLC omschakelen (dezelfde gekoppelde namen, domein ADS)</value>
+  </data>
+  <data name="hmiconfirm.headline.unmapsymbol" xml:space="preserve">
+    <value>MCP wil een symboolkoppeling verwijderen</value>
+  </data>
+  <data name="hmiconfirm.headline.writefile" xml:space="preserve">
+    <value>MCP wil een bestand in het HMI-project wijzigen</value>
+  </data>
+  <data name="hmiconfirm.subject.datatype" xml:space="preserve">
+    <value>Datatype</value>
+  </data>
+  <data name="hmiconfirm.subject.internal" xml:space="preserve">
+    <value>%i%-symbool</value>
+  </data>
+  <data name="hmiconfirm.subject.mappings" xml:space="preserve">
+    <value>Koppelingen</value>
+  </data>
+  <data name="hmiconfirm.subject.runtime" xml:space="preserve">
+    <value>ADS-runtime</value>
+  </data>
+  <data name="hmiconfirm.subject.symbol" xml:space="preserve">
+    <value>Symbool</value>
+  </data>
+  <data name="hmiconfirm.subject.target" xml:space="preserve">
+    <value>Doel</value>
+  </data>
+  <data name="hmiconfirm.title" xml:space="preserve">
+    <value>TwinCAT HMI — wijziging bevestigen</value>
+  </data>
+  <data name="hmiconfirm.value.unknown" xml:space="preserve">
+    <value>(onbekend)</value>
+  </data>
+  <data name="ibnconfirm.button.execute" xml:space="preserve">
+    <value>Stap uitvoeren</value>
+  </data>
+  <data name="ibnconfirm.countdown" xml:space="preserve">
+    <value>Er beweegt niets zonder uw bevestiging — dit voorstel verloopt over {0} s.</value>
+  </data>
+  <data name="ibnconfirm.details.action" xml:space="preserve">
+    <value>Actie</value>
+  </data>
+  <data name="ibnconfirm.details.actuator" xml:space="preserve">
+    <value>Actuator</value>
+  </data>
+  <data name="ibnconfirm.details.chain" xml:space="preserve">
+    <value>Keten</value>
+  </data>
+  <data name="ibnconfirm.details.proposal" xml:space="preserve">
+    <value>Voorstel</value>
+  </data>
+  <data name="ibnconfirm.details.requested" xml:space="preserve">
+    <value>Aangevraagd</value>
+  </data>
+  <data name="ibnconfirm.effect" xml:space="preserve">
+    <value>⚠ Uitvoeren schrijft ÉÉN commandobit (bStepReq) naar de test-PRG — de machine kan BEWEGEN. Annuleren, Esc of het sluiten van dit venster schrijft niets.</value>
+  </data>
+  <data name="ibnconfirm.headline" xml:space="preserve">
+    <value>De MCP-client stelt een inbedrijfstellingsstap voor</value>
+  </data>
+  <data name="ibnconfirm.title" xml:space="preserve">
+    <value>IBN Live — stap bevestigen</value>
+  </data>
+  <data name="main.approvals.chip.tooltip" xml:space="preserve">
+    <value>De weergave Goedkeuringen openen</value>
+  </data>
+  <data name="main.button.menu" xml:space="preserve">
+    <value>Menu ▾</value>
+  </data>
+  <data name="main.button.stop" xml:space="preserve">
+    <value>Stoppen</value>
+  </data>
+  <data name="main.closexae.confirm" xml:space="preserve">
+    <value>De TwinCAT XAE-instantie nu sluiten?
+
+Gebruik dit alleen als de XAE vastloopt. Niet-opgeslagen wijzigingen in de XAE gaan verloren.</value>
+  </data>
+  <data name="main.closexae.done" xml:space="preserve">
+    <value>XAE-herstel uitgevoerd</value>
+  </data>
+  <data name="main.closexae.failed" xml:space="preserve">
+    <value>XAE-herstel mislukt</value>
+  </data>
+  <data name="main.closexae.title" xml:space="preserve">
+    <value>XAE-instantie sluiten (herstel)</value>
+  </data>
+  <data name="main.error.openlogfolder" xml:space="preserve">
+    <value>De logmap kon niet worden geopend:
+{0}
+
+{1}</value>
+  </data>
+  <data name="main.error.openurl" xml:space="preserve">
+    <value>{0} kon niet worden geopend:
+{1}</value>
+  </data>
+  <data name="main.mcperror.title" xml:space="preserve">
+    <value>MCP-fout</value>
+  </data>
+  <data name="main.openlink.title" xml:space="preserve">
+    <value>Koppeling openen</value>
+  </data>
+  <data name="main.openlogfolder.title" xml:space="preserve">
+    <value>Logmap openen</value>
+  </data>
+  <data name="main.policy.savefailed" xml:space="preserve">
+    <value>Het toegangsbeleid kon niet worden opgeslagen in {0}:
+{1}
+
+Het vorige beleid blijft van kracht.</value>
+  </data>
+  <data name="main.policy.title" xml:space="preserve">
+    <value>Toegangsbeleid</value>
+  </data>
+  <data name="main.runstate.busy" xml:space="preserve">
+    <value>Bezig: een TwinCAT-bewerking wordt uitgevoerd.</value>
+  </data>
+  <data name="main.runstate.cancelrequested" xml:space="preserve">
+    <value>Annulering aangevraagd.</value>
+  </data>
+  <data name="main.runstate.checkingupdates" xml:space="preserve">
+    <value>Op github.com naar een nieuwere release zoeken...</value>
+  </data>
+  <data name="main.runstate.copyingsample" xml:space="preserve">
+    <value>Voorbeeldproject kopiëren...</value>
+  </data>
+  <data name="main.runstate.nothingtostop" xml:space="preserve">
+    <value>Er is niets om te stoppen.</value>
+  </data>
+  <data name="main.runstate.openingsample" xml:space="preserve">
+    <value>Voorbeeldproject openen...</value>
+  </data>
+  <data name="main.runstate.samplenotopened" xml:space="preserve">
+    <value>Voorbeeldproject niet geopend.</value>
+  </data>
+  <data name="main.runstate.sampleopened" xml:space="preserve">
+    <value>Voorbeeldproject geopend.</value>
+  </data>
+  <data name="main.runstate.updateavailable" xml:space="preserve">
+    <value>Update beschikbaar: {0} (Menu &gt; Update beschikbaar).</value>
+  </data>
+  <data name="main.runstate.updatecheckfailed" xml:space="preserve">
+    <value>Updatecontrole mislukt; zie het runlog.</value>
+  </data>
+  <data name="main.runstate.uptodate" xml:space="preserve">
+    <value>Up-to-date.</value>
+  </data>
+  <data name="main.sample.closeconfirm" xml:space="preserve">
+    <value>In de TwinCAT XAE is een oplossing geopend. Zonder opslaan sluiten en het voorbeeldproject openen?</value>
+  </data>
+  <data name="main.sample.copyfailed" xml:space="preserve">
+    <value>Het voorbeeldproject kon niet worden gekopieerd naar
+{0}
+
+{1}</value>
+  </data>
+  <data name="main.sample.missing" xml:space="preserve">
+    <value>Het voorbeeldproject maakt geen deel uit van deze installatie:
+{0}</value>
+  </data>
+  <data name="main.sample.title" xml:space="preserve">
+    <value>Voorbeeldproject openen</value>
+  </data>
+  <data name="main.security.notresolved" xml:space="preserve">
+    <value>Beveiligingsdialoog niet afgehandeld</value>
+  </data>
+  <data name="main.security.resolved" xml:space="preserve">
+    <value>Beveiligingsdialoog afgehandeld</value>
+  </data>
+  <data name="main.stop.tooltip" xml:space="preserve">
+    <value>Het lopende toepassen van het schema annuleren (gelijk aan twincat_stop).</value>
+  </data>
+  <data name="main.tab.activity" xml:space="preserve">
+    <value>Activiteit</value>
+  </data>
+  <data name="main.tab.console" xml:space="preserve">
+    <value>Console</value>
+  </data>
+  <data name="main.theme.dark" xml:space="preserve">
+    <value>Donker</value>
+  </data>
+  <data name="main.theme.light" xml:space="preserve">
+    <value>Licht</value>
+  </data>
+  <data name="main.theme.tooltip.dark" xml:space="preserve">
+    <value>Naar het donkere thema schakelen</value>
+  </data>
+  <data name="main.theme.tooltip.light" xml:space="preserve">
+    <value>Naar het lichte thema schakelen</value>
+  </data>
+  <data name="main.title.engineer" xml:space="preserve">
+    <value>{0} — ENGINEER (geen runtime-acties)</value>
+  </data>
+  <data name="main.title.readonly" xml:space="preserve">
+    <value>{0} — ALLEEN LEZEN</value>
+  </data>
+  <data name="main.updates.openpage" xml:space="preserve">
+    <value>De releasepagina openen? Deze app downloadt niets.</value>
+  </data>
+  <data name="main.updates.title" xml:space="preserve">
+    <value>Op updates controleren</value>
+  </data>
+  <data name="menu.checkupdates" xml:space="preserve">
+    <value>Op updates controleren…</value>
+  </data>
+  <data name="menu.closexae" xml:space="preserve">
+    <value>XAE-instantie sluiten (herstel)…</value>
+  </data>
+  <data name="menu.connectclient" xml:space="preserve">
+    <value>Een client verbinden…</value>
+  </data>
+  <data name="menu.dismisssecurity" xml:space="preserve">
+    <value>Beveiligingsdialoog sluiten</value>
+  </data>
+  <data name="menu.openlogfolder" xml:space="preserve">
+    <value>Logmap openen</value>
+  </data>
+  <data name="menu.opensample" xml:space="preserve">
+    <value>Voorbeeldproject openen</value>
+  </data>
+  <data name="menu.refresh" xml:space="preserve">
+    <value>Status vernieuwen</value>
+  </data>
+  <data name="menu.settings" xml:space="preserve">
+    <value>Instellingen…</value>
+  </data>
+  <data name="menu.toggletheme" xml:space="preserve">
+    <value>Licht / donker thema</value>
+  </data>
+  <data name="menu.updateavailable" xml:space="preserve">
+    <value>Update beschikbaar: {0}…</value>
+  </data>
+  <data name="prompt.notGiven" xml:space="preserve">
+    <value>(niet opgegeven)</value>
+  </data>
+  <data name="restoreconfirm.button.restore" xml:space="preserve">
+    <value>Waarden herstellen</value>
+  </data>
+  <data name="restoreconfirm.countdown" xml:space="preserve">
+    <value>Er wordt niets geschreven zonder uw bevestiging — dit voorstel verloopt over {0} s.</value>
+  </data>
+  <data name="restoreconfirm.details.proposal" xml:space="preserve">
+    <value>Voorstel</value>
+  </data>
+  <data name="restoreconfirm.details.requested" xml:space="preserve">
+    <value>Aangevraagd</value>
+  </data>
+  <data name="restoreconfirm.details.snapshot" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="restoreconfirm.details.taken" xml:space="preserve">
+    <value>Gemaakt</value>
+  </data>
+  <data name="restoreconfirm.details.taken.value" xml:space="preserve">
+    <value>{0} (UTC)</value>
+  </data>
+  <data name="restoreconfirm.details.target" xml:space="preserve">
+    <value>Doel</value>
+  </data>
+  <data name="restoreconfirm.details.towrite" xml:space="preserve">
+    <value>Te schrijven</value>
+  </data>
+  <data name="restoreconfirm.details.towrite.value" xml:space="preserve">
+    <value>{0} bladwaarden ({1} al gelijk, {2} overgeslagen)</value>
+  </data>
+  <data name="restoreconfirm.differences" xml:space="preserve">
+    <value>Verschillen (PLC nu -&gt; snapshot):</value>
+  </data>
+  <data name="restoreconfirm.effect" xml:space="preserve">
+    <value>⚠ Herstellen overschrijft actieve PLC-waarden. Annuleren, Esc of het sluiten van dit venster schrijft niets. Na uw bevestiging wordt de PLC nog eenmaal gecontroleerd; is de PLC sinds de beoordeling gewijzigd, dan wordt er niets geschreven.</value>
+  </data>
+  <data name="restoreconfirm.headline" xml:space="preserve">
+    <value>De MCP-client stelt voor een snapshot in de PLC te herstellen</value>
+  </data>
+  <data name="restoreconfirm.more" xml:space="preserve">
+    <value>  ... en nog {0}</value>
+  </data>
+  <data name="restoreconfirm.skipped" xml:space="preserve">
+    <value>Overgeslagen ({0}):</value>
+  </data>
+  <data name="restoreconfirm.state.other" xml:space="preserve">
+    <value>PLC-status: {0}</value>
+  </data>
+  <data name="restoreconfirm.state.run" xml:space="preserve">
+    <value>PLC-status: RUN — waarden worden geschreven terwijl het programma draait en kunnen erdoor worden overschreven</value>
+  </data>
+  <data name="restoreconfirm.title" xml:space="preserve">
+    <value>Persistente snapshot — herstel bevestigen</value>
+  </data>
+  <data name="sample.missing" xml:space="preserve">
+    <value>Het voorbeeldproject ontbreekt: {0}</value>
+  </data>
+  <data name="sample.noSolution" xml:space="preserve">
+    <value>De voorbeeldkopie bevat geen {0}.</value>
+  </data>
+  <data name="settings.access.allowed" xml:space="preserve">
+    <value>Toegestane NetIds</value>
+  </data>
+  <data name="settings.access.allowed.note" xml:space="preserve">
+    <value>Indien ingesteld, alleen runtime-acties op deze systemen. Leeg = geen toelatingslijst.</value>
+  </data>
+  <data name="settings.access.blocked" xml:space="preserve">
+    <value>Geblokkeerde NetIds</value>
+  </data>
+  <data name="settings.access.blocked.note" xml:space="preserve">
+    <value>Geen runtime-acties op deze systemen; lezen blijft toegestaan. Scheiden met ';'. 'local' = deze pc en zijn User Mode Runtimes.</value>
+  </data>
+  <data name="settings.access.confirm" xml:space="preserve">
+    <value>Bevestiging door een mens</value>
+  </data>
+  <data name="settings.access.confirm.note" xml:space="preserve">
+    <value>Een client die MCP-elicitation ondersteunt, vraagt de mens in zijn eigen venster; elke andere client krijgt een token dat u hier op het tabblad Goedkeuringen vrijgeeft. Het strengste van deze instelling en de omgeving geldt.</value>
+  </data>
+  <data name="settings.access.envPolicy" xml:space="preserve">
+    <value>De omgeving stelt {0} in; het strengste van beide geldt.</value>
+  </data>
+  <data name="settings.access.heading" xml:space="preserve">
+    <value>MCP-toegang. Wordt opgeslagen wanneer u op OK klikt en direct toegepast; verbonden clients krijgen de opdracht hun toollijst opnieuw te laden.</value>
+  </data>
+  <data name="settings.access.level" xml:space="preserve">
+    <value>Toegangsniveau</value>
+  </data>
+  <data name="settings.access.level.engineer" xml:space="preserve">
+    <value>engineer — wijzigt ook het project (geen activeren, login, ADS-schrijven)</value>
+  </data>
+  <data name="settings.access.level.read" xml:space="preserve">
+    <value>read — alleen tools die niets wijzigen</value>
+  </data>
+  <data name="settings.access.level.runtime" xml:space="preserve">
+    <value>runtime — wijzigt ook doelsystemen</value>
+  </data>
+  <data name="settings.access.profile" xml:space="preserve">
+    <value>Toolprofiel</value>
+  </data>
+  <data name="settings.access.profileEnv" xml:space="preserve">
+    <value>{0}={1} is ingesteld en heeft voorrang op deze keuze.</value>
+  </data>
+  <data name="settings.access.writeAllow" xml:space="preserve">
+    <value>Toegestane schrijfacties op variabelen</value>
+  </data>
+  <data name="settings.access.writeAllow.note" xml:space="preserve">
+    <value>Indien ingesteld, bereiken ADS- en HMI-schrijfacties en een snapshot-herstel alleen overeenkomende symbolen, bijv. MAIN.stTest.*; GVL_Param.r*. '*' is willekeurige tekst, '?' één teken, hoofdletters worden genegeerd. Leeg = geen lijst (alle symbolen).</value>
+  </data>
+  <data name="settings.access.writeDeny" xml:space="preserve">
+    <value>Geweigerde schrijfacties op variabelen</value>
+  </data>
+  <data name="settings.access.writeDeny.note" xml:space="preserve">
+    <value>Nooit geschreven, wat de toegestane lijst ook zegt, bijv. *.bEmergency*; GVL_Safety.*.</value>
+  </data>
+  <data name="settings.button.cancel" xml:space="preserve">
+    <value>Annuleren</value>
+  </data>
+  <data name="settings.button.ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="settings.confirm.all" xml:space="preserve">
+    <value>all — ook activeren, herstarten, stoppen en moduswissels op deze machine</value>
+  </data>
+  <data name="settings.confirm.default" xml:space="preserve">
+    <value>standaard — remote</value>
+  </data>
+  <data name="settings.confirm.off" xml:space="preserve">
+    <value>off — niemand wordt gevraagd</value>
+  </data>
+  <data name="settings.confirm.remote" xml:space="preserve">
+    <value>remote — een mens bevestigt activeren, herstarten, stoppen, ADS-schrijven en login op andere systemen</value>
+  </data>
+  <data name="settings.grid.howto" xml:space="preserve">
+    <value>Ingesteld via</value>
+  </data>
+  <data name="settings.grid.setting" xml:space="preserve">
+    <value>Instelling</value>
+  </data>
+  <data name="settings.grid.value" xml:space="preserve">
+    <value>Waarde</value>
+  </data>
+  <data name="settings.how.accessLevelEnv" xml:space="preserve">
+    <value>{0} (read, engineer, runtime; het strengste van deze en de keuze hierboven geldt)</value>
+  </data>
+  <data name="settings.how.confirmEnv" xml:space="preserve">
+    <value>{0} (off, remote, all; het strengste van deze en de keuze hierboven geldt)</value>
+  </data>
+  <data name="settings.how.diagnostics" xml:space="preserve">
+    <value>Starten met --diagnostics of {0}=1</value>
+  </data>
+  <data name="settings.how.env" xml:space="preserve">
+    <value>Omgevingsvariabele {0}</value>
+  </data>
+  <data name="settings.how.port" xml:space="preserve">
+    <value>Vast (alleen http://localhost)</value>
+  </data>
+  <data name="settings.how.toolProfileOverride" xml:space="preserve">
+    <value>{0} (all, core of toolsets zoals plc,hmi)</value>
+  </data>
+  <data name="settings.how.updateCheck" xml:space="preserve">
+    <value>Selectievakje hierboven; {0}=0 of het machinebeleid HKLM\{1}\{2}=1 schakelt het uit</value>
+  </data>
+  <data name="settings.how.writeAllowEnv" xml:space="preserve">
+    <value>{0} (symboolpatronen, bijv. MAIN.stTest.*; de lijsten van beide bronnen worden doorsneden)</value>
+  </data>
+  <data name="settings.language.envOverride" xml:space="preserve">
+    <value>{0}={1} is ingesteld en heeft voorrang op deze keuze.</value>
+  </data>
+  <data name="settings.language.label" xml:space="preserve">
+    <value>Taal</value>
+  </data>
+  <data name="settings.language.note" xml:space="preserve">
+    <value>Taal van het venster, zijn dialogen en de prompts. Toolresultaten en foutmeldingen blijven Engels. Wordt toegepast wanneer u op OK klikt.</value>
+  </data>
+  <data name="settings.language.unreviewed" xml:space="preserve">
+    <value>{0} (vertaling nog niet gecontroleerd)</value>
+  </data>
+  <data name="settings.profile.automatic" xml:space="preserve">
+    <value>Automatisch (per client: Claude all, Cursor/VS Code/Windsurf/Hermes core)</value>
+  </data>
+  <data name="settings.remember" xml:space="preserve">
+    <value>Vensterpositie en -grootte onthouden</value>
+  </data>
+  <data name="settings.row.accessLevelEnv" xml:space="preserve">
+    <value>Toegangsniveau (omgeving)</value>
+  </data>
+  <data name="settings.row.allowedEnv" xml:space="preserve">
+    <value>Toegestane NetIds (omgeving)</value>
+  </data>
+  <data name="settings.row.allowedPaths" xml:space="preserve">
+    <value>Toegestane paden</value>
+  </data>
+  <data name="settings.row.blockedEnv" xml:space="preserve">
+    <value>Geblokkeerde NetIds (omgeving)</value>
+  </data>
+  <data name="settings.row.confirmEnv" xml:space="preserve">
+    <value>Bevestiging door een mens (omgeving)</value>
+  </data>
+  <data name="settings.row.diagnostics" xml:space="preserve">
+    <value>Diagnosetools</value>
+  </data>
+  <data name="settings.row.hmiAutoConfirm" xml:space="preserve">
+    <value>HMI-schrijfacties automatisch bevestigen (TEMP-fixtures)</value>
+  </data>
+  <data name="settings.row.keepDays" xml:space="preserve">
+    <value>Logs bewaren: dagen</value>
+  </data>
+  <data name="settings.row.keepRuns" xml:space="preserve">
+    <value>Logs bewaren: runs</value>
+  </data>
+  <data name="settings.row.language" xml:space="preserve">
+    <value>Taal</value>
+  </data>
+  <data name="settings.row.language.how" xml:space="preserve">
+    <value>De lijst hierboven; omgevingsvariabele {0} ({1}) heeft er voorrang op</value>
+  </data>
+  <data name="settings.row.language.ignored" xml:space="preserve">
+    <value>{0}='{1}' is geen taal van deze versie en wordt genegeerd (Engels wordt gebruikt)</value>
+  </data>
+  <data name="settings.row.port" xml:space="preserve">
+    <value>Poort</value>
+  </data>
+  <data name="settings.row.reportsMirror" xml:space="preserve">
+    <value>Rapporten naar de repo spiegelen</value>
+  </data>
+  <data name="settings.row.safetyPrefixes" xml:space="preserve">
+    <value>Voorvoegsels van safetysignalen</value>
+  </data>
+  <data name="settings.row.token" xml:space="preserve">
+    <value>Toegangstoken</value>
+  </data>
+  <data name="settings.row.toolProfileOverride" xml:space="preserve">
+    <value>Overschrijving van het toolprofiel</value>
+  </data>
+  <data name="settings.row.updateCheck" xml:space="preserve">
+    <value>Updatecontrole bij het starten</value>
+  </data>
+  <data name="settings.row.writeAllowEnv" xml:space="preserve">
+    <value>Toegestane schrijfacties op variabelen (omgeving)</value>
+  </data>
+  <data name="settings.row.writeDenyEnv" xml:space="preserve">
+    <value>Geweigerde schrijfacties op variabelen (omgeving)</value>
+  </data>
+  <data name="settings.serverCaption" xml:space="preserve">
+    <value>Serverinstellingen (alleen-lezen). Ze worden eenmalig bij het starten gelezen: stel de omgevingsvariabele in en start de app daarna opnieuw.</value>
+  </data>
+  <data name="settings.theme" xml:space="preserve">
+    <value>Thema</value>
+  </data>
+  <data name="settings.theme.dark" xml:space="preserve">
+    <value>Donker</value>
+  </data>
+  <data name="settings.theme.light" xml:space="preserve">
+    <value>Licht</value>
+  </data>
+  <data name="settings.title" xml:space="preserve">
+    <value>Instellingen</value>
+  </data>
+  <data name="settings.updates.check" xml:space="preserve">
+    <value>Bij het starten op een nieuwe release controleren (één verzoek aan github.com, er wordt niets gedownload)</value>
+  </data>
+  <data name="settings.value.allowedPaths.none" xml:space="preserve">
+    <value>(geen: geopende oplossing, %TEMP%, logmap, TwinCAT-installatie)</value>
+  </data>
+  <data name="settings.value.default" xml:space="preserve">
+    <value>{0} (standaard)</value>
+  </data>
+  <data name="settings.value.none" xml:space="preserve">
+    <value>(geen)</value>
+  </data>
+  <data name="settings.value.notSet" xml:space="preserve">
+    <value>niet ingesteld</value>
+  </data>
+  <data name="settings.value.off" xml:space="preserve">
+    <value>uit</value>
+  </data>
+  <data name="settings.value.on" xml:space="preserve">
+    <value>aan</value>
+  </data>
+  <data name="settings.value.set" xml:space="preserve">
+    <value>ingesteld</value>
+  </data>
+  <data name="settings.value.toolProfileOverride.none" xml:space="preserve">
+    <value>(geen: de keuze hierboven)</value>
+  </data>
+  <data name="status.mcp.active" xml:space="preserve">
+    <value>MCP :{0}{1}</value>
+  </data>
+  <data name="status.mcp.clients.many" xml:space="preserve">
+    <value> — {0} clients ({1} +{2})</value>
+  </data>
+  <data name="status.mcp.clients.none" xml:space="preserve">
+    <value> — 0 clients</value>
+  </data>
+  <data name="status.mcp.clients.one" xml:space="preserve">
+    <value> — 1 client ({0})</value>
+  </data>
+  <data name="status.mcp.inactive" xml:space="preserve">
+    <value>MCP: niet actief</value>
+  </data>
+  <data name="status.project.notchecked" xml:space="preserve">
+    <value>Project: niet gecontroleerd</value>
+  </data>
+  <data name="status.project.noxae.tip" xml:space="preserve">
+    <value>Geen TwinCAT XAE-instantie, dus geen project.</value>
+  </data>
+  <data name="status.project.probe.tip" xml:space="preserve">
+    <value>TwinCAT-projectcontrole: {0}</value>
+  </data>
+  <data name="status.project.unavailable" xml:space="preserve">
+    <value>Project: niet beschikbaar</value>
+  </data>
+  <data name="status.project.value" xml:space="preserve">
+    <value>Project: {0}</value>
+  </data>
+  <data name="status.xae.active" xml:space="preserve">
+    <value>XAE: actief</value>
+  </data>
+  <data name="status.xae.active.tip" xml:space="preserve">
+    <value>TwinCAT XAE-instantie: actief</value>
+  </data>
+  <data name="status.xae.inactive" xml:space="preserve">
+    <value>XAE: niet actief</value>
+  </data>
+  <data name="status.xae.inactive.tip" xml:space="preserve">
+    <value>Geen actieve TwinCAT XAE-instantie.</value>
+  </data>
+  <data name="status.xae.notchecked" xml:space="preserve">
+    <value>XAE: niet gecontroleerd</value>
+  </data>
+  <data name="toolconsole.client.cancelledaftersend" xml:space="preserve">
+    <value>Geannuleerd, time-out of gesloten nadat het verzoek is verzonden - de tool draait mogelijk nog of is mogelijk uitgevoerd. Controleer de weergave Activiteit voordat u het opnieuw probeert.</value>
+  </data>
+  <data name="toolconsole.client.cancelledbeforesend" xml:space="preserve">
+    <value>Geannuleerd voordat het verzoek is verzonden.</value>
+  </data>
+  <data name="toolconsole.client.closed" xml:space="preserve">
+    <value>De console is gesloten.</value>
+  </data>
+  <data name="toolconsole.client.notreachable" xml:space="preserve">
+    <value>De MCP-server op {0} is niet bereikbaar ({1}). Mogelijk start hij nog op; probeer het opnieuw.</value>
+  </data>
+  <data name="toolconsole.client.outcomeunknown" xml:space="preserve">
+    <value>Resultaat onbekend - de tool is mogelijk uitgevoerd ({0}). Controleer de weergave Activiteit voordat u het opnieuw probeert.</value>
+  </data>
+  <data name="toolconsole.error.invalidjson" xml:space="preserve">
+    <value>{0}: ongeldige JSON ({1})</value>
+  </data>
+  <data name="toolconsole.error.notinteger" xml:space="preserve">
+    <value>{0}: '{1}' is geen geheel getal</value>
+  </data>
+  <data name="toolconsole.error.notnumber" xml:space="preserve">
+    <value>{0}: '{1}' is geen getal</value>
+  </data>
+  <data name="toolconsole.error.required" xml:space="preserve">
+    <value>{0}: verplicht</value>
+  </data>
+  <data name="toolconsole.group.approvals" xml:space="preserve">
+    <value>Goedkeuringen</value>
+  </data>
+  <data name="toolconsole.group.diagnostics" xml:space="preserve">
+    <value>Diagnose</value>
+  </data>
+  <data name="toolconsole.group.general" xml:space="preserve">
+    <value>Algemeen</value>
+  </data>
+  <data name="toolconsole.group.safety" xml:space="preserve">
+    <value>Safety</value>
+  </data>
+  <data name="toolconsole.preset.buildplc" xml:space="preserve">
+    <value>Aan de slag: PLC bouwen</value>
+  </data>
+  <data name="toolconsole.preset.corrupt" xml:space="preserve">
+    <value>presets.json was beschadigd en is opzijgezet (presets.json.corrupt-*); de standaardwaarden zijn terug.</value>
+  </data>
+  <data name="toolconsole.preset.errorlist" xml:space="preserve">
+    <value>Aan de slag: foutenlijst</value>
+  </data>
+  <data name="toolconsole.preset.listplc" xml:space="preserve">
+    <value>Aan de slag: PLC-objecten weergeven</value>
+  </data>
+  <data name="toolconsole.preset.openproject" xml:space="preserve">
+    <value>Aan de slag: project openen</value>
+  </data>
+  <data name="toolconsole.preset.status" xml:space="preserve">
+    <value>Aan de slag: status</value>
+  </data>
+  <data name="toolconsole.preset.unreadable" xml:space="preserve">
+    <value>presets.json kon niet worden gelezen ({0}); de standaardwaarden worden getoond. Het bestand is ongemoeid gelaten en favorieten kunnen niet worden opgeslagen totdat het leesbaar is (klik op Opnieuw laden).</value>
+  </data>
+  <data name="toolconsole.warning.noarguments" xml:space="preserve">
+    <value>er zijn geen argumenten vastgelegd</value>
+  </data>
+  <data name="toolconsole.warning.notachoice" xml:space="preserve">
+    <value>'{0}': vastgelegde waarde {1} is geen van [{2}]; niet geselecteerd gelaten</value>
+  </data>
+  <data name="toolconsole.warning.requirednotrecorded" xml:space="preserve">
+    <value>verplicht '{0}' is niet vastgelegd</value>
+  </data>
+  <data name="toolconsole.warning.unknownkeys" xml:space="preserve">
+    <value>niet in het schema van de tool, genegeerd: {0}</value>
+  </data>
+  <data name="update.available" xml:space="preserve">
+    <value>Update beschikbaar: {0} (geïnstalleerd: {1}). {2}</value>
+  </data>
+  <data name="update.currentUnknown" xml:space="preserve">
+    <value>Updatecontrole: de geïnstalleerde versie is onbekend; de nieuwste release is {0}.</value>
+  </data>
+  <data name="update.latestUnknown" xml:space="preserve">
+    <value>Updatecontrole: de nieuwste release kon niet worden bepaald.</value>
+  </data>
+  <data name="update.state.off" xml:space="preserve">
+    <value>uit</value>
+  </data>
+  <data name="update.state.offEnv" xml:space="preserve">
+    <value>uit ({0}=0)</value>
+  </data>
+  <data name="update.state.offPolicy" xml:space="preserve">
+    <value>uit (machinebeleid)</value>
+  </data>
+  <data name="update.state.on" xml:space="preserve">
+    <value>aan</value>
+  </data>
+  <data name="update.unreachable" xml:space="preserve">
+    <value>Updatecontrole: github.com niet bereikbaar ({0}: {1}).</value>
+  </data>
+  <data name="update.upToDate" xml:space="preserve">
+    <value>Up-to-date: {0} is de nieuwste release.</value>
+  </data>
+</root>

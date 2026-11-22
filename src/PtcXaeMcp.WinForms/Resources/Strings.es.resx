@@ -1,0 +1,1284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Spanish texts. Not yet reviewed by a native speaker; see HostLanguage.Shipped.
+    One key per text a human reads. {0}, {1} ... are filled by Loc.Format; {{ and }} are literal braces.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="activity.autoscroll" xml:space="preserve">
+    <value>Desplazamiento automático</value>
+  </data>
+  <data name="activity.clear" xml:space="preserve">
+    <value>Borrar (nueva ejecución)</value>
+  </data>
+  <data name="activity.column.duration" xml:space="preserve">
+    <value>Duración (ms)</value>
+  </data>
+  <data name="activity.column.status" xml:space="preserve">
+    <value>Estado</value>
+  </data>
+  <data name="activity.column.time" xml:space="preserve">
+    <value>Hora</value>
+  </data>
+  <data name="activity.column.tool" xml:space="preserve">
+    <value>Tool / Prueba</value>
+  </data>
+  <data name="activity.detail.arguments" xml:space="preserve">
+    <value>── Argumentos ─────────────────────────────</value>
+  </data>
+  <data name="activity.detail.duration" xml:space="preserve">
+    <value>Duración  : {0} ms</value>
+  </data>
+  <data name="activity.detail.owner.description" xml:space="preserve">
+    <value>Descr.    : {0}</value>
+  </data>
+  <data name="activity.detail.owner.test" xml:space="preserve">
+    <value>Prueba    : {0}</value>
+  </data>
+  <data name="activity.detail.response" xml:space="preserve">
+    <value>── Respuesta / Error ─────────────────────</value>
+  </data>
+  <data name="activity.detail.status" xml:space="preserve">
+    <value>Estado    : {0}</value>
+  </data>
+  <data name="activity.detail.status.error" xml:space="preserve">
+    <value>ERROR</value>
+  </data>
+  <data name="activity.detail.status.ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="activity.detail.test.index" xml:space="preserve">
+    <value>Índice : {0}</value>
+  </data>
+  <data name="activity.detail.test.name" xml:space="preserve">
+    <value>Prueba : {0}</value>
+  </data>
+  <data name="activity.detail.time" xml:space="preserve">
+    <value>Hora (UTC): {0}</value>
+  </data>
+  <data name="activity.detail.tool" xml:space="preserve">
+    <value>Tool      : {0}</value>
+  </data>
+  <data name="activity.jsonlog.none" xml:space="preserve">
+    <value>Registro JSON: (aún sin ejecución)</value>
+  </data>
+  <data name="activity.narration.done" xml:space="preserve">
+    <value>✓ ({0}) {1}{2}</value>
+  </data>
+  <data name="activity.narration.running" xml:space="preserve">
+    <value>▶ En ejecución ({0}): {1}{2}</value>
+  </data>
+  <data name="activity.next" xml:space="preserve">
+    <value>Siguiente ▶</value>
+  </data>
+  <data name="activity.pending.gate" xml:space="preserve">
+    <value>⏸ En espera en el punto de control: {0}  —  compruebe el estado en XAE y haga clic en “Siguiente”.</value>
+  </data>
+  <data name="activity.pending.singlestep" xml:space="preserve">
+    <value>Paso a paso activo — esperando la siguiente llamada…</value>
+  </data>
+  <data name="activity.report.failed" xml:space="preserve">
+    <value>No se pudo generar o abrir el informe HTML:
+{0}</value>
+  </data>
+  <data name="activity.report.none" xml:space="preserve">
+    <value>(aún sin ejecución)</value>
+  </data>
+  <data name="activity.report.norun" xml:space="preserve">
+    <value>Aún no hay ejecución — nada que informar.</value>
+  </data>
+  <data name="activity.report.prefix" xml:space="preserve">
+    <value>Informe HTML: </value>
+  </data>
+  <data name="activity.report.title" xml:space="preserve">
+    <value>Informe HTML</value>
+  </data>
+  <data name="activity.runagain" xml:space="preserve">
+    <value>Ejecutar de nuevo en la consola</value>
+  </data>
+  <data name="activity.singlestep" xml:space="preserve">
+    <value>Paso a paso (pausar la suite)</value>
+  </data>
+  <data name="activity.stop" xml:space="preserve">
+    <value>Detener ■</value>
+  </data>
+  <data name="approvals.button.abort" xml:space="preserve">
+    <value>■ CANCELAR / AUTORIZAR TODO</value>
+  </data>
+  <data name="approvals.button.arm" xml:space="preserve">
+    <value>Armar</value>
+  </data>
+  <data name="approvals.button.deny" xml:space="preserve">
+    <value>Rechazar</value>
+  </data>
+  <data name="approvals.button.disarm" xml:space="preserve">
+    <value>Desarmar</value>
+  </data>
+  <data name="approvals.button.release" xml:space="preserve">
+    <value>Autorizar</value>
+  </data>
+  <data name="approvals.chip.armed" xml:space="preserve">
+    <value>IBN armado — {0} s</value>
+  </data>
+  <data name="approvals.chip.pending_armed" xml:space="preserve">
+    <value>{0} · IBN armado {1} s</value>
+  </data>
+  <data name="approvals.chip.pending_many" xml:space="preserve">
+    <value>{0} aprobaciones pendientes</value>
+  </data>
+  <data name="approvals.chip.pending_one" xml:space="preserve">
+    <value>1 aprobación pendiente</value>
+  </data>
+  <data name="approvals.column.arguments" xml:space="preserve">
+    <value>Argumentos</value>
+  </data>
+  <data name="approvals.column.item" xml:space="preserve">
+    <value>Símbolo / elemento</value>
+  </data>
+  <data name="approvals.column.kind" xml:space="preserve">
+    <value>Tipo</value>
+  </data>
+  <data name="approvals.column.outcome" xml:space="preserve">
+    <value>Resultado</value>
+  </data>
+  <data name="approvals.column.project" xml:space="preserve">
+    <value>Proyecto</value>
+  </data>
+  <data name="approvals.column.request" xml:space="preserve">
+    <value>Solicitud</value>
+  </data>
+  <data name="approvals.column.status" xml:space="preserve">
+    <value>Estado</value>
+  </data>
+  <data name="approvals.column.target" xml:space="preserve">
+    <value>Destino</value>
+  </data>
+  <data name="approvals.column.time" xml:space="preserve">
+    <value>Hora</value>
+  </data>
+  <data name="approvals.column.tool" xml:space="preserve">
+    <value>Tool</value>
+  </data>
+  <data name="approvals.column.value" xml:space="preserve">
+    <value>Valor</value>
+  </data>
+  <data name="approvals.confirm.denied" xml:space="preserve">
+    <value>Solicitud {0} rechazada.</value>
+  </data>
+  <data name="approvals.confirm.deny_failed" xml:space="preserve">
+    <value>No se pudo rechazar la solicitud {0} (ha caducado o ya fue respondida).</value>
+  </data>
+  <data name="approvals.confirm.hint" xml:space="preserve">
+    <value>El cliente de un agente en espera no puede preguntarle por sí mismo. Compruebe la herramienta, el destino y los argumentos y después autorice: el agente repite su llamada con su token y la acción se ejecuta una vez.</value>
+  </data>
+  <data name="approvals.confirm.release_failed" xml:space="preserve">
+    <value>No se pudo autorizar la solicitud {0} (ha caducado o ya fue respondida).</value>
+  </data>
+  <data name="approvals.confirm.released" xml:space="preserve">
+    <value>Solicitud {0} autorizada.</value>
+  </data>
+  <data name="approvals.group.audit" xml:space="preserve">
+    <value>Registro de auditoría de IBN Live</value>
+  </data>
+  <data name="approvals.group.confirmations" xml:space="preserve">
+    <value>Solicitudes de confirmación</value>
+  </data>
+  <data name="approvals.group.hmi" xml:space="preserve">
+    <value>Aprobaciones de escritura HMI</value>
+  </data>
+  <data name="approvals.hint.arming" xml:space="preserve">
+    <value>El armado solo se realiza aquí. El cliente MCP puede proponer pasos; cada uno abre una ventana de confirmación y nada se mueve sin su clic. Cancelar, desarmar y autorizar todo siempre están permitidos.</value>
+  </data>
+  <data name="approvals.label.allowlist" xml:space="preserve">
+    <value>Lista de permitidos:</value>
+  </data>
+  <data name="approvals.label.port" xml:space="preserve">
+    <value>Puerto:</value>
+  </data>
+  <data name="approvals.label.target_netid" xml:space="preserve">
+    <value>NetId de destino:</value>
+  </data>
+  <data name="approvals.last.abort.failed" xml:space="preserve">
+    <value>CANCELAR / AUTORIZAR TODO HA FALLADO: {0}</value>
+  </data>
+  <data name="approvals.last.abort.ok" xml:space="preserve">
+    <value>CANCELAR / AUTORIZAR TODO correcto.</value>
+  </data>
+  <data name="approvals.last.arm.failed" xml:space="preserve">
+    <value>Error al armar: {0}</value>
+  </data>
+  <data name="approvals.last.arm.ok" xml:space="preserve">
+    <value>Armado correcto.</value>
+  </data>
+  <data name="approvals.last.arm.refused" xml:space="preserve">
+    <value>Armado rechazado: {0}</value>
+  </data>
+  <data name="approvals.last.disarm.failed" xml:space="preserve">
+    <value>Error al desarmar: {0}</value>
+  </data>
+  <data name="approvals.last.disarm.ok" xml:space="preserve">
+    <value>Desarmado correcto.</value>
+  </data>
+  <data name="approvals.last.step.executed" xml:space="preserve">
+    <value>Paso {0} ejecutado.</value>
+  </data>
+  <data name="approvals.last.step.not_executed" xml:space="preserve">
+    <value>Paso {0} no ejecutado: {1}</value>
+  </data>
+  <data name="approvals.last.step.not_rejected" xml:space="preserve">
+    <value>Paso {0} NO rechazado: {1}</value>
+  </data>
+  <data name="approvals.last.step.not_rejected_pending" xml:space="preserve">
+    <value>Paso {0} NO rechazado (sigue pendiente): {1}</value>
+  </data>
+  <data name="approvals.last.step.rejected" xml:space="preserve">
+    <value>Paso {0} rechazado ({1}).</value>
+  </data>
+  <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
+    <value>Confirmado automáticamente</value>
+  </data>
+  <data name="approvals.outcome.confirmed" xml:space="preserve">
+    <value>Confirmado</value>
+  </data>
+  <data name="approvals.outcome.pending" xml:space="preserve">
+    <value>Pendiente</value>
+  </data>
+  <data name="approvals.outcome.rejected" xml:space="preserve">
+    <value>Rechazado</value>
+  </data>
+  <data name="approvals.outcome.timed_out" xml:space="preserve">
+    <value>Tiempo agotado</value>
+  </data>
+  <data name="approvals.outcome.unavailable" xml:space="preserve">
+    <value>No disponible</value>
+  </data>
+  <data name="approvals.pending.many" xml:space="preserve">
+    <value> · {0} solicitudes esperan su respuesta</value>
+  </data>
+  <data name="approvals.pending.one" xml:space="preserve">
+    <value> · 1 solicitud espera su respuesta</value>
+  </data>
+  <data name="approvals.placeholder.allowlist" xml:space="preserve">
+    <value>Cyl1, Cyl2 (separados por comas)</value>
+  </data>
+  <data name="approvals.placeholder.netid" xml:space="preserve">
+    <value>destino del proyecto</value>
+  </data>
+  <data name="approvals.reason.cancelled" xml:space="preserve">
+    <value>cancelado por el operador</value>
+  </data>
+  <data name="approvals.reason.expired" xml:space="preserve">
+    <value>la ventana de confirmación ha caducado</value>
+  </data>
+  <data name="approvals.restore.not_executed" xml:space="preserve">
+    <value>Restauración {0} no ejecutada: {1}</value>
+  </data>
+  <data name="approvals.restore.reason_default" xml:space="preserve">
+    <value>no ejecutada</value>
+  </data>
+  <data name="approvals.restore.rejected" xml:space="preserve">
+    <value>Restauración {0} rechazada ({1}).</value>
+  </data>
+  <data name="approvals.restore.state.confirmed" xml:space="preserve">
+    <value>confirmada</value>
+  </data>
+  <data name="approvals.restore.state.executed" xml:space="preserve">
+    <value>ejecutada</value>
+  </data>
+  <data name="approvals.restore.state.expired" xml:space="preserve">
+    <value>caducada</value>
+  </data>
+  <data name="approvals.restore.state.pending" xml:space="preserve">
+    <value>pendiente</value>
+  </data>
+  <data name="approvals.restore.state.rejected" xml:space="preserve">
+    <value>rechazada</value>
+  </data>
+  <data name="approvals.restore.summary.executed" xml:space="preserve">
+    <value>Restauración {0} ejecutada: {1} escritos, {2} fallidos, {3} omitidos.</value>
+  </data>
+  <data name="approvals.restore.summary.not_executed" xml:space="preserve">
+    <value>Restauración {0} {1}: {2}</value>
+  </data>
+  <data name="approvals.state.armed" xml:space="preserve">
+    <value>ARMADO — quedan {0} s · GVL {1}{2}</value>
+  </data>
+  <data name="approvals.state.denied" xml:space="preserve">
+    <value>Rechazada</value>
+  </data>
+  <data name="approvals.state.disarmed" xml:space="preserve">
+    <value>Desarmado.</value>
+  </data>
+  <data name="approvals.state.expired" xml:space="preserve">
+    <value>Caducada</value>
+  </data>
+  <data name="approvals.state.pending" xml:space="preserve">
+    <value>Pendiente</value>
+  </data>
+  <data name="approvals.state.released" xml:space="preserve">
+    <value>Autorizada</value>
+  </data>
+  <data name="approvals.state.used" xml:space="preserve">
+    <value>Utilizada</value>
+  </data>
+  <data name="approvals.tab.caption" xml:space="preserve">
+    <value>Aprobaciones</value>
+  </data>
+  <data name="approvals.tab.caption_pending" xml:space="preserve">
+    <value>Aprobaciones ({0})</value>
+  </data>
+  <data name="approvals.target.local" xml:space="preserve">
+    <value>local</value>
+  </data>
+  <data name="approvals.target.unknown" xml:space="preserve">
+    <value>desconocido</value>
+  </data>
+  <data name="confirm.button.cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="confirm.field.description" xml:space="preserve">
+    <value>Marque la casilla para permitir; déjela sin marcar o rechace para denegar.</value>
+  </data>
+  <data name="confirm.field.title" xml:space="preserve">
+    <value>Permitir esta acción</value>
+  </data>
+  <data name="confirm.question" xml:space="preserve">
+    <value>{0} en {1}.
+Argumentos: {2}.
+Esto modifica un sistema en funcionamiento. ¿Permitirlo? El agente espera su respuesta.</value>
+  </data>
+  <data name="confirm.question.none" xml:space="preserve">
+    <value>(ninguno)</value>
+  </data>
+  <data name="confirm.target.another" xml:space="preserve">
+    <value>{0} (otro sistema)</value>
+  </data>
+  <data name="confirm.target.local" xml:space="preserve">
+    <value>el sistema local</value>
+  </data>
+  <data name="confirm.target.thismachine" xml:space="preserve">
+    <value>{0} (este equipo)</value>
+  </data>
+  <data name="confirm.target.unknown" xml:space="preserve">
+    <value>un sistema de destino desconocido</value>
+  </data>
+  <data name="connect.claudeCode" xml:space="preserve">
+    <value>Claude Code: ejecute este comando</value>
+  </data>
+  <data name="connect.close" xml:space="preserve">
+    <value>Cerrar</value>
+  </data>
+  <data name="connect.copyCommand" xml:space="preserve">
+    <value>Copiar comando</value>
+  </data>
+  <data name="connect.copySnippet" xml:space="preserve">
+    <value>Copiar fragmento</value>
+  </data>
+  <data name="connect.health.no" xml:space="preserve">
+    <value>no</value>
+  </data>
+  <data name="connect.health.ok" xml:space="preserve">
+    <value>Servidor accesible: estado {0}, versión {1}, token requerido: {2}.</value>
+  </data>
+  <data name="connect.health.unexpected" xml:space="preserve">
+    <value>El servidor respondió, pero no con el JSON /health esperado.</value>
+  </data>
+  <data name="connect.health.yes" xml:space="preserve">
+    <value>sí</value>
+  </data>
+  <data name="connect.intro" xml:space="preserve">
+    <value>El servidor MCP escucha en {0}. Añádalo a su cliente MCP:</value>
+  </data>
+  <data name="connect.json" xml:space="preserve">
+    <value>Cualquier cliente: fragmento .mcp.json</value>
+  </data>
+  <data name="connect.notReachable" xml:space="preserve">
+    <value>No accesible: {0}</value>
+  </data>
+  <data name="connect.test" xml:space="preserve">
+    <value>Probar conexión</value>
+  </data>
+  <data name="connect.testing" xml:space="preserve">
+    <value>Probando...</value>
+  </data>
+  <data name="connect.timeout" xml:space="preserve">
+    <value>tiempo agotado tras 5 s</value>
+  </data>
+  <data name="connect.title" xml:space="preserve">
+    <value>Conectar un cliente</value>
+  </data>
+  <data name="connect.tokenNote" xml:space="preserve">
+    <value>Hay un token de acceso configurado: sustituya {0} por el valor de PTC_XAE_MCP_TOKEN. El token en sí no se muestra aquí.</value>
+  </data>
+  <data name="console.banner.incomplete" xml:space="preserve">
+    <value>Los argumentos registrados están incompletos: compruebe cada campo antes de ejecutar. {0}.</value>
+  </data>
+  <data name="console.banner.notjson" xml:space="preserve">
+    <value>Los argumentos registrados están incompletos: compruebe cada campo antes de ejecutar. No son un objeto JSON completo (posiblemente truncado); se muestran los valores predeterminados.</value>
+  </data>
+  <data name="console.confirm.body" xml:space="preserve">
+    <value>¿Ejecutar '{0}'?
+
+{1}
+
+La llamada sigue la misma ruta que la de un cliente de IA.</value>
+  </data>
+  <data name="console.confirm.destructive" xml:space="preserve">
+    <value>Está marcada como DESTRUCTIVA: puede eliminar o sobrescribir datos del proyecto o de la planta.</value>
+  </data>
+  <data name="console.confirm.notreadonly" xml:space="preserve">
+    <value>No está marcada como de solo lectura: puede modificar el proyecto, XAE o el PLC.</value>
+  </data>
+  <data name="console.confirm.title" xml:space="preserve">
+    <value>Confirmar llamada a la herramienta</value>
+  </data>
+  <data name="console.copy" xml:space="preserve">
+    <value>Copiar</value>
+  </data>
+  <data name="console.dialog.cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="console.dialog.name" xml:space="preserve">
+    <value>Nombre (un favorito existente con este nombre se reemplaza):</value>
+  </data>
+  <data name="console.dialog.save" xml:space="preserve">
+    <value>Guardar</value>
+  </data>
+  <data name="console.favourite.remove" xml:space="preserve">
+    <value>Quitar favorito</value>
+  </data>
+  <data name="console.favourite.save" xml:space="preserve">
+    <value>Guardar como favorito</value>
+  </data>
+  <data name="console.form.choose" xml:space="preserve">
+    <value>(elegir)</value>
+  </data>
+  <data name="console.form.emptyhint" xml:space="preserve">
+    <value>Los campos de texto opcionales vacíos se omiten. Escriba "" (dos comillas dobles) para enviar una cadena vacía.</value>
+  </data>
+  <data name="console.form.emptytip" xml:space="preserve">
+    <value>Déjelo vacío para omitirlo; escriba "" (dos comillas dobles) para enviar una cadena vacía.</value>
+  </data>
+  <data name="console.form.integer" xml:space="preserve">
+    <value>entero</value>
+  </data>
+  <data name="console.form.noarguments" xml:space="preserve">
+    <value>Esta herramienta no admite argumentos.</value>
+  </data>
+  <data name="console.form.number" xml:space="preserve">
+    <value>número</value>
+  </data>
+  <data name="console.raw" xml:space="preserve">
+    <value>JSON sin procesar</value>
+  </data>
+  <data name="console.reload" xml:space="preserve">
+    <value>Recargar</value>
+  </data>
+  <data name="console.run" xml:space="preserve">
+    <value>Ejecutar</value>
+  </data>
+  <data name="console.search.placeholder" xml:space="preserve">
+    <value>Buscar herramientas...</value>
+  </data>
+  <data name="console.status.cannotrun" xml:space="preserve">
+    <value>No se puede ejecutar: {0}</value>
+  </data>
+  <data name="console.status.clipboardbusy" xml:space="preserve">
+    <value>El portapapeles está siendo utilizado por otro programa; inténtelo de nuevo.</value>
+  </data>
+  <data name="console.status.copied" xml:space="preserve">
+    <value>Copiado al portapapeles.</value>
+  </data>
+  <data name="console.status.favremoved" xml:space="preserve">
+    <value>Favorito '{0}' quitado.</value>
+  </data>
+  <data name="console.status.favremovefailed" xml:space="preserve">
+    <value>'{0}' se quitó por ahora, pero no se pudo escribir {1}; puede reaparecer tras un reinicio.</value>
+  </data>
+  <data name="console.status.favsaved" xml:space="preserve">
+    <value>Favorito '{0}' guardado.</value>
+  </data>
+  <data name="console.status.favsavefailed" xml:space="preserve">
+    <value>El favorito '{0}' solo se conserva hasta que se cierre la aplicación: no se pudo escribir {1}.</value>
+  </data>
+  <data name="console.status.loaded" xml:space="preserve">
+    <value>{0} herramientas cargadas.</value>
+  </data>
+  <data name="console.status.loading" xml:space="preserve">
+    <value>Cargando herramientas...</value>
+  </data>
+  <data name="console.status.ok" xml:space="preserve">
+    <value>OK - {0}</value>
+  </data>
+  <data name="console.status.outcomeunknown" xml:space="preserve">
+    <value>Resultado desconocido tras {0}: la herramienta puede haberse ejecutado; compruebe la vista Actividad antes de reintentar.</value>
+  </data>
+  <data name="console.status.running" xml:space="preserve">
+    <value>Ejecutando {0}...</value>
+  </data>
+  <data name="console.status.toolerror" xml:space="preserve">
+    <value>La herramienta notificó un error - {0}</value>
+  </data>
+  <data name="console.status.unexpected" xml:space="preserve">
+    <value>Error inesperado: {0}</value>
+  </data>
+  <data name="console.tool.notloaded" xml:space="preserve">
+    <value>Lista de herramientas no cargada.</value>
+  </data>
+  <data name="console.tool.notoffered" xml:space="preserve">
+    <value>El servidor ya no ofrece esta herramienta.</value>
+  </data>
+  <data name="console.tool.placeholder" xml:space="preserve">
+    <value>Seleccione una herramienta a la izquierda</value>
+  </data>
+  <data name="console.tree.favourites" xml:space="preserve">
+    <value>Favoritos ({0})</value>
+  </data>
+  <data name="hmiconfirm.button.execute" xml:space="preserve">
+    <value>Ejecutar</value>
+  </data>
+  <data name="hmiconfirm.countdown" xml:space="preserve">
+    <value>No se escribe nada sin confirmación — caduca en {0} s.</value>
+  </data>
+  <data name="hmiconfirm.details.current" xml:space="preserve">
+    <value>Actual</value>
+  </data>
+  <data name="hmiconfirm.details.directory" xml:space="preserve">
+    <value>Directorio</value>
+  </data>
+  <data name="hmiconfirm.details.domain" xml:space="preserve">
+    <value>Dominio</value>
+  </data>
+  <data name="hmiconfirm.details.new" xml:space="preserve">
+    <value>Nuevo</value>
+  </data>
+  <data name="hmiconfirm.details.project" xml:space="preserve">
+    <value>Proyecto HMI</value>
+  </data>
+  <data name="hmiconfirm.effect.plc" xml:space="preserve">
+    <value>⚠ Escribe a través del servidor HMI en el PLC en ejecución.</value>
+  </data>
+  <data name="hmiconfirm.effect.server" xml:space="preserve">
+    <value>Modifica la configuración del servidor del proyecto HMI (sin acceso al PLC).</value>
+  </data>
+  <data name="hmiconfirm.headline.addinternalsymbol" xml:space="preserve">
+    <value>MCP quiere añadir un símbolo interno de cliente (%i%) al proyecto HMI</value>
+  </data>
+  <data name="hmiconfirm.headline.additem" xml:space="preserve">
+    <value>MCP quiere crear un archivo en el proyecto HMI</value>
+  </data>
+  <data name="hmiconfirm.headline.applybundle" xml:space="preserve">
+    <value>MCP quiere escribir un conjunto de archivos en el proyecto HMI</value>
+  </data>
+  <data name="hmiconfirm.headline.attachtmcfile" xml:space="preserve">
+    <value>MCP quiere asociar un archivo TMC a un runtime ADS (símbolos sin PLC)</value>
+  </data>
+  <data name="hmiconfirm.headline.createprojectdatatype" xml:space="preserve">
+    <value>MCP quiere añadir tipos de datos del proyecto (de un tipo PLC de un archivo TMC) a Properties/tchmi.project.Schema.json</value>
+  </data>
+  <data name="hmiconfirm.headline.default" xml:space="preserve">
+    <value>MCP quiere escribir un valor a través del servidor HMI</value>
+  </data>
+  <data name="hmiconfirm.headline.deleteitem" xml:space="preserve">
+    <value>MCP quiere ELIMINAR del proyecto HMI (también del disco)</value>
+  </data>
+  <data name="hmiconfirm.headline.detachtmcfile" xml:space="preserve">
+    <value>MCP quiere quitar el archivo TMC de un runtime ADS (de vuelta a la carga ADS)</value>
+  </data>
+  <data name="hmiconfirm.headline.disableruntimetmc" xml:space="preserve">
+    <value>MCP quiere que este runtime ADS vuelva a cargar sus símbolos desde el PLC (archivo TMC desactivado)</value>
+  </data>
+  <data name="hmiconfirm.headline.enableruntimetmc" xml:space="preserve">
+    <value>MCP quiere que el servidor HMI sirva los símbolos PLC de este runtime ADS desde un archivo TMC (sin conexión al PLC)</value>
+  </data>
+  <data name="hmiconfirm.headline.importfile" xml:space="preserve">
+    <value>MCP quiere importar un archivo al proyecto HMI</value>
+  </data>
+  <data name="hmiconfirm.headline.mapofflinesymbol" xml:space="preserve">
+    <value>MCP quiere crear un símbolo de servidor en el servidor HMI (dominio TcHmiSrv)</value>
+  </data>
+  <data name="hmiconfirm.headline.mapsymbol" xml:space="preserve">
+    <value>MCP quiere asignar un símbolo en el HMI</value>
+  </data>
+  <data name="hmiconfirm.headline.publish" xml:space="preserve">
+    <value>MCP quiere PUBLICAR este proyecto HMI en un servidor TF2000 (reemplaza el proyecto que se ejecuta allí)</value>
+  </data>
+  <data name="hmiconfirm.headline.removeinternalsymbol" xml:space="preserve">
+    <value>MCP quiere quitar un símbolo interno de cliente (%i%) del proyecto HMI</value>
+  </data>
+  <data name="hmiconfirm.headline.switchmappingtoplc" xml:space="preserve">
+    <value>MCP quiere cambiar las asignaciones HMI de un archivo TMC a un PLC real (mismos nombres asignados, dominio ADS)</value>
+  </data>
+  <data name="hmiconfirm.headline.unmapsymbol" xml:space="preserve">
+    <value>MCP quiere quitar la asignación de un símbolo</value>
+  </data>
+  <data name="hmiconfirm.headline.writefile" xml:space="preserve">
+    <value>MCP quiere modificar un archivo del proyecto HMI</value>
+  </data>
+  <data name="hmiconfirm.subject.datatype" xml:space="preserve">
+    <value>Tipo de datos</value>
+  </data>
+  <data name="hmiconfirm.subject.internal" xml:space="preserve">
+    <value>Símbolo %i%</value>
+  </data>
+  <data name="hmiconfirm.subject.mappings" xml:space="preserve">
+    <value>Asignaciones</value>
+  </data>
+  <data name="hmiconfirm.subject.runtime" xml:space="preserve">
+    <value>Runtime ADS</value>
+  </data>
+  <data name="hmiconfirm.subject.symbol" xml:space="preserve">
+    <value>Símbolo</value>
+  </data>
+  <data name="hmiconfirm.subject.target" xml:space="preserve">
+    <value>Destino</value>
+  </data>
+  <data name="hmiconfirm.title" xml:space="preserve">
+    <value>TwinCAT HMI — confirmar cambio</value>
+  </data>
+  <data name="hmiconfirm.value.unknown" xml:space="preserve">
+    <value>(desconocido)</value>
+  </data>
+  <data name="ibnconfirm.button.execute" xml:space="preserve">
+    <value>Ejecutar paso</value>
+  </data>
+  <data name="ibnconfirm.countdown" xml:space="preserve">
+    <value>Nada se mueve sin su confirmación — esta propuesta caduca en {0} s.</value>
+  </data>
+  <data name="ibnconfirm.details.action" xml:space="preserve">
+    <value>Acción</value>
+  </data>
+  <data name="ibnconfirm.details.actuator" xml:space="preserve">
+    <value>Actuador</value>
+  </data>
+  <data name="ibnconfirm.details.chain" xml:space="preserve">
+    <value>Cadena</value>
+  </data>
+  <data name="ibnconfirm.details.proposal" xml:space="preserve">
+    <value>Propuesta</value>
+  </data>
+  <data name="ibnconfirm.details.requested" xml:space="preserve">
+    <value>Solicitado</value>
+  </data>
+  <data name="ibnconfirm.effect" xml:space="preserve">
+    <value>⚠ Ejecutar escribe UN bit de comando (bStepReq) en el PRG de prueba — la máquina puede MOVERSE. Cancelar, Esc o cerrar esta ventana no escribe nada.</value>
+  </data>
+  <data name="ibnconfirm.headline" xml:space="preserve">
+    <value>El cliente MCP propone un paso de puesta en marcha</value>
+  </data>
+  <data name="ibnconfirm.title" xml:space="preserve">
+    <value>IBN Live — confirmar paso</value>
+  </data>
+  <data name="main.approvals.chip.tooltip" xml:space="preserve">
+    <value>Abrir la vista Aprobaciones</value>
+  </data>
+  <data name="main.button.menu" xml:space="preserve">
+    <value>Menú ▾</value>
+  </data>
+  <data name="main.button.stop" xml:space="preserve">
+    <value>Detener</value>
+  </data>
+  <data name="main.closexae.confirm" xml:space="preserve">
+    <value>¿Cerrar ahora la instancia de TwinCAT XAE?
+
+Use esto solo cuando XAE se haya bloqueado. Los cambios sin guardar en XAE se pierden.</value>
+  </data>
+  <data name="main.closexae.done" xml:space="preserve">
+    <value>Recuperación de XAE ejecutada</value>
+  </data>
+  <data name="main.closexae.failed" xml:space="preserve">
+    <value>Error en la recuperación de XAE</value>
+  </data>
+  <data name="main.closexae.title" xml:space="preserve">
+    <value>Cerrar instancia de XAE (recuperación)</value>
+  </data>
+  <data name="main.error.openlogfolder" xml:space="preserve">
+    <value>No se pudo abrir la carpeta de registros:
+{0}
+
+{1}</value>
+  </data>
+  <data name="main.error.openurl" xml:space="preserve">
+    <value>No se pudo abrir {0}:
+{1}</value>
+  </data>
+  <data name="main.mcperror.title" xml:space="preserve">
+    <value>Error de MCP</value>
+  </data>
+  <data name="main.openlink.title" xml:space="preserve">
+    <value>Abrir enlace</value>
+  </data>
+  <data name="main.openlogfolder.title" xml:space="preserve">
+    <value>Abrir carpeta de registros</value>
+  </data>
+  <data name="main.policy.savefailed" xml:space="preserve">
+    <value>No se pudo guardar la política de acceso en {0}:
+{1}
+
+Sigue vigente la política anterior.</value>
+  </data>
+  <data name="main.policy.title" xml:space="preserve">
+    <value>Política de acceso</value>
+  </data>
+  <data name="main.runstate.busy" xml:space="preserve">
+    <value>Ocupado: hay una operación de TwinCAT en curso.</value>
+  </data>
+  <data name="main.runstate.cancelrequested" xml:space="preserve">
+    <value>Cancelación solicitada.</value>
+  </data>
+  <data name="main.runstate.checkingupdates" xml:space="preserve">
+    <value>Buscando una versión más reciente en github.com...</value>
+  </data>
+  <data name="main.runstate.copyingsample" xml:space="preserve">
+    <value>Copiando el proyecto de ejemplo...</value>
+  </data>
+  <data name="main.runstate.nothingtostop" xml:space="preserve">
+    <value>Nada que detener.</value>
+  </data>
+  <data name="main.runstate.openingsample" xml:space="preserve">
+    <value>Abriendo el proyecto de ejemplo...</value>
+  </data>
+  <data name="main.runstate.samplenotopened" xml:space="preserve">
+    <value>Proyecto de ejemplo no abierto.</value>
+  </data>
+  <data name="main.runstate.sampleopened" xml:space="preserve">
+    <value>Proyecto de ejemplo abierto.</value>
+  </data>
+  <data name="main.runstate.updateavailable" xml:space="preserve">
+    <value>Actualización disponible: {0} (Menú &gt; Actualización disponible).</value>
+  </data>
+  <data name="main.runstate.updatecheckfailed" xml:space="preserve">
+    <value>Error al buscar actualizaciones; consulte el registro de ejecución.</value>
+  </data>
+  <data name="main.runstate.uptodate" xml:space="preserve">
+    <value>Actualizado.</value>
+  </data>
+  <data name="main.sample.closeconfirm" xml:space="preserve">
+    <value>Hay una solución abierta en TwinCAT XAE. ¿Cerrarla sin guardar y abrir el proyecto de ejemplo?</value>
+  </data>
+  <data name="main.sample.copyfailed" xml:space="preserve">
+    <value>No se pudo copiar el proyecto de ejemplo en
+{0}
+
+{1}</value>
+  </data>
+  <data name="main.sample.missing" xml:space="preserve">
+    <value>El proyecto de ejemplo no forma parte de esta instalación:
+{0}</value>
+  </data>
+  <data name="main.sample.title" xml:space="preserve">
+    <value>Abrir proyecto de ejemplo</value>
+  </data>
+  <data name="main.security.notresolved" xml:space="preserve">
+    <value>Cuadro de diálogo de seguridad no resuelto</value>
+  </data>
+  <data name="main.security.resolved" xml:space="preserve">
+    <value>Cuadro de diálogo de seguridad resuelto</value>
+  </data>
+  <data name="main.stop.tooltip" xml:space="preserve">
+    <value>Cancelar la aplicación de esquema en curso (igual que twincat_stop).</value>
+  </data>
+  <data name="main.tab.activity" xml:space="preserve">
+    <value>Actividad</value>
+  </data>
+  <data name="main.tab.console" xml:space="preserve">
+    <value>Consola</value>
+  </data>
+  <data name="main.theme.dark" xml:space="preserve">
+    <value>Oscuro</value>
+  </data>
+  <data name="main.theme.light" xml:space="preserve">
+    <value>Claro</value>
+  </data>
+  <data name="main.theme.tooltip.dark" xml:space="preserve">
+    <value>Cambiar al tema oscuro</value>
+  </data>
+  <data name="main.theme.tooltip.light" xml:space="preserve">
+    <value>Cambiar al tema claro</value>
+  </data>
+  <data name="main.title.engineer" xml:space="preserve">
+    <value>{0} — ENGINEER (sin acciones de runtime)</value>
+  </data>
+  <data name="main.title.readonly" xml:space="preserve">
+    <value>{0} — SOLO LECTURA</value>
+  </data>
+  <data name="main.updates.openpage" xml:space="preserve">
+    <value>¿Abrir la página de la versión? Esta aplicación no descarga nada.</value>
+  </data>
+  <data name="main.updates.title" xml:space="preserve">
+    <value>Buscar actualizaciones</value>
+  </data>
+  <data name="menu.checkupdates" xml:space="preserve">
+    <value>Buscar actualizaciones…</value>
+  </data>
+  <data name="menu.closexae" xml:space="preserve">
+    <value>Cerrar instancia de XAE (recuperación)…</value>
+  </data>
+  <data name="menu.connectclient" xml:space="preserve">
+    <value>Conectar un cliente…</value>
+  </data>
+  <data name="menu.dismisssecurity" xml:space="preserve">
+    <value>Descartar cuadro de diálogo de seguridad</value>
+  </data>
+  <data name="menu.openlogfolder" xml:space="preserve">
+    <value>Abrir carpeta de registros</value>
+  </data>
+  <data name="menu.opensample" xml:space="preserve">
+    <value>Abrir proyecto de ejemplo</value>
+  </data>
+  <data name="menu.refresh" xml:space="preserve">
+    <value>Actualizar estado</value>
+  </data>
+  <data name="menu.settings" xml:space="preserve">
+    <value>Configuración…</value>
+  </data>
+  <data name="menu.toggletheme" xml:space="preserve">
+    <value>Tema claro / oscuro</value>
+  </data>
+  <data name="menu.updateavailable" xml:space="preserve">
+    <value>Actualización disponible: {0}…</value>
+  </data>
+  <data name="prompt.notGiven" xml:space="preserve">
+    <value>(no indicado)</value>
+  </data>
+  <data name="restoreconfirm.button.restore" xml:space="preserve">
+    <value>Restaurar valores</value>
+  </data>
+  <data name="restoreconfirm.countdown" xml:space="preserve">
+    <value>No se escribe nada sin su confirmación — esta propuesta caduca en {0} s.</value>
+  </data>
+  <data name="restoreconfirm.details.proposal" xml:space="preserve">
+    <value>Propuesta</value>
+  </data>
+  <data name="restoreconfirm.details.requested" xml:space="preserve">
+    <value>Solicitado</value>
+  </data>
+  <data name="restoreconfirm.details.snapshot" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="restoreconfirm.details.taken" xml:space="preserve">
+    <value>Creado</value>
+  </data>
+  <data name="restoreconfirm.details.taken.value" xml:space="preserve">
+    <value>{0} (UTC)</value>
+  </data>
+  <data name="restoreconfirm.details.target" xml:space="preserve">
+    <value>Destino</value>
+  </data>
+  <data name="restoreconfirm.details.towrite" xml:space="preserve">
+    <value>Por escribir</value>
+  </data>
+  <data name="restoreconfirm.details.towrite.value" xml:space="preserve">
+    <value>{0} valores individuales ({1} ya iguales, {2} omitidos)</value>
+  </data>
+  <data name="restoreconfirm.differences" xml:space="preserve">
+    <value>Diferencias (PLC ahora -&gt; snapshot):</value>
+  </data>
+  <data name="restoreconfirm.effect" xml:space="preserve">
+    <value>⚠ Restaurar sobrescribe valores activos del PLC. Cancelar, Esc o cerrar esta ventana no escribe nada. Tras confirmar, el PLC se comprueba una vez más; si cambió desde la revisión, no se escribe nada.</value>
+  </data>
+  <data name="restoreconfirm.headline" xml:space="preserve">
+    <value>El cliente MCP propone restaurar un snapshot en el PLC</value>
+  </data>
+  <data name="restoreconfirm.more" xml:space="preserve">
+    <value>  ... y {0} más</value>
+  </data>
+  <data name="restoreconfirm.skipped" xml:space="preserve">
+    <value>Omitidos ({0}):</value>
+  </data>
+  <data name="restoreconfirm.state.other" xml:space="preserve">
+    <value>Estado del PLC: {0}</value>
+  </data>
+  <data name="restoreconfirm.state.run" xml:space="preserve">
+    <value>Estado del PLC: RUN — los valores se escriben mientras el programa se ejecuta y este puede sobrescribirlos</value>
+  </data>
+  <data name="restoreconfirm.title" xml:space="preserve">
+    <value>Snapshot persistente — confirmar restauración</value>
+  </data>
+  <data name="sample.missing" xml:space="preserve">
+    <value>Falta el proyecto de ejemplo: {0}</value>
+  </data>
+  <data name="sample.noSolution" xml:space="preserve">
+    <value>La copia del ejemplo no contiene {0}.</value>
+  </data>
+  <data name="settings.access.allowed" xml:space="preserve">
+    <value>NetIds permitidos</value>
+  </data>
+  <data name="settings.access.allowed.note" xml:space="preserve">
+    <value>Si se define, las acciones de runtime solo se permiten en estos sistemas. Vacío = sin lista de permitidos.</value>
+  </data>
+  <data name="settings.access.blocked" xml:space="preserve">
+    <value>NetIds bloqueados</value>
+  </data>
+  <data name="settings.access.blocked.note" xml:space="preserve">
+    <value>Ninguna acción de runtime en estos sistemas; la lectura sigue permitida. Separe con ';'. 'local' = este PC y sus User Mode Runtimes.</value>
+  </data>
+  <data name="settings.access.confirm" xml:space="preserve">
+    <value>Confirmación humana</value>
+  </data>
+  <data name="settings.access.confirm.note" xml:space="preserve">
+    <value>Un cliente compatible con la elicitación de MCP pregunta a la persona en su propia ventana; cualquier otro cliente recibe un token que usted autoriza aquí en la pestaña Aprobaciones. Se aplica la más estricta entre esta opción y la del entorno.</value>
+  </data>
+  <data name="settings.access.envPolicy" xml:space="preserve">
+    <value>El entorno define {0}; se aplica la más estricta de ambas.</value>
+  </data>
+  <data name="settings.access.heading" xml:space="preserve">
+    <value>Acceso a MCP. Se guarda al pulsar OK y se aplica de inmediato; a los clientes conectados se les indica que recarguen su lista de herramientas.</value>
+  </data>
+  <data name="settings.access.level" xml:space="preserve">
+    <value>Nivel de acceso</value>
+  </data>
+  <data name="settings.access.level.engineer" xml:space="preserve">
+    <value>engineer — también modificar el proyecto (sin activar, login ni escritura ADS)</value>
+  </data>
+  <data name="settings.access.level.read" xml:space="preserve">
+    <value>read — solo herramientas que no modifican nada</value>
+  </data>
+  <data name="settings.access.level.runtime" xml:space="preserve">
+    <value>runtime — también modificar sistemas de destino</value>
+  </data>
+  <data name="settings.access.profile" xml:space="preserve">
+    <value>Perfil de herramientas</value>
+  </data>
+  <data name="settings.access.profileEnv" xml:space="preserve">
+    <value>{0}={1} está definido y sustituye esta selección.</value>
+  </data>
+  <data name="settings.access.writeAllow" xml:space="preserve">
+    <value>Escrituras de variables permitidas</value>
+  </data>
+  <data name="settings.access.writeAllow.note" xml:space="preserve">
+    <value>Si se define, las escrituras ADS y HMI y la restauración de un snapshot solo alcanzan los símbolos que coinciden, p. ej. MAIN.stTest.*; GVL_Param.r*. '*' es cualquier texto, '?' un carácter; no distingue mayúsculas de minúsculas. Vacío = sin lista (todos los símbolos).</value>
+  </data>
+  <data name="settings.access.writeDeny" xml:space="preserve">
+    <value>Escrituras de variables denegadas</value>
+  </data>
+  <data name="settings.access.writeDeny.note" xml:space="preserve">
+    <value>Nunca se escriben, diga lo que diga la lista de permitidos, p. ej. *.bEmergency*; GVL_Safety.*.</value>
+  </data>
+  <data name="settings.button.cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="settings.button.ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="settings.confirm.all" xml:space="preserve">
+    <value>all — también activar, reiniciar, detener y cambios de modo en este equipo</value>
+  </data>
+  <data name="settings.confirm.default" xml:space="preserve">
+    <value>default — remote</value>
+  </data>
+  <data name="settings.confirm.off" xml:space="preserve">
+    <value>off — no se pregunta a nadie</value>
+  </data>
+  <data name="settings.confirm.remote" xml:space="preserve">
+    <value>remote — una persona confirma activar, reiniciar, detener, escritura ADS y login en otros sistemas</value>
+  </data>
+  <data name="settings.grid.howto" xml:space="preserve">
+    <value>Definido mediante</value>
+  </data>
+  <data name="settings.grid.setting" xml:space="preserve">
+    <value>Opción</value>
+  </data>
+  <data name="settings.grid.value" xml:space="preserve">
+    <value>Valor</value>
+  </data>
+  <data name="settings.how.accessLevelEnv" xml:space="preserve">
+    <value>{0} (read, engineer, runtime; se aplica la más estricta entre esta y la selección anterior)</value>
+  </data>
+  <data name="settings.how.confirmEnv" xml:space="preserve">
+    <value>{0} (off, remote, all; se aplica la más estricta entre esta y la selección anterior)</value>
+  </data>
+  <data name="settings.how.diagnostics" xml:space="preserve">
+    <value>Iniciar con --diagnostics o {0}=1</value>
+  </data>
+  <data name="settings.how.env" xml:space="preserve">
+    <value>Variable de entorno {0}</value>
+  </data>
+  <data name="settings.how.port" xml:space="preserve">
+    <value>Fijo (solo http://localhost)</value>
+  </data>
+  <data name="settings.how.toolProfileOverride" xml:space="preserve">
+    <value>{0} (all, core o toolsets como plc,hmi)</value>
+  </data>
+  <data name="settings.how.updateCheck" xml:space="preserve">
+    <value>Casilla de arriba; {0}=0 o la política del equipo HKLM\{1}\{2}=1 la desactivan</value>
+  </data>
+  <data name="settings.how.writeAllowEnv" xml:space="preserve">
+    <value>{0} (patrones de símbolos, p. ej. MAIN.stTest.*; se aplica la intersección de las listas de ambas fuentes)</value>
+  </data>
+  <data name="settings.language.envOverride" xml:space="preserve">
+    <value>{0}={1} está definido y sustituye esta selección.</value>
+  </data>
+  <data name="settings.language.label" xml:space="preserve">
+    <value>Idioma</value>
+  </data>
+  <data name="settings.language.note" xml:space="preserve">
+    <value>Idioma de la ventana, sus cuadros de diálogo y los prompts. Los resultados de las herramientas y los mensajes de error siguen en inglés. Se aplica al pulsar OK.</value>
+  </data>
+  <data name="settings.language.unreviewed" xml:space="preserve">
+    <value>{0} (traducción aún sin revisar)</value>
+  </data>
+  <data name="settings.profile.automatic" xml:space="preserve">
+    <value>Automático (según el cliente: Claude all, Cursor/VS Code/Windsurf/Hermes core)</value>
+  </data>
+  <data name="settings.remember" xml:space="preserve">
+    <value>Recordar posición y tamaño de la ventana</value>
+  </data>
+  <data name="settings.row.accessLevelEnv" xml:space="preserve">
+    <value>Nivel de acceso (entorno)</value>
+  </data>
+  <data name="settings.row.allowedEnv" xml:space="preserve">
+    <value>NetIds permitidos (entorno)</value>
+  </data>
+  <data name="settings.row.allowedPaths" xml:space="preserve">
+    <value>Rutas permitidas</value>
+  </data>
+  <data name="settings.row.blockedEnv" xml:space="preserve">
+    <value>NetIds bloqueados (entorno)</value>
+  </data>
+  <data name="settings.row.confirmEnv" xml:space="preserve">
+    <value>Confirmación humana (entorno)</value>
+  </data>
+  <data name="settings.row.diagnostics" xml:space="preserve">
+    <value>Herramientas de diagnóstico</value>
+  </data>
+  <data name="settings.row.hmiAutoConfirm" xml:space="preserve">
+    <value>Confirmar automáticamente escrituras HMI (fixtures TEMP)</value>
+  </data>
+  <data name="settings.row.keepDays" xml:space="preserve">
+    <value>Conservar registros: días</value>
+  </data>
+  <data name="settings.row.keepRuns" xml:space="preserve">
+    <value>Conservar registros: ejecuciones</value>
+  </data>
+  <data name="settings.row.language" xml:space="preserve">
+    <value>Idioma</value>
+  </data>
+  <data name="settings.row.language.how" xml:space="preserve">
+    <value>La lista de arriba; la variable de entorno {0} ({1}) la sustituye</value>
+  </data>
+  <data name="settings.row.language.ignored" xml:space="preserve">
+    <value>{0}='{1}' no es un idioma de esta versión y se ignora (se usa inglés)</value>
+  </data>
+  <data name="settings.row.port" xml:space="preserve">
+    <value>Puerto</value>
+  </data>
+  <data name="settings.row.reportsMirror" xml:space="preserve">
+    <value>Reflejar informes en el repositorio</value>
+  </data>
+  <data name="settings.row.safetyPrefixes" xml:space="preserve">
+    <value>Prefijos de señales de seguridad</value>
+  </data>
+  <data name="settings.row.token" xml:space="preserve">
+    <value>Token de acceso</value>
+  </data>
+  <data name="settings.row.toolProfileOverride" xml:space="preserve">
+    <value>Perfil de herramientas forzado</value>
+  </data>
+  <data name="settings.row.updateCheck" xml:space="preserve">
+    <value>Buscar actualizaciones al iniciar</value>
+  </data>
+  <data name="settings.row.writeAllowEnv" xml:space="preserve">
+    <value>Escrituras de variables permitidas (entorno)</value>
+  </data>
+  <data name="settings.row.writeDenyEnv" xml:space="preserve">
+    <value>Escrituras de variables denegadas (entorno)</value>
+  </data>
+  <data name="settings.serverCaption" xml:space="preserve">
+    <value>Configuración del servidor (solo lectura). Se lee una vez al iniciar: defina la variable de entorno y reinicie la aplicación.</value>
+  </data>
+  <data name="settings.theme" xml:space="preserve">
+    <value>Tema</value>
+  </data>
+  <data name="settings.theme.dark" xml:space="preserve">
+    <value>Oscuro</value>
+  </data>
+  <data name="settings.theme.light" xml:space="preserve">
+    <value>Claro</value>
+  </data>
+  <data name="settings.title" xml:space="preserve">
+    <value>Configuración</value>
+  </data>
+  <data name="settings.updates.check" xml:space="preserve">
+    <value>Buscar una versión nueva al iniciar (una solicitud a github.com, no se descarga nada)</value>
+  </data>
+  <data name="settings.value.allowedPaths.none" xml:space="preserve">
+    <value>(ninguna: solución abierta, %TEMP%, carpeta de registros, instalación de TwinCAT)</value>
+  </data>
+  <data name="settings.value.default" xml:space="preserve">
+    <value>{0} (predeterminado)</value>
+  </data>
+  <data name="settings.value.none" xml:space="preserve">
+    <value>(ninguno)</value>
+  </data>
+  <data name="settings.value.notSet" xml:space="preserve">
+    <value>no definido</value>
+  </data>
+  <data name="settings.value.off" xml:space="preserve">
+    <value>desactivado</value>
+  </data>
+  <data name="settings.value.on" xml:space="preserve">
+    <value>activado</value>
+  </data>
+  <data name="settings.value.set" xml:space="preserve">
+    <value>definido</value>
+  </data>
+  <data name="settings.value.toolProfileOverride.none" xml:space="preserve">
+    <value>(ninguno: la selección anterior)</value>
+  </data>
+  <data name="status.mcp.active" xml:space="preserve">
+    <value>MCP :{0}{1}</value>
+  </data>
+  <data name="status.mcp.clients.many" xml:space="preserve">
+    <value> — {0} clientes ({1} +{2})</value>
+  </data>
+  <data name="status.mcp.clients.none" xml:space="preserve">
+    <value> — 0 clientes</value>
+  </data>
+  <data name="status.mcp.clients.one" xml:space="preserve">
+    <value> — 1 cliente ({0})</value>
+  </data>
+  <data name="status.mcp.inactive" xml:space="preserve">
+    <value>MCP: inactivo</value>
+  </data>
+  <data name="status.project.notchecked" xml:space="preserve">
+    <value>Proyecto: sin comprobar</value>
+  </data>
+  <data name="status.project.noxae.tip" xml:space="preserve">
+    <value>No hay instancia de TwinCAT XAE, por tanto no hay proyecto.</value>
+  </data>
+  <data name="status.project.probe.tip" xml:space="preserve">
+    <value>Sondeo del proyecto TwinCAT: {0}</value>
+  </data>
+  <data name="status.project.unavailable" xml:space="preserve">
+    <value>Proyecto: no disponible</value>
+  </data>
+  <data name="status.project.value" xml:space="preserve">
+    <value>Proyecto: {0}</value>
+  </data>
+  <data name="status.xae.active" xml:space="preserve">
+    <value>XAE: activo</value>
+  </data>
+  <data name="status.xae.active.tip" xml:space="preserve">
+    <value>Instancia de TwinCAT XAE: activa</value>
+  </data>
+  <data name="status.xae.inactive" xml:space="preserve">
+    <value>XAE: no activo</value>
+  </data>
+  <data name="status.xae.inactive.tip" xml:space="preserve">
+    <value>No hay ninguna instancia de TwinCAT XAE en ejecución.</value>
+  </data>
+  <data name="status.xae.notchecked" xml:space="preserve">
+    <value>XAE: sin comprobar</value>
+  </data>
+  <data name="toolconsole.client.cancelledaftersend" xml:space="preserve">
+    <value>Cancelado, tiempo agotado o cerrado después de enviar la solicitud: la herramienta puede seguir ejecutándose o haberse ejecutado. Compruebe la vista Actividad antes de reintentar.</value>
+  </data>
+  <data name="toolconsole.client.cancelledbeforesend" xml:space="preserve">
+    <value>Cancelado antes de enviar la solicitud.</value>
+  </data>
+  <data name="toolconsole.client.closed" xml:space="preserve">
+    <value>Se cerró la consola.</value>
+  </data>
+  <data name="toolconsole.client.notreachable" xml:space="preserve">
+    <value>El servidor MCP en {0} no es accesible ({1}). Puede que aún esté iniciándose; inténtelo de nuevo.</value>
+  </data>
+  <data name="toolconsole.client.outcomeunknown" xml:space="preserve">
+    <value>Resultado desconocido: la herramienta puede haberse ejecutado ({0}). Compruebe la vista Actividad antes de reintentar.</value>
+  </data>
+  <data name="toolconsole.error.invalidjson" xml:space="preserve">
+    <value>{0}: JSON no válido ({1})</value>
+  </data>
+  <data name="toolconsole.error.notinteger" xml:space="preserve">
+    <value>{0}: '{1}' no es un entero</value>
+  </data>
+  <data name="toolconsole.error.notnumber" xml:space="preserve">
+    <value>{0}: '{1}' no es un número</value>
+  </data>
+  <data name="toolconsole.error.required" xml:space="preserve">
+    <value>{0}: obligatorio</value>
+  </data>
+  <data name="toolconsole.group.approvals" xml:space="preserve">
+    <value>Aprobaciones</value>
+  </data>
+  <data name="toolconsole.group.diagnostics" xml:space="preserve">
+    <value>Diagnóstico</value>
+  </data>
+  <data name="toolconsole.group.general" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="toolconsole.group.safety" xml:space="preserve">
+    <value>Seguridad</value>
+  </data>
+  <data name="toolconsole.preset.buildplc" xml:space="preserve">
+    <value>Primeros pasos: compilar PLC</value>
+  </data>
+  <data name="toolconsole.preset.corrupt" xml:space="preserve">
+    <value>presets.json estaba dañado y se apartó (presets.json.corrupt-*); se han restaurado los valores predeterminados.</value>
+  </data>
+  <data name="toolconsole.preset.errorlist" xml:space="preserve">
+    <value>Primeros pasos: lista de errores</value>
+  </data>
+  <data name="toolconsole.preset.listplc" xml:space="preserve">
+    <value>Primeros pasos: listar objetos PLC</value>
+  </data>
+  <data name="toolconsole.preset.openproject" xml:space="preserve">
+    <value>Primeros pasos: abrir proyecto</value>
+  </data>
+  <data name="toolconsole.preset.status" xml:space="preserve">
+    <value>Primeros pasos: estado</value>
+  </data>
+  <data name="toolconsole.preset.unreadable" xml:space="preserve">
+    <value>No se pudo leer presets.json ({0}); se muestran los valores predeterminados. El archivo no se tocó y los favoritos no se pueden guardar hasta que sea legible (pulse Recargar).</value>
+  </data>
+  <data name="toolconsole.warning.noarguments" xml:space="preserve">
+    <value>no se registraron argumentos</value>
+  </data>
+  <data name="toolconsole.warning.notachoice" xml:space="preserve">
+    <value>'{0}': el valor registrado {1} no es uno de [{2}]; se deja sin seleccionar</value>
+  </data>
+  <data name="toolconsole.warning.requirednotrecorded" xml:space="preserve">
+    <value>no se registró el campo obligatorio '{0}'</value>
+  </data>
+  <data name="toolconsole.warning.unknownkeys" xml:space="preserve">
+    <value>no figuran en el esquema de la herramienta, se ignoran: {0}</value>
+  </data>
+  <data name="update.available" xml:space="preserve">
+    <value>Actualización disponible: {0} (instalada: {1}). {2}</value>
+  </data>
+  <data name="update.currentUnknown" xml:space="preserve">
+    <value>Búsqueda de actualizaciones: se desconoce la versión instalada; la última versión es {0}.</value>
+  </data>
+  <data name="update.latestUnknown" xml:space="preserve">
+    <value>Búsqueda de actualizaciones: no se pudo determinar la última versión.</value>
+  </data>
+  <data name="update.state.off" xml:space="preserve">
+    <value>desactivado</value>
+  </data>
+  <data name="update.state.offEnv" xml:space="preserve">
+    <value>desactivado ({0}=0)</value>
+  </data>
+  <data name="update.state.offPolicy" xml:space="preserve">
+    <value>desactivado (política del equipo)</value>
+  </data>
+  <data name="update.state.on" xml:space="preserve">
+    <value>activado</value>
+  </data>
+  <data name="update.unreachable" xml:space="preserve">
+    <value>Búsqueda de actualizaciones: github.com no accesible ({0}: {1}).</value>
+  </data>
+  <data name="update.upToDate" xml:space="preserve">
+    <value>Actualizado: {0} es la última versión.</value>
+  </data>
+</root>

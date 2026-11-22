@@ -84,12 +84,23 @@ public class InstallerLanguageTests
     [Fact]
     public void TheCodeMapsEveryHostLanguage_ToItsCode()
     {
-        var inno = new Dictionary<string, string> { ["en"] = "english", ["de"] = "german", ["fr"] = "french", ["it"] = "italian" };
+        // The Inno name of each host language; Simplified Chinese has no official Inno language file, so the installer
+        // has none for it (a Chinese Windows gets the English wizard and the app then follows Windows).
+        var inno = new Dictionary<string, string?>
+        {
+            ["en"] = "english", ["de"] = "german", ["fr"] = "french", ["it"] = "italian", ["es"] = "spanish",
+            ["pt"] = "brazilianportuguese", ["nl"] = "dutch", ["pl"] = "polish", ["tr"] = "turkish", ["zh"] = null,
+        };
         foreach (var language in HostLanguage.Shipped)
         {
             inno.Should().ContainKey(language.Code, "the test needs the Inno name of every shipped host language");
-            Script.Should().Contain($"ActiveLanguage = '{inno[language.Code]}' then Result := '{language.Code}'");
-            Languages().Should().Contain(inno[language.Code], "the installer offers every language the app ships");
+            if (inno[language.Code] is not { } name)
+            {
+                Script.Should().NotContain($"Result := '{language.Code}'", "the installer has no wizard language for it");
+                continue;
+            }
+            Script.Should().Contain($"ActiveLanguage = '{name}' then Result := '{language.Code}'");
+            Languages().Should().Contain(name, "the installer offers every language the app ships (where Inno has one)");
         }
     }
 }

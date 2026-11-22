@@ -8,7 +8,7 @@
          dependencies are limited to the languages the host ships (multi-language). -->
     <RootNamespace>PtcXaeMcp.WinForms</RootNamespace>
     <NeutralLanguage>en</NeutralLanguage>
-    <SatelliteResourceLanguages>en;de;fr;it</SatelliteResourceLanguages>
+    <SatelliteResourceLanguages>en;de;fr;it;es;pt;pt-BR;nl;pl;tr;zh;zh-Hans</SatelliteResourceLanguages>
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
@@ -177,6 +177,12 @@
     <EmbeddedResource Include="Mcp\Prompts\de\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.de.%(Filename).md" />
     <EmbeddedResource Include="Mcp\Prompts\fr\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.fr.%(Filename).md" />
     <EmbeddedResource Include="Mcp\Prompts\it\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.it.%(Filename).md" />
+    <EmbeddedResource Include="Mcp\Prompts\es\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.es.%(Filename).md" />
+    <EmbeddedResource Include="Mcp\Prompts\pt\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.pt.%(Filename).md" />
+    <EmbeddedResource Include="Mcp\Prompts\nl\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.nl.%(Filename).md" />
+    <EmbeddedResource Include="Mcp\Prompts\pl\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.pl.%(Filename).md" />
+    <EmbeddedResource Include="Mcp\Prompts\tr\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.tr.%(Filename).md" />
+    <EmbeddedResource Include="Mcp\Prompts\zh\*.md" LogicalName="PtcXaeMcp.WinForms.Prompts.zh.%(Filename).md" />
     <!-- The point list of a visualization line as XAE 4026.22 writes it (VisuElements.EnsureLinePoints). -->
     <EmbeddedResource Include="TwinCat\Visu\LinePoints.xml" LogicalName="PtcXaeMcp.WinForms.Visu.LinePoints.xml" />
     <EmbeddedResource Include="TwinCat\Visu\FrameReferences.xml" LogicalName="PtcXaeMcp.WinForms.Visu.FrameReferences.xml" />

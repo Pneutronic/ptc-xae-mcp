@@ -168,9 +168,9 @@ another MCP client and tests the connection.
 
 ### Language
 
-The window, its dialogs, the confirmation texts and the prompts come in English, German, French and Italian. The
-language is the first of these that names one of them: the environment variable `PTC_XAE_MCP_LANGUAGE` (`en`, `de`,
-`fr`, `it`; a value the app does not have is ignored and shown in *Settings…*), your choice in *Settings… → Language*
+The window, its dialogs, the confirmation texts and the prompts come in ten languages: English, German, French, Italian, Spanish, Brazilian Portuguese, Dutch, Polish, Turkish and
+Simplified Chinese. The language is the first of these that names one of them: the environment variable `PTC_XAE_MCP_LANGUAGE` (`en`, `de`,
+`fr`, `it`, `es`, `pt`, `nl`, `pl`, `tr`, `zh`; a value the app does not have is ignored and shown in *Settings…*), your choice in *Settings… → Language*
 (applied when you press OK), the language of the installer wizard, the Windows display language, English.
 
 A language marked *translation not yet reviewed* in the list has been translated but not yet checked by a native

@@ -10,6 +10,30 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.2.1] - 2026-11-22
+
+The host window, its dialogs, the confirmation texts and the prompts come in English, German, French and Italian; the
+installer comes in 13 languages.
+
+### Added
+- Host language: *Settings… → Language* (applied when you press OK) or the environment variable
+  `PTC_XAE_MCP_LANGUAGE` (`en`, `de`, `fr`, `it`). Without a choice the language of the installer wizard, then the
+  Windows display language, then English decides. A value the app has no texts for is skipped and named in the settings
+  list. Texts of a language that no native speaker has checked yet are marked *translation not yet reviewed* in the
+  language list. Tool results, error messages, tool names and tool descriptions stay English on purpose.
+- The six prompts (`plc-change`, `commission-ethercat`, `diagnose-runtime`, `run-tcunit`, `scope-measure`, `doctor`) in
+  German, French and Italian; a prompt without a text in the chosen language is shown in English.
+- The installer wizard in English, German, French, Italian, Spanish, Brazilian Portuguese, Dutch, Polish, Turkish,
+  Czech, Russian, Japanese and Korean (Inno Setup's own language files). The language of the wizard is left for the app
+  (`HKLM\SOFTWARE\Pneutronic\ptc-xae-mcp`, value `InstallLanguage`) as its language for the first start; a reinstall in
+  another language removes the uninstall shortcut of the old one.
+
+### Changed
+- The text of the desktop-shortcut task in the installer now comes from Inno Setup's own wording in every language
+  (German: "Desktop-Symbol erstellen" instead of "Desktop-Verknüpfung erstellen").
+- The status chips, the Approvals tab and the confirmation dialogs follow the language at once when the setting is saved;
+  a dialog that is already open keeps its language until it is opened again.
+
 ## [4.2.0] - 2026-11-22
 
 Hardware setup of a machine: real-time and I/O tasks, a Profinet device, the EtherCAT scan compared with the

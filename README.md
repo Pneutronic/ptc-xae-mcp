@@ -33,6 +33,11 @@ Get-Content .\ptc-xae-mcp-setup-<version>.exe.sha256
 
 Both lines must show the same hash. To build from source instead, see [Build](#build).
 
+The installer wizard comes in 13 languages (English, German, French, Italian, Spanish, Brazilian Portuguese, Dutch,
+Polish, Turkish, Czech, Russian, Japanese, Korean) and follows the Windows display language; `/LANG=french` (the
+language name in English, lower case) forces one, also for a silent install. The language of the wizard becomes the
+language of the app for its first start when the app has it (see [Language](#language)).
+
 **Staying current.** The app never updates itself and never downloads anything. Two ways to
 learn about a new release:
 
@@ -160,6 +165,17 @@ project* (a copy of the neutral fixture is opened from your Documents folder), t
 run the *Getting started* favourites in the Console (status, open project — fill in the
 `.sln` path —, list PLC objects, build, error list). *Menu → Connect a client…* shows the configuration for Claude Code or
 another MCP client and tests the connection.
+
+### Language
+
+The window, its dialogs, the confirmation texts and the prompts come in English, German, French and Italian. The
+language is the first of these that names one of them: the environment variable `PTC_XAE_MCP_LANGUAGE` (`en`, `de`,
+`fr`, `it`; a value the app does not have is ignored and shown in *Settings…*), your choice in *Settings… → Language*
+(applied when you press OK), the language of the installer wizard, the Windows display language, English.
+
+A language marked *translation not yet reviewed* in the list has been translated but not yet checked by a native
+speaker; corrections are welcome as issues. What stays English on purpose: the results of the tools, their error
+messages, the tool names and descriptions. An AI client reads them, and it answers you in your own language.
 
 ## Connect from Claude Code
 

@@ -60,6 +60,8 @@ src/**/*.splcproj
 src/**/*.diagram
 # MCP prompt texts, embedded into the exe (McpPrompts)
 src/PtcXaeMcp.WinForms/Mcp/Prompts/*.md
+# The same prompts in other languages, one folder per language code (Mcp\Prompts\<code>\<name>.md)
+src/PtcXaeMcp.WinForms/Mcp/Prompts/*/*.md
 # PLC visualization files the unit tests read (saved by the XAE in the neutral fixture)
 src/PtcXaeMcp.Tests/Fixtures/Visu/*.TcVIS
 

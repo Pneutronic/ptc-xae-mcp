@@ -1,4 +1,4 @@
-; Pneutronic XAE MCP (ptc-xae-mcp) Inno Setup Script
+﻿; Pneutronic XAE MCP (ptc-xae-mcp) Inno Setup Script
 ; Requires Inno Setup 6.x: https://jrsoftware.org/isinfo.php
 ;
 ; Standard-Weg (Publish + Compile + .sha256 in einem Schritt):
@@ -21,7 +21,7 @@
 ;   dotnet msbuild Directory.Build.props -getProperty:Version
 ; so it never drifts from the assembly.) Compiling without /DAppVersion falls
 ; back to the DefaultAppVersion below and still works from the IDE.
-#define DefaultAppVersion "4.1.0"
+#define DefaultAppVersion "4.2.0"
 #ifndef AppVersion
   #define AppVersion DefaultAppVersion
 #endif
@@ -52,9 +52,23 @@ UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\{#AppExe}
 SetupIconFile=..\src\PtcXaeMcp.WinForms\favicon.ico
 MinVersion=10.0.19041
+; The wizard follows the language of Windows. English comes first and is the fallback; the language dialog only
+; appears when Windows is neither English nor German. Silent installs (/SILENT, winget) never show it; /LANG=english
+; or /LANG=german forces a language.
+ShowLanguageDialog=auto
+LanguageDetectionMethod=uilanguage
 
 [Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
+
+[CustomMessages]
+english.UninstallShortcut=Uninstall {#AppName}
+german.UninstallShortcut={#AppName} deinstallieren
+english.DesktopIconTask=Create a desktop shortcut
+german.DesktopIconTask=Desktop-Verknüpfung erstellen
+english.AdditionalIconsGroup=Additional icons:
+german.AdditionalIconsGroup=Zusätzliche Symbole:
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -64,12 +78,15 @@ Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Type: files; Name: "{group}\ptc-xae-mcp.lnk"
 Type: files; Name: "{group}\ptc-xae-mcp deinstallieren.lnk"
 Type: files; Name: "{commondesktop}\ptc-xae-mcp.lnk"
+; The uninstall shortcut of the other language, so a reinstall in a different language leaves no second one behind.
+Type: files; Name: "{group}\{#AppName} deinstallieren.lnk"
+Type: files; Name: "{group}\Uninstall {#AppName}.lnk"
 
 [Icons]
 Name: "{group}\{#AppName}";         Filename: "{app}\{#AppExe}"
-Name: "{group}\{#AppName} deinstallieren"; Filename: "{uninstallexe}"
+Name: "{group}\{cm:UninstallShortcut}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Tasks]
-Name: desktopicon; Description: "Desktop-Verknüpfung erstellen"; GroupDescription: "Zusätzliche Symbole:"; Flags: unchecked
+Name: desktopicon; Description: "{cm:DesktopIconTask}"; GroupDescription: "{cm:AdditionalIconsGroup}"; Flags: unchecked
 

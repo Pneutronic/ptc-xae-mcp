@@ -10,6 +10,11 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-11-22
+
+Hardware setup of a machine: real-time and I/O tasks, a Profinet device, the EtherCAT scan compared with the
+configuration, and project variants. The installer now speaks English and German.
+
 ### Added
 - `twincat_task_list` lists every real-time task under SYSTEM > Tasks and the NC tasks SAF/SVB with kind (plc, io, nc,
   other), process image, priority, cycle time, AMS port, auto start and disabled flag (#48).
@@ -42,6 +47,9 @@ pull-request numbers refer to those.
 
 ### Changed
 - `twincat_plc_task_create` now also refuses a priority used by an NC task (SAF/SVB under TINC).
+- The installer is available in English and German. The wizard follows the language of Windows (English is the
+  fallback), `/LANG=english` or `/LANG=german` forces one; the shortcut names and the desktop-icon task are
+  translated too (#56).
 
 ## [4.1.0] - 2026-11-19
 
@@ -885,7 +893,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.1.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.2.0...HEAD
+[4.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.2.0
 [4.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.1.0
 [4.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.0.0
 [3.2.2]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.2

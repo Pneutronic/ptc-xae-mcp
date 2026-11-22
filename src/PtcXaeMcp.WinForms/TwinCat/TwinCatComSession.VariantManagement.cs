@@ -75,4 +75,41 @@ internal sealed partial class TwinCatComSession
         return $"Variant set to '{variantName}'.";
     }, OpenTimeout);
 
+    // ---- variant-editing -------------------------------------------------------
+    //
+    // ProjectVariantConfig is read/write (ITcSysManager14): the XML is replaced as a whole, so the caller
+    // reads it right before editing (VariantConfigEditor) and reads it back after the write.
+    // ProjectVariantItems holds the per-variant values of the tree items that carry a Pv* flag.
+
+    public string ReadProjectVariantConfig() => ComBusyRetry.Run(() =>
+    {
+        dynamic dte = GetActiveTcDte();
+        dynamic sysMan = RequireSystemManager(dte);
+        try { return (string?)sysMan.ProjectVariantConfig ?? string.Empty; }
+        catch (Exception ex) when (ComCall.NotBusy(ex))
+        {
+            throw new InvalidOperationException(
+                $"Reading ProjectVariantConfig failed (Variant Management needs TwinCAT XAE >= 3.1.4024): {ex.Message}", ex);
+        }
+    }, OpenTimeout);
+
+    public void WriteProjectVariantConfig(string xml) => ComBusyRetry.Run(() =>
+    {
+        dynamic dte = GetActiveTcDte();
+        dynamic sysMan = RequireSystemManager(dte);
+        try { sysMan.ProjectVariantConfig = xml; }
+        catch (Exception ex) when (ComCall.NotBusy(ex))
+        {
+            throw new InvalidOperationException($"Setting ProjectVariantConfig failed: {ex.Message}", ex);
+        }
+        SaveAllAfterMutation(dte);
+    }, OpenTimeout);
+
+    public string ReadProjectVariantItems() => ComBusyRetry.Run(() =>
+    {
+        dynamic dte = GetActiveTcDte();
+        dynamic sysMan = RequireSystemManager(dte);
+        try { return (string?)sysMan.ProjectVariantItems ?? string.Empty; }
+        catch (Exception ex) when (ComCall.NotBusy(ex)) { return string.Empty; }
+    }, OpenTimeout);
 }

@@ -80,6 +80,13 @@ public partial class McpServerTests
         Assert.Contains("twincat_event_class_read", names);
         Assert.Contains("twincat_event_class_update", names);
         Assert.Contains("twincat_plc_add_global_data_type", names);
+        Assert.Contains("twincat_task_list", names);
+        Assert.Contains("twincat_task_configure", names);
+        Assert.Contains("twincat_io_task_create", names);
+        Assert.Contains("twincat_io_device_sync_task", names);
+        Assert.Contains("twincat_profinet_device_add", names);
+        Assert.Contains("twincat_profinet_list_modules", names);
+        Assert.Contains("twincat_profinet_module_add", names);
         Assert.Contains("twincat_read_init_symbols", names);
         Assert.Contains("twincat_write_init_symbol", names);
         Assert.Contains("twincat_read_retain_config", names);

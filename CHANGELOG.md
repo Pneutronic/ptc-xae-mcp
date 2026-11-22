@@ -10,6 +10,47 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-11-22
+
+Hardware setup of a machine: real-time and I/O tasks, a Profinet device, the EtherCAT scan compared with the
+configuration, and project variants. The installer now speaks English and German.
+
+### Added
+- `twincat_task_list` lists every real-time task under SYSTEM > Tasks and the NC tasks SAF/SVB with kind (plc, io, nc,
+  other), process image, priority, cycle time, AMS port, auto start and disabled flag (#48).
+- `twincat_task_configure` changes priority, cycle time, AMS port and/or the disabled flag of one task, the NC SAF/SVB
+  tasks included. Collisions with another task's priority or AMS port are refused before anything changes; every value
+  is read back (#48).
+- `twincat_io_task_create` creates a task with process image for I/O devices, e.g. with AMS port 301. The XAE gives a
+  new image task priority 1; the tool writes the requested or next free priority right away (#48).
+- `twincat_profinet_device_add` creates a Profinet device (RT) on an EL6631-0010: the I/O device bound to the terminal
+  and its Profinet box from the newest EL6631 GSDML file, with a selectable DAP (#49).
+- `twincat_profinet_list_modules` and `twincat_profinet_module_add` list the modules a Profinet device's DAP offers and
+  place one in a slot (#49).
+- `twincat_io_device_sync_task` reads or sets the sync task of an I/O device such as the Profinet device and warns when
+  no task has the AMS port it points to (the cause of "target port not found" at activation). The setting is not
+  reachable through ConsumeXml, so the device is exported, changed and imported again with its links reconnected (#49).
+- `twincat_ethercat_scan_compare` runs the XAE Scan on an EtherCAT master in config mode, without an activated
+  configuration, and compares the real network with the configured boxes by position and identity (vendor, product
+  code, revision): identical, or per box `missing`, `extra`, `different_product`, `different_revision`. A box inserted
+  or pulled in the middle is one difference, not one per box behind it. The scan runs on a temporary device on the same
+  adapter that is removed again, also after an error; the project is left unchanged and nothing is saved (#47).
+- `twincat_variant_create` and `twincat_variant_delete` create and delete project variants (optionally as a member
+  of an existing variant group). The variant list is read back after the write and a write that does not land is
+  rolled back; the active variant cannot be deleted.
+- `twincat_variant_set_item` sets `disabled` and/or the NC axis simulation flag of a tree item for one variant:
+  it turns the item's variant-dependent flag on, switches to the variant, writes and reads back, switches back to
+  the original variant (also after an error) and saves. The result lists the value in every variant.
+  `axisSimulation` is refused before any change when the XAE does not expose the axis simulation flag; XAE 3.1.4026
+  does not (it is not part of the axis XML, and the variant-dependent parameter flag does not make the axis type
+  per variant) (#50).
+
+### Changed
+- `twincat_plc_task_create` now also refuses a priority used by an NC task (SAF/SVB under TINC).
+- The installer is available in English and German. The wizard follows the language of Windows (English is the
+  fallback), `/LANG=english` or `/LANG=german` forces one; the shortcut names and the desktop-icon task are
+  translated too (#56).
+
 ## [4.1.0] - 2026-11-19
 
 HMI authoring and TF2000: check pages offline and in a headless live view, place controls, check group rights, diagnose
@@ -852,7 +893,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.1.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.2.0...HEAD
+[4.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.2.0
 [4.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.1.0
 [4.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.0.0
 [3.2.2]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v3.2.2

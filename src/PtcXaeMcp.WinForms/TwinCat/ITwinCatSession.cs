@@ -537,9 +537,37 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     BootProjectResult ActivateBootProject(bool dryRun);
 
+    // ---- ethercat-scan ----
+    /// <summary>
+    /// Scans the real EtherCAT network of a configured master (config mode, no activation) on a temporary device
+    /// on the same adapter and returns the configured and the scanned chain. The project is left unchanged: the
+    /// temporary device is removed again, also after an error, and nothing is saved. Throws when the path is not an
+    /// EtherCAT master, no adapter is assigned, the XAE refuses the scan, or the temporary device could not be removed.
+    /// </summary>
+    EtherCatScanData ScanEtherCatMaster(string masterTreePath);
+
     // ---- variant-management ----
     VariantStatusResult GetVariantStatus();
     string SetActiveVariant(string variantName);
+
+    // ---- variant-editing ----
+    /// <summary>The <c>ProjectVariantConfig</c> XML as the XAE holds it (empty when the project has no variants).</summary>
+    string ReadProjectVariantConfig();
+    /// <summary>Replaces <c>ProjectVariantConfig</c> as a whole and saves the solution. Throws when the XAE refuses it.</summary>
+    void WriteProjectVariantConfig(string xml);
+    /// <summary>The <c>ProjectVariantItems</c> XML (the per-variant settings of tree items); empty when unreadable.</summary>
+    string ReadProjectVariantItems();
+    /// <summary>The state of a tree item in the active variant. Throws when the path does not resolve.</summary>
+    VariantItemState ReadVariantItem(string treePath);
+    /// <summary>Turns on (never off) the item's PvDisable / PvParameter flags so the value is stored per variant.</summary>
+    void SetVariantFlags(string treePath, bool pvDisable, bool pvParameter);
+    /// <summary>
+    /// Writes <c>Disabled</c> and/or the axis simulation flag in the ACTIVE variant and reads it back; does not save.
+    /// Throws when the XAE refuses it, the read-back differs, or the simulation flag is not reachable on this XAE.
+    /// </summary>
+    void WriteVariantItemValue(string treePath, bool? disabled, bool? axisSimulation);
+    /// <summary>Saves the solution (File.SaveAll).</summary>
+    void SaveVariantChanges();
 
     // ---- coredump-analysis ----
     /// <summary>
@@ -785,7 +813,7 @@ internal interface ITwinCatSession : IDisposable
     void ConsumeTreeItemXml(string treePath, string xml);
 
     // ---- plc-task ----
-    /// <summary>Every real-time task under TIRT with its cycle time and priority as read from the item.</summary>
+    /// <summary>Every real-time task under TIRT and TINC (NC SAF/SVB) with its cycle time and priority as read from the item.</summary>
     IReadOnlyList<RealtimeTaskInfo> ListRealtimeTasks();
 
     /// <summary>
@@ -812,6 +840,44 @@ internal interface ITwinCatSession : IDisposable
     /// value read back from a fresh lookup.
     /// </summary>
     PlcTaskReferenceInfo SetPlcTaskLink(string taskReferencePath, string linkedTask);
+
+    // ---- io-tasks ----
+    /// <summary>
+    /// Tree paths of every real-time task, in tree order: the children of TIRT and the NC tasks under TINC (the SAF task and
+    /// its SVB child) — every item there whose ProduceXml carries a TaskDef.
+    /// </summary>
+    IReadOnlyList<string> ListTaskPaths();
+
+    /// <summary>The LinkedTask of every PLC task reference of every PLC project (e.g. "TIRT^PlcTask"); unreadable ones are left out.</summary>
+    IReadOnlyList<string> ListPlcTaskLinks();
+
+    /// <summary>
+    /// Name and ItemType of every child of <paramref name="treePath"/> through the item's enumerator, in tree order. Unlike
+    /// <see cref="ListTreeChildren"/> (ChildCount/Child(i)) it also returns the process-image folders of tasks and devices and
+    /// the SVB task below the SAF task.
+    /// </summary>
+    IReadOnlyList<TreeChildInfo> ListAllTreeChildren(string treePath);
+
+    /// <summary><c>LookupTreeItem("TIRT").CreateChild(name, 0)</c> — a real-time task with process image. Returns its tree path as read back.</summary>
+    string CreateImageTask(string name);
+
+    /// <summary>
+    /// <c>CreateChild(name, subType, "", vInfo)</c> under <paramref name="parentPath"/>; returns the new item's tree path as read
+    /// back (the XAE may choose another name than <paramref name="name"/>).
+    /// </summary>
+    string CreateTreeChild(string parentPath, string name, int subType, string? vInfo);
+
+    /// <summary><c>ExportChild(childName, filePath)</c> on <paramref name="parentPath"/>: the child as .xti file.</summary>
+    void ExportTreeChild(string parentPath, string childName, string filePath);
+
+    /// <summary><c>DeleteChild(childName)</c> on <paramref name="parentPath"/>.</summary>
+    void DeleteTreeChild(string parentPath, string childName);
+
+    /// <summary>
+    /// <c>ImportChild(filePath, beforeName ?? "", reconnect, name)</c> on <paramref name="parentPath"/>; with
+    /// <paramref name="reconnect"/> the XAE restores the variable links of the imported item. Returns its tree path.
+    /// </summary>
+    string ImportTreeChild(string parentPath, string filePath, string? beforeName, bool reconnect, string name);
 
     // ---- event-classes ----
     /// <summary>ExportXml(false) of every type-system type that has EventIds (the event classes), built-in ones included.</summary>

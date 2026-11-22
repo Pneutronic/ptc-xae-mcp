@@ -64,7 +64,8 @@ internal static class ToolCatalog
         [
             "twincat_open_project", "twincat_close_project", "twincat_save_project", "twincat_get_active_project",
             "twincat_solution_open_archive", "twincat_solution_save_archive", "twincat_set_active_variant",
-            "twincat_get_variant_status", "twincat_force_close_xae", "twincat_plc_project_create",
+            "twincat_get_variant_status", "twincat_variant_create", "twincat_variant_delete",
+            "twincat_variant_set_item", "twincat_force_close_xae", "twincat_plc_project_create",
             "twincat_plc_project_add_existing", "twincat_plc_project_export", "twincat_plc_project_import",
             "twincat_plc_project_info", "twincat_plc_instance_from_tmc", "twincat_open_object", "twincat_close_object",
         ]),
@@ -117,13 +118,15 @@ internal static class ToolCatalog
         (Toolset.Io,
         [
             "twincat_add_ethercat_device", "twincat_add_ethercat_box", "twincat_remove_ethercat_box",
-            "twincat_configure_ethercat_slave", "twincat_set_previous_port", "twincat_ethercat_read_identities",
+            "twincat_configure_ethercat_slave", "twincat_set_previous_port", "twincat_ethercat_read_identities", "twincat_ethercat_scan_compare",
             "twincat_list_ethercat_box_catalog", "twincat_get_fieldbus_topology", "twincat_get_device_xml",
             "twincat_reload_device_descriptions", "twincat_set_device_disabled", "twincat_read_coe_dictionary",
             "twincat_read_coe_startup", "twincat_read_ethercat_startup", "twincat_read_soe_parameter",
             "twincat_link_variables", "twincat_unlink_variables", "twincat_get_mapping_info",
             "twincat_get_iolink_config", "twincat_import_iodd", "twincat_check_iodd_present", "twincat_apply_schema",
-            "twincat_validate_schema",
+            "twincat_validate_schema", "twincat_task_list", "twincat_task_configure", "twincat_io_task_create",
+            "twincat_io_device_sync_task", "twincat_profinet_device_add", "twincat_profinet_list_modules",
+            "twincat_profinet_module_add",
         ]),
         (Toolset.Scope,
         [

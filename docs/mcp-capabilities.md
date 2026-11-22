@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-233 tools, generated from the source attributes — one section per
+244 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -19,7 +19,7 @@
 - [Diagnostics](#diagnostics) (9)
 - [Doctor](#doctor) (1)
 - [EditorNavigation](#editornavigation) (2)
-- [EtherCat](#ethercat) (6)
+- [EtherCat](#ethercat) (7)
 - [EventClasses](#eventclasses) (4)
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
@@ -32,6 +32,7 @@
 - [IbnLive](#ibnlive) (7)
 - [IoLink](#iolink) (3)
 - [IoMapping](#iomapping) (4)
+- [IoTasks](#iotasks) (4)
 - [Libraries](#libraries) (11)
 - [Lifecycle](#lifecycle) (4)
 - [NcAxes](#ncaxes) (5)
@@ -46,6 +47,7 @@
 - [PlcSearch](#plcsearch) (2)
 - [PlcTasks](#plctasks) (1)
 - [PouMembers](#poumembers) (2)
+- [Profinet](#profinet) (3)
 - [Receipts](#receipts) (1)
 - [Recovery](#recovery) (6)
 - [RuntimeControl](#runtimecontrol) (9)
@@ -57,7 +59,7 @@
 - [SignalTestbench](#signaltestbench) (4)
 - [StaticAnalysis](#staticanalysis) (1)
 - [TcUnit](#tcunit) (1)
-- [VariantManagement](#variantmanagement) (2)
+- [VariantManagement](#variantmanagement) (5)
 - [VisibleEditor](#visibleeditor) (2)
 - [Visu](#visu) (4)
 - [Workflow](#workflow) (2)
@@ -448,7 +450,7 @@ Add an EtherCAT box/terminal, or a whole subtree, under a TIID node. Same engine
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `parentPath` | `string` |  | Parent tree path, e.g. 'TIID^Device 1 (EtherCAT)' or 'TIID^Device 1 (EtherCAT)^Box 1 (EK1100)'. From twincat_get_fieldbus_topology; the bare root 'TIID' is rejected. |
-| `vInfo` | `string?` | `null` | Single box: type, bare 'EL9011' (latest installed revision) or revisioned 'AX5206-0000-0202' (see twincat_list_ethercat_box_catalog). Excludes boxesJson. |
+| `vInfo` | `string?` | `null` | Single box: type, bare 'EL9011' (latest installed revision) or revisioned 'AX5206-0000-0202'; other vendors as 'V<vendorId>_P<productCode>_R<revision>' (8 hex digits each; a bare third-party ESI Type is translated). See twincat_list_ethercat_box_catalog. Excludes boxesJson. |
 | `name` | `string?` | `null` | Single box: designation, e.g. 'A1.49 (EL9011)'. Default: vInfo. |
 | `previousPort` | `string?` | `null` | Single box: upstream port letter A/B/C/D. |
 | `beforeSibling` | `string?` | `null` | Name of an existing sibling to insert before. Default: append at the end. |
@@ -456,7 +458,7 @@ Add an EtherCAT box/terminal, or a whole subtree, under a TIID node. Same engine
 
 ### `twincat_list_ethercat_box_catalog`
 
-List installable EtherCAT box types and their vInfo from the local ESI files. vInfo is the input of twincat_add_ethercat_box. Scans <TwinCAT>\3.1\Config\Io\EtherCAT offline: no XAE, solution or hardware needed. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017), ESI Type, name, productCode, revisionNo, vendor, source file. Malformed ESI files are skipped and counted. The first scan can take seconds; cached until an ESI file changes. Result: summary line + JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }; total counts every match.
+List installable EtherCAT box types and their vInfo from the local ESI files. vInfo is the input of twincat_add_ethercat_box. Scans <TwinCAT>\3.1\Config\Io\EtherCAT offline: no XAE, solution or hardware needed. Per device: vInfo (revision-exact, e.g. EL1008-0000-0017; other vendors V<vendorId>_P<productCode>_R<revision>, e.g. V00000059_P00000013_R00000002), ESI Type, name, productCode, revisionNo, vendor, source file. Malformed ESI files are skipped and counted. The first scan can take seconds; cached until an ESI file changes. Result: summary line + JSON { esiDirectory, filter, latestRevisionOnly, filesScanned, filesSkipped, nonEsiFiles, devicesIndexed, cached, warnings, total, offset, returned, has_more, next_offset, devices[] }; total counts every match.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -487,6 +489,14 @@ Set an EtherCAT box's upstream PreviousPort (A/B/C/D) and save the project. Need
 |---|---|---|---|
 | `treePath` | `string` |  | Tree path of the box, e.g. 'TIID^Device 1 (EtherCAT)^Box 2 (EK1122)^Box 3 (EK1100)'. |
 | `port` | `string` |  | Upstream port: A, B, C or D. |
+
+### `twincat_ethercat_scan_compare`
+
+Scan an EtherCAT master's network and compare it with the configured boxes. The XAE Scan in config mode, without activating a configuration (twincat_ethercat_read_identities needs one): a temporary master on the same adapter scans the real network and is removed again; the project is left unchanged and nothing is saved. Needs config mode (twincat_set_system_mode config) and a network adapter assigned to the master. Compares by position and identity (vendor, product code, revision), not by box name. Returns JSON { treePath, identical, summary, configured[], scanned[], differences[] } where a difference is { position, kind: missing | extra | different_product | different_revision, configured, scanned }, or [Error]; an [Error] that names a temporary device means it could not be removed and must be deleted by hand.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `treePath` | `string` |  | Tree path of the EtherCAT master under TIID, e.g. 'TIID^Device 1 (EtherCAT)' (twincat_get_fieldbus_topology). |
 
 ## EventClasses
 
@@ -1194,6 +1204,46 @@ Enable or disable a TwinCAT I/O device by its tree path and save the project. Ne
 | `treePath` | `string` |  | Tree path of the I/O device, e.g. 'TIID^Device 1 (EtherCAT)'. From twincat_get_fieldbus_topology. |
 | `disabled` | `bool` |  | true to disable the device, false to enable it. |
 
+## IoTasks
+
+### `twincat_task_list`
+
+List every real-time task: PLC, I/O and NC SAF/SVB tasks alike. The tasks under SYSTEM > Tasks (TIRT) and under TINC. Read-only; needs an open solution. Returns a summary line and JSON { tasks: [{ name, path, kind (plc | io | nc | other), image, priority, cycleTimeMs, cycleTime100ns, amsPort, autoStart, disabled }], warnings }. kind plc = a PLC task reference links it; io = a task with process image that no PLC calls; nc = under TINC. Values the XAE does not show are null.
+
+_No parameters._
+
+### `twincat_task_configure`
+
+Change priority, cycle time, AMS port or disabled flag of a real-time task. Any task under TIRT or TINC (e.g. the NC SAF/SVB tasks); only the values passed change. Refused with [Error] before the logout, nothing changed: unknown or ambiguous task, nothing to change, priority outside 1..63 or used by another task (TIRT and TINC), cycle time <= 0 or not a multiple of 100 ns, AMS port outside 1..65535 or used by another task. Logs the XAE out first, reads every value back and saves; a value the XAE did not take is reported with [Warn], none taken is an [Error] without saving. Effective at the next Activate Configuration.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `task` | `string` |  | The task: its name (e.g. 'PlcTask') or tree path (e.g. 'TINC^NC-Task 1 SAF') from twincat_task_list. |
+| `priority` | `int?` | `null` | New priority 1..63 (lower = more urgent); unique across all tasks. |
+| `cycleTimeMs` | `double?` | `null` | New cycle time in ms, > 0 and a multiple of 0.0001 ms (100 ns), e.g. 2 or 0.5. |
+| `amsPort` | `int?` | `null` | New AMS port of the task, e.g. 301; unique across all tasks. |
+| `disabled` | `bool?` | `null` | true disables the task, false enables it. |
+
+### `twincat_io_task_create`
+
+Create an I/O task: a real-time task with image that no PLC calls. It goes under SYSTEM > Tasks and serves as sync task of an I/O device (e.g. a Profinet device, AMS port 301). Refused with [Error] before the logout, nothing changed: name not an IEC identifier or already used by a task, cycle time <= 0 or not a multiple of 100 ns, priority outside 1..63 or used (TIRT and TINC, listed), AMS port outside 1..65535 or used. Logs the XAE out first. The XAE gives a new image task priority 1 and AMS port 301 by itself; priority (and the port when passed) are written afterwards and read back. Saves on success; effective at the next Activate Configuration.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string` |  | New task name (IEC identifier), e.g. 'IoTask'. |
+| `cycleTimeMs` | `double` |  | Cycle time in ms, > 0 and a multiple of 0.0001 ms (100 ns), e.g. 2. |
+| `priority` | `int?` | `null` | Priority 1..63 (lower = more urgent). Omit for the next free one (highest in use + 1). |
+| `amsPort` | `int?` | `null` | AMS port, e.g. 301. Omit to keep the one the XAE assigns (301 for the first image task). |
+
+### `twincat_io_device_sync_task`
+
+Read or set the sync task of an I/O device (Settings > sync task). Without task: reads it (default via mapping, or the task with its AMS port) and warns when no task has that port, which makes activation fail with 'target port not found'. With task: sets it; 'default' goes back to via mapping. The task needs a process image (twincat_io_task_create). Supported: I/O devices with an Ethernet protocol section, such as the Profinet device on an EL6631-0010; others are refused. The Automation Interface does not take this setting directly, so the device is exported, changed, removed and imported again at the same place with its variable links reconnected; a failed import puts the original back. Logs the XAE out first, reads back and saves; effective at the next Activate Configuration.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `device` | `string` |  | Tree path of the I/O device, e.g. 'TIID^PN Device', from twincat_get_fieldbus_topology. |
+| `task` | `string?` | `null` | Task name or tree path from twincat_task_list, or 'default'. Omit to read the current sync task. |
+
 ## Libraries
 
 ### `twincat_list_library_references`
@@ -1347,11 +1397,11 @@ _No parameters._
 
 ### `twincat_create_nc_task`
 
-Create an NC-Task under the Motion (TINC) root. Needs an open solution. Works only when the project has no NC-Task yet; otherwise it returns guidance to reuse the existing one (twincat_list_nc_tasks_axes + twincat_create_axis). Returns the created tree path as read back. NOT saved: call twincat_save_project.
+Create an NC-Task under the Motion (TINC) root. Needs an open solution. Works only when the project has no NC-Task yet; otherwise it returns guidance to reuse the existing one (twincat_list_nc_tasks_axes + twincat_create_axis). Returns the created tree path as read back. The XAE appends ' SAF' to the name itself ('NC-Task 1' → 'NC-Task 1 SAF'); a trailing ' SAF'/' SVB' in the given name is removed and reported. NOT saved: call twincat_save_project.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `name` | `string` |  | Name for the new NC-Task, e.g. 'NC-Task 1'. |
+| `name` | `string` |  | Base name for the new NC-Task without ' SAF', e.g. 'NC-Task 1'. |
 
 ### `twincat_create_axis`
 
@@ -1782,7 +1832,7 @@ Replace an exact text snippet in a PLC element's declaration or implementation. 
 
 ### `twincat_plc_task_create`
 
-Create a real-time task for a PLC and link it to the PLC project. Creates the task under SYSTEM > Tasks, the PLC task reference linked to it and, with program, the call of that PROGRAM. Refused with [Error] before the logout, nothing changed: name not an IEC identifier or already used by a task, cycle time <= 0 or not a multiple of 100 ns, priority outside 1..63 or used by another task under TIRT (listed), unknown PLC project or PROGRAM. Logs the XAE out first. The XAE may adjust cycle time or priority silently: the result shows the read-back values and warns on a difference. If a later step fails, the [Error] names what was created and how to finish or remove it. Saves on success; effective at the next Activate Configuration. Priorities of tasks outside TIRT (NC SAF/SVB) are not checked.
+Create a real-time task for a PLC and link it to the PLC project. Creates the task under SYSTEM > Tasks, the PLC task reference linked to it and, with program, the call of that PROGRAM. Refused with [Error] before the logout, nothing changed: name not an IEC identifier or already used by a task, cycle time <= 0 or not a multiple of 100 ns, priority outside 1..63 or used by another task under TIRT or TINC (NC SAF/SVB; listed), unknown PLC project or PROGRAM. Logs the XAE out first. The XAE may adjust cycle time or priority silently: the result shows the read-back values and warns on a difference. If a later step fails, the [Error] names what was created and how to finish or remove it. Saves on success; effective at the next Activate Configuration.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1811,6 +1861,38 @@ Import objects from a PLCopen XML file into the PLC project. Logs the XAE out fi
 |---|---|---|---|
 | `filePath` | `string` |  | Absolute path of the XML file to read. |
 | `conflictMode` | `string?` | `null` | On a name conflict: None, Rename, Replace or Skip (default, non-destructive). |
+
+## Profinet
+
+### `twincat_profinet_device_add`
+
+Create a Profinet device (RT) on an EL6631-0010 terminal. TwinCAT acts as Profinet IO device for an external Profinet controller. Creates the I/O device under I/O > Devices, binds it to the EL6631-0010 in the EtherCAT network and adds its Profinet box from the newest EL6631 GSDML file of the TwinCAT installation (Config\Io\Profinet); the XAE names that box itself. Refused with [Error] before the logout, nothing changed: the box is not an EL6631-0010 or already used by a device, the name is taken, no GSDML file, unknown dap, unknown sync task or one without image. Logs the XAE out first and reads the binding back. If a later step fails, the [Error] names what was created. Saves on success; effective at the next Activate Configuration. Add modules with twincat_profinet_module_add.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string` |  | Device name under I/O > Devices, e.g. 'PN Device'. |
+| `boxPath` | `string` |  | Tree path of the EL6631-0010 EtherCAT box, e.g. 'TIID^Device 1 (EtherCAT)^Term 1 (EK1100)^Term 5 (EL6631-0010)'. |
+| `dap` | `int?` | `null` | Device access point number of the GSDML (1 = oldest firmware version). It must match the terminal's firmware. Default: the newest. |
+| `syncTask` | `string?` | `null` | Optional sync task (name or path of a task with image, e.g. 'IoTask'); see twincat_io_device_sync_task. |
+
+### `twincat_profinet_list_modules`
+
+List the placed and the offered modules of a Profinet device (RT). Placed: per slot; offered: the module types its DAP allows (from the device's GSDML file). Read-only; needs an open solution. Returns a summary line and JSON { device, box, api, gsdml, dap { number, name, maxSlot }, placed: [{ slot, name, module, identNumber, path }] (slot 0 = the DAP), catalog: [{ module, name, category, identNumber, inputBytes, outputBytes }] }.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `device` | `string` |  | Tree path of the Profinet device, e.g. 'TIID^PN Device'. |
+| `filter` | `string?` | `null` | Optional case-insensitive filter on module ID, name or category, e.g. 'Byte' or 'Float32'. |
+
+### `twincat_profinet_module_add`
+
+Place one module from the GSDML catalog of a Profinet device (RT) in a slot. Refused with [Error] before the logout, nothing changed: unknown module, module not allowed by the DAP or modular, slot 0 (the DAP) or beyond the last slot, slot occupied. Logs the XAE out first, reads slot and module back and saves; effective at the next Activate Configuration. The remote Profinet controller must be configured with the same modules in the same slots.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `device` | `string` |  | Tree path of the Profinet device, e.g. 'TIID^PN Device'. |
+| `module` | `string` |  | The module: GSDML ID (e.g. 'BYTE_I4'), name (e.g. '4 Byte Input') or ident number (e.g. '0x706'), from twincat_profinet_list_modules. |
+| `slot` | `int` |  | Slot number, 1 or higher (slot 0 holds the DAP). |
 
 ## Receipts
 
@@ -2384,6 +2466,34 @@ Set the active project variant by name, optionally building afterwards. An unkno
 |---|---|---|---|
 | `variantName` | `string` |  | Variant name as defined in the project, e.g. SIMULATION; [GroupName] activates a variant group. |
 | `rebuildAfter` | `bool` | `true` | Build the solution after switching. Default true; without a build the change does not take effect. |
+
+### `twincat_variant_create`
+
+Create a project variant, optionally as a member of an existing variant group. A duplicate or invalid name returns [Error] and changes nothing; the variant list is read back and a write that does not land is rolled back. The first variant of a project becomes the active variant. Returns JSON { variant, group, activeVariant, availableVariants, groups, notes } or [Error].
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `variantName` | `string` |  | Name of the new variant, e.g. Machine or Simulation. Must not contain [ ] ^ < > & quotes or slashes. |
+| `group` | `string?` | `null` | Optional name of an existing variant group to add the variant to. |
+
+### `twincat_variant_delete`
+
+Delete a project variant and its memberships in variant groups. The active variant (or a member of the active group) is refused with a hint to switch first; an unknown name returns [Error] and changes nothing. Per-variant settings of tree items that remain are named in the result. Returns JSON { variant, removedFromGroups, availableVariants, groups, notes } or [Error].
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `variantName` | `string` |  | Name of the variant to delete, as listed by twincat_get_variant_status. |
+
+### `twincat_variant_set_item`
+
+Set disabled and/or NC axis simulation of a tree item for one project variant. Turns the item's variant-dependent flag on, switches to the variant, writes and reads the value back, switches back to the original variant (also after an error) and saves. Returns JSON { treePath, variant, activeVariant, variants: [{ variant, disabled, axisSimulation }], notes } with the value in every variant, or [Error]. Needs at least one of disabled or axisSimulation. axisSimulation is refused (nothing changed) when the XAE does not expose the axis simulation flag; XAE 3.1.4026 does not.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `treePath` | `string` |  | Tree path of the item, e.g. TIID^Device 1 (I/O device or box) or an NC axis path from twincat_list_nc_tasks_axes. |
+| `variant` | `string` |  | Variant the setting belongs to, as listed by twincat_get_variant_status (a single variant, not [Group]). |
+| `disabled` | `bool?` | `null` | true disables the item in that variant, false enables it. Omit to leave unchanged. |
+| `axisSimulation` | `bool?` | `null` | true makes the NC axis a simulation axis in that variant, false a real one. NC axes only; refused on XAE builds that do not expose the flag. Omit to leave unchanged. |
 
 ## VisibleEditor
 

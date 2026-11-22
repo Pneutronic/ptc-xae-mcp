@@ -109,4 +109,21 @@ internal sealed partial class TwinCatMcpTools
         => bridge.Activity.Trace("twincat_set_previous_port", new { treePath, port }, () =>
             bridge.Dispatcher.Run(() =>
                 new EtherCatEditCoordinator(bridge.Dispatcher.Session).SetPreviousPort(treePath, port)), cancellationToken);
+
+    [McpServerTool(Name = "twincat_ethercat_scan_compare", ReadOnly = false, Destructive = false)]
+    [Description("Scan an EtherCAT master's network and compare it with the configured boxes. " +
+                 "The XAE Scan in config mode, without activating a configuration (twincat_ethercat_read_identities needs one): " +
+                 "a temporary master on the same adapter scans the real network and is removed again; the project is left " +
+                 "unchanged and nothing is saved. Needs config mode (twincat_set_system_mode config) and a network adapter " +
+                 "assigned to the master. Compares by position and identity (vendor, product code, revision), not by box name. " +
+                 "Returns JSON { treePath, identical, summary, configured[], scanned[], differences[] } where a difference is " +
+                 "{ position, kind: missing | extra | different_product | different_revision, configured, scanned }, or [Error]; " +
+                 "an [Error] that names a temporary device means it could not be removed and must be deleted by hand.")]
+    public string EtherCatScanCompare(
+        [Description("Tree path of the EtherCAT master under TIID, e.g. 'TIID^Device 1 (EtherCAT)' (twincat_get_fieldbus_topology).")]
+        string treePath,
+        CancellationToken cancellationToken = default)
+        => bridge.Activity.Trace("twincat_ethercat_scan_compare", new { treePath }, () =>
+            bridge.Dispatcher.Run(() =>
+                new EtherCatScanCoordinator(bridge.Dispatcher.Session).ScanCompare(treePath)), cancellationToken);
 }

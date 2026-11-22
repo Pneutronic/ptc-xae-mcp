@@ -1069,7 +1069,7 @@ Bunu yalnızca XAE donduğunda kullanın. XAE'deki kaydedilmemiş değişiklikle
     <value>Yukarıdaki liste; {0} ortam değişkeni ({1}) bunu geçersiz kılar</value>
   </data>
   <data name="settings.row.language.ignored" xml:space="preserve">
-    <value>{0}='{1}' bu sürümün bir dili değil ve yok sayılır (İngilizce kullanılır)</value>
+    <value>{0}='{1}' bu sürümün bir dili değil ve yok sayılıyor</value>
   </data>
   <data name="settings.row.port" xml:space="preserve">
     <value>Port</value>

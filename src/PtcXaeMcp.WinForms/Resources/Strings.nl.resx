@@ -1069,7 +1069,7 @@ Het vorige beleid blijft van kracht.</value>
     <value>De lijst hierboven; omgevingsvariabele {0} ({1}) heeft er voorrang op</value>
   </data>
   <data name="settings.row.language.ignored" xml:space="preserve">
-    <value>{0}='{1}' is geen taal van deze versie en wordt genegeerd (Engels wordt gebruikt)</value>
+    <value>{0}='{1}' is geen taal van deze versie en wordt genegeerd</value>
   </data>
   <data name="settings.row.port" xml:space="preserve">
     <value>Poort</value>

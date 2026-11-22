@@ -1069,7 +1069,7 @@ I criteri precedenti restano in vigore.</value>
     <value>L'elenco sopra; la variabile d'ambiente {0} ({1}) lo sostituisce</value>
   </data>
   <data name="settings.row.language.ignored" xml:space="preserve">
-    <value>{0}='{1}' non è una lingua di questa versione e viene ignorata (si usa l'inglese)</value>
+    <value>{0}='{1}' non è una lingua di questa versione e viene ignorata</value>
   </data>
   <data name="settings.row.port" xml:space="preserve">
     <value>Porta</value>

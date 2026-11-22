@@ -1069,7 +1069,7 @@ Poprzednie zasady pozostają w mocy.</value>
     <value>Lista powyżej; zmienna środowiskowa {0} ({1}) ją zastępuje</value>
   </data>
   <data name="settings.row.language.ignored" xml:space="preserve">
-    <value>{0}='{1}' nie jest językiem tej wersji i jest ignorowane (używany jest angielski)</value>
+    <value>{0}='{1}' nie jest językiem tej wersji i jest ignorowane</value>
   </data>
   <data name="settings.row.port" xml:space="preserve">
     <value>Port</value>

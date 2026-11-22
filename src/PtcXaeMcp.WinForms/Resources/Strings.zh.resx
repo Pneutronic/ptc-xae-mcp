@@ -1069,7 +1069,7 @@
     <value>上方的列表；环境变量 {0}（{1}）会覆盖它</value>
   </data>
   <data name="settings.row.language.ignored" xml:space="preserve">
-    <value>{0}='{1}' 不是此版本支持的语言，已被忽略（使用英文）</value>
+    <value>{0}='{1}' 不是此版本支持的语言，已被忽略</value>
   </data>
   <data name="settings.row.port" xml:space="preserve">
     <value>端口</value>

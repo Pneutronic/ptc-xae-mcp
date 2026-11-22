@@ -1069,7 +1069,7 @@ The previous policy stays in force.</value>
     <value>The list above; environment variable {0} ({1}) overrides it</value>
   </data>
   <data name="settings.row.language.ignored" xml:space="preserve">
-    <value>{0}='{1}' is not a language of this version and is ignored (English is used)</value>
+    <value>{0}='{1}' is not a language of this version and is ignored</value>
   </data>
   <data name="settings.row.port" xml:space="preserve">
     <value>Port</value>

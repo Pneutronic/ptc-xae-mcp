@@ -1069,7 +1069,7 @@ Sigue vigente la política anterior.</value>
     <value>La lista de arriba; la variable de entorno {0} ({1}) la sustituye</value>
   </data>
   <data name="settings.row.language.ignored" xml:space="preserve">
-    <value>{0}='{1}' no es un idioma de esta versión y se ignora (se usa inglés)</value>
+    <value>{0}='{1}' no es un idioma de esta versión y se ignora</value>
   </data>
   <data name="settings.row.port" xml:space="preserve">
     <value>Puerto</value>

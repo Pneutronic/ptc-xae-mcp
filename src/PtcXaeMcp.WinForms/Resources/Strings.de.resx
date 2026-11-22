@@ -1069,7 +1069,7 @@ Die bisherige Richtlinie bleibt gültig.</value>
     <value>Die Liste oben; die Umgebungsvariable {0} ({1}) überschreibt sie</value>
   </data>
   <data name="settings.row.language.ignored" xml:space="preserve">
-    <value>{0}='{1}' ist keine Sprache dieser Version und wird ignoriert (Englisch wird verwendet)</value>
+    <value>{0}='{1}' ist keine Sprache dieser Version und wird ignoriert</value>
   </data>
   <data name="settings.row.port" xml:space="preserve">
     <value>Port</value>

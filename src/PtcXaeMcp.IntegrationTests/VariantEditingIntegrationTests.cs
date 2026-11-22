@@ -66,43 +66,56 @@ public class VariantEditingIntegrationTests : IAsyncLifetime
     {
         LiveXae.GuardReady(_ready);
 
+        // Own variant names, so the test does not depend on what another test of the class left in the per-run copy
+        // (the axis test below creates "Simulation" and keeps it).
+        const string machine = "McpMachine";
+        const string sim = "McpSimulation";
         var before = Variants(await StatusAsync());
-        Skip.If(before.Count > 0, "the fixture copy already has variants; this test starts from a project without any");
+        Skip.If(before.Contains(machine) || before.Contains(sim), "the fixture copy still holds this test's variants");
 
-        string r1 = await CallAsync("twincat_variant_create", new() { ["variantName"] = "Machine" });
+        string r1 = await CallAsync("twincat_variant_create", new() { ["variantName"] = machine });
         Assert.DoesNotContain("[Error]", r1, StringComparison.Ordinal);
-        string r2 = await CallAsync("twincat_variant_create", new() { ["variantName"] = "Simulation" });
+        string r2 = await CallAsync("twincat_variant_create", new() { ["variantName"] = sim });
         Assert.DoesNotContain("[Error]", r2, StringComparison.Ordinal);
 
         var created = await StatusAsync();
-        Assert.Equal(["Machine", "Simulation"], Variants(created).Order().ToArray());
+        Assert.Equal(before.Concat([machine, sim]).Order().ToArray(), Variants(created).Order().ToArray());
         string original = created.GetProperty("activeVariant").GetString() ?? string.Empty;
 
-        string duplicate = await CallAsync("twincat_variant_create", new() { ["variantName"] = "machine" });
+        string duplicate = await CallAsync("twincat_variant_create", new() { ["variantName"] = machine.ToLowerInvariant() });
         Assert.StartsWith("[Error]", duplicate, StringComparison.Ordinal);
 
         string set = await CallAsync("twincat_variant_set_item", new()
         {
             ["treePath"] = FixtureLayout.El1008Path,
-            ["variant"] = "Simulation",
+            ["variant"] = sim,
             ["disabled"] = true,
         });
         Assert.DoesNotContain("[Error]", set, StringComparison.Ordinal);
         var rows = JsonDocument.Parse(set).RootElement.GetProperty("variants").EnumerateArray()
             .ToDictionary(r => r.GetProperty("variant").GetString()!, r => r.GetProperty("disabled").GetBoolean());
-        Assert.True(rows["Simulation"]);
-        Assert.False(rows["Machine"]);
+        Assert.True(rows[sim]);
+        Assert.False(rows[machine]);
 
         // The original variant is active again after the call.
         Assert.Equal(original, (await StatusAsync()).GetProperty("activeVariant").GetString());
 
-        // The active variant cannot be deleted; the other one can.
-        string refused = await CallAsync("twincat_variant_delete", new() { ["variantName"] = original });
-        Assert.StartsWith("[Error]", refused, StringComparison.Ordinal);
-        string other = original == "Machine" ? "Simulation" : "Machine";
-        string deleted = await CallAsync("twincat_variant_delete", new() { ["variantName"] = other });
-        Assert.DoesNotContain("[Error]", deleted, StringComparison.Ordinal);
-        Assert.Equal([original], Variants(await StatusAsync()).ToArray());
+        // The active variant cannot be deleted. In a project without variants that is the first one created here and it
+        // stays; otherwise the variant that was active before stays and both of ours go.
+        string[] ours = [machine, sim];
+        var toDelete = ours.Where(v => v != original).ToArray();
+        if (ours.Contains(original))
+        {
+            string refused = await CallAsync("twincat_variant_delete", new() { ["variantName"] = original });
+            Assert.StartsWith("[Error]", refused, StringComparison.Ordinal);
+        }
+        foreach (string v in toDelete)
+        {
+            string deleted = await CallAsync("twincat_variant_delete", new() { ["variantName"] = v });
+            Assert.DoesNotContain("[Error]", deleted, StringComparison.Ordinal);
+        }
+        var expected = ours.Contains(original) ? before.Concat([original]) : before;
+        Assert.Equal(expected.Order().ToArray(), Variants(await StatusAsync()).Order().ToArray());
     }
 
     [SkippableFact]
@@ -118,7 +131,7 @@ public class VariantEditingIntegrationTests : IAsyncLifetime
         }
 
         string list = await CallAsync("twincat_list_nc_tasks_axes", []);
-        var task = System.Text.RegularExpressions.Regex.Match(list, @"TINC\^[^
+        var task = System.Text.RegularExpressions.Regex.Match(list, @"TINC\^[^
 ,]*?SAF").Value;
         Skip.If(task.Length == 0, "the fixture has no NC task");
         string axis = task + "^Axes^Axis 1";

@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using ModelContextProtocol;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Security;
 
@@ -78,11 +79,11 @@ internal sealed class ToolConsoleClient : IAsyncDisposable
         }
         catch (ObjectDisposedException)
         {
-            return new ToolCallOutcome(true, "The console was closed.", string.Empty, sw.Elapsed);
+            return new ToolCallOutcome(true, Loc.Get("toolconsole.client.closed"), string.Empty, sw.Elapsed);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return new ToolCallOutcome(true, "Cancelled before the request was sent.", string.Empty, sw.Elapsed);
+            return new ToolCallOutcome(true, Loc.Get("toolconsole.client.cancelledbeforesend"), string.Empty, sw.Elapsed);
         }
         catch (Exception ex)
         {
@@ -113,22 +114,21 @@ internal sealed class ToolConsoleClient : IAsyncDisposable
         {
             await ResetAsync().ConfigureAwait(false);
             return new ToolCallOutcome(true,
-                "Cancelled, timed out or closed after the request was sent - the tool may still be running or may have run. " +
-                "Check the Activity view before retrying.",
+                Loc.Get("toolconsole.client.cancelledaftersend"),
                 string.Empty, sw.Elapsed, OutcomeUnknown: true);
         }
         catch (Exception ex)
         {
             await ResetAsync().ConfigureAwait(false);
             return new ToolCallOutcome(true,
-                $"Outcome unknown - the tool may have run ({ex.Message}). Check the Activity view before retrying.",
+                Loc.Format("toolconsole.client.outcomeunknown", ex.Message),
                 string.Empty, sw.Elapsed, OutcomeUnknown: true);
         }
     }
 
     /// <summary>User-facing text for a connect/list failure.</summary>
     public string NotReachableMessage(Exception ex) =>
-        $"The MCP server at {_endpoint} is not reachable ({ex.Message}). It may still be starting; try again.";
+        Loc.Format("toolconsole.client.notreachable", _endpoint, ex.Message);
 
     public async ValueTask DisposeAsync()
     {

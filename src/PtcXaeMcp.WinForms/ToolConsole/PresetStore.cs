@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using PtcXaeMcp.WinForms.Localization;
 
 namespace PtcXaeMcp.WinForms.ToolConsole;
 
@@ -26,11 +27,11 @@ internal sealed class PresetStore
     /// <summary>Presets shipped on first run.</summary>
     public static IReadOnlyList<ToolPreset> GettingStarted() =>
     [
-        new("Getting started: status", "twincat_get_status", "{}"),
-        new("Getting started: open project", "twincat_open_project", "{}"),
-        new("Getting started: list PLC objects", "twincat_plc_list", "{}"),
-        new("Getting started: build PLC", "twincat_build_plc", "{}"),
-        new("Getting started: error list", "twincat_get_error_list", "{}"),
+        new(Loc.Get("toolconsole.preset.status"), "twincat_get_status", "{}"),
+        new(Loc.Get("toolconsole.preset.openproject"), "twincat_open_project", "{}"),
+        new(Loc.Get("toolconsole.preset.listplc"), "twincat_plc_list", "{}"),
+        new(Loc.Get("toolconsole.preset.buildplc"), "twincat_build_plc", "{}"),
+        new(Loc.Get("toolconsole.preset.errorlist"), "twincat_get_error_list", "{}"),
     ];
 
     // Set when the file could not be read for a temporary IO/permission reason: it is left as it
@@ -82,15 +83,14 @@ internal sealed class PresetStore
             // Possibly temporary (file locked, no permission): do not treat it as corruption.
             _unreadable = true;
             return (GettingStarted(),
-                $"presets.json could not be read ({ex.Message}); showing the defaults. " +
-                "The file was left untouched and favourites cannot be saved until it is readable (press Reload).");
+                Loc.Format("toolconsole.preset.unreadable", ex.Message));
         }
         catch (Exception ex) when (ex is JsonException or InvalidCastException or InvalidOperationException or FormatException)
         {
             BackupCorrupt();
             var defaults = GettingStarted();
             TrySave(defaults);
-            return (defaults, "presets.json was corrupt and was moved aside (presets.json.corrupt-*); the defaults are back.");
+            return (defaults, Loc.Get("toolconsole.preset.corrupt"));
         }
     }
 

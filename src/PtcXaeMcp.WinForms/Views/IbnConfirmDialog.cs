@@ -1,3 +1,5 @@
+using System.Globalization;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.TwinCat;
 
 namespace PtcXaeMcp.WinForms.Views;
@@ -85,7 +87,7 @@ internal sealed class IbnConfirmDialog : Form
         var btnCancel = new Button
         {
             Name = "_btnIbnConfirmCancel",
-            Text = "Cancel",
+            Text = Loc.Get("confirm.button.cancel"),
             DialogResult = DialogResult.Cancel,
             AutoSize = true,
             MinimumSize = new Size(98, 30),
@@ -93,7 +95,7 @@ internal sealed class IbnConfirmDialog : Form
         var btnExecute = new Button
         {
             Name = "_btnIbnConfirmExecute",
-            Text = "Execute step",
+            Text = Loc.Get("ibnconfirm.button.execute"),
             DialogResult = DialogResult.OK,
             AutoSize = true,
             MinimumSize = new Size(110, 30),
@@ -146,21 +148,33 @@ internal sealed class IbnConfirmDialog : Form
 /// <summary>Popup text, kept out of the Form so it is unit-testable.</summary>
 internal static class IbnConfirmText
 {
-    public const string Title = "IBN Live — confirm step";
+    public static string Title => Loc.Get("ibnconfirm.title");
 
-    public const string Headline = "The MCP client proposes a commissioning step";
+    public static string Headline => Loc.Get("ibnconfirm.headline");
 
-    public const string Effect =
-        "⚠ Execute writes ONE command bit (bStepReq) to the test PRG — the machine may MOVE. " +
-        "Cancel, Esc or closing this window writes nothing.";
+    public static string Effect => Loc.Get("ibnconfirm.effect");
 
-    public static string Details(IbnProposal p) => string.Join(Environment.NewLine,
-        $"Action    : {p.Action}",
-        $"Chain     : {p.ChainId ?? "-"}",
-        $"Actuator  : {p.ActuatorId ?? "-"}",
-        $"Proposal  : {p.ProposalId}",
-        $"Requested : {p.CreatedUtc.ToLocalTime():HH:mm:ss}");
+    /// <summary>The label column is padded to 10 characters (the historic English layout), wider when a language needs it.</summary>
+    public static string Details(IbnProposal p)
+    {
+        string[] labels =
+        [
+            Loc.Get("ibnconfirm.details.action"),
+            Loc.Get("ibnconfirm.details.chain"),
+            Loc.Get("ibnconfirm.details.actuator"),
+            Loc.Get("ibnconfirm.details.proposal"),
+            Loc.Get("ibnconfirm.details.requested"),
+        ];
+        int width = Math.Max(10, labels.Max(l => l.Length));
+        string Col(int i) => labels[i].PadRight(width);
+        return string.Join(Environment.NewLine,
+            $"{Col(0)}: {p.Action}",
+            $"{Col(1)}: {p.ChainId ?? "-"}",
+            $"{Col(2)}: {p.ActuatorId ?? "-"}",
+            $"{Col(3)}: {p.ProposalId}",
+            $"{Col(4)}: {p.CreatedUtc.ToLocalTime():HH:mm:ss}");
+    }
 
     public static string Countdown(TimeSpan left) =>
-        $"Nothing moves without your confirmation — this proposal expires in {Math.Ceiling(left.TotalSeconds):0} s.";
+        Loc.Format("ibnconfirm.countdown", Math.Ceiling(left.TotalSeconds).ToString("0", CultureInfo.InvariantCulture));
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.TwinCat;
 
 namespace PtcXaeMcp.WinForms.Views;
@@ -93,7 +94,7 @@ internal sealed class RestoreConfirmDialog : Form
         var btnCancel = new Button
         {
             Name = "_btnRestoreCancel",
-            Text = "Cancel",
+            Text = Loc.Get("confirm.button.cancel"),
             DialogResult = DialogResult.Cancel,
             AutoSize = true,
             MinimumSize = new Size(98, 30),
@@ -101,7 +102,7 @@ internal sealed class RestoreConfirmDialog : Form
         var btnRestore = new Button
         {
             Name = "_btnRestoreConfirm",
-            Text = "Restore values",
+            Text = Loc.Get("restoreconfirm.button.restore"),
             DialogResult = DialogResult.OK,
             AutoSize = true,
             MinimumSize = new Size(120, 30),
@@ -157,13 +158,11 @@ internal sealed class RestoreConfirmDialog : Form
 /// <summary>Popup text, kept out of the Form so it is unit-testable.</summary>
 internal static class RestoreConfirmText
 {
-    public const string Title = "Persistent snapshot — confirm restore";
+    public static string Title => Loc.Get("restoreconfirm.title");
 
-    public const string Headline = "The MCP client proposes to restore a snapshot into the PLC";
+    public static string Headline => Loc.Get("restoreconfirm.headline");
 
-    public const string Effect =
-        "⚠ Restore overwrites live PLC values. Cancel, Esc or closing this window writes nothing. " +
-        "After you confirm, the PLC is checked once more; if it changed since the review, nothing is written.";
+    public static string Effect => Loc.Get("restoreconfirm.effect");
 
     public const int MaxDifferenceLines = 15;
 
@@ -171,38 +170,50 @@ internal static class RestoreConfirmText
         string.Equals(plcState, "Run", StringComparison.OrdinalIgnoreCase);
 
     public static string StateLine(string plcState) => IsRunning(plcState)
-        ? "PLC state: RUN — values are written while the program runs and may be overwritten by it"
-        : $"PLC state: {plcState.ToUpperInvariant()}";
+        ? Loc.Get("restoreconfirm.state.run")
+        : Loc.Format("restoreconfirm.state.other", plcState.ToUpperInvariant());
 
+    /// <summary>The label column is padded to 10 characters (the historic English layout), wider when a language needs it.</summary>
     public static string Details(RestoreProposal p)
     {
+        string[] labels =
+        [
+            Loc.Get("restoreconfirm.details.target"),
+            Loc.Get("restoreconfirm.details.snapshot"),
+            Loc.Get("restoreconfirm.details.taken"),
+            Loc.Get("restoreconfirm.details.towrite"),
+            Loc.Get("restoreconfirm.details.proposal"),
+            Loc.Get("restoreconfirm.details.requested"),
+        ];
+        int width = Math.Max(10, labels.Max(l => l.Length));
+        string Col(int i) => labels[i].PadRight(width);
         var lines = new List<string>
         {
-            $"Target    : {p.AmsNetId}:{p.AdsPort}",
-            $"Snapshot  : {p.SnapshotPath}",
-            $"Taken     : {p.SnapshotUtc} (UTC)",
-            $"To write  : {p.Plan.Writes.Count} leaf/leaves ({p.Plan.Unchanged} already equal, {p.Plan.Skips.Count} skipped)",
-            $"Proposal  : {p.RestoreId}",
-            $"Requested : {p.CreatedUtc.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture)}",
+            $"{Col(0)}: {p.AmsNetId}:{p.AdsPort}",
+            $"{Col(1)}: {p.SnapshotPath}",
+            $"{Col(2)}: {Loc.Format("restoreconfirm.details.taken.value", p.SnapshotUtc)}",
+            $"{Col(3)}: {Loc.Format("restoreconfirm.details.towrite.value", p.Plan.Writes.Count, p.Plan.Unchanged, p.Plan.Skips.Count)}",
+            $"{Col(4)}: {p.RestoreId}",
+            $"{Col(5)}: {p.CreatedUtc.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture)}",
             string.Empty,
-            "Differences (PLC now -> snapshot):",
+            Loc.Get("restoreconfirm.differences"),
         };
         foreach (var w in p.Plan.Writes.Take(MaxDifferenceLines))
             lines.Add($"  {w.Path}: {SnapshotValues.Show(w.Old.Value)} -> {SnapshotValues.Show(w.New.Value)}");
         if (p.Plan.Writes.Count > MaxDifferenceLines)
-            lines.Add($"  ... and {p.Plan.Writes.Count - MaxDifferenceLines} more");
+            lines.Add(Loc.Format("restoreconfirm.more", p.Plan.Writes.Count - MaxDifferenceLines));
         if (p.Plan.Skips.Count > 0)
         {
             lines.Add(string.Empty);
-            lines.Add($"Skipped ({p.Plan.Skips.Count}):");
+            lines.Add(Loc.Format("restoreconfirm.skipped", p.Plan.Skips.Count));
             foreach (var s in p.Plan.Skips.Take(MaxDifferenceLines))
                 lines.Add($"  {s.Path}: {s.Reason}");
             if (p.Plan.Skips.Count > MaxDifferenceLines)
-                lines.Add($"  ... and {p.Plan.Skips.Count - MaxDifferenceLines} more");
+                lines.Add(Loc.Format("restoreconfirm.more", p.Plan.Skips.Count - MaxDifferenceLines));
         }
         return string.Join(Environment.NewLine, lines);
     }
 
     public static string Countdown(TimeSpan left) =>
-        $"Nothing is written without your confirmation — this proposal expires in {Math.Ceiling(left.TotalSeconds):0} s.";
+        Loc.Format("restoreconfirm.countdown", Math.Ceiling(left.TotalSeconds).ToString("0", CultureInfo.InvariantCulture));
 }

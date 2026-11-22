@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Security;
 
 namespace PtcXaeMcp.WinForms.Dialogs;
@@ -50,13 +51,14 @@ internal static class ClientConnectInfo
             var r = doc.RootElement;
             string status = r.TryGetProperty("status", out var s) ? s.ToString() : "?";
             string version = r.TryGetProperty("version", out var v) ? v.ToString() : "?";
-            string auth = r.TryGetProperty("authRequired", out var a) && a.ValueKind == JsonValueKind.True ? "yes" : "no";
-            return $"Server reachable: status {status}, version {version}, token required: {auth}.";
+            string auth = r.TryGetProperty("authRequired", out var a) && a.ValueKind == JsonValueKind.True
+                ? Loc.Get("connect.health.yes") : Loc.Get("connect.health.no");
+            return Loc.Format("connect.health.ok", status, version, auth);
         }
         // InvalidOperationException: TryGetProperty on a root that is not an object.
         catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {
-            return "The server answered, but not with the expected /health JSON.";
+            return Loc.Get("connect.health.unexpected");
         }
     }
 }

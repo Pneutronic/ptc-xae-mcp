@@ -1,3 +1,4 @@
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.TwinCat;
 using PtcXaeMcp.WinForms.Views;
@@ -49,8 +50,10 @@ public partial class Form1 : Form
 
         WireHeader();
         WireMenu();
+        ApplyLanguage(); // Form1.Language.cs: the first paint is already in the host language
         ApplyTheme();
         ThemeManager.Changed += ApplyTheme;
+        HostLanguage.Changed += OnHostLanguageChanged;
         // issue #154, A-6/A-15: the initial check must not run in the constructor — strictly
         // BEFORE Program.cs constructs and starts McpBridge. A slow COM tree walk (see
         // TwinCatEnvironmentProbe) would keep the MCP HTTP port closed for that long, so a
@@ -62,6 +65,7 @@ public partial class Form1 : Form
         FormClosed += (_, _) =>
         {
             ThemeManager.Changed -= ApplyTheme;
+            HostLanguage.Changed -= OnHostLanguageChanged;
             _host.EnvironmentRefreshRequested -= RefreshEnvironmentStatus;
             _host.ApplyRunStateChanged -= OnHostApplyRunStateChanged;
             StopActiveProcess();
@@ -106,7 +110,7 @@ public partial class Form1 : Form
         bridge.StatusChanged += SetMcpStatus;
         bridge.Sessions.Changed += () => SetMcpClients(bridge.Sessions.Snapshot());
         bridge.Faulted += message => BeginInvokeSafe(() =>
-            MessageBox.Show(message, "MCP Error", MessageBoxButtons.OK, MessageBoxIcon.Warning));
+            MessageBox.Show(message, Loc.Get("main.mcperror.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning));
         bridge.ShutdownRequested += () => BeginInvokeSafe(Close);
     }
 
@@ -119,8 +123,8 @@ public partial class Form1 : Form
         var level = _bridge?.Policy.Current.Level ?? Mcp.AccessLevel.Runtime;
         Text = level switch
         {
-            Mcp.AccessLevel.Read => $"{_baseTitle} — READ ONLY",
-            Mcp.AccessLevel.Engineer => $"{_baseTitle} — ENGINEER (no runtime actions)",
+            Mcp.AccessLevel.Read => Loc.Format("main.title.readonly", _baseTitle),
+            Mcp.AccessLevel.Engineer => Loc.Format("main.title.engineer", _baseTitle),
             _ => _baseTitle,
         };
     }
@@ -138,8 +142,7 @@ public partial class Form1 : Form
         _picLogo.Image = ProductInfo.LoadLogo(forDarkBackground: dark);
         _picLogo.Visible = _picLogo.Image is not null;
         oldLogo?.Dispose();
-        _btnThemeToggle.Text = dark ? "Light" : "Dark";
-        _toolTip.SetToolTip(_btnThemeToggle, dark ? "Switch to the light theme" : "Switch to the dark theme");
+        ApplyThemeToggleTexts();
         // Re-apply status dot colors after theme switch. Apply() has already remapped the state
         // labels' semantic ForeColor to the new palette, so the comparison below matches.
         ApplyStatusDot(_lblXaeDot, _lblXaeState.ForeColor);
@@ -241,12 +244,12 @@ public partial class Form1 : Form
         var p = ThemeManager.Palette;
         if (_mcpActive)
         {
-            _lblMcpCaption.Text = $"MCP :{_mcpPort}{FormatClientSuffix(_mcpClients)}";
+            _lblMcpCaption.Text = Loc.Format("status.mcp.active", _mcpPort, FormatClientSuffix(_mcpClients));
             _lblMcpDot.BackColor = p.Ok;
         }
         else
         {
-            _lblMcpCaption.Text = "MCP: inactive";
+            _lblMcpCaption.Text = Loc.Get("status.mcp.inactive");
             _lblMcpDot.BackColor = p.Inactive;
         }
     }
@@ -254,13 +257,13 @@ public partial class Form1 : Form
     private static string FormatClientSuffix(IReadOnlyList<Mcp.McpClientSession> clients)
     {
         if (clients.Count == 0)
-            return " — 0 clients";
+            return Loc.Get("status.mcp.clients.none");
         // Newest first (registry Snapshot order); name the primary one.
         var primary = clients[0];
         var label = $"{primary.ClientName} {primary.ClientVersion}";
         return clients.Count == 1
-            ? $" — 1 client ({label})"
-            : $" — {clients.Count} clients ({label} +{clients.Count - 1})";
+            ? Loc.Format("status.mcp.clients.one", label)
+            : Loc.Format("status.mcp.clients.many", clients.Count, label, clients.Count - 1);
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -292,8 +295,9 @@ public partial class Form1 : Form
                 projectDisplay += $"  ·  {hostLine}";
             xaeStatusText = "Active";
             projectStatusText = projectDisplay;
-            SetChip(_lblXaeState, _lblXaeDot, "XAE: Active", "TwinCAT XAE instance: active", IndicatorState.Ok);
-            SetChip(_lblProjectState, _lblProjectDot, $"Project: {chipText}", projectDisplay, IndicatorState.Ok);
+            ShowChips(
+                new ChipSpec("status.xae.active", [], "status.xae.active.tip", [], null, IndicatorState.Ok),
+                new ChipSpec("status.project.value", [chipText], null, [], projectDisplay, IndicatorState.Ok));
             plcs.AddRange(env.PlcProjectNames);
             masters.AddRange(env.MasterNames);
         }
@@ -307,8 +311,9 @@ public partial class Form1 : Form
             {
                 xaeStatusText = "Not active";
                 projectStatusText = "Not available";
-                SetChip(_lblXaeState, _lblXaeDot, "XAE: Not active", "No running TwinCAT XAE instance.", IndicatorState.Error);
-                SetChip(_lblProjectState, _lblProjectDot, "Project: Not available", "No TwinCAT XAE instance, so no project.", IndicatorState.Error);
+                ShowChips(
+                    new ChipSpec("status.xae.inactive", [], "status.xae.inactive.tip", [], null, IndicatorState.Error),
+                    new ChipSpec("status.project.unavailable", [], "status.project.noxae.tip", [], null, IndicatorState.Error));
                 plcs.Add("<not available (XAE inactive)>");
                 masters.Add("<not available (XAE inactive)>");
             }
@@ -316,8 +321,9 @@ public partial class Form1 : Form
             {
                 xaeStatusText = "Active";
                 projectStatusText = "Not available";
-                SetChip(_lblXaeState, _lblXaeDot, "XAE: Active", "TwinCAT XAE instance: active", IndicatorState.Ok);
-                SetChip(_lblProjectState, _lblProjectDot, "Project: Not available", "TwinCAT project probe: " + ex.Message, IndicatorState.Warn);
+                ShowChips(
+                    new ChipSpec("status.xae.active", [], "status.xae.active.tip", [], null, IndicatorState.Ok),
+                    new ChipSpec("status.project.unavailable", [], "status.project.probe.tip", [ex.Message], null, IndicatorState.Warn));
                 AppendLog("[warn] TwinCAT project probe: " + ex.Message);
                 plcs.Add("<not available (no TwinCAT project)>");
                 masters.Add("<not available (no TwinCAT project)>");
@@ -359,8 +365,18 @@ public partial class Form1 : Form
         }
     }
 
-    private void SetChip(Label text, Label dot, string chipText, string toolTip, IndicatorState state)
+    /// <summary>Remembers the two chip states (so a language change can render them again) and shows them.</summary>
+    private void ShowChips(ChipSpec xae, ChipSpec project)
     {
+        _xaeChipSpec = xae;
+        _projectChipSpec = project;
+        SetChip(_lblXaeState, _lblXaeDot, xae);
+        SetChip(_lblProjectState, _lblProjectDot, project);
+    }
+
+    private void SetChip(Label text, Label dot, ChipSpec spec)
+    {
+        IndicatorState state = spec.State;
         var p = ThemeManager.Palette;
         Color colour = state switch
         {
@@ -369,7 +385,8 @@ public partial class Form1 : Form
             IndicatorState.Error => p.Error,
             _ => p.Inactive
         };
-        text.Text = chipText;
+        string toolTip = spec.ToolTip;
+        text.Text = spec.ChipText;
         text.ForeColor = colour;
         dot.BackColor = colour;
         _toolTip.SetToolTip(text, toolTip);

@@ -61,7 +61,7 @@ internal sealed class McpPrompts
     {
         string text = Text(name);
         foreach (var (key, value) in arguments)
-            text = text.Replace("{{" + key + "}}", string.IsNullOrWhiteSpace(value) ? "(not given)" : value.Trim(), StringComparison.Ordinal);
+            text = text.Replace("{{" + key + "}}", string.IsNullOrWhiteSpace(value) ? Loc.Get("prompt.notGiven") : value.Trim(), StringComparison.Ordinal);
         return text;
     }
 

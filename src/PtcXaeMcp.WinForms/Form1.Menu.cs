@@ -12,11 +12,11 @@ namespace PtcXaeMcp.WinForms;
 // order lives in one place: WireMenu rebuilds the item list the Designer created.
 public partial class Form1
 {
-    private readonly ToolStripMenuItem _mnuOpenSample = new() { Name = "_mnuOpenSample", Text = "Open sample project" };
-    private readonly ToolStripMenuItem _mnuConnectClient = new() { Name = "_mnuConnectClient", Text = "Connect a client…" };
-    private readonly ToolStripMenuItem _mnuSettings = new() { Name = "_mnuSettings", Text = "Settings…" };
+    private readonly ToolStripMenuItem _mnuOpenSample = new() { Name = "_mnuOpenSample", Text = "" };
+    private readonly ToolStripMenuItem _mnuConnectClient = new() { Name = "_mnuConnectClient", Text = "" };
+    private readonly ToolStripMenuItem _mnuSettings = new() { Name = "_mnuSettings", Text = "" };
     private readonly ToolStripMenuItem _mnuWebsite = new() { Name = "_mnuWebsite", Text = "pneutronic.ch" };
-    private readonly ToolStripMenuItem _mnuCheckUpdates = new() { Name = "_mnuCheckUpdates", Text = "Check for updates…" };
+    private readonly ToolStripMenuItem _mnuCheckUpdates = new() { Name = "_mnuCheckUpdates", Text = "" };
 
     /// <summary>Read once at start: HKLM, so only an administrator changes it (then restart the app).</summary>
     private readonly bool _updateCheckDisabledByPolicy = UpdateCheck.IsDisabledByPolicy();
@@ -103,8 +103,8 @@ public partial class Form1
                 try { bridge.Policy.SetWindowPolicy(policy); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
-                    MessageBox.Show(this, $"The access policy could not be saved to {bridge.Policy.FilePath}:\n{ex.Message}\n\nThe previous policy stays in force.",
-                        "Access policy", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(this, Loc.Format("main.policy.savefailed", bridge.Policy.FilePath, ex.Message),
+                        Loc.Get("main.policy.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
         }
@@ -145,7 +145,7 @@ public partial class Form1
         }
 
         _mnuCheckUpdates.Enabled = false;
-        if (interactive) ShowTransientRunState("Checking github.com for a newer release...");
+        if (interactive) ShowTransientRunState(Loc.Get("main.runstate.checkingupdates"));
         UpdateCheckOutcome outcome;
         try
         {
@@ -158,27 +158,27 @@ public partial class Form1
         if (IsDisposed) return;
 
         _lastUpdateCheck = outcome;
-        AppendLog(outcome.Message);
+        AppendLog(outcome.LogText);
         if (outcome.Kind == UpdateCheckKind.UpdateAvailable && outcome.Latest is { } latest)
         {
-            _mnuCheckUpdates.Text = $"Update available: {latest.ToString(3)}…";
-            ShowTransientRunState($"Update available: {latest.ToString(3)} (Menu > Update available).");
+            _mnuCheckUpdates.Text = Loc.Format("menu.updateavailable", latest.ToString(3));
+            ShowTransientRunState(Loc.Format("main.runstate.updateavailable", latest.ToString(3)));
         }
         else if (interactive)
         {
-            ShowTransientRunState(outcome.Kind == UpdateCheckKind.UpToDate ? "Up to date." : "Update check failed; see the run log.");
+            ShowTransientRunState(Loc.Get(outcome.Kind == UpdateCheckKind.UpToDate ? "main.runstate.uptodate" : "main.runstate.updatecheckfailed"));
         }
 
         if (!interactive) return;
         if (outcome.Kind == UpdateCheckKind.UpdateAvailable)
         {
-            if (MessageBox.Show(this, outcome.Message + "\n\nOpen the release page? Nothing is downloaded by this app.",
-                    "Check for updates", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+            if (MessageBox.Show(this, outcome.Message + "\n\n" + Loc.Get("main.updates.openpage"),
+                    Loc.Get("main.updates.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
                 OpenUrl(outcome.Url);
         }
         else
         {
-            MessageBox.Show(this, outcome.Message, "Check for updates", MessageBoxButtons.OK,
+            MessageBox.Show(this, outcome.Message, Loc.Get("main.updates.title"), MessageBoxButtons.OK,
                 outcome.Kind == UpdateCheckKind.UpToDate ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
         }
     }
@@ -192,7 +192,7 @@ public partial class Form1
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            MessageBox.Show(this, $"Could not open {url}:\n{ex.Message}", "Open link", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, Loc.Format("main.error.openurl", url, ex.Message), Loc.Get("main.openlink.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 
@@ -206,8 +206,8 @@ public partial class Form1
         string source = SampleProject.ShippedDirectory(AppContext.BaseDirectory);
         if (!Directory.Exists(source))
         {
-            MessageBox.Show(this, $"The sample project is not part of this installation:\n{source}",
-                "Open sample project", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, Loc.Format("main.sample.missing", source),
+                Loc.Get("main.sample.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -223,18 +223,18 @@ public partial class Form1
             });
             if (!openCheck.Ok)
             {
-                MessageBox.Show(this, openCheck.ErrorMessage, "Open sample project", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, openCheck.ErrorMessage, Loc.Get("main.sample.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             bool closeCurrent = openCheck.Value == "open";
             if (closeCurrent && MessageBox.Show(this,
-                    "A solution is open in the TwinCAT XAE. Close it without saving and open the sample project?",
-                    "Open sample project", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                    Loc.Get("main.sample.closeconfirm"),
+                    Loc.Get("main.sample.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                 return;
 
             // 2. Copy outside the dispatcher lock (no COM involved); a failed copy leaves nothing behind.
-            ShowTransientRunState("Copying sample project...");
+            ShowTransientRunState(Loc.Get("main.runstate.copyingsample"));
             string target = SampleProject.UniqueTargetDirectory(documents, DateTime.Now);
             string sln;
             try
@@ -245,14 +245,14 @@ public partial class Form1
             {
                 try { if (Directory.Exists(target)) Directory.Delete(target, recursive: true); }
                 catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException) { }
-                MessageBox.Show(this, $"The sample project could not be copied to\n{target}\n\n{ex.Message}",
-                    "Open sample project", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, Loc.Format("main.sample.copyfailed", target, ex.Message),
+                    Loc.Get("main.sample.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             AppendLog($"Sample project copied to {target}");
 
             // 3. Open the copy under the lock, same path as twincat_open_project.
-            ShowTransientRunState("Opening sample project...");
+            ShowTransientRunState(Loc.Get("main.runstate.openingsample"));
             var outcome = await _guiDispatch.RunAsync(() =>
                 new LifecycleCoordinator(_session)
                     .OpenProjectAsync(sln, closeCurrentFirst: closeCurrent, CancellationToken.None)
@@ -260,8 +260,8 @@ public partial class Form1
 
             if (!outcome.Ok)
             {
-                ShowTransientRunState("Sample project not opened.");
-                MessageBox.Show(this, outcome.ErrorMessage, "Open sample project",
+                ShowTransientRunState(Loc.Get("main.runstate.samplenotopened"));
+                MessageBox.Show(this, outcome.ErrorMessage, Loc.Get("main.sample.title"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -270,9 +270,9 @@ public partial class Form1
             AppendLog(result);
             bool ok = McpErrors.IsOk(result);
             _host.RequestEnvironmentRefresh("After sample project");
-            ShowTransientRunState(ok ? "Sample project opened." : "Sample project not opened.");
+            ShowTransientRunState(Loc.Get(ok ? "main.runstate.sampleopened" : "main.runstate.samplenotopened"));
             if (!ok)
-                MessageBox.Show(this, result, "Open sample project", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, result, Loc.Get("main.sample.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         finally
         {

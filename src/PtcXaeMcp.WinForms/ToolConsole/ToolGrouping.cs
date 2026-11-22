@@ -1,3 +1,5 @@
+using PtcXaeMcp.WinForms.Localization;
+
 namespace PtcXaeMcp.WinForms.ToolConsole;
 
 /// <summary>One tool as the console lists it: metadata from <c>tools/list</c>.</summary>
@@ -40,6 +42,19 @@ internal static class ToolGrouping
                 if (n.Contains(needle, StringComparison.Ordinal)) return title;
         return "General";
     }
+
+    /// <summary>
+    /// The group title as the tool list shows it: the host-made words (Approvals, Safety, Diagnostics, General) in the
+    /// host language, product names (Scope, HMI, PLC, ADS) as they are. <see cref="GroupOf"/> keeps the English key.
+    /// </summary>
+    public static string DisplayTitle(string title) => title switch
+    {
+        "Approvals" => Loc.Get("toolconsole.group.approvals"),
+        "Safety" => Loc.Get("toolconsole.group.safety"),
+        "Diagnostics" => Loc.Get("toolconsole.group.diagnostics"),
+        "General" => Loc.Get("toolconsole.group.general"),
+        _ => title,
+    };
 
     /// <summary>
     /// Builds the area groups: alphabetical, "General" last; tools sorted by name. A non-empty

@@ -1,4 +1,5 @@
 using System.Globalization;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Theme;
 
@@ -13,6 +14,7 @@ internal sealed partial class ApprovalsView
     private Button _btnConfirmRelease = null!;
     private Button _btnConfirmDeny = null!;
     private Label _lblConfirmHint = null!;
+    private GroupBox _grpConfirmations = null!;
     private Action? _onConfirmationsChanged;
     private string _confirmationSignature = string.Empty;
 
@@ -31,23 +33,22 @@ internal sealed partial class ApprovalsView
             MultiSelect = false,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
         };
-        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Code", HeaderText = "Request", FillWeight = 10 });
-        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Time", HeaderText = "Time", FillWeight = 9 });
-        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tool", HeaderText = "Tool", FillWeight = 22 });
-        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Target", HeaderText = "Target", FillWeight = 16 });
-        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Arguments", HeaderText = "Arguments", FillWeight = 31 });
-        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", FillWeight = 12 });
+        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Code", HeaderText = Loc.Get("approvals.column.request"), FillWeight = 10 });
+        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Time", HeaderText = Loc.Get("approvals.column.time"), FillWeight = 9 });
+        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tool", HeaderText = Loc.Get("approvals.column.tool"), FillWeight = 22 });
+        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Target", HeaderText = Loc.Get("approvals.column.target"), FillWeight = 16 });
+        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Arguments", HeaderText = Loc.Get("approvals.column.arguments"), FillWeight = 31 });
+        _gridConfirmations.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = Loc.Get("approvals.column.status"), FillWeight = 12 });
         _gridConfirmations.SelectionChanged += (_, _) => UpdateConfirmationButtons();
 
-        _btnConfirmRelease = new Button { Name = "_btnConfirmRelease", Text = "Release", AutoSize = true, MinimumSize = new Size(90, 29), Tag = "primary", Enabled = false };
-        _btnConfirmDeny = new Button { Name = "_btnConfirmDeny", Text = "Deny", AutoSize = true, MinimumSize = new Size(90, 29), Enabled = false };
+        _btnConfirmRelease = new Button { Name = "_btnConfirmRelease", Text = Loc.Get("approvals.button.release"), AutoSize = true, MinimumSize = new Size(90, 29), Tag = "primary", Enabled = false };
+        _btnConfirmDeny = new Button { Name = "_btnConfirmDeny", Text = Loc.Get("approvals.button.deny"), AutoSize = true, MinimumSize = new Size(90, 29), Enabled = false };
         _lblConfirmHint = new Label
         {
             Name = "_lblConfirmHint",
             AutoSize = true,
             ForeColor = ThemeManager.Palette.Inactive,
-            Text = "A waiting agent's client cannot ask you itself. Check tool, target and arguments, then Release: " +
-                   "the agent repeats its call with its token and the action runs once.",
+            Text = Loc.Get("approvals.confirm.hint"),
             Margin = new Padding(0, 4, 0, 0),
         };
         // Buttons in one row that never wraps, the hint in its own row bounded to the group width: a wrapping hint inside
@@ -72,9 +73,27 @@ internal sealed partial class ApprovalsView
         inner.Controls.Add(_lblConfirmHint, 0, 2);
         inner.Resize += (_, _) => _lblConfirmHint.MaximumSize = new Size(Math.Max(200, inner.ClientSize.Width - 8), 0);
 
-        var group = new GroupBox { Name = "_grpConfirmations", Text = "Confirmation requests", Dock = DockStyle.Fill, Padding = new Padding(8) };
+        var group = _grpConfirmations = new GroupBox { Name = "_grpConfirmations", Text = Loc.Get("approvals.group.confirmations"), Dock = DockStyle.Fill, Padding = new Padding(8) };
         group.Controls.Add(inner);
         return group;
+    }
+
+    /// <summary>Sets the static texts of the confirmation group again and renders its rows again from the registry.</summary>
+    private void ApplyConfirmationLanguage()
+    {
+        _grpConfirmations.Text = Loc.Get("approvals.group.confirmations");
+        _btnConfirmRelease.Text = Loc.Get("approvals.button.release");
+        _btnConfirmDeny.Text = Loc.Get("approvals.button.deny");
+        _lblConfirmHint.Text = Loc.Get("approvals.confirm.hint");
+        _gridConfirmations.Columns["Code"]!.HeaderText = Loc.Get("approvals.column.request");
+        _gridConfirmations.Columns["Time"]!.HeaderText = Loc.Get("approvals.column.time");
+        _gridConfirmations.Columns["Tool"]!.HeaderText = Loc.Get("approvals.column.tool");
+        _gridConfirmations.Columns["Target"]!.HeaderText = Loc.Get("approvals.column.target");
+        _gridConfirmations.Columns["Arguments"]!.HeaderText = Loc.Get("approvals.column.arguments");
+        _gridConfirmations.Columns["Status"]!.HeaderText = Loc.Get("approvals.column.status");
+        // State and target words are part of the rows: force the rebuild that RefreshConfirmations otherwise skips.
+        _confirmationSignature = string.Empty;
+        RefreshConfirmations();
     }
 
     private void AttachConfirmations(ServerHost host)
@@ -98,7 +117,8 @@ internal sealed partial class ApprovalsView
     {
         if (_gridConfirmations.SelectedRows.Count != 1) return null;
         var row = _gridConfirmations.SelectedRows[0];
-        return row.Tag is string code && row.Cells["Status"].Value as string == ConfirmationStateText(ConfirmationState.Pending) ? code : null;
+        // The state is read from the cell's tag, not from its (translated) text.
+        return row.Tag is string code && row.Cells["Status"].Tag is ConfirmationState.Pending ? code : null;
     }
 
     private void UpdateConfirmationButtons()
@@ -113,7 +133,9 @@ internal sealed partial class ApprovalsView
         if (_host is null || SelectedPendingCode() is not { } code) return;
         bool done = release ? _host.Confirmations.Release(code) : _host.Confirmations.Deny(code);
         string what = release ? "released" : "denied";
-        ShowLastAction(done ? $"Request {code} {what}." : $"Request {code} could not be {what} (it expired or was answered already).", isError: !done);
+        ShowLastAction(release
+            ? (done ? Loc.Format("approvals.confirm.released", code) : Loc.Format("approvals.confirm.release_failed", code))
+            : (done ? Loc.Format("approvals.confirm.denied", code) : Loc.Format("approvals.confirm.deny_failed", code)), isError: !done);
         AppendLog(done ? $"Confirmation request {code} {what} by the operator." : $"Confirmation request {code}: answer {what} had no effect.");
         RefreshConfirmations();
         RefreshIbnState();
@@ -121,11 +143,11 @@ internal sealed partial class ApprovalsView
 
     internal static string ConfirmationStateText(ConfirmationState state) => state switch
     {
-        ConfirmationState.Pending => "Pending",
-        ConfirmationState.Released => "Released",
-        ConfirmationState.Denied => "Denied",
-        ConfirmationState.Used => "Used",
-        _ => "Expired",
+        ConfirmationState.Pending => Loc.Get("approvals.state.pending"),
+        ConfirmationState.Released => Loc.Get("approvals.state.released"),
+        ConfirmationState.Denied => Loc.Get("approvals.state.denied"),
+        ConfirmationState.Used => Loc.Get("approvals.state.used"),
+        _ => Loc.Get("approvals.state.expired"),
     };
 
     private void RefreshConfirmations()
@@ -150,6 +172,7 @@ internal sealed partial class ApprovalsView
                 ConfirmationStateText(e.State));
             var row = _gridConfirmations.Rows[index];
             row.Tag = e.Code;
+            row.Cells["Status"].Tag = e.State;
             row.Cells["Status"].Style.ForeColor = e.State switch
             {
                 ConfirmationState.Pending => ThemeManager.Palette.Warn,
@@ -163,8 +186,8 @@ internal sealed partial class ApprovalsView
 
     private static string ConfirmationTarget(ConfirmationEntry e) => e.NetId switch
     {
-        null => "unknown",
-        AccessPolicy.LocalKeyword => "local",
+        null => Loc.Get("approvals.target.unknown"),
+        AccessPolicy.LocalKeyword => Loc.Get("approvals.target.local"),
         var id => id,
     };
 }

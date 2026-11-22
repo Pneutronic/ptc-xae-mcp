@@ -1,4 +1,5 @@
 using System.Drawing;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.TwinCat;
 
 namespace PtcXaeMcp.WinForms;
@@ -20,7 +21,7 @@ internal sealed class HmiConfirmDialog : Form
     {
         _deadlineUtc = deadlineUtc;
 
-        Text = "TwinCAT HMI — confirm change";
+        Text = Loc.Get("hmiconfirm.title");
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -34,6 +35,7 @@ internal sealed class HmiConfirmDialog : Form
             Text = HmiConfirmText.Headline(request),
             Location = new Point(16, 14),
             AutoSize = true,
+            MaximumSize = new Size(608, 0),
             Font = new Font(Font.FontFamily, 10.5f, FontStyle.Bold),
         };
         var txtDetails = new TextBox
@@ -49,29 +51,39 @@ internal sealed class HmiConfirmDialog : Form
         };
         var lblEffect = new Label
         {
-            Text = request.WritesToPlc
-                ? "⚠ Writes through the HMI server into the running PLC."
-                : "Changes the HMI project's server configuration (no PLC access).",
+            Text = request.WritesToPlc ? Loc.Get("hmiconfirm.effect.plc") : Loc.Get("hmiconfirm.effect.server"),
             Location = new Point(16, 224),
             AutoSize = true,
+            MaximumSize = new Size(608, 0),
             ForeColor = request.WritesToPlc ? Theme.ThemeManager.Palette.Error : Theme.ThemeManager.Palette.Text,
             Font = request.WritesToPlc ? new Font(Font, FontStyle.Bold) : Font,
         };
         _lblCountdown = new Label { Location = new Point(16, 252), AutoSize = true };
         var btnConfirm = new Button
         {
-            Text = "Execute",
+            Text = Loc.Get("hmiconfirm.button.execute"),
             DialogResult = DialogResult.OK,
             Location = new Point(420, 284),
             Size = new Size(98, 30),
         };
         var btnCancel = new Button
         {
-            Text = "Cancel",
+            Text = Loc.Get("confirm.button.cancel"),
             DialogResult = DialogResult.Cancel,
             Location = new Point(526, 284),
             Size = new Size(98, 30),
         };
+
+        // German/French/Italian headlines and warnings run longer: stack the parts by their measured height
+        // (one line of English gives the historic positions).
+        txtDetails.Top = Math.Max(46, lblHeadline.Top + WrappedHeight(lblHeadline) + 10);
+        lblEffect.Top = txtDetails.Bottom + 10;
+        _lblCountdown.Top = lblEffect.Top + WrappedHeight(lblEffect) + 8;
+        int buttonsTop = Math.Max(284, _lblCountdown.Top + 19 + 13);
+        btnConfirm.Top = buttonsTop;
+        btnCancel.Top = buttonsTop;
+        ClientSize = new Size(640, buttonsTop + 30 + 16);
+
         Controls.AddRange([lblHeadline, txtDetails, lblEffect, _lblCountdown, btnConfirm, btnCancel]);
         CancelButton = btnCancel;
         ActiveControl = btnCancel;
@@ -91,6 +103,15 @@ internal sealed class HmiConfirmDialog : Form
         FormClosed += (_, _) => _timer.Dispose();
     }
 
+    /// <summary>The height a wrapping label needs for its text (<c>MaximumSize</c> gives the width).</summary>
+    private static int WrappedHeight(Label label)
+    {
+        int width = label.MaximumSize.Width > 0 ? label.MaximumSize.Width : 608;
+        int measured = TextRenderer.MeasureText(label.Text, label.Font, new Size(width, int.MaxValue),
+            TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height;
+        return Math.Max(label.Height, measured);
+    }
+
     private void Tick()
     {
         TimeSpan left = _deadlineUtc - DateTime.UtcNow;
@@ -100,60 +121,70 @@ internal sealed class HmiConfirmDialog : Form
             DialogResult = DialogResult.Abort; // closes the modal dialog as "expired"
             return;
         }
-        _lblCountdown.Text = $"Nothing is written without confirmation — expires in {Math.Ceiling(left.TotalSeconds):0} s.";
+        _lblCountdown.Text = Loc.Format("hmiconfirm.countdown", Math.Ceiling(left.TotalSeconds).ToString("0", System.Globalization.CultureInfo.InvariantCulture));
     }
 }
 
 /// <summary>Popup text, kept out of the Form so it is unit-testable.</summary>
 internal static class HmiConfirmText
 {
-    internal static string Headline(HmiWriteRequest request) => request.Kind switch
+    internal static string Headline(HmiWriteRequest request) => Loc.Get(request.Kind switch
     {
-        HmiWriteKind.MapSymbol => "MCP wants to map a symbol into the HMI",
-        HmiWriteKind.UnmapSymbol => "MCP wants to remove a symbol mapping",
-        HmiWriteKind.AddItem => "MCP wants to create a file in the HMI project",
-        HmiWriteKind.WriteFile => "MCP wants to change a file in the HMI project",
-        HmiWriteKind.ImportFile => "MCP wants to import a file into the HMI project",
-        HmiWriteKind.ApplyBundle => "MCP wants to write a bundle of files into the HMI project",
-        HmiWriteKind.DeleteItem => "MCP wants to DELETE from the HMI project (also from disk)",
-        HmiWriteKind.AttachTmcFile => "MCP wants to attach a TMC file to an ADS runtime (symbols without a PLC)",
-        HmiWriteKind.DetachTmcFile => "MCP wants to remove the TMC file from an ADS runtime (back to the ADS upload)",
-        HmiWriteKind.EnableRuntimeTmc =>
-            "MCP wants the HMI server to serve this ADS runtime's PLC symbols from a TMC file (no PLC connection)",
-        HmiWriteKind.DisableRuntimeTmc =>
-            "MCP wants this ADS runtime to upload its symbols from the PLC again (TMC file off)",
-        HmiWriteKind.AddInternalSymbol => "MCP wants to add a client internal symbol (%i%) to the HMI project",
-        HmiWriteKind.RemoveInternalSymbol => "MCP wants to remove a client internal symbol (%i%) from the HMI project",
-        HmiWriteKind.MapOfflineSymbol => "MCP wants to create a server symbol in the HMI server (TcHmiSrv domain)",
-        HmiWriteKind.CreateProjectDatatype =>
-            "MCP wants to add project datatypes (from a PLC type of a TMC file) to Properties/tchmi.project.Schema.json",
-        HmiWriteKind.SwitchMappingToPlc =>
-            "MCP wants to switch HMI mappings from a TMC file to a real PLC (same mapped names, domain ADS)",
-        HmiWriteKind.Publish =>
-            "MCP wants to PUBLISH this HMI project to a TF2000 server (replaces the project running there)",
-        _ => "MCP wants to write a value through the HMI server",
-    };
+        HmiWriteKind.MapSymbol => "hmiconfirm.headline.mapsymbol",
+        HmiWriteKind.UnmapSymbol => "hmiconfirm.headline.unmapsymbol",
+        HmiWriteKind.AddItem => "hmiconfirm.headline.additem",
+        HmiWriteKind.WriteFile => "hmiconfirm.headline.writefile",
+        HmiWriteKind.ImportFile => "hmiconfirm.headline.importfile",
+        HmiWriteKind.ApplyBundle => "hmiconfirm.headline.applybundle",
+        HmiWriteKind.DeleteItem => "hmiconfirm.headline.deleteitem",
+        HmiWriteKind.AttachTmcFile => "hmiconfirm.headline.attachtmcfile",
+        HmiWriteKind.DetachTmcFile => "hmiconfirm.headline.detachtmcfile",
+        HmiWriteKind.EnableRuntimeTmc => "hmiconfirm.headline.enableruntimetmc",
+        HmiWriteKind.DisableRuntimeTmc => "hmiconfirm.headline.disableruntimetmc",
+        HmiWriteKind.AddInternalSymbol => "hmiconfirm.headline.addinternalsymbol",
+        HmiWriteKind.RemoveInternalSymbol => "hmiconfirm.headline.removeinternalsymbol",
+        HmiWriteKind.MapOfflineSymbol => "hmiconfirm.headline.mapofflinesymbol",
+        HmiWriteKind.CreateProjectDatatype => "hmiconfirm.headline.createprojectdatatype",
+        HmiWriteKind.SwitchMappingToPlc => "hmiconfirm.headline.switchmappingtoplc",
+        HmiWriteKind.Publish => "hmiconfirm.headline.publish",
+        _ => "hmiconfirm.headline.default",
+    });
 
-    internal static string Details(HmiWriteRequest request) => string.Join(Environment.NewLine,
-        $"HMI project : {request.HmiProject}",
-        $"Directory   : {request.ProjectDirectory}",
-        $"{Subject(request.Kind),-12}: {request.Symbol}",
-        $"Domain      : {request.Domain ?? "-"}",
-        $"Current     : {request.CurrentValue ?? "(unknown)"}",
-        $"New         : {request.NewValue ?? "-"}");
+    /// <summary>The label column is padded to 12 characters (the historic English layout), wider when a language needs it.</summary>
+    internal static string Details(HmiWriteRequest request)
+    {
+        string[] labels =
+        [
+            Loc.Get("hmiconfirm.details.project"),
+            Loc.Get("hmiconfirm.details.directory"),
+            Subject(request.Kind),
+            Loc.Get("hmiconfirm.details.domain"),
+            Loc.Get("hmiconfirm.details.current"),
+            Loc.Get("hmiconfirm.details.new"),
+        ];
+        int width = Math.Max(12, labels.Max(l => l.Length));
+        string Col(int i) => labels[i].PadRight(width);
+        return string.Join(Environment.NewLine,
+            $"{Col(0)}: {request.HmiProject}",
+            $"{Col(1)}: {request.ProjectDirectory}",
+            $"{Col(2)}: {request.Symbol}",
+            $"{Col(3)}: {request.Domain ?? "-"}",
+            $"{Col(4)}: {request.CurrentValue ?? Loc.Get("hmiconfirm.value.unknown")}",
+            $"{Col(5)}: {request.NewValue ?? "-"}");
+    }
 
     /// <summary>What <see cref="HmiWriteRequest.Symbol"/> carries for this kind. "Symbol"
     /// pads to exactly the historic column, so existing popups read unchanged.</summary>
-    private static string Subject(HmiWriteKind kind) => kind switch
+    private static string Subject(HmiWriteKind kind) => Loc.Get(kind switch
     {
         HmiWriteKind.AttachTmcFile or HmiWriteKind.DetachTmcFile
-            or HmiWriteKind.EnableRuntimeTmc or HmiWriteKind.DisableRuntimeTmc => "ADS runtime",
-        HmiWriteKind.AddInternalSymbol or HmiWriteKind.RemoveInternalSymbol => "%i% symbol",
-        HmiWriteKind.CreateProjectDatatype => "Datatype",
-        HmiWriteKind.SwitchMappingToPlc => "Mappings",
-        HmiWriteKind.Publish => "Target",
-        _ => "Symbol",
-    };
+            or HmiWriteKind.EnableRuntimeTmc or HmiWriteKind.DisableRuntimeTmc => "hmiconfirm.subject.runtime",
+        HmiWriteKind.AddInternalSymbol or HmiWriteKind.RemoveInternalSymbol => "hmiconfirm.subject.internal",
+        HmiWriteKind.CreateProjectDatatype => "hmiconfirm.subject.datatype",
+        HmiWriteKind.SwitchMappingToPlc => "hmiconfirm.subject.mappings",
+        HmiWriteKind.Publish => "hmiconfirm.subject.target",
+        _ => "hmiconfirm.subject.symbol",
+    });
 }
 
 /// <summary>

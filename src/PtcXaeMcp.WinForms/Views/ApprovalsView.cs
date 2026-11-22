@@ -1,4 +1,5 @@
 using System.Globalization;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.TwinCat;
@@ -35,6 +36,11 @@ internal sealed partial class ApprovalsView : UserControl
     private readonly Button _btnIbnAbort;
     private readonly Label _lblIbnArmStatus;
     private readonly Label _lblIbnLastAction;
+    private readonly Label _lblIbnArmHint;
+    private readonly GroupBox _grpIbnAudit;
+    private readonly GroupBox _grpHmiApprovals;
+    // Labels of the arm row that carry a translatable text (the key is read again by ApplyLanguage).
+    private readonly List<(Label Label, string Key)> _rowLabels = new();
     private readonly TextBox _txtIbnGvl;
     private readonly NumericUpDown _numIbnTtl;
     private readonly TextBox _txtIbnAllowlist;
@@ -78,7 +84,7 @@ internal sealed partial class ApprovalsView : UserControl
         _btnIbnAbort = new Button
         {
             Name = "_btnIbnAbort",
-            Text = "■ ABORT / RELEASE-ALL",
+            Text = Loc.Get("approvals.button.abort"),
             AutoSize = true,
             MinimumSize = new Size(260, 44),
             BackColor = ThemeManager.Palette.Error,
@@ -92,7 +98,7 @@ internal sealed partial class ApprovalsView : UserControl
         {
             Name = "_lblIbnArmStatus",
             AutoSize = true,
-            Text = "Disarmed.",
+            Text = Loc.Get("approvals.state.disarmed"),
             ForeColor = ThemeManager.Palette.Inactive,
             Font = new Font(Font.FontFamily, 10f, FontStyle.Bold),
             Dock = DockStyle.Fill,
@@ -144,13 +150,13 @@ internal sealed partial class ApprovalsView : UserControl
             Maximum = IbnLiveCoordinator.MaxArmTtlSeconds,
             Value = IbnLiveCoordinator.DefaultArmTtlSeconds,
         };
-        _txtIbnAllowlist = new TextBox { Name = "_txtIbnAllowlist", Width = 220, PlaceholderText = "Cyl1, Cyl2 (comma-separated)" };
+        _txtIbnAllowlist = new TextBox { Name = "_txtIbnAllowlist", Width = 220, PlaceholderText = Loc.Get("approvals.placeholder.allowlist") };
         // Arming is GUI-only (#272), so the GUI must reach every target the MCP tool could:
         // empty NetId = the project's target, port 851 = the first PLC runtime.
-        _txtIbnNetId = new TextBox { Name = "_txtIbnNetId", Width = 130, PlaceholderText = "project target" };
+        _txtIbnNetId = new TextBox { Name = "_txtIbnNetId", Width = 130, PlaceholderText = Loc.Get("approvals.placeholder.netid") };
         _numIbnPort = new NumericUpDown { Name = "_numIbnPort", Width = 70, Minimum = 1, Maximum = 65535, Value = 851 };
-        _btnIbnArm = new Button { Name = "_btnIbnArm", Text = "Arm", AutoSize = true, MinimumSize = new Size(80, 29) };
-        _btnIbnDisarm = new Button { Name = "_btnIbnDisarm", Text = "Disarm", AutoSize = true, MinimumSize = new Size(80, 29) };
+        _btnIbnArm = new Button { Name = "_btnIbnArm", Text = Loc.Get("approvals.button.arm"), AutoSize = true, MinimumSize = new Size(80, 29) };
+        _btnIbnDisarm = new Button { Name = "_btnIbnDisarm", Text = Loc.Get("approvals.button.disarm"), AutoSize = true, MinimumSize = new Size(80, 29) };
 
         var armRow = new FlowLayoutPanel
         {
@@ -165,20 +171,19 @@ internal sealed partial class ApprovalsView : UserControl
         {
             RowLabel("GVL:"), _txtIbnGvl,
             RowLabel("TTL (s):"), _numIbnTtl,
-            RowLabel("Allowlist:"), _txtIbnAllowlist,
-            RowLabel("Target NetId:"), _txtIbnNetId,
-            RowLabel("Port:"), _numIbnPort,
+            RowLabel(Loc.Get("approvals.label.allowlist"), "approvals.label.allowlist"), _txtIbnAllowlist,
+            RowLabel(Loc.Get("approvals.label.target_netid"), "approvals.label.target_netid"), _txtIbnNetId,
+            RowLabel(Loc.Get("approvals.label.port"), "approvals.label.port"), _numIbnPort,
             _btnIbnArm, _btnIbnDisarm,
         });
 
-        var lblArmHint = new Label
+        var lblArmHint = _lblIbnArmHint = new Label
         {
             Name = "_lblIbnArmHint",
             AutoSize = true,
             Dock = DockStyle.Fill,
             ForeColor = ThemeManager.Palette.Inactive,
-            Text = "Arming happens only here. The MCP client can propose steps; each one opens a confirm " +
-                   "popup, and nothing moves without your click. Abort, disarm and release-all are always allowed.",
+            Text = Loc.Get("approvals.hint.arming"),
             Margin = new Padding(0, 0, 0, 8),
         };
 
@@ -192,7 +197,7 @@ internal sealed partial class ApprovalsView : UserControl
             ScrollBars = ScrollBars.Vertical,
             Font = new Font("Consolas", 8.5F),
         };
-        var grpAudit = new GroupBox { Name = "_grpIbnAudit", Text = "IBN Live audit log", Dock = DockStyle.Fill, Padding = new Padding(8) };
+        var grpAudit = _grpIbnAudit = new GroupBox { Name = "_grpIbnAudit", Text = Loc.Get("approvals.group.audit"), Dock = DockStyle.Fill, Padding = new Padding(8) };
         grpAudit.Controls.Add(_txtIbnAudit);
 
         // ── HMI write approvals ──────────────────────────────────────────────
@@ -209,13 +214,13 @@ internal sealed partial class ApprovalsView : UserControl
             MultiSelect = false,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
         };
-        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Time", HeaderText = "Time", FillWeight = 11 });
-        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Project", HeaderText = "Project", FillWeight = 16 });
-        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Kind", HeaderText = "Kind", FillWeight = 14 });
-        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Item", HeaderText = "Symbol / item", FillWeight = 29 });
-        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Value", HeaderText = "Value", FillWeight = 16 });
-        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Outcome", HeaderText = "Outcome", FillWeight = 14 });
-        var grpHmi = new GroupBox { Name = "_grpHmiApprovals", Text = "HMI write approvals", Dock = DockStyle.Fill, Padding = new Padding(8) };
+        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Time", HeaderText = Loc.Get("approvals.column.time"), FillWeight = 11 });
+        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Project", HeaderText = Loc.Get("approvals.column.project"), FillWeight = 16 });
+        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Kind", HeaderText = Loc.Get("approvals.column.kind"), FillWeight = 14 });
+        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Item", HeaderText = Loc.Get("approvals.column.item"), FillWeight = 29 });
+        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Value", HeaderText = Loc.Get("approvals.column.value"), FillWeight = 16 });
+        _gridHmiApprovals.Columns.Add(new DataGridViewTextBoxColumn { Name = "Outcome", HeaderText = Loc.Get("approvals.column.outcome"), FillWeight = 14 });
+        var grpHmi = _grpHmiApprovals = new GroupBox { Name = "_grpHmiApprovals", Text = Loc.Get("approvals.group.hmi"), Dock = DockStyle.Fill, Padding = new Padding(8) };
         grpHmi.Controls.Add(_gridHmiApprovals);
 
         // ── Confirmation requests of clients that cannot be asked in-band ─────
@@ -258,13 +263,56 @@ internal sealed partial class ApprovalsView : UserControl
         _onHmiApprovalChanged = r => _post(() => ShowHmiApproval(r));
     }
 
-    private static Label RowLabel(string text) => new()
+    private Label RowLabel(string text, string? key = null)
     {
-        Text = text,
-        AutoSize = true,
-        Anchor = AnchorStyles.Left,
-        Margin = new Padding(0, 6, 4, 0),
-    };
+        var label = new Label
+        {
+            Text = text,
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 6, 4, 0),
+        };
+        if (key is not null) _rowLabels.Add((label, key));
+        return label;
+    }
+
+    /// <summary>
+    /// Sets every static text again in the host language (called by the main window when the language changes):
+    /// captions, buttons, column headers, placeholders and hints. Rows already shown are rendered again from their data.
+    /// </summary>
+    public void ApplyLanguage()
+    {
+        _btnIbnAbort.Text = Loc.Get("approvals.button.abort");
+        _btnIbnArm.Text = Loc.Get("approvals.button.arm");
+        _btnIbnDisarm.Text = Loc.Get("approvals.button.disarm");
+        foreach (var (label, key) in _rowLabels) label.Text = Loc.Get(key);
+        _txtIbnAllowlist.PlaceholderText = Loc.Get("approvals.placeholder.allowlist");
+        _txtIbnNetId.PlaceholderText = Loc.Get("approvals.placeholder.netid");
+        _lblIbnArmHint.Text = Loc.Get("approvals.hint.arming");
+        _grpIbnAudit.Text = Loc.Get("approvals.group.audit");
+        _grpHmiApprovals.Text = Loc.Get("approvals.group.hmi");
+        _gridHmiApprovals.Columns["Time"]!.HeaderText = Loc.Get("approvals.column.time");
+        _gridHmiApprovals.Columns["Project"]!.HeaderText = Loc.Get("approvals.column.project");
+        _gridHmiApprovals.Columns["Kind"]!.HeaderText = Loc.Get("approvals.column.kind");
+        _gridHmiApprovals.Columns["Item"]!.HeaderText = Loc.Get("approvals.column.item");
+        _gridHmiApprovals.Columns["Value"]!.HeaderText = Loc.Get("approvals.column.value");
+        _gridHmiApprovals.Columns["Outcome"]!.HeaderText = Loc.Get("approvals.column.outcome");
+        ApplyConfirmationLanguage();
+
+        if (_host is null)
+        {
+            _lblIbnArmStatus.Text = Loc.Get("approvals.state.disarmed");
+            return;
+        }
+        // The outcome words of the rows already shown follow the new language.
+        foreach (var record in Host.HmiApprovals.Snapshot())
+        {
+            string id = record.Id.ToString(CultureInfo.InvariantCulture);
+            var row = _gridHmiApprovals.Rows.Cast<DataGridViewRow>().FirstOrDefault(x => x.Tag as string == id);
+            if (row is not null) row.Cells["Outcome"].Value = OutcomeText(record);
+        }
+        RefreshIbnState();
+    }
 
     /// <summary>
     /// Wires the view to the host's IBN Live coordinator and HMI approval history and starts the
@@ -289,8 +337,8 @@ internal sealed partial class ApprovalsView : UserControl
         // dispatcher lock (RunGuiComActionAsync), so the WinForms UI thread keeps pumping:
         // ADS calls load the symbol table synchronously with a 10 s connect timeout.
         _btnIbnArm.Click += async (_, _) => await ArmIbnFromGuiAsync();
-        _btnIbnDisarm.Click += async (_, _) => await RunIbnAsync(() => _liveCoordinator.Disarm(), "Disarm");
-        _btnIbnAbort.Click += async (_, _) => await RunIbnAsync(() => _liveCoordinator.ReleaseAll(), "ABORT / RELEASE-ALL");
+        _btnIbnDisarm.Click += async (_, _) => await RunIbnAsync(() => _liveCoordinator.Disarm(), "approvals.last.disarm.ok", "approvals.last.disarm.failed");
+        _btnIbnAbort.Click += async (_, _) => await RunIbnAsync(() => _liveCoordinator.ReleaseAll(), "approvals.last.abort.ok", "approvals.last.abort.failed");
 
         // The coordinator and the history raise these on MCP/timer threads; marshal to the UI.
         _liveCoordinator.ProposalRaised += OnIbnProposalRaised;
@@ -367,12 +415,12 @@ internal sealed partial class ApprovalsView : UserControl
                 () => _liveCoordinator.Arm(ttl, allow, gvl, netId, port),
                 text =>
                 {
-                    ShowLastAction(McpErrors.IsOk(text) ? "Arm ok." : "Arm refused: " + text, !McpErrors.IsOk(text));
+                    ShowLastAction(McpErrors.IsOk(text) ? Loc.Get("approvals.last.arm.ok") : Loc.Format("approvals.last.arm.refused", text), !McpErrors.IsOk(text));
                     AppendLog(text);
                 },
                 text =>
                 {
-                    ShowLastAction("Arm failed: " + text, isError: true);
+                    ShowLastAction(Loc.Format("approvals.last.arm.failed", text), isError: true);
                     AppendLog(text);
                 });
         }
@@ -383,7 +431,7 @@ internal sealed partial class ApprovalsView : UserControl
         }
     }
 
-    private async Task RunIbnAsync(Func<string> action, string label)
+    private async Task RunIbnAsync(Func<string> action, string okKey, string failedKey)
     {
         // Disarm / ABORT-RELEASE-ALL write the stop bits over ADS — never on the UI thread,
         // and deliberately NOT under the dispatcher lock (issue #1): while a build or an
@@ -401,7 +449,7 @@ internal sealed partial class ApprovalsView : UserControl
             text = $"[Error] {ex.Message}";
         }
         bool ok = McpErrors.IsOk(text);
-        ShowLastAction(ok ? $"{label} ok." : $"{label} FAILED: {text}", !ok);
+        ShowLastAction(ok ? Loc.Get(okKey) : Loc.Format(failedKey, text), !ok);
         AppendLog(text);
         RefreshIbnState();
     }
@@ -447,14 +495,14 @@ internal sealed partial class ApprovalsView : UserControl
                     () => _liveCoordinator.ConfirmProposal(p.ProposalId),
                     text =>
                     {
-                        ShowLastAction(McpErrors.IsOk(text) ? $"Step {p.ProposalId} executed." : $"Step {p.ProposalId} not executed: {text}", !McpErrors.IsOk(text));
+                        ShowLastAction(McpErrors.IsOk(text) ? Loc.Format("approvals.last.step.executed", p.ProposalId) : Loc.Format("approvals.last.step.not_executed", p.ProposalId, text), !McpErrors.IsOk(text));
                         AppendLog(text);
                     },
                     text =>
                     {
                         // Busy lock (or another failure before the write): the proposal is still
                         // pending, so ask again rather than leave it without a popup.
-                        ShowLastAction($"Step {p.ProposalId} not executed: {text}", isError: true);
+                        ShowLastAction(Loc.Format("approvals.last.step.not_executed", p.ProposalId, text), isError: true);
                         AppendLog(text);
                         AskAgainIfStillPending(p);
                     });
@@ -462,19 +510,22 @@ internal sealed partial class ApprovalsView : UserControl
             else if (IsPending(p.ProposalId))
             {
                 bool expired = answer == DialogResult.Abort;
-                string reason = expired ? "confirm popup expired" : "operator cancelled";
+                // The reason goes to the agent (English); the operator reads it in the host language.
+                string reasonKey = expired ? "approvals.reason.expired" : "approvals.reason.cancelled";
+                string reason = Loc.English(reasonKey);
+                string reasonShown = Loc.Get(reasonKey);
                 await RunGuiComActionAsync(
                     () => _liveCoordinator.RejectProposal(p.ProposalId, reason),
                     text =>
                     {
                         bool ok = McpErrors.IsOk(text);
-                        ShowLastAction(ok ? $"Step {p.ProposalId} rejected ({reason})."
-                                          : $"Step {p.ProposalId} NOT rejected: {text}", isError: !ok);
+                        ShowLastAction(ok ? Loc.Format("approvals.last.step.rejected", p.ProposalId, reasonShown)
+                                          : Loc.Format("approvals.last.step.not_rejected", p.ProposalId, text), isError: !ok);
                         AppendLog(text);
                     },
                     text =>
                     {
-                        ShowLastAction($"Step {p.ProposalId} NOT rejected (still pending): {text}", isError: true);
+                        ShowLastAction(Loc.Format("approvals.last.step.not_rejected_pending", p.ProposalId, text), isError: true);
                         AppendLog(text);
                         // An expired popup is not re-shown (it would close at once); the coordinator
                         // refuses a confirm once the arm window has closed.
@@ -502,17 +553,17 @@ internal sealed partial class ApprovalsView : UserControl
         int pending = PendingProposalCount();
         string pendingText = pending == 0 ? string.Empty
             // Counts IBN proposals, snapshot restores and confirmation requests alike, so it names none of them.
-            : pending == 1 ? " · 1 request awaiting your answer" : $" · {pending} requests awaiting your answer";
+            : pending == 1 ? Loc.Get("approvals.pending.one") : Loc.Format("approvals.pending.many", pending);
         bool armed = _liveCoordinator.IsArmed;
         int remaining = armed ? _liveCoordinator.RemainingSeconds : 0;
         if (armed)
         {
-            _lblIbnArmStatus.Text = $"ARMED — {remaining} s remaining · GVL {_liveCoordinator.GvlPath}{pendingText}";
+            _lblIbnArmStatus.Text = Loc.Format("approvals.state.armed", remaining, _liveCoordinator.GvlPath, pendingText);
             _lblIbnArmStatus.ForeColor = ThemeManager.Palette.Warn;
         }
         else
         {
-            _lblIbnArmStatus.Text = "Disarmed." + pendingText;
+            _lblIbnArmStatus.Text = Loc.Get("approvals.state.disarmed") + pendingText;
             _lblIbnArmStatus.ForeColor = ThemeManager.Palette.Inactive;
         }
         UpdateAttention(new ApprovalsAttention(pending, Host.HmiApprovals.PendingCount, armed, remaining));
@@ -580,12 +631,12 @@ internal sealed partial class ApprovalsView : UserControl
 
     internal static string OutcomeText(HmiApprovalRecord r) => r.Outcome switch
     {
-        null => "Pending",
-        HmiConfirmOutcome.Confirmed => "Confirmed",
-        HmiConfirmOutcome.AutoConfirmed => "AutoConfirmed",
-        HmiConfirmOutcome.Rejected => "Rejected",
-        HmiConfirmOutcome.TimedOut => "TimedOut",
-        HmiConfirmOutcome.Unavailable => "Unavailable",
+        null => Loc.Get("approvals.outcome.pending"),
+        HmiConfirmOutcome.Confirmed => Loc.Get("approvals.outcome.confirmed"),
+        HmiConfirmOutcome.AutoConfirmed => Loc.Get("approvals.outcome.auto_confirmed"),
+        HmiConfirmOutcome.Rejected => Loc.Get("approvals.outcome.rejected"),
+        HmiConfirmOutcome.TimedOut => Loc.Get("approvals.outcome.timed_out"),
+        HmiConfirmOutcome.Unavailable => Loc.Get("approvals.outcome.unavailable"),
         _ => r.Outcome.Value.ToString(),
     };
 
@@ -615,16 +666,16 @@ internal sealed record ApprovalsAttention(int PendingProposals, int PendingHmi, 
     public bool NeedsAttention => Pending > 0 || Armed;
 
     /// <summary>Tab caption, e.g. "Approvals (1)".</summary>
-    public string TabCaption => Pending > 0 ? $"Approvals ({Pending})" : "Approvals";
+    public string TabCaption => Pending > 0 ? Loc.Format("approvals.tab.caption_pending", Pending) : Loc.Get("approvals.tab.caption");
 
     /// <summary>Header chip text; empty when nothing needs attention.</summary>
     public string ChipText => (Pending, Armed) switch
     {
-        ( > 0, true) => $"{PendingText} · IBN armed {RemainingSeconds} s",
+        ( > 0, true) => Loc.Format("approvals.chip.pending_armed", PendingText, RemainingSeconds),
         ( > 0, false) => PendingText,
-        (_, true) => $"IBN armed — {RemainingSeconds} s",
+        (_, true) => Loc.Format("approvals.chip.armed", RemainingSeconds),
         _ => string.Empty,
     };
 
-    private string PendingText => Pending == 1 ? "1 approval pending" : $"{Pending} approvals pending";
+    private string PendingText => Pending == 1 ? Loc.Get("approvals.chip.pending_one") : Loc.Format("approvals.chip.pending_many", Pending);
 }

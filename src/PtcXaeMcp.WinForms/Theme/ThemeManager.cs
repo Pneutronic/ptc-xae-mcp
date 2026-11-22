@@ -1,4 +1,5 @@
 using System.Text.Json;
+using PtcXaeMcp.WinForms.Localization;
 
 namespace PtcXaeMcp.WinForms.Theme;
 
@@ -86,6 +87,9 @@ internal static class ThemeManager
     {
         Settings = UiSettings.Load(SettingsPath);
         Current = Settings.DarkTheme ? ThemeMode.Dark : ThemeMode.Light;
+        // The host language is part of the same file: resolved here so every text built after this call has it.
+        HostLanguage.Apply(HostLanguage.Resolve(Environment.GetEnvironmentVariable, Settings.Language,
+            HostLanguage.ReadInstallerSeed(), System.Globalization.CultureInfo.CurrentUICulture.Name, out _));
     }
 
     /// <summary>Writes <see cref="Settings"/> (with the current theme) to ui.json; best effort.</summary>

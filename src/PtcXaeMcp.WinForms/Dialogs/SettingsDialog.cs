@@ -1,3 +1,4 @@
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.Updates;
@@ -23,8 +24,10 @@ internal sealed class SettingsDialog : Form
     /// <param name="updateCheckLocked">True when the machine policy or <see cref="UpdateCheck.EnvVar"/>
     /// forbids the check: the box is shown unchecked and disabled, so nobody can opt in here.</param>
     /// <param name="access">The tool profile and access policy to edit; null leaves the section out.</param>
+    /// <param name="language">The language code in force, preselected in the language list.</param>
     public SettingsDialog(int port, bool darkTheme, bool rememberWindowPosition, bool diagnosticsEnabled,
-        bool checkForUpdates = false, bool updateCheckLocked = false, McpAccessSettings? access = null)
+        bool checkForUpdates = false, bool updateCheckLocked = false, McpAccessSettings? access = null,
+        string language = HostLanguage.Fallback)
     {
         Text = "Settings";
         FormBorderStyle = FormBorderStyle.Sizable;
@@ -32,8 +35,8 @@ internal sealed class SettingsDialog : Form
         MinimizeBox = false;
         MaximizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(760, access is null ? 520 : 920);
-        MinimumSize = new Size(600, access is null ? 440 : 780);
+        ClientSize = new Size(760, access is null ? 610 : 1010);
+        MinimumSize = new Size(600, access is null ? 530 : 870);
 
         var layout = new TableLayoutPanel
         {
@@ -66,6 +69,17 @@ internal sealed class SettingsDialog : Form
         layout.Controls.Add(_chkUpdates, 1, 2);
 
         int row = 3;
+        _cmbLanguage.DropDownStyle = ComboBoxStyle.DropDownList;
+        foreach (var l in HostLanguage.Shipped)
+            _cmbLanguage.Items.Add(l.Reviewed ? l.NativeName : Loc.Format("settings.language.unreviewed", l.NativeName));
+        _cmbLanguage.SelectedIndex = Math.Max(0, IndexOfLanguage(language));
+        _cmbLanguage.Width = 300;
+        AddRow(layout, row++, Loc.Get("settings.language.label"), _cmbLanguage);
+        AddNote(layout, row++, Loc.Get("settings.language.note"));
+        if (Environment.GetEnvironmentVariable(HostLanguage.EnvVar) is { Length: > 0 } envLanguage
+            && HostLanguage.Match(envLanguage) is not null)
+            AddNote(layout, row++, Loc.Format("settings.language.envOverride", HostLanguage.EnvVar, envLanguage));
+
         if (access is not null)
             row = AddAccessRows(layout, row, access);
 
@@ -112,6 +126,18 @@ internal sealed class SettingsDialog : Form
     public bool RememberWindowPosition => _chkRemember.Checked;
 
     public bool CheckForUpdates => _chkUpdates.Checked;
+
+    /// <summary>The code of the language chosen in the list.</summary>
+    public string Language => HostLanguage.Shipped[Math.Max(0, _cmbLanguage.SelectedIndex)].Code;
+
+    private readonly ComboBox _cmbLanguage = new();
+
+    private static int IndexOfLanguage(string code)
+    {
+        for (int i = 0; i < HostLanguage.Shipped.Count; i++)
+            if (HostLanguage.Shipped[i].Code == code) return i;
+        return -1;
+    }
 
     /// <summary>The tool profile chosen: <see cref="ToolProfiles.Automatic"/>, <c>all</c>, <c>core</c> or a toolset list.</summary>
     public string ToolProfile => _cmbProfile.SelectedIndex == 0 || string.IsNullOrWhiteSpace(_cmbProfile.Text)

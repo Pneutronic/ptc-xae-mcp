@@ -1,4 +1,5 @@
 using PtcXaeMcp.WinForms.Diagnostics;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Security;
 using PtcXaeMcp.WinForms.TwinCat;
 
@@ -54,6 +55,13 @@ internal static class SettingsInfo
             new("Human confirmation (environment)", Raw(Mcp.AccessPolicy.ConfirmEnvVar, "(none)"),
                 Env(Mcp.AccessPolicy.ConfirmEnvVar) + " (off, remote, all; the stricter of this and the choice above applies)"),
         };
+        HostLanguage.Resolve(getEnv, null, null, null, out string? ignoredLanguage);
+        rows.Add(new(Loc.Get("settings.row.language"),
+            ignoredLanguage is null
+                ? HostLanguage.Current
+                : Loc.Format("settings.row.language.ignored", HostLanguage.EnvVar, ignoredLanguage),
+            Loc.Format("settings.row.language.how", HostLanguage.EnvVar,
+                string.Join(", ", HostLanguage.Shipped.Select(l => l.Code)))));
         if (updateCheckState is not null)
             rows.Add(new("Update check at start", updateCheckState,
                 $"Checkbox above; {Env(Updates.UpdateCheck.EnvVar)}=0 or the machine policy HKLM\\{Updates.UpdateCheck.PolicyKeyPath}\\{Updates.UpdateCheck.PolicyValueName}=1 switch it off"));

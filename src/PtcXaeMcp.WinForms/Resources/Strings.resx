@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    English texts of the host (the neutral language and the fallback of every other language).
+    One key per text a human reads. A language file Strings.<code>.resx carries the same keys; a missing key or an
+    empty text falls back to this file. {0}, {1} ... are filled by Loc.Format.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="settings.language.label" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="settings.language.note" xml:space="preserve">
+    <value>Language of the window, its dialogs and the prompts. Tool results and error messages stay English. Applied when you press OK.</value>
+  </data>
+  <data name="settings.language.envOverride" xml:space="preserve">
+    <value>{0}={1} is set and overrides this choice.</value>
+  </data>
+  <data name="settings.language.unreviewed" xml:space="preserve">
+    <value>{0} (translation not yet reviewed)</value>
+  </data>
+  <data name="settings.row.language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="settings.row.language.how" xml:space="preserve">
+    <value>The list above; environment variable {0} ({1}) overrides it</value>
+  </data>
+  <data name="settings.row.language.ignored" xml:space="preserve">
+    <value>{0}='{1}' is not a language of this version and is ignored (English is used)</value>
+  </data>
+</root>

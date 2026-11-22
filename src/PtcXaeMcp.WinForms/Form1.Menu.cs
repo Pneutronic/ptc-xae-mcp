@@ -1,4 +1,5 @@
 using PtcXaeMcp.WinForms.Dialogs;
+using PtcXaeMcp.WinForms.Localization;
 using PtcXaeMcp.WinForms.Mcp;
 using PtcXaeMcp.WinForms.Theme;
 using PtcXaeMcp.WinForms.TwinCat;
@@ -87,7 +88,8 @@ public partial class Form1
             ? new McpAccessSettings(b.Surface.WindowProfile, b.Surface.EnvironmentProfile, b.Policy.Window, b.Policy.Environment)
             : null;
         using var dialog = new SettingsDialog(McpBridge.Port, ThemeManager.Current == ThemeMode.Dark,
-            settings.RememberWindowPosition, _diagnosticsEnabled, settings.CheckForUpdates, UpdateCheckLocked, access);
+            settings.RememberWindowPosition, _diagnosticsEnabled, settings.CheckForUpdates, UpdateCheckLocked, access,
+            HostLanguage.Current);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
         if (_bridge is { } bridge)
@@ -108,6 +110,12 @@ public partial class Form1
         }
 
         settings.RememberWindowPosition = dialog.RememberWindowPosition;
+        // Only a changed choice is saved, so an unchanged list never pins the language the Windows setting gave.
+        if (dialog.Language != HostLanguage.Current)
+        {
+            settings.Language = dialog.Language;
+            HostLanguage.Apply(dialog.Language);
+        }
         if (!UpdateCheckLocked)
             settings.CheckForUpdates = dialog.CheckForUpdates;
         var mode = dialog.DarkTheme ? ThemeMode.Dark : ThemeMode.Light;

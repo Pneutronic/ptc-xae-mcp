@@ -537,6 +537,15 @@ internal interface ITwinCatSession : IDisposable
     /// </summary>
     BootProjectResult ActivateBootProject(bool dryRun);
 
+    // ---- ethercat-scan ----
+    /// <summary>
+    /// Scans the real EtherCAT network of a configured master (config mode, no activation) on a temporary device
+    /// on the same adapter and returns the configured and the scanned chain. The project is left unchanged: the
+    /// temporary device is removed again, also after an error, and nothing is saved. Throws when the path is not an
+    /// EtherCAT master, no adapter is assigned, the XAE refuses the scan, or the temporary device could not be removed.
+    /// </summary>
+    EtherCatScanData ScanEtherCatMaster(string masterTreePath);
+
     // ---- variant-management ----
     VariantStatusResult GetVariantStatus();
     string SetActiveVariant(string variantName);

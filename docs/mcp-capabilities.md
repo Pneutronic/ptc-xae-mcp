@@ -19,7 +19,7 @@
 - [Diagnostics](#diagnostics) (9)
 - [Doctor](#doctor) (1)
 - [EditorNavigation](#editornavigation) (2)
-- [EtherCat](#ethercat) (6)
+- [EtherCat](#ethercat) (7)
 - [EventClasses](#eventclasses) (4)
 - [EventLogger](#eventlogger) (2)
 - [Fieldbus](#fieldbus) (3)
@@ -489,6 +489,14 @@ Set an EtherCAT box's upstream PreviousPort (A/B/C/D) and save the project. Need
 |---|---|---|---|
 | `treePath` | `string` |  | Tree path of the box, e.g. 'TIID^Device 1 (EtherCAT)^Box 2 (EK1122)^Box 3 (EK1100)'. |
 | `port` | `string` |  | Upstream port: A, B, C or D. |
+
+### `twincat_ethercat_scan_compare`
+
+Scan an EtherCAT master's network and compare it with the configured boxes. The XAE Scan in config mode, without activating a configuration (twincat_ethercat_read_identities needs one): a temporary master on the same adapter scans the real network and is removed again; the project is left unchanged and nothing is saved. Needs config mode (twincat_set_system_mode config) and a network adapter assigned to the master. Compares by position and identity (vendor, product code, revision), not by box name. Returns JSON { treePath, identical, summary, configured[], scanned[], differences[] } where a difference is { position, kind: missing | extra | different_product | different_revision, configured, scanned }, or [Error]; an [Error] that names a temporary device means it could not be removed and must be deleted by hand.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `treePath` | `string` |  | Tree path of the EtherCAT master under TIID, e.g. 'TIID^Device 1 (EtherCAT)' (twincat_get_fieldbus_topology). |
 
 ## EventClasses
 

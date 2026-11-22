@@ -25,6 +25,11 @@ pull-request numbers refer to those.
 - `twincat_io_device_sync_task` reads or sets the sync task of an I/O device such as the Profinet device and warns when
   no task has the AMS port it points to (the cause of "target port not found" at activation). The setting is not
   reachable through ConsumeXml, so the device is exported, changed and imported again with its links reconnected (#49).
+- `twincat_ethercat_scan_compare` runs the XAE Scan on an EtherCAT master in config mode, without an activated
+  configuration, and compares the real network with the configured boxes by position and identity (vendor, product
+  code, revision): identical, or per box `missing`, `extra`, `different_product`, `different_revision`. A box inserted
+  or pulled in the middle is one difference, not one per box behind it. The scan runs on a temporary device on the same
+  adapter that is removed again, also after an error; the project is left unchanged and nothing is saved (#47).
 
 ### Changed
 - `twincat_plc_task_create` now also refuses a priority used by an NC task (SAF/SVB under TINC).

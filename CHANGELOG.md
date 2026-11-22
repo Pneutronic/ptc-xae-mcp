@@ -30,6 +30,15 @@ pull-request numbers refer to those.
   code, revision): identical, or per box `missing`, `extra`, `different_product`, `different_revision`. A box inserted
   or pulled in the middle is one difference, not one per box behind it. The scan runs on a temporary device on the same
   adapter that is removed again, also after an error; the project is left unchanged and nothing is saved (#47).
+- `twincat_variant_create` and `twincat_variant_delete` create and delete project variants (optionally as a member
+  of an existing variant group). The variant list is read back after the write and a write that does not land is
+  rolled back; the active variant cannot be deleted.
+- `twincat_variant_set_item` sets `disabled` and/or the NC axis simulation flag of a tree item for one variant:
+  it turns the item's variant-dependent flag on, switches to the variant, writes and reads back, switches back to
+  the original variant (also after an error) and saves. The result lists the value in every variant.
+  `axisSimulation` is refused before any change when the XAE does not expose the axis simulation flag; XAE 3.1.4026
+  does not (it is not part of the axis XML, and the variant-dependent parameter flag does not make the axis type
+  per variant) (#50).
 
 ### Changed
 - `twincat_plc_task_create` now also refuses a priority used by an NC task (SAF/SVB under TINC).

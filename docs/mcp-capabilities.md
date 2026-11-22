@@ -5,7 +5,7 @@
 
 # MCP tool reference
 
-240 tools, generated from the source attributes — one section per
+244 tools, generated from the source attributes — one section per
 `TwinCatMcpTools.<Group>.cs` partial file, tools in source order within each.
 
 ## Contents
@@ -59,7 +59,7 @@
 - [SignalTestbench](#signaltestbench) (4)
 - [StaticAnalysis](#staticanalysis) (1)
 - [TcUnit](#tcunit) (1)
-- [VariantManagement](#variantmanagement) (2)
+- [VariantManagement](#variantmanagement) (5)
 - [VisibleEditor](#visibleeditor) (2)
 - [Visu](#visu) (4)
 - [Workflow](#workflow) (2)
@@ -2466,6 +2466,34 @@ Set the active project variant by name, optionally building afterwards. An unkno
 |---|---|---|---|
 | `variantName` | `string` |  | Variant name as defined in the project, e.g. SIMULATION; [GroupName] activates a variant group. |
 | `rebuildAfter` | `bool` | `true` | Build the solution after switching. Default true; without a build the change does not take effect. |
+
+### `twincat_variant_create`
+
+Create a project variant, optionally as a member of an existing variant group. A duplicate or invalid name returns [Error] and changes nothing; the variant list is read back and a write that does not land is rolled back. The first variant of a project becomes the active variant. Returns JSON { variant, group, activeVariant, availableVariants, groups, notes } or [Error].
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `variantName` | `string` |  | Name of the new variant, e.g. Machine or Simulation. Must not contain [ ] ^ < > & quotes or slashes. |
+| `group` | `string?` | `null` | Optional name of an existing variant group to add the variant to. |
+
+### `twincat_variant_delete`
+
+Delete a project variant and its memberships in variant groups. The active variant (or a member of the active group) is refused with a hint to switch first; an unknown name returns [Error] and changes nothing. Per-variant settings of tree items that remain are named in the result. Returns JSON { variant, removedFromGroups, availableVariants, groups, notes } or [Error].
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `variantName` | `string` |  | Name of the variant to delete, as listed by twincat_get_variant_status. |
+
+### `twincat_variant_set_item`
+
+Set disabled and/or NC axis simulation of a tree item for one project variant. Turns the item's variant-dependent flag on, switches to the variant, writes and reads the value back, switches back to the original variant (also after an error) and saves. Returns JSON { treePath, variant, activeVariant, variants: [{ variant, disabled, axisSimulation }], notes } with the value in every variant, or [Error]. Needs at least one of disabled or axisSimulation. axisSimulation is refused (nothing changed) when the XAE does not expose the axis simulation flag; XAE 3.1.4026 does not.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `treePath` | `string` |  | Tree path of the item, e.g. TIID^Device 1 (I/O device or box) or an NC axis path from twincat_list_nc_tasks_axes. |
+| `variant` | `string` |  | Variant the setting belongs to, as listed by twincat_get_variant_status (a single variant, not [Group]). |
+| `disabled` | `bool?` | `null` | true disables the item in that variant, false enables it. Omit to leave unchanged. |
+| `axisSimulation` | `bool?` | `null` | true makes the NC axis a simulation axis in that variant, false a real one. NC axes only; refused on XAE builds that do not expose the flag. Omit to leave unchanged. |
 
 ## VisibleEditor
 

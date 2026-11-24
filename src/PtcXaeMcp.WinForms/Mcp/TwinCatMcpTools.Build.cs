@@ -92,7 +92,8 @@ internal sealed partial class TwinCatMcpTools
                  "answered. A trial-license prompt is declined with [Error] unless autoGenerateLicenses. Only windows of the " +
                  "attached XAE are touched. To deploy to an already running PLC without a restart prefer twincat_login. Run " +
                  "does not prove the PLC application is up: verify with twincat_read_ads_variable (amsNetId). " +
-                 "Needs an open solution.")]
+                 "A platform that cannot fit the target (ARM for a User Mode Runtime) is refused with [Error] before anything is " +
+                 "written; the result names the platform and target. Needs an open solution.")]
     public string ActivateConfig(
         [Description("Restart TwinCAT into the new config (forcibly restarts the PLC; confirms the restart dialog). Default false = registry only, no deploy.")] bool autoConfirmRestart = false,
         [Description("Answer the trial-license prompt with 'Ja'. An unreadable security code (TC 4026.x) is never guessed: the dialog is cancelled and the [Error] names the flow twincat_open_license_manager_and_request_trial → twincat_generate_trial_licenses → twincat_submit_security_code. Default false.")]   bool autoGenerateLicenses = false,

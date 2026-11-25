@@ -239,6 +239,66 @@ public sealed class HmiViewsTests : IDisposable
     }
 
     [Fact]
+    public void WriteFile_KeepsTheFilesLineEndings_WhenTheSourceHasOthers()
+    {
+        // A CRLF file written from an LF source (git show): one changed line must not convert the whole file.
+        var fake = Session();
+        fake.HmiFiles["A.js"] = "function a() {\r\n  return 1;\r\n}\r\n";
+        var (summary, _) = new HmiCoordinator(fake, new FakeHmiConfirmer()).WriteFile(null, "A.js", "function a() {\n  return 2;\n}\n", null, true, 120);
+        Assert.StartsWith("Wrote 'A.js'", summary);
+        Assert.Equal("function a() {\r\n  return 2;\r\n}\r\n", fake.HmiFiles["A.js"]);
+        Assert.Contains("+1/−1 lines", summary);
+    }
+
+    [Fact]
+    public void WriteFile_TakesTheLineEndingsFromTheFileOnDisk_NotFromTheEngineText()
+    {
+        // The engine may hand back LF for a CRLF file; the file on disk decides.
+        var fake = Session();
+        fake.HmiProjects = new HmiProjectList("Beckhoff.TcHmi.1.12", 1, [new HmiProjectEntry(Prj, _tmp, true, false)], null);
+        TempFile(@"Functions\A.js", "a\r\nb\r\n");
+        fake.HmiFiles["Functions/A.js"] = "a\nb\n";
+
+        var popup = new FakeHmiConfirmer();
+        Assert.StartsWith("Nothing to do", new HmiCoordinator(fake, popup).WriteFile(null, "Functions/A.js", "a\nb\n", null, true, 120).Summary);
+        Assert.Empty(popup.Requests);
+
+        new HmiCoordinator(fake, popup).WriteFile(null, "Functions/A.js", "a\nc\n", null, true, 120);
+        Assert.Equal("a\r\nc\r\n", fake.HmiFiles["Functions/A.js"]);
+    }
+
+    [Fact]
+    public void DeleteItem_StaleEntryOnlyOnDisk_IsReported()
+    {
+        var fake = DeleteSession();
+        fake.HmiProjects = new HmiProjectList("Beckhoff.TcHmi.1.12", 1, [new HmiProjectEntry(Prj, _tmp, true, false)], null);
+        TempFile(@"Properties\tchmiconfig.json", "{ \"content\": [ { \"url\": \"Docs/Training/a.html.html\" } ] }");
+
+        var (summary, _) = new HmiCoordinator(fake, new FakeHmiConfirmer()).DeleteItem(null, "Docs/Training/a.html.html", 120);
+
+        Assert.Contains("[Warning] Properties/tchmiconfig.json still lists 'Docs/Training/a.html.html'", summary);
+    }
+
+    [Fact]
+    public void WriteFile_MixedLineEndings_AreNormalisedToTheSource()
+    {
+        // Same text, but the file mixes CRLF and LF: that is a change, and the source's line endings win.
+        var fake = Session();
+        fake.HmiFiles["A.js"] = "a\r\nb\nc\r\n";
+        var (summary, _) = new HmiCoordinator(fake, new FakeHmiConfirmer()).WriteFile(null, "A.js", "a\r\nb\r\nc\r\n", null, true, 120);
+        Assert.StartsWith("Wrote 'A.js'", summary);
+        Assert.Equal("a\r\nb\r\nc\r\n", fake.HmiFiles["A.js"]);
+    }
+
+    [Theory]
+    [InlineData("a\r\nb", "x\ny\n", "x\r\ny\r\n")]
+    [InlineData("a\nb", "x\r\ny\r\n", "x\ny\n")]
+    [InlineData("a\r\nb\nc", "x\ny\r\n", "x\ny\r\n")]   // mixed: the replacement as it is
+    [InlineData("one line", "x\ny\r\n", "x\ny\r\n")]    // no line break: the replacement as it is
+    public void Text_MatchLineEndings(string current, string replacement, string expected) =>
+        Assert.Equal(expected, HmiText.MatchLineEndings(current, replacement));
+
+    [Fact]
     public void WriteFile_Json_KeepsTheProjectSchema()
     {
         var fake = Session();
@@ -629,7 +689,64 @@ public sealed class HmiViewsTests : IDisposable
         Assert.Contains("from disk", request.NewValue);
         using var doc = JsonDocument.Parse(json);
         Assert.True(doc.RootElement.GetProperty("isFile").GetBoolean());
+        Assert.Equal(0, doc.RootElement.GetProperty("staleConfigEntries").GetArrayLength());
+        Assert.DoesNotContain("[Warning]", summary);
     }
+
+    [Fact]
+    public void DeleteItem_StaleContentEntry_IsRemovedByReSavingTheConfig()
+    {
+        // DeleteChild leaves the page's content entry in tchmiconfig.json; a config save drops it (live, TE2000 14.6).
+        var fake = DeleteSession();
+        const string Other = "{ \"url\": \"Docs/Other.content\" }";
+        fake.HmiFiles["Properties/tchmiconfig.json"] =
+            "{ \"content\": [ { \"url\": \"Docs/Training/a.html.html\", \"preload\": false }, " + Other + " ] }";
+        fake.OnResaveHmiConfig = () => fake.HmiFiles["Properties/tchmiconfig.json"] = "{ \"content\": [ " + Other + " ] }";
+
+        var (summary, json) = new HmiCoordinator(fake, new FakeHmiConfirmer()).DeleteItem(null, "Docs/Training", 120);
+
+        Assert.StartsWith("Deleted 'Docs/Training'", summary);
+        Assert.Contains("Removed its entry from Properties/tchmiconfig.json ('Docs/Training/a.html.html') by re-saving the HMI config.", summary);
+        Assert.DoesNotContain("[Warning]", summary);
+        Assert.Contains($"ResaveHmiConfig({Prj})", fake.CallLog);
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal(["Docs/Training/a.html.html"],
+            doc.RootElement.GetProperty("removedConfigEntries").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal(0, doc.RootElement.GetProperty("staleConfigEntries").GetArrayLength());
+    }
+
+    [Fact]
+    public void DeleteItem_StaleContentEntry_ThatSurvivesTheReSave_IsAWarning()
+    {
+        var fake = DeleteSession();
+        fake.HmiFiles["Properties/tchmiconfig.json"] = "{ \"content\": [ { \"url\": \"Docs/Training/a.html.html\" } ] }";
+
+        var (summary, json) = new HmiCoordinator(fake, new FakeHmiConfirmer()).DeleteItem(null, "Docs/Training", 120);
+
+        Assert.Contains("[Warning] Properties/tchmiconfig.json still lists 'Docs/Training/a.html.html'", summary);
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal(["Docs/Training/a.html.html"],
+            doc.RootElement.GetProperty("staleConfigEntries").EnumerateArray().Select(e => e.GetString()));
+    }
+
+    [Fact]
+    public void DeleteItem_NoStaleEntry_NoConfigReSave()
+    {
+        var fake = DeleteSession();
+        fake.HmiFiles["Properties/tchmiconfig.json"] = "{ \"content\": [] }";
+
+        new HmiCoordinator(fake, new FakeHmiConfirmer()).DeleteItem(null, "Docs/Training", 120);
+
+        Assert.DoesNotContain(fake.CallLog, c => c.StartsWith("ResaveHmiConfig", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("{ \"content\": [ { \"url\": \"Pages/A.content\" } ] }", "Pages/A.content", "Pages/A.content")]
+    [InlineData("{ \"content\": [ { \"url\": \"Pages/AB.content\" } ] }", "Pages/A", "")]              // a sibling, not below
+    [InlineData("{ \"x\": { \"url\": \"pages/sub/b.view\" } }", "Pages/Sub", "pages/sub/b.view")]
+    [InlineData("not json", "Pages/A.content", "")]
+    public void Text_UrlsPointingAt(string json, string path, string expected) =>
+        Assert.Equal(expected, string.Join(",", HmiText.UrlsPointingAt(json, path)));
 
     [Fact]
     public void DeleteItem_Folder_PopupShowsTheCount_AndEverythingBelowIsGone()

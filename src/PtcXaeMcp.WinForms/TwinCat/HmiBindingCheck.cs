@@ -111,7 +111,8 @@ internal static class HmiBindingCheck
                             Add(b.Line, "error", "ctrl", b.Target, $"no control with id '{b.Target}' in the project" + Near(b.Target, localIds));
                         break;
                     case "f":
-                        if (functions.Contains(b.Target)) break;
+                        // An expression body (operators, literals, symbols) calls no named function.
+                        if (b.Target.Length == 0 || functions.Contains(b.Target)) break;
                         if (b.Target.StartsWith(BeckhoffFunctionNamespace, StringComparison.Ordinal))
                             Add(b.Line, "info", "f", b.Target, "framework function — not checked offline");
                         else

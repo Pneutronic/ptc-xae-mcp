@@ -750,6 +750,13 @@ internal interface ITwinCatSession : IDisposable
     HmiOperationResult RemoveHmiInternalSymbol(string hmiProject, string name);
 
     /// <summary>
+    /// Makes TE2000 save its project CONFIG (tchmiconfig.json) by re-applying the current websocket interval, a
+    /// no-op change. That save recomputes the file lists (dependencyFiles, content, views) from the project items;
+    /// SaveAllFiles does not. Confirmed live: a deleted content page's entry is gone afterwards.
+    /// </summary>
+    HmiOperationResult ResaveHmiConfig(string hmiProject);
+
+    /// <summary>
     /// <c>ITcHmiServer.MapOfflineSymbol(mapName, "", dataType, online, persist, defaultValue)</c> —
     /// a SERVER symbol in the TcHmiSrv domain, persisted by the server in
     /// <c>Server\TcHmiSrv\TcHmiSrv.Config.default.json</c>. The returned Ok is mostly honest, but a

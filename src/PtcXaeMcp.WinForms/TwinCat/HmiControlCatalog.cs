@@ -95,18 +95,23 @@ internal sealed class HmiControlCatalog
             return new HmiControlCatalog(types, sources, [$"packages.config could not be read: {ex.Message}"]);
         }
 
-        string solutionDir = Path.GetDirectoryName(Path.GetFullPath(projectDirectory)) ?? projectDirectory;
+        string projectDir = Path.GetFullPath(projectDirectory);
+        string solutionDir = Path.GetDirectoryName(projectDir) ?? projectDir;
         string nugetRoot = Environment.GetEnvironmentVariable("NUGET_PACKAGES") is { Length: > 0 } np ? np
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         foreach (var (id, version) in packages)
         {
+            // Packages\ sits next to the .sln: one level up when the project has its own folder, in the
+            // project folder itself when the .sln lies there.
             string? root = new[]
             {
+                Path.Combine(projectDir, "Packages", $"{id}.{version}"),
+                Path.Combine(projectDir, "packages", $"{id}.{version}"),
                 Path.Combine(solutionDir, "Packages", $"{id}.{version}"),
                 Path.Combine(solutionDir, "packages", $"{id}.{version}"),
                 Path.Combine(nugetRoot, id.ToLowerInvariant(), version),
             }.FirstOrDefault(Directory.Exists);
-            if (root is null) { problems.Add($"package {id} {version} is not restored (not in Packages\\ nor the NuGet cache)."); continue; }
+            if (root is null) { problems.Add($"package {id} {version} is not restored (not in the project's or the solution's Packages\\ nor the NuGet cache)."); continue; }
             string runtimes = Path.Combine(root, "runtimes");
             if (!Directory.Exists(runtimes)) continue;
             int before = types.Count;

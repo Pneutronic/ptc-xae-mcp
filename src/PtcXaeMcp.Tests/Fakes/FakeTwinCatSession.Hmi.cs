@@ -322,6 +322,16 @@ internal sealed partial class FakeTwinCatSession
         return new HmiOperationResult(true, null);
     }
 
+    /// <summary>What the config re-save does to the files (TE2000 recomputes its lists); null = nothing.</summary>
+    public Action? OnResaveHmiConfig { get; set; }
+
+    public HmiOperationResult ResaveHmiConfig(string hmiProject)
+    {
+        CallLog.Add($"ResaveHmiConfig({hmiProject})");
+        OnResaveHmiConfig?.Invoke();
+        return new HmiOperationResult(true, null);
+    }
+
     public HmiOperationResult RemoveHmiInternalSymbol(string hmiProject, string name)
     {
         CallLog.Add($"RemoveHmiInternalSymbol({hmiProject}, {name})");

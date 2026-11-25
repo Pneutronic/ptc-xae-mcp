@@ -146,6 +146,71 @@ internal static partial class HmiText
     /// <summary>Line-ending and trailing-whitespace insensitive comparison for read-backs.</summary>
     public static bool Same(string a, string b) => Canon(a) == Canon(b);
 
+    /// <summary>
+    /// The replacement with the line endings of the current file when that file uses one kind only (all CRLF or
+    /// all LF), so a source taken with other line endings (git show, LF) does not convert the whole file. A file
+    /// with mixed or no line breaks takes the replacement as it is, which is how a mixed file gets normalised.
+    /// </summary>
+    public static string MatchLineEndings(string current, string replacement)
+    {
+        int crlf = 0, lf = 0;
+        for (int i = 0; i < current.Length; i++)
+        {
+            if (current[i] != '\n') continue;
+            if (i > 0 && current[i - 1] == '\r') crlf++; else lf++;
+        }
+        if (crlf > 0 && lf == 0) return replacement.ReplaceLineEndings("\r\n");
+        if (lf > 0 && crlf == 0) return replacement.ReplaceLineEndings("\n");
+        return replacement;
+    }
+
+    /// <summary>
+    /// Whether a write would change the file: exact, line endings included (only trailing whitespace at the end
+    /// is ignored). Call with a target made by <see cref="MatchLineEndings"/>, so a line-ending-only difference
+    /// counts only where the write really changes the line endings (a mixed file).
+    /// </summary>
+    public static bool Unchanged(string current, string target) =>
+        string.Equals(current.TrimEnd(), target.TrimEnd(), StringComparison.Ordinal);
+
+    /// <summary>
+    /// Every "url" string value in a JSON document (any depth) that names <paramref name="path"/> or lies below it,
+    /// compared as normalised project paths. Empty for JSON that cannot be parsed.
+    /// </summary>
+    public static IReadOnlyList<string> UrlsPointingAt(string json, string path)
+    {
+        System.Text.Json.Nodes.JsonNode? root;
+        try
+        {
+            root = System.Text.Json.Nodes.JsonNode.Parse(json, documentOptions:
+                new System.Text.Json.JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = System.Text.Json.JsonCommentHandling.Skip });
+        }
+        catch (System.Text.Json.JsonException) { return []; }
+
+        var hits = new List<string>();
+        Walk(root);
+        return hits;
+
+        void Walk(System.Text.Json.Nodes.JsonNode? node)
+        {
+            switch (node)
+            {
+                case System.Text.Json.Nodes.JsonObject o:
+                    foreach (var (key, value) in o)
+                    {
+                        if (key == "url" && value is System.Text.Json.Nodes.JsonValue v && v.TryGetValue(out string? url)
+                            && HmiPaths.Normalize(url) is { } n
+                            && (n.Equals(path, StringComparison.OrdinalIgnoreCase) || n.StartsWith(path + "/", StringComparison.OrdinalIgnoreCase)))
+                            hits.Add(url);
+                        else Walk(value);
+                    }
+                    break;
+                case System.Text.Json.Nodes.JsonArray a:
+                    foreach (var item in a) Walk(item);
+                    break;
+            }
+        }
+    }
+
     private static string Canon(string s) => s.Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd();
 
     /// <summary>Lines only in the new text / only in the old text (multiset difference).</summary>

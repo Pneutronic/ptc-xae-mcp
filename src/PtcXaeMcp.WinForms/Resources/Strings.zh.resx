@@ -248,6 +248,9 @@
   <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
     <value>已自动确认</value>
   </data>
+  <data name="approvals.outcome.not_asked" xml:space="preserve">
+    <value>未询问（确认已关闭）</value>
+  </data>
   <data name="approvals.outcome.confirmed" xml:space="preserve">
     <value>已确认</value>
   </data>
@@ -928,7 +931,7 @@
     <value>人工确认</value>
   </data>
   <data name="settings.access.confirm.note" xml:space="preserve">
-    <value>支持 MCP elicitation 的客户端会在其自己的窗口中询问用户；其他客户端会得到一个 token，您可在此处的“审批”选项卡中批准。以此处与环境变量中更严格的设置为准。</value>
+    <value>支持 MCP elicitation 的客户端会在其自己的窗口中询问用户；其他客户端会得到一个 token，您可在此处的“审批”选项卡中批准。以此处与环境变量中更严格的设置为准。 设为 'off' 时，HMI 修改的确认窗口也不会显示。</value>
   </data>
   <data name="settings.access.envPolicy" xml:space="preserve">
     <value>环境变量设置了 {0}；以两者中更严格的为准。</value>

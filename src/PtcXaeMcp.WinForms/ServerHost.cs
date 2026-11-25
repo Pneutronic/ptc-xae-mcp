@@ -15,6 +15,7 @@ namespace PtcXaeMcp.WinForms;
 internal sealed class ServerHost : IDisposable
 {
     private readonly SwitchableHmiConfirmer _hmiUi = new();
+    private Func<bool>? _hmiConfirmOff;
     private HostEnvironmentSnapshot _environment = HostEnvironmentSnapshot.NotChecked;
     private TaskCompletionSource? _pendingRefresh;
     private bool _disposed;
@@ -31,15 +32,18 @@ internal sealed class ServerHost : IDisposable
         Dispatcher = new McpDispatcher(session);
         LiveCoordinator = new IbnLiveCoordinator(session, enableTimers: enableTimers);
         SnapshotRestore = new SnapshotRestoreCoordinator(session);
-        // Only a TEMP fixture with PTC_XAE_MCP_HMI_AUTOCONFIRM_TEMP=1 skips the engineer's popup.
+        // The engineer's popup is skipped only when the access policy's human confirmation is "off"
+        // (AttachHmiConfirmPolicy) or for a TEMP fixture with PTC_XAE_MCP_HMI_AUTOCONFIRM_TEMP=1.
         // The outermost decorator records every answer for the Approvals view (#272) and returns
         // it unchanged, so the chain stays fail-closed exactly as before.
         HmiConfirmer = new RecordingHmiConfirmer(
-            new HmiTempAutoConfirmer(
-                _hmiUi,
-                () => Environment.GetEnvironmentVariable(HmiAutoConfirmPolicy.EnvVar),
-                Path.GetTempPath,
-                Win32LongPath.Resolve),
+            new HmiPolicyOffConfirmer(
+                new HmiTempAutoConfirmer(
+                    _hmiUi,
+                    () => Environment.GetEnvironmentVariable(HmiAutoConfirmPolicy.EnvVar),
+                    Path.GetTempPath,
+                    Win32LongPath.Resolve),
+                () => Volatile.Read(ref _hmiConfirmOff)?.Invoke() == true),
             HmiApprovals);
     }
 
@@ -58,7 +62,8 @@ internal sealed class ServerHost : IDisposable
     /// <summary>Standalone user-mode runtime process (TcSystemServiceUm.exe).</summary>
     public UmrProcessManager UmrManager { get; } = new();
 
-    /// <summary>hmi-server: asks the engineer before EVERY HMI write (see <see cref="AttachHmiConfirmUi"/>).</summary>
+    /// <summary>hmi-server: asks the engineer before every HMI write (see <see cref="AttachHmiConfirmUi"/>), unless the
+    /// human confirmation is off (<see cref="AttachHmiConfirmPolicy"/>).</summary>
     public IHmiWriteConfirmer HmiConfirmer { get; }
 
     /// <summary>Every HMI write approval and its outcome (bounded), for the Approvals view (#272).</summary>
@@ -84,6 +89,10 @@ internal sealed class ServerHost : IDisposable
     public event Action<bool, string>? ApplyRunStateChanged;
 
     public void AttachHmiConfirmUi(IHmiWriteConfirmer ui) => _hmiUi.Inner = ui;
+
+    /// <summary>Plugs in the access policy: while <paramref name="confirmOff"/> answers true, HMI writes run without the
+    /// popup. Until it is attached the popup is always shown.</summary>
+    public void AttachHmiConfirmPolicy(Func<bool> confirmOff) => Volatile.Write(ref _hmiConfirmOff, confirmOff);
 
     /// <summary>Stores the newest environment readout and completes a pending refresh.</summary>
     public void ReportEnvironment(HostEnvironmentSnapshot snapshot)

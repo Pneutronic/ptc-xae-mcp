@@ -87,6 +87,8 @@ internal sealed class McpBridge : IDisposable
         Receipts = new ReceiptStore(ReceiptStore.DefaultPath);
         RequestReceipts = new RequestReceipts(Receipts, () => _host.Dispatcher.Session.ProjectTargetNetId(), ReceiptLiveState.Read, Activity);
         Policy.Changed += Surface.NotifyToolListChanged;
+        // "off" also switches off the HMI write popup; read per write, so a Settings change applies at once.
+        _host.AttachHmiConfirmPolicy(() => Policy.Current.EffectiveConfirm == ConfirmMode.Off);
         // A call that answered [Blocked] reports its real result here once the XAE returns it.
         _host.Dispatcher.LateResult = Activity.RecordLateResult;
         HostLog.Shared.Info($"Access policy: {Policy.Current.Summary()}.");

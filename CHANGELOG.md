@@ -10,7 +10,11 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
-### Fixed (close that hangs)
+## [4.3.1] - 2026-11-25
+
+A close that hangs answers instead of holding the XAE for good.
+
+### Fixed
 - `twincat_close_project` no longer hangs for good: a close that neither returns within 180 s nor shows an XAE dialog
   answers `[Error] … the XAE looks hung` with `twincat_force_close_xae` as the next step. Until now the call never
   answered and held the operation lock, so every later call failed with "An operation is already in progress". The
@@ -19,12 +23,23 @@ pull-request numbers refer to those.
 - `twincat_open_project`: an `E_UNEXPECTED` (0x8000FFFF) error names `twincat_force_close_xae`; seen live after a
   close that hung, when every open failed until the XAE was ended.
 
+## [4.3.0] - 2026-11-25
+
+Working without questions: the human confirmation "off" now also covers the HMI write popup. The platform of the
+project is reported and checked before an activation, NC scope channels work, and `expectSymbols` plus four HMI
+authoring tools are fixed (#61).
+
 ### Added
 - `twincat_get_active_project` reports the active solution platform and the target: `targetPlatform`, `targetNetId`
   and, when they cannot fit (ARM for a User Mode Runtime), `platformWarning`. `twincat_open_project` and
   `twincat_activate_config` name them in their result too (#58).
 
 ### Changed
+- The human confirmation **off** (*Settings… → MCP access*, or `PTC_XAE_MCP_CONFIRM=off`) now also skips the HMI write
+  popup. Until now every HMI write asked, whatever the setting said. The stricter of window and environment still wins,
+  so `PTC_XAE_MCP_CONFIRM=remote` or `all` keeps the popup. A write without the popup is listed in the Approvals tab as
+  *not asked (confirmation off)*, and its tool result says `notAskedConfirmOff`. With `remote`, `all` or no setting,
+  every HMI write is asked as before (#62).
 - `twincat_activate_config` refuses a platform that cannot fit the target (ARM or an unknown platform for a User Mode
   Runtime) with `[Error]` before anything is written, instead of failing later with `Error loading boot project`
   (AdsError 1804). `TwinCAT RT (x64)` on a User Mode Runtime and ARM on the local PC only warn; a remote device is
@@ -964,7 +979,10 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.2.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.3.1...HEAD
+[4.3.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.1
+[4.3.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.0
+[4.2.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.2.1
 [4.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.2.0
 [4.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.1.0
 [4.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.0.0

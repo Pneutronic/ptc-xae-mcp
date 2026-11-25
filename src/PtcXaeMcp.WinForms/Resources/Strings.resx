@@ -248,6 +248,9 @@
   <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
     <value>AutoConfirmed</value>
   </data>
+  <data name="approvals.outcome.not_asked" xml:space="preserve">
+    <value>Not asked (confirmation off)</value>
+  </data>
   <data name="approvals.outcome.confirmed" xml:space="preserve">
     <value>Confirmed</value>
   </data>
@@ -928,7 +931,7 @@ The previous policy stays in force.</value>
     <value>Human confirmation</value>
   </data>
   <data name="settings.access.confirm.note" xml:space="preserve">
-    <value>A client that supports MCP elicitation asks the human in its own window; any other client gets a token that you release in the Approvals tab here. The stricter of this and the environment applies.</value>
+    <value>A client that supports MCP elicitation asks the human in its own window; any other client gets a token that you release in the Approvals tab here. The stricter of this and the environment applies. With 'off' the HMI write popup is not shown either.</value>
   </data>
   <data name="settings.access.envPolicy" xml:space="preserve">
     <value>The environment sets {0}; the stricter of both applies.</value>

@@ -3,10 +3,11 @@ using System.Text.RegularExpressions;
 
 namespace PtcXaeMcp.WinForms.TwinCat;
 
-// hmi-server write protection: the
-// engineer's rule is "ask every time; it should be possible" — HMI writes are
-// allowed, but EVERY one is confirmed by a human in a modal popup of the MCP host.
-// No tool parameter bypasses it; a rejected/expired popup means nothing is written.
+// hmi-server write protection: HMI writes are allowed, and by default EVERY one is
+// confirmed by a human in a modal popup of the MCP host. No tool parameter bypasses it;
+// a rejected/expired popup means nothing is written. Only the engineer can switch the
+// popup off, with the human confirmation "off" of the access policy (window or
+// PTC_XAE_MCP_CONFIRM, the stricter wins) — see HmiPolicyOffConfirmer.
 
 internal enum HmiWriteKind
 {
@@ -61,6 +62,8 @@ internal enum HmiConfirmOutcome
     TimedOut,
     /// <summary>No GUI to ask (host window gone) — fail closed.</summary>
     Unavailable,
+    /// <summary>Nobody was asked: the human confirmation of the access policy is <c>off</c> (window or environment).</summary>
+    NotAsked,
 }
 
 internal interface IHmiWriteConfirmer
@@ -123,6 +126,17 @@ internal sealed class HmiTempAutoConfirmer(
     /// machine (localhost, 127.x, ::1); any other target is always asked.</summary>
     internal static bool IsLoopbackUrl(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out Uri? u) && u.IsLoopback;
+}
+
+/// <summary>
+/// Decorator: skips the popup while the access policy's human confirmation is <c>off</c> (the engineer chose to work
+/// without questions), otherwise asks. <paramref name="confirmOff"/> is read on every call, so a change in the Settings
+/// dialog applies to the next write. The answer is still recorded by the outer <see cref="RecordingHmiConfirmer"/>.
+/// </summary>
+internal sealed class HmiPolicyOffConfirmer(IHmiWriteConfirmer inner, Func<bool> confirmOff) : IHmiWriteConfirmer
+{
+    public HmiConfirmOutcome Confirm(HmiWriteRequest request, TimeSpan timeout) =>
+        confirmOff() ? HmiConfirmOutcome.NotAsked : inner.Confirm(request, timeout);
 }
 
 internal static class Win32LongPath

@@ -10,12 +10,22 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-11-25
+
+Working without questions: the human confirmation "off" now also covers the HMI write popup. The platform of the
+project is reported and checked before an activation, and NC scope channels work.
+
 ### Added
 - `twincat_get_active_project` reports the active solution platform and the target: `targetPlatform`, `targetNetId`
   and, when they cannot fit (ARM for a User Mode Runtime), `platformWarning`. `twincat_open_project` and
   `twincat_activate_config` name them in their result too (#58).
 
 ### Changed
+- The human confirmation **off** (*Settings… → MCP access*, or `PTC_XAE_MCP_CONFIRM=off`) now also skips the HMI write
+  popup. Until now every HMI write asked, whatever the setting said. The stricter of window and environment still wins,
+  so `PTC_XAE_MCP_CONFIRM=remote` or `all` keeps the popup. A write without the popup is listed in the Approvals tab as
+  *not asked (confirmation off)*, and its tool result says `notAskedConfirmOff`. With `remote`, `all` or no setting,
+  every HMI write is asked as before (#62).
 - `twincat_activate_config` refuses a platform that cannot fit the target (ARM or an unknown platform for a User Mode
   Runtime) with `[Error]` before anything is written, instead of failing later with `Error loading boot project`
   (AdsError 1804). `TwinCAT RT (x64)` on a User Mode Runtime and ARM on the local PC only warn; a remote device is
@@ -936,7 +946,9 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.2.0...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.3.0...HEAD
+[4.3.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.0
+[4.2.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.2.1
 [4.2.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.2.0
 [4.1.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.1.0
 [4.0.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.0.0

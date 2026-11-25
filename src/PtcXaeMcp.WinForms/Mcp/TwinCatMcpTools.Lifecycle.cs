@@ -16,7 +16,8 @@ internal sealed partial class TwinCatMcpTools
                  "loading and saving would damage the .tsproj; allowMissingReferences opens anyway with [Warn], and " +
                  "twincat_save_project / twincat_close_project(saveFirst=true) repeat it. The result names the XAE host the " +
                  "TcVersion selects (32-bit below 4026, else 64-bit) and warns when it picks 32-bit although the 64-bit XAE " +
-                 "is installed, or when the running XAE is not the selected one.")]
+                 "is installed, or when the running XAE is not the selected one. It also names the active solution platform and " +
+                 "the target, with [Warn] when they do not fit (e.g. ARM for a User Mode Runtime).")]
     public async Task<string> OpenProject(
         [Description("Absolute path to the .sln, .tsproj, .tspproj or .hmiproj.")] string slnPath,
         [Description("Close the open solution first, without saving. Default false.")] bool closeCurrentFirst = false,

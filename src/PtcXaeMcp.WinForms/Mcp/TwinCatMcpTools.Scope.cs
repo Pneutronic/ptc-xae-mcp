@@ -34,7 +34,7 @@ internal sealed partial class TwinCatMcpTools
     // ---- twincat_add_scope_channel -----------------------------------------
 
     [McpServerTool(Name = "twincat_add_scope_channel", ReadOnly = false, Destructive = false)]
-    [Description("Add a channel bound to a PLC symbol to the scope project. Creates chart, axis-group and channel, reusing a chart/axis of the same name, and reuses or creates the DataPool acquisition (same symbol and port). Every field is read back; one that did not land returns [Error]. Returns the channel's tree path.")]
+    [Description("Add a channel bound to a PLC symbol to the scope project. Creates chart, axis-group and channel, reusing a chart/axis of the same name, and reuses or creates the DataPool acquisition (same symbol and port). Every field is read back; one that did not land returns [Error]. The acquisition is made and checked before chart, axis group and channel, so a failed call leaves no half-made channel (the Scope tree cannot be cleaned up through the Automation Interface on TE130x 4026.22; the error lists anything left). NC symbols work too: pass the NC tree path, symbolName 'Axes.<axis>.<variable>' and targetPort 501. Returns the channel's tree path.")]
     public string AddScopeChannel(
         [Description("PLC symbol path, e.g. 'TIPC^PLC^PLC Projekt^MAIN.rActualValue'.")] string  symbol,
         [Description("Chart name; reused if it exists. Default: the symbol path.")] string? chartName     = null,
@@ -42,9 +42,9 @@ internal sealed partial class TwinCatMcpTools
         [Description("Channel name. Default: the symbol path.")] string? channelName   = null,
         [Description("True puts the channel on its own Y-axis. Default false.")] bool    stackedAxis   = false,
         [Description("PLC-side symbol name for the acquisition, if it differs from the one derived from symbol.")] string? symbolName    = null,
-        [Description("ADS port of the PLC runtime. Default 851 (PLC 1).")] int?    targetPort    = null,
+        [Description("ADS port of the runtime. Default 851 (PLC 1); 501 for NC symbols.")] int?    targetPort    = null,
         [Description("Sample mode, e.g. 'Task Sampletime'. Default: the scope's default.")] string? sampleMode    = null,
-        [Description("Sample time in ms. Default: the scope's default.")] int?    sampleTimeMs  = null,
+        [Description("Sample time in ms. Without sampleMode this sets 'Fixed Sampletime'. Default: the scope's default.")] int?    sampleTimeMs  = null,
         [Description("Optional comment on the acquisition's symbol binding.")] string? symbolComment = null,
         [Description("Measurement project name; required only when the solution has several (else [Error] lists them).")] string? projectName   = null,
         CancellationToken cancellationToken = default)

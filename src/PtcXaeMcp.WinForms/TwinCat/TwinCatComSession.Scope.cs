@@ -236,67 +236,158 @@ internal sealed partial class TwinCatComSession
         string axis    = string.IsNullOrWhiteSpace(axisName)    ? chart  : axisName!.Trim();
         string channel = string.IsNullOrWhiteSpace(channelName) ? symbol : channelName!.Trim();
 
-        // Reuse existing chart / axis via LookUpChild; create if absent.
-        dynamic chartNode = ScopeLookUpOrCreate(root,      chart,   ScopeChartType.Yt);
-        dynamic axisNode  = ScopeLookUpOrCreate(chartNode, axis,    ScopeChartElement.AxisGroup);
-        dynamic chanNode  = ScopeLookUpOrCreate(axisNode,  channel, ScopeAxisGroupMember.Channel);
-
         // D-19: reuse the DataPool acquisition that already samples this symbol on this port
         // instead of creating a new one per call (every repeat used to orphan the previous one).
-        // This also makes a busy-replay of the whole method idempotent: chart/axis/channel are
-        // looked up by name and the acquisition by symbol before anything is created.
+        // This also makes a busy-replay of the whole method idempotent: the acquisition is looked up
+        // by symbol and chart/axis/channel by name before anything is created.
         string plcSymbol = string.IsNullOrWhiteSpace(symbolName)
             ? DerivePlcSymbolName(symbol)
             : symbolName!.Trim();
         int port = targetPort ?? DefaultPlcPort;
-        dynamic dataPool = RequireDataPool(root);
-        dynamic? acqNode = FindAcquisitionBySymbol(dataPool, plcSymbol, port);
-        bool reused = acqNode is not null;
-        acqNode ??= ScopeCreateChild(dataPool, symbol, ScopeAcquisitionType.Ads);
 
-        // Point the acquisition at the real PLC symbol so it actually records. Every field is
-        // read back; a field that did not land is an error — an acquisition without its symbol
-        // records nothing (keys verified live).
-        List<PropWrite> symbolWrites = AfterMutation<List<PropWrite>>(() => ApplyAcquisitionSymbol((object)acqNode, plcSymbol, port, null,
-            sampleMode, sampleTimeMs, null, symbolComment, null));
-        ThrowIfNotApplied($"Acquisition for '{plcSymbol}' (created under chart '{chart}' / axis '{axis}')", symbolWrites);
-
-        // TwinCAT controls the acquisition's tree name (it may dedupe /
-        // sanitise the requested name, e.g. "GVL_HMI.HmiOpened" → "HmiOpened (1)").
-        // Capture the real name so the result + a follow-up read agree.
-        string acqName = AfterMutation(() => ComCall.ReadProp(() => (string)acqNode.Name, symbol) ?? symbol);
-
-        // Bind the channel to the acquisition. Infosys iterates piChannel.
-        // Properties and sets prop.Value on the "Y-Data.Acquisition" entry —
-        // the Properties.Item(key) indexer is unreliable here (NRE), so match
-        // by iterating like the documented snippet. The bound value is the
-        // acquisition's raw COM object (Infosys binds `prop.Value = <acquisition object>`).
-        // Bind on the ORIGINAL chanNode (its Properties are populated; a
-        // LookUpChild re-resolve returns an empty node). The result says
-        // plainly when this TC build rejects the assignment.
-        object acqRaw = AfterMutation(() => (object)acqNode.Object);
-        string? bindErr = AfterMutation(() => TrySetChannelAcquisition(chanNode, acqRaw));
-
-        var notes = new List<string>();
-        foreach (PropWrite w in AfterMutation<List<PropWrite>>(() => SetScopeLabel((object)chartNode, chart).Concat(SetScopeLabel((object)axisNode, axis)).ToList()))
-            if (!w.Applied) notes.Add($"label {w.Label} not applied ({w.Key ?? "no property"}: {w.Error})");
-
-        if (stackedAxis)
+        // #59: a sample time without a sample mode can only mean a fixed one — 'Task Sampletime' takes the
+        // time from the PLC task and ignores a written value, which used to fail the whole call.
+        string? modeNote = null;
+        if (sampleTimeMs is not null && sampleMode is null)
         {
-            PropWrite st = AfterMutation<PropWrite>(() => ApplyAxisMode((object)chartNode, ScopeAxisMode.Stacked));
-            if (!st.Applied) notes.Add($"stacked axis NOT applied ({st.Key ?? "no stacked-axis property"}: {st.Error})");
+            sampleMode = ScopeSampleMode.Fixed;
+            modeNote = $" Sample mode set to '{ScopeSampleMode.Fixed}' because sampleTimeMs was given.";
         }
 
-        string chanPath = $"{chart}^{axis}^{channel}";
-        string acqVerb = reused ? "reused existing acquisition" : "created acquisition";
-        string baseMsg = $"Added channel '{channel}' under chart '{chart}' / axis '{axis}'; " +
-            $"{acqVerb} '{acqName}' (Symbol Name '{plcSymbol}', port {port}; read back). Path: {chanPath}.";
-        string bindMsg = bindErr is null
-            ? " Channel bound to acquisition."
-            : $" NOTE: channel↔acquisition auto-binding was rejected by this TwinCAT build " +
-              $"({bindErr}); bind it in the Scope editor. The acquisition is fully configured.";
-        return baseMsg + bindMsg + (notes.Count > 0 ? " NOTE: " + string.Join("; ", notes) + "." : string.Empty);
+        // #59: nothing in the Scope tree can be removed through the Automation Interface on TE130x 4026.22
+        // (ProjectItem.Delete() and Remove() return without error and change nothing, live 2026-11-24).
+        // So a failed call must not have anything to clean up: the DataPool acquisition — the step that can
+        // fail on the symbol — is created and read back FIRST, and chart, axis group and channel are only
+        // created once it is good. Whatever a failure leaves is listed in the error.
+        var created = new List<(string What, string Name, dynamic Node, dynamic Parent)>();
+        try
+        {
+            dynamic dataPool = RequireDataPool(root);
+            dynamic? acqNode = FindAcquisitionBySymbol(dataPool, plcSymbol, port);
+            bool reused = acqNode is not null;
+            if (acqNode is null)
+            {
+                // The tree path names the symbol for the Scope. For an NC axis ('TINC^…^Axes^Master^ActPosModulo',
+                // port 501) the Scope can build something other than an ADS acquisition from such a path, so those
+                // use the plain symbol name. Either way the result is checked: an acquisition without Symbol Name /
+                // Port / Sample Time cannot be configured.
+                bool ncPath = symbol.TrimStart().StartsWith("TINC^", StringComparison.OrdinalIgnoreCase);
+                string createName = ncPath ? plcSymbol : symbol;
+                acqNode = ScopeCreateChild(dataPool, createName, ScopeAcquisitionType.Ads);
+                created.Add(("acquisition", SafeNodeName(acqNode), acqNode, dataPool));
+                if (!HasAdsAcquisitionKeys((object)acqNode))
+                {
+                    if (string.Equals(createName, plcSymbol, StringComparison.Ordinal))
+                        throw new InvalidOperationException(
+                            $"this TE130x did not make an ADS acquisition for '{plcSymbol}' (port {port}): the new acquisition has no Symbol Name / Port / Sample Time property");
+                    acqNode = ScopeCreateChild(dataPool, plcSymbol, ScopeAcquisitionType.Ads);
+                    created.Add(("acquisition", SafeNodeName(acqNode), acqNode, dataPool));
+                    if (!HasAdsAcquisitionKeys((object)acqNode))
+                        throw new InvalidOperationException(
+                            $"this TE130x did not make an ADS acquisition for '{plcSymbol}' (port {port}): the new acquisition has no Symbol Name / Port / Sample Time property");
+                }
+            }
+
+            // Point the acquisition at the real PLC symbol so it actually records. Every field is
+            // read back; a field that did not land is an error — an acquisition without its symbol
+            // records nothing (keys verified live).
+            List<PropWrite> symbolWrites = AfterMutation<List<PropWrite>>(() => ApplyAcquisitionSymbol((object)acqNode!, plcSymbol, port, null,
+                sampleMode, sampleTimeMs, null, symbolComment, null));
+            ThrowIfNotApplied($"Acquisition for '{plcSymbol}'", symbolWrites);
+
+            // Reuse existing chart / axis via LookUpChild; create if absent.
+            dynamic chartNode = ScopeLookUpOrCreate(root,      chart,   ScopeChartType.Yt,           out bool chartNew);
+            if (chartNew) created.Add(("chart", SafeNodeName(chartNode), chartNode, root));
+            dynamic axisNode  = ScopeLookUpOrCreate(chartNode, axis,    ScopeChartElement.AxisGroup,  out bool axisNew);
+            if (axisNew) created.Add(("axis group", SafeNodeName(axisNode), axisNode, chartNode));
+            dynamic chanNode  = ScopeLookUpOrCreate(axisNode,  channel, ScopeAxisGroupMember.Channel, out bool chanNew);
+            if (chanNew) created.Add(("channel", SafeNodeName(chanNode), chanNode, axisNode));
+
+            // TwinCAT controls the acquisition's tree name (it may dedupe /
+            // sanitise the requested name, e.g. "GVL_HMI.HmiOpened" → "HmiOpened (1)").
+            // Capture the real name so the result + a follow-up read agree.
+            string acqName = AfterMutation(() => ComCall.ReadProp(() => (string)acqNode!.Name, symbol) ?? symbol);
+
+            // Bind the channel to the acquisition. Infosys iterates piChannel.
+            // Properties and sets prop.Value on the "Y-Data.Acquisition" entry —
+            // the Properties.Item(key) indexer is unreliable here (NRE), so match
+            // by iterating like the documented snippet. The bound value is the
+            // acquisition's raw COM object (Infosys binds `prop.Value = <acquisition object>`).
+            // Bind on the ORIGINAL chanNode (its Properties are populated; a
+            // LookUpChild re-resolve returns an empty node). The result says
+            // plainly when this TC build rejects the assignment.
+            object acqRaw = AfterMutation(() => (object)acqNode!.Object);
+            string? bindErr = AfterMutation(() => TrySetChannelAcquisition(chanNode, acqRaw));
+
+            var notes = new List<string>();
+            foreach (PropWrite w in AfterMutation<List<PropWrite>>(() => SetScopeLabel((object)chartNode, chart).Concat(SetScopeLabel((object)axisNode, axis)).ToList()))
+                if (!w.Applied) notes.Add($"label {w.Label} not applied ({w.Key ?? "no property"}: {w.Error})");
+
+            if (stackedAxis)
+            {
+                PropWrite st = AfterMutation<PropWrite>(() => ApplyAxisMode((object)chartNode, ScopeAxisMode.Stacked));
+                if (!st.Applied) notes.Add($"stacked axis NOT applied ({st.Key ?? "no stacked-axis property"}: {st.Error})");
+            }
+
+            string chanPath = $"{chart}^{axis}^{channel}";
+            string acqVerb = reused ? "reused existing acquisition" : "created acquisition";
+            string baseMsg = $"Added channel '{channel}' under chart '{chart}' / axis '{axis}'; " +
+                $"{acqVerb} '{acqName}' (Symbol Name '{plcSymbol}', port {port}; read back). Path: {chanPath}.";
+            string bindMsg = bindErr is null
+                ? " Channel bound to acquisition."
+                : $" NOTE: channel↔acquisition auto-binding was rejected by this TwinCAT build " +
+                  $"({bindErr}); bind it in the Scope editor. The acquisition is fully configured.";
+            return baseMsg + modeNote + bindMsg + (notes.Count > 0 ? " NOTE: " + string.Join("; ", notes) + "." : string.Empty);
+        }
+        catch (Exception ex) when (ComCall.NotBusy(ex))
+        {
+            // The busy case is not handled here: ComBusyRetry replays the whole call, and the
+            // lookups above make that idempotent. Anything else is a real failure → clean up.
+            throw new InvalidOperationException(ex.Message + RollBackCreated(created), ex);
+        }
     }, OpenTimeout);
+
+    // Take back, newest first, what a failed add created, and say what is still in the tree. A node counts as
+    // removed only when its parent no longer finds it: Delete() alone proves nothing on this TE130x.
+    private static string RollBackCreated(List<(string What, string Name, dynamic Node, dynamic Parent)> created)
+    {
+        if (created.Count == 0) return " Nothing was created.";
+        var removed = new List<string>();
+        var left = new List<string>();
+        for (int i = created.Count - 1; i >= 0; i--)
+        {
+            var (what, name, node, parent) = created[i];
+            if (TryRemoveScopeNode(parent, node, name)) removed.Add($"{what} '{name}'");
+            else left.Add($"{what} '{name}'");
+        }
+        return (removed.Count > 0 ? $" Rolled back: removed {string.Join(", ", removed)}." : string.Empty) +
+               (left.Count > 0
+                   ? $" Left in the Scope tree: {string.Join(", ", left)}. This TE130x does not remove nodes through the Automation Interface; " +
+                     "remove them in the Scope editor (an acquisition no channel uses records nothing)."
+                   : string.Empty);
+    }
+
+    // ProjectItem.Delete() on a Scope node returns without error and removes nothing (live 2026-11-24, TE130x 4026.22),
+    // so the parent is asked again: true only when the node is really gone.
+    private static bool TryRemoveScopeNode(dynamic parent, dynamic node, string name)
+    {
+        try { node.Delete(); }
+        catch (Exception ex) when (ComCall.NotBusy(ex)) { return false; }
+        return name.Length > 0 && ScopeLookUpChild(parent, name) is null;
+    }
+
+    private static string SafeNodeName(dynamic node)
+    {
+        try { return (string)node.Name ?? string.Empty; }
+        catch (Exception comEx) when (ComCall.NotBusy(comEx)) { return string.Empty; }
+    }
+
+    // An ADS acquisition has Symbol Name, Target Port and Sample Time properties (the live-verified
+    // keys ApplyAcquisitionSymbol writes); an acquisition without them cannot be configured.
+    private static bool HasAdsAcquisitionKeys(object acq) =>
+        HasKey(acq, k => k.Contains("symbolname", StringComparison.Ordinal)) &&
+        HasKey(acq, k => k.Contains("port", StringComparison.Ordinal)) &&
+        HasKey(acq, k => k.Contains("sampletime", StringComparison.Ordinal));
 
     // The DataPool acquisition whose Symbol Name equals `plcSymbol` and whose target port equals
     // `port` (when the port is readable), or null.
@@ -928,8 +1019,12 @@ internal sealed partial class TwinCatComSession
     }
 
     private static dynamic ScopeLookUpOrCreate(dynamic parentItem, string name, int elementType)
+        => ScopeLookUpOrCreate(parentItem, name, elementType, out bool _);
+
+    private static dynamic ScopeLookUpOrCreate(dynamic parentItem, string name, int elementType, out bool created)
     {
         dynamic? existing = ScopeLookUpChild(parentItem, name);
+        created = existing is null;
         if (existing is not null) return existing;
         return ScopeCreateChild(parentItem, name, elementType);
     }

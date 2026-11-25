@@ -54,6 +54,17 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
             ? new FileReferenceMemo(slnPath, FileReferencePreflight.Describe(references.Missing))
             : null;
 
+        // Issue #58: after a restart the XAE can come back with another platform than the project was saved
+        // with; say which one is active, and warn when it does not fit the target.
+        ProjectTargetInfo projectTarget = ReadProjectTargetOrUnknown();
+        if (projectTarget.Platform is not null)
+        {
+            result = $"{result}{(result.EndsWith('.') ? "" : ".")} {projectTarget.Describe()}";
+            PlatformFitResult fit = PlatformFit.Check(projectTarget);
+            if (fit.Kind != PlatformFitKind.Ok)
+                referenceWarn = (referenceWarn is null ? "" : referenceWarn + "\n") + $"[Warn] {fit.Message}";
+        }
+
         HostReport? hostReport = HostReportFor(slnPath, hostOverride);
         if (hostReport is not null)
         {
@@ -62,6 +73,17 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
                 referenceWarn = (referenceWarn is null ? "" : referenceWarn + "\n") + string.Join("\n", hostReport.Warnings);
         }
         return referenceWarn is null ? result : $"{referenceWarn}\n{result}";
+    }
+
+    // Best effort: the platform note must never turn a successful open into a failure (an HMI-only solution has no
+    // System Manager to ask).
+    private ProjectTargetInfo ReadProjectTargetOrUnknown()
+    {
+        try { return session.ReadProjectTarget(); }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or PlatformNotSupportedException)
+        {
+            return ProjectTargetInfo.Unknown;
+        }
     }
 
     /// <summary>Resolves the TcVersion → XAE host mapping; tests pass their own resolver and probes.</summary>

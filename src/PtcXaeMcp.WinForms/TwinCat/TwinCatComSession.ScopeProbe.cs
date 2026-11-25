@@ -94,8 +94,17 @@ internal sealed partial class TwinCatComSession
                 return sb.ToString();
             }
 
+            case "remove":
+            {
+                // #59: ProjectItem.Delete() on a Scope node returns without error and removes nothing; try Remove() alone.
+                if (string.IsNullOrWhiteSpace(nodePath))
+                    throw new InvalidOperationException("remove needs nodePath (never the root).");
+                try { node.Remove(); return $"Remove() on '{nodePath}' returned without error."; }
+                catch (Exception ex) when (ComCall.NotBusy(ex)) { return $"Remove threw hr=0x{ex.HResult:X8}: {ex.Message}"; }
+            }
+
             default:
-                throw new InvalidOperationException($"Unknown action '{action}'. Expected dump, create, set or delete.");
+                throw new InvalidOperationException($"Unknown action '{action}'. Expected dump, create, set, delete or remove.");
         }
     }, OpenTimeout);
 

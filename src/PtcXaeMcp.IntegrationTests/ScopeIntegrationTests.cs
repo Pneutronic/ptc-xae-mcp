@@ -384,6 +384,61 @@ public class ScopeIntegrationTests : IAsyncLifetime
         }
     }
 
+    // ── Scenario 4b: NC symbol on ADS port 501 (#59) ─────────────────────────
+
+    [Trait("Description", "add_scope_channel mit NC-Symbol (Port 501, nur sampleTimeMs) → ADS-Acquisition mit Symbol, Port, Fixed Sampletime; Kanal gebunden.")]
+    [SkippableFact(Timeout = 300_000)]
+    public async Task S4b_AddScopeChannel_NcSymbolPort501_CreatesAdsAcquisition()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+        try
+        {
+            // An axis under the fixture's NC-Task (resolved by browsing, never by a hardcoded label).
+            var list = GetText(await _client!.CallToolAsync("twincat_list_nc_tasks_axes"));
+            string taskPath = list.Split('\n')
+                .Select(l => l.Trim())
+                .First(l => l.StartsWith("NC-Task ", StringComparison.Ordinal) && l.Contains("TINC^", StringComparison.Ordinal))
+                .Split("  ", 2, StringSplitOptions.TrimEntries)[1];
+            string axis = $"ScopeAx{DateTimeOffset.UtcNow:HHmmssfff}";
+            var ca = GetText(await _client.CallToolAsync("twincat_create_axis",
+                new Dictionary<string, object?> { ["ncTaskPath"] = taskPath, ["axisName"] = axis }));
+            Assert.DoesNotContain("[Error]", ca);
+
+            var create = await _client.CallToolAsync("twincat_create_scope_project",
+                new Dictionary<string, object?> { ["projectName"] = ScopeProjectName });
+            Assert.False(GetText(create).StartsWith("[Error]", StringComparison.Ordinal), GetText(create));
+
+            // No sampleMode: a sample time alone means a fixed one.
+            var add = await _client.CallToolAsync("twincat_add_scope_channel",
+                new Dictionary<string, object?>
+                {
+                    ["symbol"]       = $"{taskPath}^Axes^{axis}^ActPosModulo",
+                    ["symbolName"]   = $"Axes.{axis}.ActPosModulo",
+                    ["targetPort"]   = 501,
+                    ["sampleTimeMs"] = 2,
+                    ["chartName"]    = "NcChart",
+                    ["projectName"]  = ScopeProjectName,
+                });
+            var addText = GetText(add);
+            Assert.False(addText.StartsWith("[Error]", StringComparison.Ordinal), addText);
+            Assert.Contains("port 501", addText, StringComparison.Ordinal);
+            Assert.Contains("Channel bound to acquisition", addText, StringComparison.Ordinal);
+
+            var read = GetText(await _client.CallToolAsync("twincat_read_scope_acquisition",
+                new Dictionary<string, object?> { ["acqSelector"] = "ActPosModulo", ["projectName"] = ScopeProjectName }));
+            Assert.DoesNotContain("[Error]", read, StringComparison.Ordinal);
+            Assert.Contains($"Axes.{axis}.ActPosModulo", read, StringComparison.Ordinal);
+            Assert.Contains("Target Port : 501", read, StringComparison.Ordinal);
+            Assert.Contains("Sample Time : 2 ms", read, StringComparison.Ordinal);
+            Assert.Contains("Fixed Sampletime", read, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await CleanupScopeProjectAsync();
+        }
+    }
+
     // ── Scenario 5: set_scope_acquisition_symbol partial update ──────────────
 
     [Trait("Description", "set_scope_acquisition_symbol ändert nur gelieferte Felder; re-read bestätigt; leere Felder = [Error].")]

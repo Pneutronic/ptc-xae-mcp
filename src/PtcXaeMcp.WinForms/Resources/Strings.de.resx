@@ -248,6 +248,9 @@
   <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
     <value>Automatisch bestätigt</value>
   </data>
+  <data name="approvals.outcome.not_asked" xml:space="preserve">
+    <value>Nicht gefragt (Bestätigung aus)</value>
+  </data>
   <data name="approvals.outcome.confirmed" xml:space="preserve">
     <value>Bestätigt</value>
   </data>
@@ -928,7 +931,7 @@ Die bisherige Richtlinie bleibt gültig.</value>
     <value>Bestätigung durch den Menschen</value>
   </data>
   <data name="settings.access.confirm.note" xml:space="preserve">
-    <value>Ein Client, der MCP-Elicitation unterstützt, fragt den Menschen in seinem eigenen Fenster; jeder andere Client erhält ein Token, das Sie hier im Tab 'Freigaben' freigeben. Es gilt die strengere Einstellung aus dieser und der Umgebung.</value>
+    <value>Ein Client, der MCP-Elicitation unterstützt, fragt den Menschen in seinem eigenen Fenster; jeder andere Client erhält ein Token, das Sie hier im Tab 'Freigaben' freigeben. Es gilt die strengere Einstellung aus dieser und der Umgebung. Mit 'off' erscheint auch das Bestätigungsfenster für HMI-Änderungen nicht.</value>
   </data>
   <data name="settings.access.envPolicy" xml:space="preserve">
     <value>Die Umgebung setzt {0}; es gilt die strengere von beiden.</value>

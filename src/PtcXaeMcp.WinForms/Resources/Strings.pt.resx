@@ -248,6 +248,9 @@
   <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
     <value>Confirmado automaticamente</value>
   </data>
+  <data name="approvals.outcome.not_asked" xml:space="preserve">
+    <value>Não perguntado (confirmação desligada)</value>
+  </data>
   <data name="approvals.outcome.confirmed" xml:space="preserve">
     <value>Confirmado</value>
   </data>
@@ -928,7 +931,7 @@ A política anterior continua em vigor.</value>
     <value>Confirmação humana</value>
   </data>
   <data name="settings.access.confirm.note" xml:space="preserve">
-    <value>Um cliente que suporta elicitação MCP pergunta ao humano em sua própria janela; qualquer outro cliente recebe um token que é liberado aqui na aba Aprovações. Vale o mais rigoroso entre isto e o ambiente.</value>
+    <value>Um cliente que suporta elicitação MCP pergunta ao humano em sua própria janela; qualquer outro cliente recebe um token que é liberado aqui na aba Aprovações. Vale o mais rigoroso entre isto e o ambiente. Com 'off' a janela de confirmação de alterações HMI também não aparece.</value>
   </data>
   <data name="settings.access.envPolicy" xml:space="preserve">
     <value>O ambiente define {0}; vale o mais rigoroso dos dois.</value>

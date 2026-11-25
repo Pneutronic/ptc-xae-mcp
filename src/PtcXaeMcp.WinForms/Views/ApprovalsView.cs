@@ -637,6 +637,7 @@ internal sealed partial class ApprovalsView : UserControl
         HmiConfirmOutcome.Rejected => Loc.Get("approvals.outcome.rejected"),
         HmiConfirmOutcome.TimedOut => Loc.Get("approvals.outcome.timed_out"),
         HmiConfirmOutcome.Unavailable => Loc.Get("approvals.outcome.unavailable"),
+        HmiConfirmOutcome.NotAsked => Loc.Get("approvals.outcome.not_asked"),
         _ => r.Outcome.Value.ToString(),
     };
 
@@ -646,7 +647,7 @@ internal sealed partial class ApprovalsView : UserControl
         return r.Outcome switch
         {
             null => p.Warn,
-            HmiConfirmOutcome.Confirmed or HmiConfirmOutcome.AutoConfirmed => p.Ok,
+            HmiConfirmOutcome.Confirmed or HmiConfirmOutcome.AutoConfirmed or HmiConfirmOutcome.NotAsked => p.Ok,
             _ => p.Error,
         };
     }

@@ -34,6 +34,34 @@ public sealed class ServerHostTests : IDisposable
     }
 
     [Fact]
+    public void HmiConfirmer_ConfirmOff_SkipsThePopup_AndRecordsNotAsked()
+    {
+        var ui = new RecordingConfirmer(HmiConfirmOutcome.Rejected);
+        _host.AttachHmiConfirmUi(ui);
+        _host.AttachHmiConfirmPolicy(() => true);
+
+        Assert.Equal(HmiConfirmOutcome.NotAsked, _host.HmiConfirmer.Confirm(Request(), TimeSpan.FromSeconds(1)));
+        Assert.Equal(0, ui.Calls);
+        Assert.Equal(HmiConfirmOutcome.NotAsked, Assert.Single(_host.HmiApprovals.Snapshot()).Outcome);
+    }
+
+    [Fact]
+    public void HmiConfirmer_ConfirmNotOff_StillAsks_AndTheSwitchIsReadPerWrite()
+    {
+        bool off = false;
+        var ui = new RecordingConfirmer(HmiConfirmOutcome.Rejected);
+        _host.AttachHmiConfirmUi(ui);
+        _host.AttachHmiConfirmPolicy(() => off);
+
+        Assert.Equal(HmiConfirmOutcome.Rejected, _host.HmiConfirmer.Confirm(Request(), TimeSpan.FromSeconds(1)));
+        off = true;
+        Assert.Equal(HmiConfirmOutcome.NotAsked, _host.HmiConfirmer.Confirm(Request(), TimeSpan.FromSeconds(1)));
+        off = false;
+        Assert.Equal(HmiConfirmOutcome.Rejected, _host.HmiConfirmer.Confirm(Request(), TimeSpan.FromSeconds(1)));
+        Assert.Equal(2, ui.Calls);
+    }
+
+    [Fact]
     public void RequestStop_CancelsTheTrackedApplyRun_AndLogsIt()
     {
         using var cts = new CancellationTokenSource();

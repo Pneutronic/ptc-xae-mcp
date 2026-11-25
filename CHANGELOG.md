@@ -35,6 +35,25 @@ project is reported and checked before an activation, and NC scope channels work
   under the symbol name. A `sampleTimeMs` without `sampleMode` now means `Fixed Sampletime` and says so; it used to fail
   with a hint (#59).
 
+### Fixed
+- `twincat_build_plc` / `twincat_build_solution` (`expectSymbols`): a library data type is found as
+  `<Namespace>.<Type>` too. The .tmc keeps the namespace in an attribute (`<Name Namespace="MyLib">ST_Button</Name>`);
+  the bare name keeps working, a wrong namespace is still reported missing.
+- `twincat_hmi_check_bindings`: a `%f%` body that is an expression (`'Max: ' + %i%LimitMax%/i%`,
+  `%ctrl%Header::Height%/ctrl% + 50`) is no longer reported as a missing project function, and the `fn` of a
+  `ControlApiFunction` trigger action (a method of the target control, e.g. `open`) is not checked against the
+  project's functions. Symbols inside such expressions are still checked.
+- `twincat_hmi_describe_controls` / `twincat_hmi_place_control`: packages restored into `<projectDir>\Packages`
+  (the `.sln` lies in the project folder) are found; this used to report every package as "not restored".
+- `twincat_hmi_write_file` / `twincat_hmi_apply_bundle`: a write keeps the line endings of the file on disk when it uses
+  one kind only (all CRLF or all LF), so a source with LF line endings no longer converts a CRLF file. A file with mixed line
+  endings takes the source's line endings, so it can be normalised; for such a file a line-ending-only difference is a
+  change, not "Nothing to do".
+- `twincat_hmi_delete_item` removes the deleted item's entry (e.g. under `content`) from `Properties/tchmiconfig.json`.
+  TE2000's DeleteChild left it there, and Save All did not remove it; the tool now makes TE2000 save its config,
+  which recomputes those lists from the project items, and lists the entry in `removedConfigEntries`. An entry that
+  survives this is reported with a `[Warning]` and in `staleConfigEntries`.
+
 ### Known limits
 - The Scope tree cannot be cleaned up through the Automation Interface on TE130x 4026.22: `ProjectItem.Delete()` and
   `Remove()` return without error and change nothing. There is therefore no tool to remove a scope channel; use the

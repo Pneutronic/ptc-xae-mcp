@@ -129,6 +129,22 @@ public sealed class HmiControlsTests : IDisposable
         Assert.Contains(c.Problems, p => p.Contains("Missing.Pkg 1.0.0 is not restored", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Load_FindsPackagesInTheProjectFolder_WhenTheSlnLiesThere()
+    {
+        // .sln next to the .hmiproj: TE2000 restores to <projectDir>\Packages\<id>.<version>\.
+        Directory.CreateDirectory(ProjectDir);
+        File.WriteAllText(Path.Combine(ProjectDir, "packages.config"),
+            "<packages><package id=\"Beckhoff.TwinCAT.HMI.Controls\" version=\"14.8.3\" /></packages>");
+        string dir = Path.Combine(ProjectDir, "Packages", "Beckhoff.TwinCAT.HMI.Controls.14.8.3", "runtimes", "native1.12-tchmi", "TcHmiButton");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "Description.json"), Button);
+
+        var c = HmiControlCatalog.Load(ProjectDir);
+        Assert.Equal("TcHmi.Controls.Beckhoff.TcHmiButton", Assert.Single(c.Types).FullName);
+        Assert.Empty(c.Problems);
+    }
+
     // ── placement ─────────────────────────────────────────────────────────────
 
     [Fact]

@@ -71,6 +71,9 @@ internal static partial class HmiMarkup
     [GeneratedRegex(@"""fn""\s*:\s*""(?<fn>[^""]+)""", RegexOptions.CultureInvariant)]
     private static partial Regex TriggerFunction();
 
+    [GeneratedRegex(@"^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$", RegexOptions.CultureInvariant)]
+    private static partial Regex FunctionName();
+
     // ---- elements --------------------------------------------------------------
 
     public static HmiMarkupDocument Parse(string text)
@@ -166,10 +169,68 @@ internal static partial class HmiMarkup
         Collect(text, 0, text.Length, lines, list);
         foreach (Match m in TriggerFunction().Matches(text))
         {
+            // A ControlApiFunction action calls a method of its target control (open, close, …), not a function.
+            if (EnclosingObjectType(text, m.Index) == "ControlApiFunction") continue;
             string fn = WebUtility.HtmlDecode(m.Groups["fn"].Value).Trim();
             list.Add(new HmiBinding("f", m.Value, fn, LineOf(lines, m.Index)));
         }
         return list.OrderBy(b => b.Line).ThenBy(b => b.Kind, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>
+    /// The "objectType" of the JSON object that holds the key starting at <paramref name="keyIndex"/> (its own
+    /// level, not a nested fnParams entry), or null. Braces inside strings are skipped.
+    /// </summary>
+    internal static string? EnclosingObjectType(string text, int keyIndex)
+    {
+        // Backwards to the '{' that opens the object; the key's quote is outside a string, so quote parity holds.
+        int depth = 0, open = -1;
+        bool inString = false;
+        for (int i = keyIndex - 1; i >= 0 && open < 0; i--)
+        {
+            char c = text[i];
+            if (c == '"' && !Escaped(text, i)) { inString = !inString; continue; }
+            if (inString) continue;
+            if (c == '}' || c == ']') depth++;
+            else if (c == '{' || c == '[')
+            {
+                if (depth == 0) { if (c == '{') open = i; else return null; }
+                else depth--;
+            }
+        }
+        if (open < 0) return null;
+
+        // Forwards through the object: the string value of the key "objectType" on its own level.
+        depth = 0;
+        string? pendingKey = null;
+        for (int i = open; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (c == '"')
+            {
+                int end = i + 1;
+                while (end < text.Length && (text[end] != '"' || Escaped(text, end))) end++;
+                string s = text[(i + 1)..Math.Min(end, text.Length)];
+                int next = end + 1;
+                while (next < text.Length && char.IsWhiteSpace(text[next])) next++;
+                if (depth == 1 && next < text.Length && text[next] == ':') pendingKey = s;
+                else if (depth == 1 && pendingKey == "objectType") return s;
+                else pendingKey = null;
+                i = end;
+                continue;
+            }
+            if (c == '{' || c == '[') { depth++; pendingKey = null; }
+            else if (c == '}' || c == ']') { if (--depth == 0) return null; }
+            else if (c == ',') pendingKey = null;
+        }
+        return null;
+
+        static bool Escaped(string t, int quote)
+        {
+            int n = 0;
+            for (int j = quote - 1; j >= 0 && t[j] == '\\'; j--) n++;
+            return n % 2 == 1;
+        }
     }
 
     private static void Collect(string text, int start, int end, int[] lines, List<HmiBinding> list)
@@ -195,8 +256,11 @@ internal static partial class HmiMarkup
         switch (kind)
         {
             case "f":
+                // A call names a function (Fn(...), Ns.Fn(...)); any other body is an expression
+                // ('Max: ' + %i%X%/i%, %ctrl%A::Height%/ctrl% + 50) and names none: empty target.
                 int paren = b.IndexOf('(');
-                return (paren < 0 ? b : b[..paren]).Trim();
+                string name = (paren < 0 ? b : b[..paren]).Trim();
+                return FunctionName().IsMatch(name) ? name : "";
             case "s" or "i":
                 return Cut(b, "|", "::", "[").Trim();
             case "pp" or "ctrl" or "l" or "tp" or "ctx":

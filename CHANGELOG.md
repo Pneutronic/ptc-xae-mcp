@@ -13,7 +13,8 @@ pull-request numbers refer to those.
 ## [4.3.0] - 2026-11-25
 
 Working without questions: the human confirmation "off" now also covers the HMI write popup. The platform of the
-project is reported and checked before an activation, and NC scope channels work.
+project is reported and checked before an activation, NC scope channels work, and `expectSymbols` plus four HMI
+authoring tools are fixed (#61).
 
 ### Added
 - `twincat_get_active_project` reports the active solution platform and the target: `targetPlatform`, `targetNetId`

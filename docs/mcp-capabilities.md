@@ -1381,7 +1381,7 @@ Shut down this MCP server and exit its host application. Returns at once; the pr
 
 ### `twincat_close_project`
 
-Close the open solution in the XAE; saveFirst=false discards unsaved changes.
+Close the open solution in the XAE; saveFirst=false discards unsaved changes. A close that does not return within 180 s while no XAE dialog is open answers [Error] (the XAE looks hung) and names twincat_force_close_xae as the way out.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

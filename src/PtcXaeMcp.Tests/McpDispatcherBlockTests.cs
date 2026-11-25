@@ -115,6 +115,86 @@ public sealed class McpDispatcherBlockTests : IDisposable
     }
 
     [Fact]
+    public async Task AHungCall_WithoutADialog_AnswersErrorAfterItsHangLimit_NamingForceClose()
+    {
+        var d = New(null);
+        var ex = await Assert.ThrowsAsync<XaeCallDetachedException>(() =>
+                Task.Run(() => d.Run(() => Hang(), hangLimit: TimeSpan.FromMilliseconds(150))))
+            .WaitAsync(Wait);
+        Assert.StartsWith("[Error] The running call did not return within 0 s and no XAE dialog is open", ex.Message);
+        Assert.Contains("\nNext: twincat_force_close_xae", ex.Message);
+        Assert.Null(ex.BlockingDialog);
+        Assert.NotNull(d.Detached);
+        Assert.Null(d.Detached!.Dialog);
+        Assert.False(d.TryAcquire(), "the lock stays held while the call still runs");
+    }
+
+    [Fact]
+    public async Task WhileHung_ALaterCallIsRefused_NamingForceClose_AndTheLateReturnFreesTheLock()
+    {
+        var late = new Late();
+        var d = New(null, late);
+        await Assert.ThrowsAsync<XaeCallDetachedException>(() =>
+                Task.Run(() => d.Run(() => Hang("closed"), hangLimit: TimeSpan.FromMilliseconds(150))))
+            .WaitAsync(Wait);
+
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(() => d.Run(() => "x")));
+        Assert.StartsWith("An operation is already in progress: The running call hangs in the XAE", refused.Message);
+        Assert.Contains("\nNext: twincat_force_close_xae", refused.Message);
+
+        _release.Set(); // what twincat_force_close_xae does: the hung COM call returns (here: with a result)
+        Assert.True(late.Arrived.Wait(Wait), "no late result");
+        Assert.Equal("closed", late.Result);
+        Assert.True(Freed(d), "the lock is free again");
+        Assert.Null(d.Detached);
+    }
+
+    [Fact]
+    public async Task WithoutAHangLimit_ACallWithoutADialogKeepsWaiting_AsBefore()
+    {
+        var d = New(null);
+        var call = Task.Run(() => d.Run(() => Hang("done")));
+        await Task.Delay(400);
+        Assert.False(call.IsCompleted, "no limit: the call is not cut off");
+        _release.Set();
+        Assert.Equal("done", await call.WaitAsync(Wait));
+    }
+
+    [Fact]
+    public async Task ACallThatReturnsWithinItsHangLimit_AnswersNormally()
+    {
+        var d = New(null);
+        Assert.Equal("quick", await Task.Run(() => d.Run(() => "quick", hangLimit: TimeSpan.FromSeconds(5))).WaitAsync(Wait));
+        Assert.True(Freed(d));
+    }
+
+    [Fact]
+    public void HungText_And_HeldText_ForAHungCall()
+    {
+        Assert.StartsWith("[Error] twincat_close_project did not return within 180 s and no XAE dialog is open: the XAE looks hung.",
+            McpDispatcher.HungText("twincat_close_project", TimeSpan.FromSeconds(180)));
+        var call = new DetachedCall("twincat_close_project", null, new DateTime(2026, 11, 25, 10, 0, 0, DateTimeKind.Utc));
+        var now = call.SinceUtc.AddSeconds(30);
+        string held = McpDispatcher.HeldText(call, null, now);
+        Assert.Contains("twincat_close_project hangs in the XAE (30 s since it was reported as hung; no XAE dialog is open)", held);
+        Assert.Contains("twincat_force_close_xae", held);
+        string withDialog = McpDispatcher.HeldText(call, Reload, now);
+        Assert.Contains("the XAE now shows the dialog 'Microsoft Visual Studio'", withDialog);
+        Assert.Contains("Hung call: twincat_close_project (reported as hung 30 s ago, no dialog)",
+            TwinCatMcpTools.WaitingCall(call, now));
+    }
+
+    [Fact]
+    public void OpenProject_EUnexpected_NamesForceClose_OtherErrorsDoNot()
+    {
+        var unexpected = new System.Runtime.InteropServices.COMException("Schwerwiegender Fehler", unchecked((int)0x8000FFFF));
+        Assert.Contains("twincat_force_close_xae", TwinCatMcpTools.UnexpectedXaeHint(unexpected));
+        Assert.Contains("twincat_force_close_xae",
+            TwinCatMcpTools.UnexpectedXaeHint(new InvalidOperationException("wrapped", unexpected)));
+        Assert.Equal("", TwinCatMcpTools.UnexpectedXaeHint(new InvalidOperationException("other")));
+    }
+
+    [Fact]
     public async Task ALateException_IsReportedAsError()
     {
         var late = new Late();

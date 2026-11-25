@@ -10,6 +10,15 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Fixed (close that hangs)
+- `twincat_close_project` no longer hangs for good: a close that neither returns within 180 s nor shows an XAE dialog
+  answers `[Error] … the XAE looks hung` with `twincat_force_close_xae` as the next step. Until now the call never
+  answered and held the operation lock, so every later call failed with "An operation is already in progress". The
+  lock stays held until the hung call really returns (ending the XAE does that); later calls and
+  `twincat_xae_dialogs` now name the hung call and the way out.
+- `twincat_open_project`: an `E_UNEXPECTED` (0x8000FFFF) error names `twincat_force_close_xae`; seen live after a
+  close that hung, when every open failed until the XAE was ended.
+
 ### Added
 - `twincat_get_active_project` reports the active solution platform and the target: `targetPlatform`, `targetNetId`
   and, when they cannot fit (ARM for a User Mode Runtime), `platformWarning`. `twincat_open_project` and

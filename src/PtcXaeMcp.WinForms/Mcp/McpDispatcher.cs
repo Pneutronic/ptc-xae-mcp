@@ -13,17 +13,22 @@ namespace PtcXaeMcp.WinForms;
 /// </summary>
 internal sealed class XaeCallDetachedException : XaeBlockedException
 {
-    public XaeCallDetachedException(string message, BlockingXaeDialog dialog)
-        : base(message, dialog.Title, null)
+    /// <param name="dialog">The dialog that holds the call; null when the call hangs without one (hang limit).</param>
+    public XaeCallDetachedException(string message, BlockingXaeDialog? dialog)
+        : base(message, dialog?.Title, null)
     {
         BlockingDialog = dialog;
     }
 
-    public BlockingXaeDialog BlockingDialog { get; }
+    /// <summary>The dialog that holds the call, or null for a call that passed its hang limit without a dialog.</summary>
+    public BlockingXaeDialog? BlockingDialog { get; }
 }
 
-/// <summary>A call whose MCP answer went back as [Blocked] while it still runs in the XAE.</summary>
-internal sealed record DetachedCall(string Tool, BlockingXaeDialog Dialog, DateTime SinceUtc);
+/// <summary>
+/// A call whose MCP answer went back while it still runs in the XAE: as [Blocked] for a <paramref name="Dialog"/>, or as
+/// [Error] after its hang limit when no dialog showed (<paramref name="Dialog"/> null).
+/// </summary>
+internal sealed record DetachedCall(string Tool, BlockingXaeDialog? Dialog, DateTime SinceUtc);
 
 /// <summary>
 /// Serializes concurrent MCP tool invocations via a single SemaphoreSlim(1,1).
@@ -100,7 +105,11 @@ internal sealed class McpDispatcher : IDisposable
     /// and <see cref="XaeCallDetachedException"/> when an XAE dialog holds the body (see the class remarks).
     /// Invokes <paramref name="afterSuccess"/> when body returns a non-[Error] string.
     /// </summary>
-    public string Run(Func<string> body, Action? afterSuccess = null)
+    /// <param name="hangLimit">For a call that must not hang: when the body neither returns nor shows a dialog within
+    /// this time, the call answers <c>[Error] … looks hung</c> (see <see cref="HungText"/>) and is detached like a
+    /// [Blocked] one — the lock stays held until the body really returns (twincat_force_close_xae ends it). Null: no
+    /// limit. Only applies while the dialog watch runs (off the GUI thread, <see cref="WatchEnvVar"/> not off).</param>
+    public string Run(Func<string> body, Action? afterSuccess = null, TimeSpan? hangLimit = null)
     {
         if (!TryEnter())
             throw BusyNow();
@@ -117,9 +126,17 @@ internal sealed class McpDispatcher : IDisposable
                     TaskCreationOptions.LongRunning, TaskScheduler.Default);
                 while (!Completes(task, _poll))
                 {
-                    if (watch.Tick(started.Elapsed) is not { } dialog || task.IsCompleted) continue;
-                    detached = true;
-                    throw Detach(task, tool, dialog, started, afterSuccess);
+                    if (task.IsCompleted) continue;
+                    if (watch.Tick(started.Elapsed) is { } dialog)
+                    {
+                        detached = true;
+                        throw Detach(task, tool, dialog, started, afterSuccess);
+                    }
+                    if (hangLimit is { } limit && started.Elapsed >= limit)
+                    {
+                        detached = true;
+                        throw DetachHung(task, tool, limit, started, afterSuccess);
+                    }
                 }
                 result = task.GetAwaiter().GetResult();
             }
@@ -205,6 +222,27 @@ internal sealed class McpDispatcher : IDisposable
         return new XaeCallDetachedException(BlockedText(tool, dialog), dialog);
     }
 
+    // No dialog, but the body is past its hang limit: answer [Error] now, keep the lock until the body returns.
+    private XaeCallDetachedException DetachHung(Task<string> task, string tool, TimeSpan limit, Stopwatch started,
+        Action? afterSuccess)
+    {
+        var call = new DetachedCall(tool, null, DateTime.UtcNow);
+        Volatile.Write(ref _detached, call);
+        try { HostLog.Shared.Warn($"{tool} did not return within {limit.TotalSeconds:F0} s and no XAE dialog is open; answered [Error], the lock stays held until the call returns."); }
+        catch (Exception) { /* observability only */ }
+        _ = task.ContinueWith(t => FinishLate(t, call, started, afterSuccess),
+            CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+        return new XaeCallDetachedException(HungText(tool, limit), null);
+    }
+
+    /// <summary>The answer of a call past its hang limit. Pure — unit-tested.</summary>
+    internal static string HungText(string tool, TimeSpan limit) =>
+        $"[Error] {tool} did not return within {(int)limit.TotalSeconds} s and no XAE dialog is open: the XAE looks hung. " +
+        "The call still holds the operation lock, so no other call starts until it returns; its late result goes to the " +
+        "activity log." +
+        $"\n{McpErrors.NextPrefix}twincat_force_close_xae ends the XAE (unsaved work is lost) and frees the lock; then " +
+        "twincat_open_project.";
+
     // The detached body returned: record its result (never thrown away silently), then free the lock.
     private void FinishLate(Task<string> task, DetachedCall call, Stopwatch started, Action? afterSuccess)
     {
@@ -288,12 +326,21 @@ internal sealed class McpDispatcher : IDisposable
     internal static string HeldText(DetachedCall call, BlockingXaeDialog? now, DateTime nowUtc)
     {
         string since = ((int)Math.Max(0, (nowUtc - call.SinceUtc).TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+        if (call.Dialog is null && now is null)
+            return $"An operation is already in progress: {call.Tool} hangs in the XAE ({since} s since it was reported " +
+                   "as hung; no XAE dialog is open). No other call starts until it returns." +
+                   $"\n{McpErrors.NextPrefix}twincat_force_close_xae ends the XAE (unsaved work is lost) and frees the lock; " +
+                   "then twincat_open_project.";
+        if (call.Dialog is null)
+            return $"An operation is already in progress: {call.Tool} hangs in the XAE and the XAE now shows the dialog " +
+                   $"{now!.Describe()}. No other call starts until it returns — {now.HowToAnswer()}, then retry." +
+                   $"\n{McpErrors.NextPrefix}twincat_xae_dialogs lists the dialog; twincat_force_close_xae ends the XAE if it stays hung.";
         return now is not null
             ? $"An operation is already in progress: {call.Tool} waits for the XAE dialog {now.Describe()} " +
               $"({since} s since its [Blocked] answer). No other call starts until it returns — {now.HowToAnswer()}, then retry." +
               $"\n{McpErrors.NextPrefix}twincat_xae_dialogs lists the dialog; twincat_xae_dialog_answer presses one of its buttons."
             : $"An operation is already in progress: {call.Tool} still runs in the XAE ({since} s since its [Blocked] answer for " +
-              $"{call.Dialog.Describe()}; that dialog is closed). Its result goes to the activity log; retry in a moment." +
+              $"{call.Dialog!.Describe()}; that dialog is closed). Its result goes to the activity log; retry in a moment." +
               $"\n{McpErrors.NextPrefix}twincat_xae_dialogs shows whether another dialog waits.";
     }
 

@@ -248,6 +248,9 @@
   <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
     <value>Otomatik onaylandı</value>
   </data>
+  <data name="approvals.outcome.not_asked" xml:space="preserve">
+    <value>Sorulmadı (onay kapalı)</value>
+  </data>
   <data name="approvals.outcome.confirmed" xml:space="preserve">
     <value>Onaylandı</value>
   </data>
@@ -928,7 +931,7 @@ Bunu yalnızca XAE donduğunda kullanın. XAE'deki kaydedilmemiş değişiklikle
     <value>İnsan onayı</value>
   </data>
   <data name="settings.access.confirm.note" xml:space="preserve">
-    <value>MCP elicitation destekleyen bir istemci insana kendi penceresinde sorar; diğer istemciler, buradaki Onaylar sekmesinde sizin onayladığınız bir token alır. Bunun ve ortamın daha katı olanı geçerlidir.</value>
+    <value>MCP elicitation destekleyen bir istemci insana kendi penceresinde sorar; diğer istemciler, buradaki Onaylar sekmesinde sizin onayladığınız bir token alır. Bunun ve ortamın daha katı olanı geçerlidir. 'off' ile HMI değişiklikleri için onay penceresi de gösterilmez.</value>
   </data>
   <data name="settings.access.envPolicy" xml:space="preserve">
     <value>Ortam şunu ayarlıyor: {0}; ikisinin daha katı olanı geçerlidir.</value>

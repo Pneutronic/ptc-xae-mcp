@@ -559,7 +559,7 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
             ? $"[Error] confirmTimeoutSeconds must be between {MinConfirmTimeoutSeconds} and {MaxConfirmTimeoutSeconds}."
             : null;
 
-    /// <summary>Fail-closed: anything but Confirmed/AutoConfirmed is a refusal.</summary>
+    /// <summary>Fail-closed: anything but Confirmed/AutoConfirmed/NotAsked is a refusal.</summary>
     private (HmiConfirmOutcome Outcome, string? Refusal) AskEngineer(HmiWriteRequest request, int timeoutSeconds)
     {
         HmiConfirmOutcome outcome = confirmer is null
@@ -567,7 +567,7 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
             : confirmer.Confirm(request, TimeSpan.FromSeconds(timeoutSeconds));
         string? refusal = outcome switch
         {
-            HmiConfirmOutcome.Confirmed or HmiConfirmOutcome.AutoConfirmed => null,
+            HmiConfirmOutcome.Confirmed or HmiConfirmOutcome.AutoConfirmed or HmiConfirmOutcome.NotAsked => null,
             HmiConfirmOutcome.Rejected =>
                 "[Error] Not confirmed — the engineer rejected the change in the MCP host popup. Nothing was written.",
             HmiConfirmOutcome.TimedOut =>
@@ -578,12 +578,19 @@ internal sealed partial class HmiCoordinator(ITwinCatSession session, IHmiWriteC
         return (outcome, refusal);
     }
 
-    private static string Describe(HmiConfirmOutcome outcome) => outcome == HmiConfirmOutcome.AutoConfirmed
-        ? $"auto-confirmed (TEMP fixture, {HmiAutoConfirmPolicy.EnvVar}=1)"
-        : "confirmed by the engineer";
+    private static string Describe(HmiConfirmOutcome outcome) => outcome switch
+    {
+        HmiConfirmOutcome.AutoConfirmed => $"auto-confirmed (TEMP fixture, {HmiAutoConfirmPolicy.EnvVar}=1)",
+        HmiConfirmOutcome.NotAsked => "not asked (human confirmation is off in the access policy)",
+        _ => "confirmed by the engineer",
+    };
 
-    private static string ConfirmationWire(HmiConfirmOutcome outcome) =>
-        outcome == HmiConfirmOutcome.AutoConfirmed ? "autoConfirmedTempFixture" : "confirmedByEngineer";
+    private static string ConfirmationWire(HmiConfirmOutcome outcome) => outcome switch
+    {
+        HmiConfirmOutcome.AutoConfirmed => "autoConfirmedTempFixture",
+        HmiConfirmOutcome.NotAsked => "notAskedConfirmOff",
+        _ => "confirmedByEngineer",
+    };
 
     /// <summary>Live, a map against an unreachable PLC runtime failed with LastError
     /// "server request" and nothing else — so the cause is stated as presumed only.</summary>

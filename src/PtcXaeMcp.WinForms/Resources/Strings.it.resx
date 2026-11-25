@@ -248,6 +248,9 @@
   <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
     <value>Confermato automaticamente</value>
   </data>
+  <data name="approvals.outcome.not_asked" xml:space="preserve">
+    <value>Non richiesto (conferma disattivata)</value>
+  </data>
   <data name="approvals.outcome.confirmed" xml:space="preserve">
     <value>Confermato</value>
   </data>
@@ -928,7 +931,7 @@ I criteri precedenti restano in vigore.</value>
     <value>Conferma umana</value>
   </data>
   <data name="settings.access.confirm.note" xml:space="preserve">
-    <value>Un client che supporta l'elicitation MCP interpella la persona nella propria finestra; ogni altro client riceve un token che viene autorizzato qui nella scheda Approvazioni. Vale il più restrittivo tra questa impostazione e l'ambiente.</value>
+    <value>Un client che supporta l'elicitation MCP interpella la persona nella propria finestra; ogni altro client riceve un token che viene autorizzato qui nella scheda Approvazioni. Vale il più restrittivo tra questa impostazione e l'ambiente. Con 'off' non compare nemmeno la finestra di conferma delle modifiche HMI.</value>
   </data>
   <data name="settings.access.envPolicy" xml:space="preserve">
     <value>L'ambiente imposta {0}; vale il più restrittivo dei due.</value>

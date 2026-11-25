@@ -248,6 +248,9 @@
   <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
     <value>Automatisch bevestigd</value>
   </data>
+  <data name="approvals.outcome.not_asked" xml:space="preserve">
+    <value>Niet gevraagd (bevestiging uit)</value>
+  </data>
   <data name="approvals.outcome.confirmed" xml:space="preserve">
     <value>Bevestigd</value>
   </data>
@@ -928,7 +931,7 @@ Het vorige beleid blijft van kracht.</value>
     <value>Bevestiging door een mens</value>
   </data>
   <data name="settings.access.confirm.note" xml:space="preserve">
-    <value>Een client die MCP-elicitation ondersteunt, vraagt de mens in zijn eigen venster; elke andere client krijgt een token dat u hier op het tabblad Goedkeuringen vrijgeeft. Het strengste van deze instelling en de omgeving geldt.</value>
+    <value>Een client die MCP-elicitation ondersteunt, vraagt de mens in zijn eigen venster; elke andere client krijgt een token dat u hier op het tabblad Goedkeuringen vrijgeeft. Het strengste van deze instelling en de omgeving geldt. Met 'off' verschijnt ook het bevestigingsvenster voor HMI-wijzigingen niet.</value>
   </data>
   <data name="settings.access.envPolicy" xml:space="preserve">
     <value>De omgeving stelt {0} in; het strengste van beide geldt.</value>

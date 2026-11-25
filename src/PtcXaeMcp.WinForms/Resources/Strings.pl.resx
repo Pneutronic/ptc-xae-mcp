@@ -248,6 +248,9 @@
   <data name="approvals.outcome.auto_confirmed" xml:space="preserve">
     <value>Potwierdzone automatycznie</value>
   </data>
+  <data name="approvals.outcome.not_asked" xml:space="preserve">
+    <value>Nie zapytano (potwierdzanie wyłączone)</value>
+  </data>
   <data name="approvals.outcome.confirmed" xml:space="preserve">
     <value>Potwierdzone</value>
   </data>
@@ -928,7 +931,7 @@ Poprzednie zasady pozostają w mocy.</value>
     <value>Potwierdzenie przez człowieka</value>
   </data>
   <data name="settings.access.confirm.note" xml:space="preserve">
-    <value>Klient obsługujący MCP elicitation pyta człowieka we własnym oknie; każdy inny klient otrzymuje token, który zwalnia się tutaj na karcie Zatwierdzenia. Obowiązuje bardziej restrykcyjne z tego ustawienia i środowiska.</value>
+    <value>Klient obsługujący MCP elicitation pyta człowieka we własnym oknie; każdy inny klient otrzymuje token, który zwalnia się tutaj na karcie Zatwierdzenia. Obowiązuje bardziej restrykcyjne z tego ustawienia i środowiska. Przy 'off' nie pojawia się też okno potwierdzenia zmian HMI.</value>
   </data>
   <data name="settings.access.envPolicy" xml:space="preserve">
     <value>Środowisko ustawia {0}; obowiązuje bardziej restrykcyjne z obu.</value>

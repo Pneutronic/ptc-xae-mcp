@@ -1101,6 +1101,15 @@ Bunu yalnızca XAE donduğunda kullanın. XAE'deki kaydedilmemiş değişiklikle
   <data name="settings.serverCaption" xml:space="preserve">
     <value>Sunucu ayarları (salt okunur). Başlangıçta bir kez okunurlar: ortam değişkenini ayarlayın, ardından uygulamayı yeniden başlatın.</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>Genel</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>MCP erişimi</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>Sunucu</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>Tema</value>
   </data>

@@ -1101,6 +1101,15 @@ Poprzednie zasady pozostają w mocy.</value>
   <data name="settings.serverCaption" xml:space="preserve">
     <value>Ustawienia serwera (tylko do odczytu). Są wczytywane raz przy starcie: ustawić zmienną środowiskową, następnie uruchomić aplikację ponownie.</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>Ogólne</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>Dostęp MCP</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>Serwer</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>Motyw</value>
   </data>

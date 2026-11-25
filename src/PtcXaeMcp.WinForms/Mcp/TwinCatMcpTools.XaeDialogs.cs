@@ -19,9 +19,16 @@ internal sealed partial class TwinCatMcpTools
             cancellationToken, bypassGate: true);
 
     /// <summary>The line naming the call a dialog holds after its [Blocked] answer; empty when none. Pure — unit-tested.</summary>
-    internal static string WaitingCall(DetachedCall? call, DateTime nowUtc) => call is null ? "" :
-        $"\nWaiting for a dialog: {call.Tool} (answered [Blocked] {Math.Max(0, (int)(nowUtc - call.SinceUtc).TotalSeconds)} s ago for " +
-        $"'{call.Dialog.Title}', id {call.Dialog.Id}). It returns once the dialog is answered; until then no other call starts.";
+    internal static string WaitingCall(DetachedCall? call, DateTime nowUtc) => call switch
+    {
+        null => "",
+        { Dialog: null } =>
+            $"\nHung call: {call.Tool} (reported as hung {Math.Max(0, (int)(nowUtc - call.SinceUtc).TotalSeconds)} s ago, " +
+            "no dialog). Until it returns no other call starts; twincat_force_close_xae ends the XAE and frees the lock.",
+        _ =>
+            $"\nWaiting for a dialog: {call.Tool} (answered [Blocked] {Math.Max(0, (int)(nowUtc - call.SinceUtc).TotalSeconds)} s ago for " +
+            $"'{call.Dialog.Title}', id {call.Dialog.Id}). It returns once the dialog is answered; until then no other call starts.",
+    };
 
     [McpServerTool(Name = "twincat_xae_dialog_answer", ReadOnly = false, Destructive = false)]
     [Description("Press a button of an open XAE dialog listed by twincat_xae_dialogs. " +

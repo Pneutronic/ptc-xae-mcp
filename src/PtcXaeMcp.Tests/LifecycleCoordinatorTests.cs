@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using PtcXaeMcp.Tests.Fakes;
 using PtcXaeMcp.WinForms.TwinCat;
 
@@ -108,6 +109,41 @@ public class LifecycleCoordinatorTests
             Assert.DoesNotContain("OpenSolution", string.Join(",", fake.CallLog));
         }
         finally { File.Delete(sln); }
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetShortPathNameW(string longPath, [Out] char[] shortPath, uint bufferLength);
+
+    private static string ShortPath(string path)
+    {
+        var buffer = new char[1024];
+        uint length = GetShortPathNameW(path, buffer, (uint)buffer.Length);
+        return length > 0 && length < buffer.Length ? new string(buffer, 0, (int)length) : path;
+    }
+
+    [SkippableFact]
+    public async Task OpenProject_LaunchedWithAShortPath_IsItsOwnSolution_NotAlreadyOpen()
+    {
+        // Seen live: the open launched the XAE with C:\Users\SOMEUS~1\…\X.sln, the XAE reported
+        // C:\Users\some.user\…\X.sln, and the open answered "A solution is already open".
+        var dir = Path.Combine(Path.GetTempPath(), "long directory name " + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var longSln = Path.Combine(dir, "Fixture Solution.sln");
+        File.WriteAllText(longSln, "dummy");
+        try
+        {
+            string shortSln = ShortPath(longSln);
+            Skip.If(string.Equals(shortSln, longSln, StringComparison.OrdinalIgnoreCase),
+                "This volume creates no 8.3 short names.");
+
+            var fake = new FakeTwinCatSession { IsConnected = false };
+            fake.ConnectCallback = () => { fake.SolutionOpen = true; fake.ActiveSlnPath = longSln; return true; };
+            var result = await new LifecycleCoordinator(fake).OpenProjectAsync(shortSln, false, CancellationToken.None);
+
+            Assert.StartsWith("Opened", result);
+            Assert.DoesNotContain("OpenSolution", string.Join(",", fake.CallLog));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
     [Fact]

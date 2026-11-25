@@ -1101,6 +1101,15 @@ Het vorige beleid blijft van kracht.</value>
   <data name="settings.serverCaption" xml:space="preserve">
     <value>Serverinstellingen (alleen-lezen). Ze worden eenmalig bij het starten gelezen: stel de omgevingsvariabele in en start de app daarna opnieuw.</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>Algemeen</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>MCP-toegang</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>Server</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>Thema</value>
   </data>

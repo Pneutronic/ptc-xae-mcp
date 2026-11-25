@@ -128,8 +128,10 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
         if (!session.IsConnected)
             return "[Error] Unable to connect to TwinCAT XAE after launch attempt.";
 
+        // SolutionPathMatch, not a text compare: a launch with an 8.3 path (C:\Users\SOMEUS~1\…) comes back from the
+        // XAE as the long path, and the open used to answer "A solution is already open" for its own solution.
         bool launchedWithSln = session.HasOpenSolution()
-            && string.Equals(session.ActiveSolutionPath(), slnPath, StringComparison.OrdinalIgnoreCase);
+            && SolutionPathMatch.Equal(session.ActiveSolutionPath(), slnPath);
 
         if (!launchedWithSln)
         {
@@ -247,7 +249,7 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
         string verb = saveFirst ? "Saved and closed" : "Closed (without save)";
         string closed = $"{verb}{(path is null ? "." : target)}{note}";
         string? referenceWarn = saveFirst ? MissingReferencesWarn(path) : null;
-        if (string.Equals(OpenedWithMissingReferences?.SolutionPath, path, StringComparison.OrdinalIgnoreCase))
+        if (SolutionPathMatch.Equal(OpenedWithMissingReferences?.SolutionPath, path))
             OpenedWithMissingReferences = null;
         return referenceWarn is null ? closed : $"{referenceWarn}\n{closed}";
     }
@@ -259,7 +261,7 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
         var memo = OpenedWithMissingReferences;
         if (memo is null) return null;
         solutionPath ??= session.ActiveSolutionPath();
-        if (!string.Equals(memo.SolutionPath, solutionPath, StringComparison.OrdinalIgnoreCase)) return null;
+        if (!SolutionPathMatch.Equal(memo.SolutionPath, solutionPath)) return null;
         return $"[Warn] The project was opened with missing file references ({memo.Description}) — the saved .tsproj " +
                "may no longer reference those nodes.";
     }

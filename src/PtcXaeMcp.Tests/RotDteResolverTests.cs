@@ -21,6 +21,21 @@ public class RotDteResolverTests
     }
 
     [Fact]
+    public void Normalize_ShortName_IsExpanded_SoTheLongPathTheXaeReportsMatches()
+    {
+        static string Expand(string p) => p.Replace(@"\SOMEUS~1\", @"\some.user\", StringComparison.OrdinalIgnoreCase);
+        Assert.True(SolutionPathMatch.Equal(@"C:\Users\SOMEUS~1\AppData\Local\Temp\x\X.sln",
+            @"C:\Users\some.user\AppData\Local\Temp\x\X.sln", Expand));
+        Assert.False(SolutionPathMatch.Equal(@"C:\Users\SOMEUS~1\AppData\Local\Temp\x\X.sln",
+            @"C:\Users\other\AppData\Local\Temp\x\X.sln", Expand));
+        // A path without '~' is never sent to the expander.
+        Assert.Equal(@"c:\repos\a.sln", SolutionPathMatch.Normalize(@"C:\Repos\A.sln", _ => throw new InvalidOperationException()));
+        // An expander that fails keeps the short form instead of throwing.
+        Assert.Equal(@"c:\users\someus~1\a.sln",
+            SolutionPathMatch.Normalize(@"C:\Users\SOMEUS~1\A.sln", _ => throw new IOException("gone")));
+    }
+
+    [Fact]
     public void Normalize_CaseAndTrailingSlashAndQuotes_Canonicalised()
     {
         var a = SolutionPathMatch.Normalize(@"C:\Repos\SampleProject\SampleProject.sln");

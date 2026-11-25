@@ -12,7 +12,8 @@ pull-request numbers refer to those.
 
 ## [4.3.1] - 2026-11-25
 
-A close that hangs answers instead of holding the XAE for good.
+A close that hangs answers instead of holding the XAE for good, and an open with a short path no longer refuses its
+own solution.
 
 ### Fixed
 - `twincat_close_project` no longer hangs for good: a close that neither returns within 180 s nor shows an XAE dialog
@@ -22,6 +23,10 @@ A close that hangs answers instead of holding the XAE for good.
   `twincat_xae_dialogs` now name the hung call and the way out.
 - `twincat_open_project`: an `E_UNEXPECTED` (0x8000FFFF) error names `twincat_force_close_xae`; seen live after a
   close that hung, when every open failed until the XAE was ended.
+- `twincat_open_project` with an 8.3 short path (e.g. `C:\Users\SOMEUS~1\…` under `%TEMP%`) while no XAE ran: the XAE
+  started with that solution, reported it under its long path, and the open answered `[Error] A solution is already
+  open` for its own solution. Solution paths are now compared with short names expanded, also for the warning about a
+  solution opened with missing references.
 
 ## [4.3.0] - 2026-11-25
 

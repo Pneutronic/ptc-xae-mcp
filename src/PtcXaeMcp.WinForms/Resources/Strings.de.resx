@@ -1101,6 +1101,15 @@ Die bisherige Richtlinie bleibt gültig.</value>
   <data name="settings.serverCaption" xml:space="preserve">
     <value>Servereinstellungen (schreibgeschützt). Sie werden einmal beim Start gelesen: Umgebungsvariable setzen, dann die App neu starten.</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>Allgemein</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>MCP-Zugriff</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>Server</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>Darstellung</value>
   </data>

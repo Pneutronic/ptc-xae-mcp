@@ -12,8 +12,15 @@ pull-request numbers refer to those.
 
 ## [4.3.1] - 2026-11-25
 
-A close that hangs answers instead of holding the XAE for good, and an open with a short path no longer refuses its
-own solution.
+A close that hangs answers instead of holding the XAE for good, an open with a short path no longer refuses its own
+solution, and the Settings dialog is split into tabs.
+
+### Changed
+- *Settings…* is split into three tabs: **General** (theme, language, window position, update check), **MCP access**
+  (tool profile, access level, human confirmation, NetId and symbol lists) and **Server** (the read-only environment
+  settings). The OK/Cancel bar stays at the bottom, so the buttons are visible on a small screen or at a high display
+  scale; a tab scrolls when its content does not fit. The human confirmation sits right under the access level, above
+  the rarely used lists.
 
 ### Fixed
 - `twincat_close_project` no longer hangs for good: a close that neither returns within 180 s nor shows an XAE dialog

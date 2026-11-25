@@ -1101,6 +1101,15 @@ La politique précédente reste en vigueur.</value>
   <data name="settings.serverCaption" xml:space="preserve">
     <value>Paramètres du serveur (lecture seule). Ils sont lus une seule fois au démarrage : définissez la variable d'environnement, puis redémarrez l'application.</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>Général</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>Accès MCP</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>Serveur</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>Thème</value>
   </data>

@@ -1101,6 +1101,15 @@ A política anterior continua em vigor.</value>
   <data name="settings.serverCaption" xml:space="preserve">
     <value>Configurações do servidor (somente leitura). São lidas uma vez na inicialização: definir a variável de ambiente e reiniciar o aplicativo.</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>Geral</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>Acesso MCP</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>Servidor</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>Tema</value>
   </data>

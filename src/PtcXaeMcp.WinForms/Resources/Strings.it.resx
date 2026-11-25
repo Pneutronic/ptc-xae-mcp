@@ -1101,6 +1101,15 @@ I criteri precedenti restano in vigore.</value>
   <data name="settings.serverCaption" xml:space="preserve">
     <value>Impostazioni del server (sola lettura). Vengono lette una sola volta all'avvio: impostare la variabile d'ambiente, poi riavviare l'app.</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>Generale</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>Accesso MCP</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>Server</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>Tema</value>
   </data>

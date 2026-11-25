@@ -1101,6 +1101,15 @@ The previous policy stays in force.</value>
   <data name="settings.serverCaption" xml:space="preserve">
     <value>Server settings (read-only). They are read once at start: set the environment variable, then restart the app.</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>MCP access</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>Server</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>Theme</value>
   </data>

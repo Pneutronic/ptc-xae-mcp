@@ -1101,6 +1101,15 @@
   <data name="settings.serverCaption" xml:space="preserve">
     <value>服务器设置（只读）。它们仅在启动时读取一次：请设置环境变量，然后重启应用。</value>
   </data>
+  <data name="settings.tab.general" xml:space="preserve">
+    <value>常规</value>
+  </data>
+  <data name="settings.tab.access" xml:space="preserve">
+    <value>MCP 访问</value>
+  </data>
+  <data name="settings.tab.server" xml:space="preserve">
+    <value>服务器</value>
+  </data>
   <data name="settings.theme" xml:space="preserve">
     <value>主题</value>
   </data>

@@ -24,9 +24,10 @@ pull-request numbers refer to those.
   one kind only (all CRLF or all LF), so a source with LF line endings no longer converts a CRLF file. A file with mixed line
   endings takes the source's line endings, so it can be normalised; for such a file a line-ending-only difference is a
   change, not "Nothing to do".
-- `twincat_hmi_delete_item`: when `Properties/tchmiconfig.json` still has an entry whose `url` points at the deleted
-  item (TE2000 keeps it in its in-memory model), the result says so with a `[Warning]` and lists it in
-  `staleConfigEntries`. The entry itself is not removed yet.
+- `twincat_hmi_delete_item` removes the deleted item's entry (e.g. under `content`) from `Properties/tchmiconfig.json`.
+  TE2000's DeleteChild left it there, and Save All did not remove it; the tool now makes TE2000 save its config,
+  which recomputes those lists from the project items, and lists the entry in `removedConfigEntries`. An entry that
+  survives this is reported with a `[Warning]` and in `staleConfigEntries`.
 
 ## [4.2.1] - 2026-11-22
 

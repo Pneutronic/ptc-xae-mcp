@@ -332,16 +332,34 @@ internal sealed partial class HmiCoordinator
         if (still) return ($"[Error] DeleteChild('{p}') reported success, but the item still exists — not treated as success.", "{}");
 
         string what = item.IsFile ? "file" : $"folder with {item.Descendants} item(s)";
+        // DeleteChild leaves the item's entry (content, views, ...) in tchmiconfig.json; TE2000 drops it only when it
+        // saves its config, which recomputes those lists from the project items. Make it do that, then look again.
         IReadOnlyList<string> stale = StaleConfigEntries(project, p);
-        string staleNote = stale.Count == 0 ? "" :
-            $"\n[Warning] {TcHmiConfigPath} still lists {string.Join(", ", stale.Select(s => $"'{s}'"))} (an entry with this url): " +
-            "the HMI engineering keeps it in its in-memory model and DeleteChild does not remove it. No tool of this server " +
-            "can remove it yet (write_file refuses that file); remove it in the XAE.";
-        return ($"Deleted '{p}' ({what}) from '{project.Name}' — {Describe(outcome)}, verified: no longer in the project." + staleNote,
+        IReadOnlyList<string> removedEntries = [];
+        string? resaveError = null;
+        if (stale.Count > 0)
+        {
+            try
+            {
+                var resave = Session.ResaveHmiConfig(project.Name);
+                if (!resave.Ok) resaveError = resave.LastError ?? "no error text";
+            }
+            catch (Exception ex) when (IsHmiFailure(ex)) { resaveError = ex.Message; }
+            var left = StaleConfigEntries(project, p);
+            removedEntries = stale.Except(left, StringComparer.Ordinal).ToList();
+            stale = left;
+        }
+        string note = (removedEntries.Count == 0 ? "" :
+                $" Removed its entry from {TcHmiConfigPath} ({string.Join(", ", removedEntries.Select(s => $"'{s}'"))}) by re-saving the HMI config.") +
+            (stale.Count == 0 ? "" :
+                $"\n[Warning] {TcHmiConfigPath} still lists {string.Join(", ", stale.Select(s => $"'{s}'"))} (an entry with this url)" +
+                (resaveError is null ? "" : $"; re-saving the HMI config failed: {resaveError}") +
+                ". write_file refuses that file; remove the entry in the XAE.");
+        return ($"Deleted '{p}' ({what}) from '{project.Name}' — {Describe(outcome)}, verified: no longer in the project." + note,
             JsonSerializer.Serialize(new
             {
                 hmiProject = project.Name, path = p, isFile = item.IsFile, descendants = item.Descendants,
-                staleConfigEntries = stale, confirmation = ConfirmationWire(outcome),
+                removedConfigEntries = removedEntries, staleConfigEntries = stale, confirmation = ConfirmationWire(outcome),
             }, JsonOpts));
     }
 

@@ -694,20 +694,50 @@ public sealed class HmiViewsTests : IDisposable
     }
 
     [Fact]
-    public void DeleteItem_StaleContentEntryInTheConfig_IsReported()
+    public void DeleteItem_StaleContentEntry_IsRemovedByReSavingTheConfig()
     {
-        // TE2000 keeps a deleted page's content entry in tchmiconfig.json (its in-memory model); the result says so.
+        // DeleteChild leaves the page's content entry in tchmiconfig.json; a config save drops it (live, TE2000 14.6).
         var fake = DeleteSession();
+        const string Other = "{ \"url\": \"Docs/Other.content\" }";
         fake.HmiFiles["Properties/tchmiconfig.json"] =
-            "{ \"content\": [ { \"url\": \"Docs/Training/a.html.html\", \"preload\": false }, { \"url\": \"Docs/Other.content\" } ] }";
+            "{ \"content\": [ { \"url\": \"Docs/Training/a.html.html\", \"preload\": false }, " + Other + " ] }";
+        fake.OnResaveHmiConfig = () => fake.HmiFiles["Properties/tchmiconfig.json"] = "{ \"content\": [ " + Other + " ] }";
 
         var (summary, json) = new HmiCoordinator(fake, new FakeHmiConfirmer()).DeleteItem(null, "Docs/Training", 120);
 
         Assert.StartsWith("Deleted 'Docs/Training'", summary);
+        Assert.Contains("Removed its entry from Properties/tchmiconfig.json ('Docs/Training/a.html.html') by re-saving the HMI config.", summary);
+        Assert.DoesNotContain("[Warning]", summary);
+        Assert.Contains($"ResaveHmiConfig({Prj})", fake.CallLog);
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal(["Docs/Training/a.html.html"],
+            doc.RootElement.GetProperty("removedConfigEntries").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal(0, doc.RootElement.GetProperty("staleConfigEntries").GetArrayLength());
+    }
+
+    [Fact]
+    public void DeleteItem_StaleContentEntry_ThatSurvivesTheReSave_IsAWarning()
+    {
+        var fake = DeleteSession();
+        fake.HmiFiles["Properties/tchmiconfig.json"] = "{ \"content\": [ { \"url\": \"Docs/Training/a.html.html\" } ] }";
+
+        var (summary, json) = new HmiCoordinator(fake, new FakeHmiConfirmer()).DeleteItem(null, "Docs/Training", 120);
+
         Assert.Contains("[Warning] Properties/tchmiconfig.json still lists 'Docs/Training/a.html.html'", summary);
         using var doc = JsonDocument.Parse(json);
         Assert.Equal(["Docs/Training/a.html.html"],
             doc.RootElement.GetProperty("staleConfigEntries").EnumerateArray().Select(e => e.GetString()));
+    }
+
+    [Fact]
+    public void DeleteItem_NoStaleEntry_NoConfigReSave()
+    {
+        var fake = DeleteSession();
+        fake.HmiFiles["Properties/tchmiconfig.json"] = "{ \"content\": [] }";
+
+        new HmiCoordinator(fake, new FakeHmiConfirmer()).DeleteItem(null, "Docs/Training", 120);
+
+        Assert.DoesNotContain(fake.CallLog, c => c.StartsWith("ResaveHmiConfig", StringComparison.Ordinal));
     }
 
     [Theory]

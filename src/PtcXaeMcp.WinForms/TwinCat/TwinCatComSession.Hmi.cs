@@ -96,6 +96,7 @@ internal sealed partial class TwinCatComSession
     public HmiOperationResult RefreshHmiDefinitions(string hmiProject, string domain) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult AddHmiInternalSymbol(string hmiProject, string name, string dataType, string? defaultValueJson, bool persist, bool readOnly) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult RemoveHmiInternalSymbol(string hmiProject, string name) => throw TwinCatNotBuilt.HmiException();
+    public HmiOperationResult ResaveHmiConfig(string hmiProject) => throw TwinCatNotBuilt.HmiException();
     public HmiOperationResult MapHmiOfflineSymbol(string hmiProject, string mapName, string dataType, string? defaultValueJson, bool online, bool persist) => throw TwinCatNotBuilt.HmiException();
     public HmiPublishOutcome PublishHmiProject(string hmiProject, HmiPublishTarget target, TimeSpan timeout) => throw TwinCatNotBuilt.HmiException();
 #else
@@ -152,6 +153,8 @@ internal sealed partial class TwinCatComSession
         TcHmiBridge.AddHmiInternalSymbol(hmiProject, name, dataType, defaultValueJson, persist, readOnly);
     public HmiOperationResult RemoveHmiInternalSymbol(string hmiProject, string name) =>
         TcHmiBridge.RemoveHmiInternalSymbol(hmiProject, name);
+    public HmiOperationResult ResaveHmiConfig(string hmiProject) =>
+        TcHmiBridge.ResaveHmiConfig(hmiProject);
     public HmiOperationResult MapHmiOfflineSymbol(string hmiProject, string mapName, string dataType, string? defaultValueJson, bool online, bool persist) =>
         TcHmiBridge.MapHmiOfflineSymbol(hmiProject, mapName, dataType, defaultValueJson, online, persist);
     public HmiPublishOutcome PublishHmiProject(string hmiProject, HmiPublishTarget target, TimeSpan timeout) =>
@@ -341,14 +344,18 @@ internal sealed partial class TwinCatComSession
             // its CONFIG, which recomputes that list from the project files; SaveAllFiles does not. Re-applying the
             // current websocket interval is a no-op change that triggers exactly that save (TcHmiConfig SaveResync).
             if (name.EndsWith(".js", StringComparison.OrdinalIgnoreCase))
-                ComBusyRetry.Run(() =>
-                {
-                    ITcHmiProject project = RequireHmiProject(hmiProject);
-                    int interval = Convert.ToInt32(project.GetConfigValue(ConfigFields.WebsocketIntervalTime), CultureInfo.InvariantCulture);
-                    project.ChangeWebsocketIntervalTime(interval);
-                }, HmiTimeout);
+                ResaveHmiConfig(hmiProject);
             return new HmiImportResult([path], engineError);
         }
+
+        internal static HmiOperationResult ResaveHmiConfig(string hmiProject) =>
+            ComBusyRetry.Run(() =>
+            {
+                ITcHmiProject project = RequireHmiProject(hmiProject);
+                int interval = Convert.ToInt32(project.GetConfigValue(ConfigFields.WebsocketIntervalTime), CultureInfo.InvariantCulture);
+                project.ChangeWebsocketIntervalTime(interval);
+                return new HmiOperationResult(true, HmiLastError(project));
+            }, HmiTimeout);
 
         internal static HmiOperationResult BuildHmiProject(string hmiProject, string configuration) =>
             ComBusyRetry.Run(() =>

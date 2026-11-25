@@ -18,6 +18,7 @@ public sealed class BuildExpectedSymbolsTests : IDisposable
             <DataType><Name>MAIN</Name></DataType>
             <DataType><Name>FB_Axis</Name><SubItem><Name>nState</Name><Type>INT</Type></SubItem><ExtendsType>Lib.FB_Base</ExtendsType></DataType>
             <DataType><Name>FB_Base</Name><SubItem><Name>bBusy</Name><Type>BOOL</Type></SubItem></DataType>
+            <DataType><Name Namespace="MyLib" GUID="{2}">ST_Button</Name><SubItem><Name>bPressed</Name><Type>BOOL</Type></SubItem></DataType>
           </DataTypes>
           <Modules><Module><DataAreas><DataArea>
             <Symbol><Name>MAIN.fbAxis</Name><BaseType>FB_Axis</BaseType></Symbol>
@@ -46,6 +47,25 @@ public sealed class BuildExpectedSymbolsTests : IDisposable
         fake.PlcProjectXmls.Add(new PlcProjectXml("Machine", Path.Combine(_dir, "Machine.tsproj"), "Plc",
             $"<TreeItem><PlcProjectDef><RelativeTmcPath>{relativeTmc}</RelativeTmcPath></PlcProjectDef></TreeItem>", null));
         return fake;
+    }
+
+    [Fact]
+    public void LibraryDataType_IsFoundWithAndWithoutItsNamespace()
+    {
+        // The .tmc names a library type plain and puts the namespace into an attribute.
+        string result = new BuildCoordinator(Session()).BuildPlc("Plc", expectSymbols: ["MyLib.ST_Button", "st_button"]);
+
+        Assert.Contains("Expected symbols: all 2 found in the compiled PLC.", result);
+        Assert.Contains("MyLib.ST_Button (data type)", result);
+        Assert.DoesNotContain("[Error]", result);
+    }
+
+    [Fact]
+    public void LibraryDataType_WrongNamespace_IsMissing()
+    {
+        string result = new BuildCoordinator(Session()).BuildPlc("Plc", expectSymbols: ["OtherLib.ST_Button"]);
+
+        Assert.Contains("[Error] Expected symbols: 1 of 1 missing from the compiled PLC: OtherLib.ST_Button.", result);
     }
 
     [Fact]
@@ -147,7 +167,7 @@ public sealed class BuildExpectedSymbolsTests : IDisposable
         string result = new BuildCoordinator(Session()).BuildSolution(expectSymbols: ["MAIN.fbAxis"]);
 
         Assert.Contains("not rewritten by this build", result);
-        Assert.Contains("3 symbols, 4 data types", result);
+        Assert.Contains("3 symbols, 5 data types", result);
     }
 
     [Theory]

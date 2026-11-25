@@ -112,8 +112,10 @@ internal sealed partial class HmiCoordinator
             return (WithDialogHint($"[Error] {ex.Message} Create it first with twincat_hmi_add_item."), "{}");
         }
 
-        string target = keepSchema ? HmiText.KeepSchema(current.Source, text) : text;
-        if (HmiText.Same(current.Source, target))
+        // Line endings as the file has them on disk (what git and the editor see); the engine's text otherwise.
+        string onDisk = DiskText(project, p) ?? current.Source;
+        string target = HmiText.MatchLineEndings(onDisk, keepSchema ? HmiText.KeepSchema(current.Source, text) : text);
+        if (HmiText.Unchanged(onDisk, target) && HmiText.Same(current.Source, target))
             return ($"Nothing to do: '{p}' already has this content.",
                 JsonSerializer.Serialize(new { hmiProject = project.Name, path = p, changed = false }, JsonOpts));
         try { if (Session.IsHmiFileOpen(project.Name, p)) return (OpenInEditorError(p), "{}"); }
@@ -218,6 +220,14 @@ internal sealed partial class HmiCoordinator
 
     /// <summary>True/false when the imported file is below the project directory on disk (byte comparison
     /// with the source); null when it is not there or cannot be read.</summary>
+    /// <summary>The file's text as it is on disk (read only, the mtime stays), or null when it cannot be read.</summary>
+    private static string? DiskText(HmiProjectEntry project, string path)
+    {
+        string file = Path.Combine(project.ProjectDirectory, path.Replace('/', Path.DirectorySeparatorChar));
+        try { return File.Exists(file) ? File.ReadAllText(file) : null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
     private static bool? SameOnDisk(HmiProjectEntry project, string path, string sourcePath)
     {
         string file = Path.Combine(project.ProjectDirectory, path.Replace('/', Path.DirectorySeparatorChar));
@@ -322,12 +332,30 @@ internal sealed partial class HmiCoordinator
         if (still) return ($"[Error] DeleteChild('{p}') reported success, but the item still exists — not treated as success.", "{}");
 
         string what = item.IsFile ? "file" : $"folder with {item.Descendants} item(s)";
-        return ($"Deleted '{p}' ({what}) from '{project.Name}' — {Describe(outcome)}, verified: no longer in the project.",
+        IReadOnlyList<string> stale = StaleConfigEntries(project, p);
+        string staleNote = stale.Count == 0 ? "" :
+            $"\n[Warning] {TcHmiConfigPath} still lists {string.Join(", ", stale.Select(s => $"'{s}'"))} (an entry with this url): " +
+            "the HMI engineering keeps it in its in-memory model and DeleteChild does not remove it. No tool of this server " +
+            "can remove it yet (write_file refuses that file); remove it in the XAE.";
+        return ($"Deleted '{p}' ({what}) from '{project.Name}' — {Describe(outcome)}, verified: no longer in the project." + staleNote,
             JsonSerializer.Serialize(new
             {
                 hmiProject = project.Name, path = p, isFile = item.IsFile, descendants = item.Descendants,
-                confirmation = ConfirmationWire(outcome),
+                staleConfigEntries = stale, confirmation = ConfirmationWire(outcome),
             }, JsonOpts));
+    }
+
+    /// <summary>
+    /// The urls in tchmiconfig.json (e.g. the content list) that still point at the deleted item or into the deleted
+    /// folder. Empty when the file cannot be read or parsed — this is a hint, not part of the verification.
+    /// </summary>
+    private IReadOnlyList<string> StaleConfigEntries(HmiProjectEntry project, string deleted)
+    {
+        // The file on disk (what the build and the live view take) and the engine's text; either may hold it.
+        var urls = new List<string>(HmiText.UrlsPointingAt(DiskText(project, TcHmiConfigPath) ?? "", deleted));
+        try { urls.AddRange(HmiText.UrlsPointingAt(Session.ReadHmiFile(project.Name, TcHmiConfigPath).Source, deleted)); }
+        catch (Exception ex) when (IsHmiFailure(ex) || ex is IOException) { }
+        return urls.Distinct(StringComparer.Ordinal).ToList();
     }
 
     // ---- apply_bundle ------------------------------------------------------------
@@ -411,8 +439,9 @@ internal sealed partial class HmiCoordinator
             {
                 return (PartialError($"reading '{e.Path}' failed: {ex.Message}", written, created), "{}");
             }
-            string target = HmiText.KeepSchema(current.Source, e.Source);
-            if (!HmiText.Same(current.Source, target))
+            string onDisk = DiskText(project, e.Path) ?? current.Source;
+            string target = HmiText.MatchLineEndings(onDisk, HmiText.KeepSchema(current.Source, e.Source));
+            if (!HmiText.Unchanged(onDisk, target) || !HmiText.Same(current.Source, target))
             {
                 string? writeError = WriteAndVerify(project.Name, e.Path, target);
                 if (writeError is not null) return (PartialError(writeError, written, created), "{}");

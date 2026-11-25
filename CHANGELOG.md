@@ -10,6 +10,24 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Fixed
+- `twincat_build_plc` / `twincat_build_solution` (`expectSymbols`): a library data type is found as
+  `<Namespace>.<Type>` too. The .tmc keeps the namespace in an attribute (`<Name Namespace="MyLib">ST_Button</Name>`);
+  the bare name keeps working, a wrong namespace is still reported missing.
+- `twincat_hmi_check_bindings`: a `%f%` body that is an expression (`'Max: ' + %i%LimitMax%/i%`,
+  `%ctrl%Header::Height%/ctrl% + 50`) is no longer reported as a missing project function, and the `fn` of a
+  `ControlApiFunction` trigger action (a method of the target control, e.g. `open`) is not checked against the
+  project's functions. Symbols inside such expressions are still checked.
+- `twincat_hmi_describe_controls` / `twincat_hmi_place_control`: packages restored into `<projectDir>\Packages`
+  (the `.sln` lies in the project folder) are found; this used to report every package as "not restored".
+- `twincat_hmi_write_file` / `twincat_hmi_apply_bundle`: a write keeps the line endings of the file on disk when it uses
+  one kind only (all CRLF or all LF), so a source with LF line endings no longer converts a CRLF file. A file with mixed line
+  endings takes the source's line endings, so it can be normalised; for such a file a line-ending-only difference is a
+  change, not "Nothing to do".
+- `twincat_hmi_delete_item`: when `Properties/tchmiconfig.json` still has an entry whose `url` points at the deleted
+  item (TE2000 keeps it in its in-memory model), the result says so with a `[Warning]` and lists it in
+  `staleConfigEntries`. The entry itself is not removed yet.
+
 ## [4.2.1] - 2026-11-22
 
 The host window, its dialogs, the confirmation texts and the prompts come in ten languages (English, German, French, Italian, Spanish, Brazilian Portuguese, Dutch, Polish, Turkish,

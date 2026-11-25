@@ -196,7 +196,7 @@ internal static class HmiComponents
                 if (e.Value(HmiMarkup.TargetContentAttribute) is { Length: > 0 } ct)
                     uses.Add(new HmiPageUse("content", HmiPaths.Normalize(ct) ?? ct, e.Line));
             }
-            foreach (var b in HmiMarkup.Bindings(text).Where(b => b.Kind == "f"))
+            foreach (var b in HmiMarkup.Bindings(text).Where(b => b.Kind == "f" && b.Target.Length > 0))
                 if (!uses.Any(u => u.Kind == "function" && u.Target == b.Target))
                     uses.Add(new HmiPageUse("function", b.Target, b.Line));
             pages.Add(new HmiPageInfo(p, PageKind(p)!, doc.Root?.Id, doc.Root?.Type, doc.Elements.Count,

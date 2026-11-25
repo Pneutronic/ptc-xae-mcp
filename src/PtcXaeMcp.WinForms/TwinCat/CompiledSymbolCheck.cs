@@ -86,7 +86,12 @@ internal static class CompiledSymbolCheck
             var members = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
             foreach (var sub in e.Elements().Where(c => c.Name.LocalName == "SubItem"))
                 if (Child(sub, "Name") is { Length: > 0 } member) members.TryAdd(member, Child(sub, "Type"));
-            types.TryAdd(name, new TmcDataType(members, Child(e, "ExtendsType")));
+            var dataType = new TmcDataType(members, Child(e, "ExtendsType"));
+            types.TryAdd(name, dataType);
+            // A library type carries its namespace as an attribute (<Name Namespace="MyLib">ST_Button</Name>);
+            // the caller may name it either way.
+            string? ns = e.Elements().FirstOrDefault(c => c.Name.LocalName == "Name")?.Attribute("Namespace")?.Value.Trim();
+            if (!string.IsNullOrEmpty(ns)) types.TryAdd(ns + "." + name, dataType);
         }
         return new TmcSymbolIndex(path, lastWriteUtc, symbols, types);
 
@@ -183,7 +188,7 @@ internal static class CompiledSymbolCheck
                 ? "written by this build"
                 : "not rewritten by this build (the XAE rewrites it only when the compiled content changes)";
             sb.AppendLine(CultureInfo.InvariantCulture,
-                $"TMC: {tmc.Path} ({tmc.LastWriteUtc:yyyy-MM-dd HH:mm:ss}Z, {freshness}; {tmc.Symbols.Count} symbols, {tmc.DataTypes.Count} data types)");
+                $"TMC: {tmc.Path} ({tmc.LastWriteUtc:yyyy-MM-dd HH:mm:ss}Z, {freshness}; {tmc.Symbols.Count} symbols, {tmc.DataTypes.Values.Distinct(ReferenceEqualityComparer.Instance).Count()} data types)");
         }
         foreach (var problem in tmcProblems) sb.AppendLine(CultureInfo.InvariantCulture, $"[Note] {problem}");
         return sb.ToString().TrimEnd();

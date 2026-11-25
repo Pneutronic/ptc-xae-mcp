@@ -164,6 +164,28 @@ public sealed class HmiAuthoringTests : IDisposable
         Assert.DoesNotContain(b, x => x.Kind == "u");                          // not a framework tag
     }
 
+    [Fact]
+    public void Bindings_ExpressionBodiesAndControlApiFunctions_NameNoFunction()
+    {
+        string text = "<div data-tchmi-text=\"%f%'Max: ' + %i%LimitMax%/i%%/f%\"\n" +
+                      "     data-tchmi-top=\"%f%%ctrl%Header::Height%/ctrl% + 50%/f%\">\n" +
+                      "<script data-tchmi-target-attribute=\"data-tchmi-trigger\" type=\"application/json\">[{ \"event\": \"B.onPressed\", \"actions\": [\n" +
+                      "  { \"objectType\": \"ControlApiFunction\", \"control\": \"Popup\", \"fn\": \"open\", \"fnParams\": [] },\n" +
+                      "  { \"fnParams\": [ { \"objectType\": \"StaticValue\", \"value\": \"{x}\" } ], \"objectType\": \"Function\", \"fn\": \"Ptc.Notify\" } ] }]</script>";
+        var b = HmiMarkup.Bindings(text);
+
+        Assert.Equal(["", "", "Ptc.Notify"], b.Where(x => x.Kind == "f").Select(x => x.Target));
+        Assert.Contains(b, x => x is { Kind: "i", Target: "LimitMax" });           // nested symbols are still found
+        Assert.Contains(b, x => x is { Kind: "ctrl", Target: "Header" });
+    }
+
+    [Theory]
+    [InlineData("""{ "objectType": "ControlApiFunction", "fn": "open" }""", "ControlApiFunction")]
+    [InlineData("""{ "fnParams": [ { "objectType": "Symbol" } ], "fn": "X" }""", null)]
+    [InlineData("""{ "objectType": "Function", "text": "a } { \" b", "fn": "X" }""", "Function")]
+    public void EnclosingObjectType_ReadsTheOwnLevelOnly(string json, string? expected) =>
+        Assert.Equal(expected, HmiMarkup.EnclosingObjectType(json, json.IndexOf("\"fn\"", StringComparison.Ordinal)));
+
     // ── components ────────────────────────────────────────────────────────────
 
     [Fact]

@@ -177,6 +177,30 @@ internal sealed partial class TwinCatComSession
             });
         }, RouteTimeout);
 
+    // Issue #58: the platform the XAE reports (ConfigurationManager.ActiveTargetPlatform, the toolbar's
+    // solution platform) and the target NetId. Read-only; a value the XAE refuses to give stays null.
+    public ProjectTargetInfo ReadProjectTarget() =>
+        ComBusyRetry.Run(() =>
+        {
+            dynamic dte = GetActiveTcDte();
+            object sysObj = RequireSystemManager(dte);
+            string? netId = ComCall.ReadProp(() => (string?)((dynamic)sysObj).GetTargetNetId(), null);
+            string? platform = ComCall.ReadProp(() => (string?)((dynamic)sysObj).ConfigurationManager.ActiveTargetPlatform, null);
+            if (string.IsNullOrWhiteSpace(platform))
+            {
+                // The active solution configuration is named 'Configuration|Platform'.
+                string? cfg = ComCall.ReadProp(() => (string?)dte.Solution.SolutionBuild.ActiveConfiguration.Name, null);
+                int bar = cfg?.IndexOf('|') ?? -1;
+                platform = bar >= 0 ? cfg![(bar + 1)..].Trim() : null;
+            }
+
+            IReadOnlyList<string> umr;
+            using (var umrManager = new UmrProcessManager()) umr = umrManager.InstanceNetIds();
+            // The resolver is used without a guard by BroadcastSearch above; it falls back to the loopback.
+            var local = new List<string> { LocalAmsNetId.LoopbackNetId, LocalAmsNetIdResolver.Shared.Resolve().NetId };
+            return new ProjectTargetInfo(platform, netId, umr, local);
+        }, RouteTimeout);
+
     public string RestartRuntime() =>
         ComBusyRetry.Run(() =>
         {

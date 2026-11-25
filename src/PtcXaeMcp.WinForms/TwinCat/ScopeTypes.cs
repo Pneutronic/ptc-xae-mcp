@@ -45,8 +45,10 @@ internal static class ScopeAxisMode
 // display value round-trips regardless of the internal key.
 internal static class ScopeSampleMode
 {
+    public const string Fixed = "Fixed Sampletime";
+
     public static readonly string[] All =
-        ["Task Sampletime", "Fixed Sampletime", "On Change"];
+        ["Task Sampletime", Fixed, "On Change"];
 
     public static string Known => string.Join(", ", All);
 

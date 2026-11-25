@@ -389,6 +389,13 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
         string? error = SessionGuards.RequireOpenSolution(session);
         if (error is not null) return new ActivationOutcome(error, Restarted: false);
 
+        // Issue #58: a platform that does not fit the target is found before the boot project is written, not
+        // from 'Error loading boot project' afterwards. Best effort: when the XAE does not say, nothing is judged.
+        ProjectTargetInfo target = ReadProjectTargetOrUnknown();
+        PlatformFitResult fit = PlatformFit.Check(target);
+        if (fit.Kind == PlatformFitKind.Refuse)
+            return new ActivationOutcome($"[Error] {fit.Message} Nothing was activated.", Restarted: false);
+
         ActivateResult result;
         try
         {
@@ -402,7 +409,19 @@ internal sealed class BuildCoordinator(ITwinCatSession session)
         if (!result.Success)
             return new ActivationOutcome($"[Error] Activation failed: {result.Message}", Restarted: false);
 
-        return new ActivationOutcome($"Activated: {result.Message}", result.Restarted);
+        string platformNote = target.Platform is null ? string.Empty : $" {target.Describe()}";
+        string warn = fit.Kind == PlatformFitKind.Warn ? $" [Warn] {fit.Message}" : string.Empty;
+        return new ActivationOutcome($"Activated: {result.Message}{platformNote}{warn}", result.Restarted);
+    }
+
+    // The platform report must never turn an activation into a failure: a read that fails says nothing.
+    private ProjectTargetInfo ReadProjectTargetOrUnknown()
+    {
+        try { return session.ReadProjectTarget(); }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or PlatformNotSupportedException)
+        {
+            return ProjectTargetInfo.Unknown;
+        }
     }
 
     public string GetLicenseInfo()

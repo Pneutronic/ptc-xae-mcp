@@ -36,6 +36,16 @@ internal sealed partial class FakeTwinCatSession
         return FakeSetTargetResult;
     }
 
+    public ProjectTargetInfo FakeProjectTarget { get; set; } = ProjectTargetInfo.Unknown;
+    public Exception? ReadProjectTargetThrows { get; set; }
+
+    public ProjectTargetInfo ReadProjectTarget()
+    {
+        CallLog.Add("ReadProjectTarget()");
+        if (ReadProjectTargetThrows is not null) throw ReadProjectTargetThrows;
+        return FakeProjectTarget;
+    }
+
     public string RestartRuntime()
     {
         CallLog.Add("RestartRuntime()");

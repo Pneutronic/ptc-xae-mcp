@@ -10,6 +10,26 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Added
+- `twincat_get_active_project` reports the active solution platform and the target: `targetPlatform`, `targetNetId`
+  and, when they cannot fit (ARM for a User Mode Runtime), `platformWarning`. `twincat_open_project` and
+  `twincat_activate_config` name them in their result too (#58).
+
+### Changed
+- `twincat_activate_config` refuses a platform that cannot fit the target (ARM or an unknown platform for a User Mode
+  Runtime) with `[Error]` before anything is written, instead of failing later with `Error loading boot project`
+  (AdsError 1804). `TwinCAT RT (x64)` on a User Mode Runtime and ARM on the local PC only warn; a remote device is
+  not judged (#58).
+- `twincat_add_scope_channel` creates and checks the DataPool acquisition before the chart, axis group and channel, so a
+  failure no longer leaves a half-made channel. NC symbols (tree path `TINC^…`, port 501) get a plain ADS acquisition
+  under the symbol name. A `sampleTimeMs` without `sampleMode` now means `Fixed Sampletime` and says so; it used to fail
+  with a hint (#59).
+
+### Known limits
+- The Scope tree cannot be cleaned up through the Automation Interface on TE130x 4026.22: `ProjectItem.Delete()` and
+  `Remove()` return without error and change nothing. There is therefore no tool to remove a scope channel; use the
+  Scope editor, or `twincat_remove_scope_project` and create the project again (#59).
+
 ## [4.2.1] - 2026-11-22
 
 The host window, its dialogs, the confirmation texts and the prompts come in ten languages (English, German, French, Italian, Spanish, Brazilian Portuguese, Dutch, Polish, Turkish,

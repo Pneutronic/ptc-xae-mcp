@@ -76,6 +76,13 @@ public class ActiveProjectIntegrationTests : IAsyncLifetime
 
         var name = root.GetProperty("solutionName").GetString();
         Assert.False(string.IsNullOrWhiteSpace(name), $"solutionName was empty in: {text}");
+
+        // The active solution platform and the target are reported, and the fixture's pair fits.
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("targetPlatform").GetString()),
+            $"targetPlatform was empty in: {text}");
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("targetNetId").GetString()),
+            $"targetNetId was empty in: {text}");
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("platformWarning").ValueKind);
     }
 
     [Trait("Description", "Nach CloseProject: solutionOpen=false, path/name sind null.")]

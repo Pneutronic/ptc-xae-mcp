@@ -422,6 +422,8 @@ internal interface ITwinCatSession : IDisposable
     IReadOnlyList<BroadcastTarget> BroadcastSearch(string? searchTarget);
     string AddRoute(string netId, string? ipAddr, string? hostName, string? userName, string? password, bool projectRoute);
     string SetTarget(string netId, string? platform);
+    /// <summary>The open project's active platform and target NetId (issue #58). A value the XAE does not give is null.</summary>
+    ProjectTargetInfo ReadProjectTarget();
     string RestartRuntime();
 
     // ---- scope-measurement ----

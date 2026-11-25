@@ -69,7 +69,7 @@
 
 ### `twincat_get_active_project`
 
-Get the open TwinCAT solution: { solutionOpen, solutionPath, solutionName }. Check it before changing anything.
+Get the open TwinCAT solution and its target platform. Returns { solutionOpen, solutionPath, solutionName, targetPlatform, targetNetId, platformWarning }; targetPlatform is the active solution platform (e.g. 'TwinCAT OS (x64)'); platformWarning is set when it does not fit the target (e.g. ARM for a User Mode Runtime). Check it before changing anything.
 
 _No parameters._
 
@@ -165,7 +165,7 @@ Build the whole solution: PLC code and IO mapping. Returns { success, failedProj
 
 ### `twincat_activate_config`
 
-Activate the TwinCAT configuration on the project's target. Call twincat_set_target first to choose another runtime. Without autoConfirmRestart only the registry is written: nothing is deployed and the PLC keeps its OLD code. With it TwinCAT restarts into the new config and boot project (forcibly restarting the PLC); the result is 'Activated' only when the target's system state (ADS port 10000) reads Run after the restart and holds it 1 s within runTimeoutSeconds, else an [Error] with the last state. An XAE error box meanwhile (e.g. 'Zielsystem meldet fatalen Fehler') ends the wait with '[Error] Activation failed: <box text>'; OK-only boxes are closed with OK, boxes that ask a question are never answered. A trial-license prompt is declined with [Error] unless autoGenerateLicenses. Only windows of the attached XAE are touched. To deploy to an already running PLC without a restart prefer twincat_login. Run does not prove the PLC application is up: verify with twincat_read_ads_variable (amsNetId). Needs an open solution.
+Activate the TwinCAT configuration on the project's target. Call twincat_set_target first to choose another runtime. Without autoConfirmRestart only the registry is written: nothing is deployed and the PLC keeps its OLD code. With it TwinCAT restarts into the new config and boot project (forcibly restarting the PLC); the result is 'Activated' only when the target's system state (ADS port 10000) reads Run after the restart and holds it 1 s within runTimeoutSeconds, else an [Error] with the last state. An XAE error box meanwhile (e.g. 'Zielsystem meldet fatalen Fehler') ends the wait with '[Error] Activation failed: <box text>'; OK-only boxes are closed with OK, boxes that ask a question are never answered. A trial-license prompt is declined with [Error] unless autoGenerateLicenses. Only windows of the attached XAE are touched. To deploy to an already running PLC without a restart prefer twincat_login. Run does not prove the PLC application is up: verify with twincat_read_ads_variable (amsNetId). A platform that cannot fit the target (ARM for a User Mode Runtime) is refused with [Error] before anything is written; the result names the platform and target. Needs an open solution.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1356,7 +1356,7 @@ Change the pinned version of an existing PLC library reference. Returns the upda
 
 ### `twincat_open_project`
 
-Open a TwinCAT solution or project in the XAE, launching the XAE if needed. A project file (.tsproj / .tspproj / .hmiproj) gets a temporary .sln. If a .tsproj references .xti files (devices, boxes, axes, PLC projects) that are missing, the open is refused with [Error] listing them, since loading and saving would damage the .tsproj; allowMissingReferences opens anyway with [Warn], and twincat_save_project / twincat_close_project(saveFirst=true) repeat it. The result names the XAE host the TcVersion selects (32-bit below 4026, else 64-bit) and warns when it picks 32-bit although the 64-bit XAE is installed, or when the running XAE is not the selected one.
+Open a TwinCAT solution or project in the XAE, launching the XAE if needed. A project file (.tsproj / .tspproj / .hmiproj) gets a temporary .sln. If a .tsproj references .xti files (devices, boxes, axes, PLC projects) that are missing, the open is refused with [Error] listing them, since loading and saving would damage the .tsproj; allowMissingReferences opens anyway with [Warn], and twincat_save_project / twincat_close_project(saveFirst=true) repeat it. The result names the XAE host the TcVersion selects (32-bit below 4026, else 64-bit) and warns when it picks 32-bit although the 64-bit XAE is installed, or when the running XAE is not the selected one. It also names the active solution platform and the target, with [Warn] when they do not fit (e.g. ARM for a User Mode Runtime).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -2172,7 +2172,7 @@ Remove a Scope (measurement) project node from the open solution. Counterpart of
 
 ### `twincat_add_scope_channel`
 
-Add a channel bound to a PLC symbol to the scope project. Creates chart, axis-group and channel, reusing a chart/axis of the same name, and reuses or creates the DataPool acquisition (same symbol and port). Every field is read back; one that did not land returns [Error]. Returns the channel's tree path.
+Add a channel bound to a PLC symbol to the scope project. Creates chart, axis-group and channel, reusing a chart/axis of the same name, and reuses or creates the DataPool acquisition (same symbol and port). Every field is read back; one that did not land returns [Error]. The acquisition is made and checked before chart, axis group and channel, so a failed call leaves no half-made channel (the Scope tree cannot be cleaned up through the Automation Interface on TE130x 4026.22; the error lists anything left). NC symbols work too: pass the NC tree path, symbolName 'Axes.<axis>.<variable>' and targetPort 501. Returns the channel's tree path.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -2182,9 +2182,9 @@ Add a channel bound to a PLC symbol to the scope project. Creates chart, axis-gr
 | `channelName` | `string?` | `null` | Channel name. Default: the symbol path. |
 | `stackedAxis` | `bool` | `false` | True puts the channel on its own Y-axis. Default false. |
 | `symbolName` | `string?` | `null` | PLC-side symbol name for the acquisition, if it differs from the one derived from symbol. |
-| `targetPort` | `int?` | `null` | ADS port of the PLC runtime. Default 851 (PLC 1). |
+| `targetPort` | `int?` | `null` | ADS port of the runtime. Default 851 (PLC 1); 501 for NC symbols. |
 | `sampleMode` | `string?` | `null` | Sample mode, e.g. 'Task Sampletime'. Default: the scope's default. |
-| `sampleTimeMs` | `int?` | `null` | Sample time in ms. Default: the scope's default. |
+| `sampleTimeMs` | `int?` | `null` | Sample time in ms. Without sampleMode this sets 'Fixed Sampletime'. Default: the scope's default. |
 | `symbolComment` | `string?` | `null` | Optional comment on the acquisition's symbol binding. |
 | `projectName` | `string?` | `null` | Measurement project name; required only when the solution has several (else [Error] lists them). |
 

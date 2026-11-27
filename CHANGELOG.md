@@ -12,10 +12,23 @@ pull-request numbers refer to those.
 
 ## [4.3.2] - 2026-11-27
 
-A project-wide `twincat_plc_search` no longer crashes the XAE at an interface property, and `twincat_open_project`
-refuses a TcXaeShell without TwinCAT integration up front.
+`twincat_open_project` opens a bare `.plcproj` (a library repository), a project-wide `twincat_plc_search` no longer
+crashes the XAE at an interface property, and `twincat_plc_edit_entries` no longer doubles a `//` comment.
+
+### Added
+- `twincat_open_project` opens a bare `.plcproj`, e.g. a library repository without a TwinCAT project around it.
+  The XAE loads a PLC project only inside a TwinCAT project, so the server generates a stand-alone PLC project
+  (`.tspproj`) and a solution under `%TEMP%\ptc-xae-mcp\solutions\` that point at the `.plcproj` where it is. Its
+  sources are edited and saved in place; the build output (`_Boot`) goes next to the generated files. Until now the
+  library had to be edited through a host solution in the same repository.
 
 ### Fixed
+- File paths of other tools (`declarationFile`, `filePath`, `outputPath`, …) may lie in the directory and git
+  repository of a project file opened on its own (`.tsproj`, `.tspproj`, `.hmiproj`, `.plcproj`). Until now its
+  generated solution under `%TEMP%` made them "outside every allowed directory". The library tools find the
+  `.plcproj` of such a project too.
+- `twincat_plc_edit_entries`: a `comment` passed with its own markers (`// x`, `(* x *)`, `/* x */`) is written
+  once. Until now `// x` became `// // x`; a comment of only markers removes the comment.
 - `twincat_open_project` refuses, before it starts or asks the XAE, to open a project in a TcXaeShell that has no
   TwinCAT integration (the shell does not register the TwinCAT project type). Until now a TwinCAT 4026 project went
   to a 64-bit shell installed without it: the XAE showed the `.tsproj` as unsupported, stopped at a "review project

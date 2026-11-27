@@ -64,7 +64,7 @@ internal sealed partial class TwinCatMcpTools
         [Description("ENUM entries only: the value; \"\" removes it.")] string? value = null,
         [Description("Initial value (not for enum values); \"\" removes it.")] string? initialValue = null,
         [Description("AT address, e.g. %I* or %QX0.0 (not for enum values); \"\" removes it.")] string? address = null,
-        [Description("Trailing comment; \"\" removes it.")] string? comment = null,
+        [Description("Trailing comment text, without // (the markers are set for you; a leading // is dropped); \"\" removes it.")] string? comment = null,
         [Description("op=add: insert after this entry instead of at the section end.")] string? afterName = null,
         [Description("op=set: new entry name.")] string? newName = null,
         [Description("Replaces the attribute pragmas; each hide, \"attribute 'hide'\" or {attribute 'hide'}. null keeps, [] removes them.")] string[]? attributes = null,

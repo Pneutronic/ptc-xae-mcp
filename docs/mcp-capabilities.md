@@ -1356,11 +1356,11 @@ Change the pinned version of an existing PLC library reference. Returns the upda
 
 ### `twincat_open_project`
 
-Open a TwinCAT solution or project in the XAE, launching the XAE if needed. A project file (.tsproj / .tspproj / .hmiproj) gets a temporary .sln. If a .tsproj references .xti files (devices, boxes, axes, PLC projects) that are missing, the open is refused with [Error] listing them, since loading and saving would damage the .tsproj; allowMissingReferences opens anyway with [Warn], and twincat_save_project / twincat_close_project(saveFirst=true) repeat it. The result names the XAE host the TcVersion selects (32-bit below 4026, else 64-bit) and warns when it picks 32-bit although the 64-bit XAE is installed, or when the running XAE is not the selected one. It also names the active solution platform and the target, with [Warn] when they do not fit (e.g. ARM for a User Mode Runtime).
+Open a TwinCAT solution or project in the XAE, launching the XAE if needed. A project file (.tsproj / .tspproj / .hmiproj) gets a temporary .sln; a bare .plcproj (e.g. a library repository) also a temporary stand-alone PLC project around it, its files stay and are saved in place. File paths of other tools may then lie in the project's directory and git repository. If a .tsproj references .xti files (devices, boxes, axes, PLC projects) that are missing, the open is refused with [Error] listing them, since loading and saving would damage the .tsproj; allowMissingReferences opens anyway with [Warn], and twincat_save_project / twincat_close_project(saveFirst=true) repeat it. The result names the XAE host the TcVersion selects (32-bit below 4026, else 64-bit) and warns when it picks 32-bit although the 64-bit XAE is installed, or when the running XAE is not the selected one. It also names the active solution platform and the target, with [Warn] when they do not fit (e.g. ARM for a User Mode Runtime).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `slnPath` | `string` |  | Absolute path to the .sln, .tsproj, .tspproj or .hmiproj. |
+| `slnPath` | `string` |  | Absolute path to the .sln, .tsproj, .tspproj, .hmiproj or .plcproj. |
 | `closeCurrentFirst` | `bool` | `false` | Close the open solution first, without saving. Default false. |
 | `allowMissingReferences` | `bool` | `false` | Open despite missing .xti files (result starts with [Warn]). Default false refuses. |
 | `host` | `string` | `"auto"` | XAE host: 'auto' (default, selected by TcVersion), '64' or '32'. '64' opens an older project in the 64-bit XAE; the .tsproj TcVersion is never rewritten. Refused if that XAE is not installed or one of the other bitness is running. |
@@ -1564,7 +1564,7 @@ Add, change or remove one declaration entry, leaving the rest byte-identical. Wo
 | `value` | `string?` | `null` | ENUM entries only: the value; "" removes it. |
 | `initialValue` | `string?` | `null` | Initial value (not for enum values); "" removes it. |
 | `address` | `string?` | `null` | AT address, e.g. %I* or %QX0.0 (not for enum values); "" removes it. |
-| `comment` | `string?` | `null` | Trailing comment; "" removes it. |
+| `comment` | `string?` | `null` | Trailing comment text, without // (the markers are set for you; a leading // is dropped); "" removes it. |
 | `afterName` | `string?` | `null` | op=add: insert after this entry instead of at the section end. |
 | `newName` | `string?` | `null` | op=set: new entry name. |
 | `attributes` | `string[]?` | `null` | Replaces the attribute pragmas; each hide, "attribute 'hide'" or {attribute 'hide'}. null keeps, [] removes them. |

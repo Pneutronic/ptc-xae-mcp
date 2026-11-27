@@ -309,9 +309,27 @@ internal static class DeclarationEntryEditor
             if (!string.IsNullOrEmpty(e.InitialValue)) sb.Append(" := ").Append(e.InitialValue);
             sb.Append(';');
         }
-        if (!string.IsNullOrEmpty(e.Comment)) sb.Append(" // ").Append(e.Comment);
+        if (e.Comment is not null && CommentText(e.Comment) is { Length: > 0 } comment) sb.Append(" // ").Append(comment);
         sb.Append(nl);
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// The text of a comment as the caller may pass it: with or without its markers. "// x", "(* x *)" and "/* x */"
+    /// all mean "x" (list_entries reports the comment without markers, so the caller often echoes them back); the
+    /// editor sets the markers itself. Without this a "// x" became "// // x".
+    /// </summary>
+    internal static string CommentText(string comment)
+    {
+        string c = comment.Trim();
+        while (true)
+        {
+            if (c.StartsWith("//", StringComparison.Ordinal)) c = c[2..].Trim();
+            else if (c.Length >= 4 && ((c.StartsWith("(*", StringComparison.Ordinal) && c.EndsWith("*)", StringComparison.Ordinal))
+                                       || (c.StartsWith("/*", StringComparison.Ordinal) && c.EndsWith("*/", StringComparison.Ordinal))))
+                c = c[2..^2].Trim();
+            else return c;
+        }
     }
 
     // ---- remove ---------------------------------------------------------------
@@ -388,7 +406,8 @@ internal static class DeclarationEntryEditor
 
         if (edit.Comment is not null)
         {
-            if (edit.Comment.Length == 0)
+            string comment = CommentText(edit.Comment);
+            if (comment.Length == 0)
             {
                 if (entry!.CommentSpan is { } c) changes.Add(new Change(PrecedingContentEnd(text, c.Start), c.End, ""));
             }
@@ -396,15 +415,15 @@ internal static class DeclarationEntryEditor
             {
                 bool block = text.AsSpan(c.Start, 2).SequenceEqual("(*") ;
                 bool slashStar = text.AsSpan(c.Start, 2).SequenceEqual("/*");
-                string replacement = block ? "(* " + edit.Comment.Trim() + " *)"
-                    : slashStar ? "/* " + edit.Comment.Trim() + " */"
-                    : "// " + edit.Comment.Trim();
+                string replacement = block ? "(* " + comment + " *)"
+                    : slashStar ? "/* " + comment + " */"
+                    : "// " + comment;
                 changes.Add(new Change(c.Start, c.End, replacement));
             }
             else
             {
                 int at = entry!.TerminatorPos >= 0 ? entry.TerminatorPos + 1 : entry.ContentEnd;
-                changes.Add(new Change(at, at, " // " + edit.Comment.Trim()));
+                changes.Add(new Change(at, at, " // " + comment));
             }
         }
 

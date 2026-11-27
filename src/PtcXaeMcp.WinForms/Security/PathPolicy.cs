@@ -57,7 +57,8 @@ internal static class PathPolicy
         }
 
         reason = $"'{full}' is outside every allowed directory (the open solution's " +
-                 "directory or the git repository holding it, %TEMP%, %LOCALAPPDATA%\\ptc-xae-mcp, the local TwinCAT " +
+                 "directory or the git repository holding it, the directory and repository of a project file opened " +
+                 "on its own, %TEMP%, %LOCALAPPDATA%\\ptc-xae-mcp, the local TwinCAT " +
                  $"installation, or a root listed in {AllowedPathsEnvVar}).";
         return false;
     }
@@ -106,6 +107,14 @@ internal static class PathPolicy
         // A solution often sits below the repository root (<repo>\Source\<project>\), while the library goes to
         // <repo>\Library\: the repository holding the solution is the user's own tree too.
         yield return RepositoryRootOf(solutionDirectory);
+        // A project file opened on its own (.tsproj, .tspproj, .hmiproj, .plcproj) gets a solution generated under
+        // %TEMP%: the user's tree is where that project lives, not the generated folder. Known only to this process.
+        if (TwinCat.SolutionFile.SourceOfGenerated(solutionDirectory) is { } source
+            && Path.GetDirectoryName(source) is { } sourceDirectory)
+        {
+            yield return sourceDirectory;
+            yield return RepositoryRootOf(sourceDirectory);
+        }
         yield return Path.GetTempPath();
         yield return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ptc-xae-mcp");

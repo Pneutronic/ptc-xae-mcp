@@ -383,6 +383,52 @@ public class DeclarationEntryEditorTests
         result.Should().Be(StructDut.Replace("END_STRUCT", "    Z : INT := 0; // depth\nEND_STRUCT", StringComparison.Ordinal));
     }
 
+    // A comment passed with its own markers (often echoed from list_entries or written like in the source) used to
+    // get a second "//": "// // x".
+    [Theory]
+    [InlineData("// depth")]
+    [InlineData("//depth")]
+    [InlineData("(* depth *)")]
+    [InlineData("/* depth */")]
+    [InlineData("  // // depth  ")]
+    public void Add_CommentPassedWithItsMarkers_IsWrittenOnce(string comment)
+    {
+        string result = Ok(StructDut, Struct, new(EntryOp.Add, "Z", Type: "INT", Comment: comment));
+        result.Should().Contain("    Z : INT; // depth\n").And.NotContain("// //").And.NotContain("(*");
+    }
+
+    [Theory]
+    [InlineData("// new text")]
+    [InlineData("(* new text *)")]
+    public void Set_CommentPassedWithItsMarkers_ReplacesWithoutDoubling(string comment)
+    {
+        string result = Ok(Fb, Var, new(EntryOp.Set, "bEnable", Comment: comment));
+        result.Should().Be(Fb.Replace("// enables the drive", "// new text", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Set_CommentWithMarkersOnly_AddsOneComment_WhereThereWasNone()
+    {
+        string result = Ok(Fb, Var, new(EntryOp.Set, "nCount", Comment: "// counter"));
+        result.Should().Contain("    nCount : INT; // counter\n").And.NotContain("// //");
+    }
+
+    [Fact]
+    public void Set_CommentOfOnlyMarkers_RemovesTheComment()
+    {
+        string result = Ok(Fb, Var, new(EntryOp.Set, "bEnable", Comment: "//"));
+        result.Should().Contain("    bEnable : BOOL;\n");
+    }
+
+    [Theory]
+    [InlineData("x", "x")]
+    [InlineData("// x", "x")]
+    [InlineData("(* a // b *)", "a // b")]
+    [InlineData("a // b", "a // b")]
+    [InlineData("/**/", "")]
+    public void CommentText_DropsOnlyTheOuterMarkers(string input, string expected)
+        => DeclarationEntryEditor.CommentText(input).Should().Be(expected);
+
     [Fact]
     public void Add_ToAStruct_RejectsASectionThatIsNotTheStruct()
     {

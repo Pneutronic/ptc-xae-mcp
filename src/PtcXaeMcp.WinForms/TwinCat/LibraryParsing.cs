@@ -365,6 +365,12 @@ internal static class LibraryParsing
     {
         if (string.IsNullOrEmpty(solutionPath)) return null;
         string? solutionDir = Path.GetDirectoryName(solutionPath);
+        // A solution generated around a project file opened on its own sits in %TEMP%: look where the project is.
+        if (SolutionFile.SourceOfGenerated(solutionPath) is { } source)
+        {
+            if (SolutionFile.IsPlcProject(source)) return source;
+            solutionDir = Path.GetDirectoryName(source);
+        }
         if (string.IsNullOrEmpty(solutionDir)) return null;
 
         List<string> candidates;

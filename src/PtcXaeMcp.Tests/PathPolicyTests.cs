@@ -91,6 +91,27 @@ public class PathPolicyTests
         Assert.Contains(Path.GetFullPath(outside), reason);
     }
 
+    // A project file opened on its own gets a solution generated under %TEMP%; the user's tree is the project's
+    // directory (and repository), which the policy used to refuse ("outside every allowed directory").
+    [Theory]
+    [InlineData("Lib.plcproj")]
+    [InlineData("Machine.tsproj")]
+    public void IsAllowed_TheDirectoryOfAProjectOpenedOnItsOwn_ViaItsGeneratedSolution(string projectFile)
+    {
+        string projectDir = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\",
+            "ptc-xae-mcp-test-project-" + Guid.NewGuid().ToString("N"), "Plc");
+        string candidate = Path.Combine(projectDir, "POUs", "FB_X.TcPOU");
+        string sibling = Path.Combine(Path.GetDirectoryName(projectDir)!, "Other", "x.txt");
+
+        string sln = WinForms.TwinCat.SolutionFile.ResolveSolution(Path.Combine(projectDir, projectFile));
+        string generatedDir = Path.GetDirectoryName(sln)!;
+
+        Assert.True(PathPolicy.IsAllowed(candidate, generatedDir, out string reason), reason);
+        Assert.False(PathPolicy.IsAllowed(sibling, generatedDir, out _));
+        // Another solution directory does not inherit it.
+        Assert.False(PathPolicy.IsAllowed(candidate, Path.Combine(Path.GetTempPath(), "unrelated"), out _));
+    }
+
     [Fact]
     public void IsAllowed_SiblingDirectoryOfSolutionDirectory_ReturnsFalse()
     {

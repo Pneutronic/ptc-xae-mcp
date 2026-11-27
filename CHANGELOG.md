@@ -10,6 +10,11 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.3.2] - 2026-11-27
+
+A project-wide `twincat_plc_search` no longer crashes the XAE at an interface property, and `twincat_open_project`
+refuses a TcXaeShell without TwinCAT integration up front.
+
 ### Fixed
 - `twincat_open_project` refuses, before it starts or asks the XAE, to open a project in a TcXaeShell that has no
   TwinCAT integration (the shell does not register the TwinCAT project type). Until now a TwinCAT 4026 project went
@@ -1005,7 +1010,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.3.1...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.3.2...HEAD
+[4.3.2]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.2
 [4.3.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.1
 [4.3.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.0
 [4.2.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.2.1

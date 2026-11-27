@@ -1,6 +1,7 @@
 using System.Xml.Linq;
 using PtcXaeMcp.Tests.Fakes;
 using PtcXaeMcp.WinForms.TwinCat;
+using PtcXaeMcp.WinForms.TwinCat.HostSelection;
 
 namespace PtcXaeMcp.Tests;
 
@@ -10,13 +11,14 @@ public class DoctorAndJUnitTests
 {
     private static DoctorProbes Probes(
         SystemServiceState service = SystemServiceState.Running, LocalNetIdSource source = LocalNetIdSource.Router,
-        int? xae = 1, string? dialog = null) => new(
+        int? xae = 1, string? dialog = null, IReadOnlyList<XaeShellInstall>? shells = null) => new(
         () => "2.6.0",
         () => new SystemServiceStatus(service, service == SystemServiceState.NotRunning ? "Stopped" : ""),
         () => new LocalAmsNetId("192.168.1.10.1.1", source, source == LocalNetIdSource.Router ? null : "port open failed"),
         () => xae,
         () => dialog,
-        _ => [@"C:\Temp"]);
+        _ => [@"C:\Temp"],
+        () => shells ?? [new XaeShellInstall("64-bit TcXaeShell (TcXaeShell.DTE.17.0)", @"C:\X\TcXaeShell.exe", true)]);
 
     private static FakeTwinCatSession Fake(bool open = true) =>
         new() { IsConnected = true, SolutionOpen = open, ActiveSlnPath = open ? @"C:\work\Plant\Plant.sln" : null };
@@ -26,10 +28,11 @@ public class DoctorAndJUnitTests
     {
         var checks = new DoctorCoordinator(Fake(), Probes()).Run();
         DoctorCoordinator.Format(checks).Should().Be(
-            "Doctor: 6 ok, 0 warnings, 0 failures.\n" +
+            "Doctor: 7 ok, 0 warnings, 0 failures.\n" +
             "  [ok] MCP server — ptc-xae-mcp 2.6.0\n" +
             "  [ok] TwinCAT System Service — running\n" +
             "  [ok] Local AMS NetId — 192.168.1.10.1.1 (from the AMS router)\n" +
+            "  [ok] XAE shells — 64-bit TcXaeShell (TcXaeShell.DTE.17.0): TwinCAT integration present\n" +
             "  [ok] XAE — 1 TcXaeShell running\n" +
             @"  [ok] Solution — C:\work\Plant\Plant.sln" + "\n" +
             @"  [ok] File paths — allowed roots: C:\Temp");
@@ -81,6 +84,25 @@ public class DoctorAndJUnitTests
         new DoctorCoordinator(Fake(open: false), Probes()).Run().Single(c => c.Name == "Solution")
             .Should().Be(new DoctorCheck("Solution", "warn", "no solution open", "twincat_open_project opens one."));
     }
+
+    [Fact]
+    public void Doctor_AShellWithoutTwinCat_IsAWarningWithTheNextStep()
+    {
+        var shells = new[]
+        {
+            new XaeShellInstall("64-bit TcXaeShell (TcXaeShell.DTE.17.0)", @"C:\X64\TcXaeShell.exe", false),
+            new XaeShellInstall("32-bit TcXaeShell (TcXaeShell.DTE.15.0)", @"C:\X86\TcXaeShell.exe", true),
+        };
+        var check = new DoctorCoordinator(Fake(), Probes(shells: shells)).Run().Single(c => c.Name == "XAE shells");
+        check.Status.Should().Be("warn");
+        check.Detail.Should().Be(@"64-bit TcXaeShell (TcXaeShell.DTE.17.0): no TwinCAT integration (C:\X64\TcXaeShell.exe); " +
+                                 "32-bit TcXaeShell (TcXaeShell.DTE.15.0): TwinCAT integration present");
+        check.Next.Should().StartWith("Install the TwinCAT XAE for the 64-bit TcXaeShell (TcXaeShell.DTE.17.0)");
+    }
+
+    [Fact]
+    public void Doctor_NoShellInstalled_IsAWarning() =>
+        new DoctorCoordinator(Fake(), Probes(shells: [])).Run().Single(c => c.Name == "XAE shells").Status.Should().Be("warn");
 
     // ---- JUnit -----------------------------------------------------------------
 

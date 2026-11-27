@@ -10,6 +10,14 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+### Fixed
+- `twincat_open_project` refuses, before it starts or asks the XAE, to open a project in a TcXaeShell that has no
+  TwinCAT integration (the shell does not register the TwinCAT project type). Until now a TwinCAT 4026 project went
+  to a 64-bit shell installed without it: the XAE showed the `.tsproj` as unsupported, stopped at a "review project
+  changes" dialog and opened no System Manager. The answer names the shell and the next step, and suggests the other
+  shell (`host=32`/`host=64`) when that one has the integration.
+- `twincat_doctor` lists the installed TcXaeShells and warns about one without the TwinCAT integration.
+
 ## [4.3.1] - 2026-11-25
 
 A close that hangs answers instead of holding the XAE for good, an open with a short path no longer refuses its own

@@ -13,7 +13,8 @@ internal sealed record DoctorProbes(
     Func<LocalAmsNetId> LocalNetId,
     Func<int?> XaeProcessCount,
     Func<string?> BlockingDialog,
-    Func<string?, IReadOnlyList<string>> AllowedRoots)
+    Func<string?, IReadOnlyList<string>> AllowedRoots,
+    Func<IReadOnlyList<HostSelection.XaeShellInstall>> Shells)
 {
     internal static DoctorProbes Live => new(
         McpBridge.ThisAssemblyVersion,
@@ -21,7 +22,8 @@ internal sealed record DoctorProbes(
         LocalAmsNetIdResolver.Shared.Resolve,
         XaeProcessProbe.Count,
         XaeModalProbe.FindBlockingDialog,
-        Security.PathPolicy.AllowedRootsFor);
+        Security.PathPolicy.AllowedRootsFor,
+        HostSelection.XaeShellIntegration.InstalledLive);
 }
 
 // twincat_doctor: one look at everything the tools depend on, each with a verdict and the next step — instead of a
@@ -50,6 +52,8 @@ internal sealed class DoctorCoordinator(ITwinCatSession session, DoctorProbes pr
             : new("Local AMS NetId", "warn", $"{netId.NetId} ({netId.Source}; router: {netId.RouterError ?? "no answer"})",
                 "The AMS router did not answer — check that the TwinCAT System Service runs."));
 
+        checks.Add(Shells());
+
         int? xae = probes.XaeProcessCount();
         string? dialog = xae > 0 ? Safe(probes.BlockingDialog) : null;
         checks.Add(xae switch
@@ -68,6 +72,29 @@ internal sealed class DoctorCoordinator(ITwinCatSession session, DoctorProbes pr
         var roots = Safe(() => probes.AllowedRoots(Safe(session.ActiveSolutionPath) is string sln ? Path.GetDirectoryName(sln) : null));
         checks.Add(new("File paths", "ok", roots is null ? "allowed roots unknown" : "allowed roots: " + string.Join("; ", roots)));
         return checks;
+    }
+
+    // A shell installed without the TwinCAT integration cannot open a .tsproj (the XAE shows it as unsupported); a
+    // 4026 project is opened in the 64-bit shell, so a missing integration there blocks every open.
+    private DoctorCheck Shells()
+    {
+        var shells = Safe(probes.Shells);
+        if (shells is null) return new("XAE shells", "warn", "could not be checked (probe failed)");
+        if (shells.Count == 0)
+            return new("XAE shells", "warn", "no TcXaeShell installed", "Install the TwinCAT XAE (TwinCAT setup).");
+
+        string Describe(HostSelection.XaeShellInstall s) => s.HasTwinCat switch
+        {
+            true => $"{s.Name}: TwinCAT integration present",
+            false => $"{s.Name}: no TwinCAT integration ({s.ExePath})",
+            null => $"{s.Name}: TwinCAT integration not checked",
+        };
+        string detail = string.Join("; ", shells.Select(Describe));
+        var missing = shells.Where(s => s.HasTwinCat == false).ToList();
+        if (missing.Count == 0) return new("XAE shells", "ok", detail);
+        return new("XAE shells", "warn", detail,
+            $"Install the TwinCAT XAE for the {string.Join(" and ", missing.Select(s => s.Name))} (TwinCAT setup); " +
+            "until then twincat_open_project refuses to open a project in it. Projects of TwinCAT 4026 or later open in the 64-bit shell.");
     }
 
     private DoctorCheck MultiXae(int count)

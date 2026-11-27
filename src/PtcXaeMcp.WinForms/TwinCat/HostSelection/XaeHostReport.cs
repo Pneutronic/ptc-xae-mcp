@@ -81,6 +81,34 @@ internal static class XaeHostReport
     }
 
     /// <summary>
+    /// The refusal of twincat_open_project when the shell that would open the solution has no TwinCAT integration;
+    /// null when the shell has it or it cannot be checked. Without the integration the XAE marks the .tsproj as
+    /// unsupported, stops at a "review project changes" dialog and ends up without a System Manager.
+    /// </summary>
+    internal static string? MissingIntegrationError(
+        XaeHostSelection host, bool chosenByOverride, XaeHostResolver resolver,
+        Func<string, bool> exeExists, Func<string, bool?> hasTwinCat)
+    {
+        if (!exeExists(host.ExePath) || hasTwinCat(host.ExePath) != false) return null;
+
+        string name = Name(host.ProgId);
+        string why = chosenByOverride
+            ? $"host={ShortName(host.HostClass)} selects the {name}"
+            : $"TcVersion {host.TcVersion} selects the {name}";
+        string message =
+            $"{why}, but it has no TwinCAT integration ({host.ExePath} does not register the TwinCAT project type " +
+            $"{XaeShellIntegration.TwinCatProjectTypeGuid}). It would show the .tsproj as unsupported and open no " +
+            "System Manager, so the solution was not opened. Install the TwinCAT XAE for this shell (TwinCAT setup)";
+
+        XaeHostClass other = host.HostClass == XaeHostClass.Shell64 ? XaeHostClass.Shell32 : XaeHostClass.Shell64;
+        XaeHostSelection alternative = resolver.Resolve(other);
+        if (exeExists(alternative.ExePath) && hasTwinCat(alternative.ExePath) == true)
+            message += $", or open it with host={ShortName(other)} (the {Name(alternative.ProgId)} has the TwinCAT integration; " +
+                       "the XAE may then offer to migrate the project)";
+        return message + ".";
+    }
+
+    /// <summary>
     /// Context appended to a tool's binding failure (a RuntimeBinderException on the DTE): such an error
     /// often means the solution is open in an XAE whose bitness does not fit its TcVersion.
     /// </summary>

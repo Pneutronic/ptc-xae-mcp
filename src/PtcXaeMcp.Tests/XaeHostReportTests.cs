@@ -117,6 +117,7 @@ public class XaeHostReportTests
                 HostResolver = Resolver,
                 ExeExists = p => p == Exe64,
                 RunningHosts = NothingRunning,
+                ShellHasTwinCat = _ => true,
             };
 
             string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None);
@@ -141,6 +142,7 @@ public class XaeHostReportTests
                 HostResolver = Resolver,
                 ExeExists = _ => true,
                 RunningHosts = () => [XaeHostResolver.ProgId64],
+                ShellHasTwinCat = _ => true,
             };
 
             string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None);
@@ -209,6 +211,7 @@ public class XaeHostReportTests
                 HostResolver = Resolver,
                 ExeExists = p => p == Exe64,
                 RunningHosts = NothingRunning,
+                ShellHasTwinCat = _ => true,
             };
 
             string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None, host: "64");
@@ -232,6 +235,7 @@ public class XaeHostReportTests
                 HostResolver = Resolver,
                 ExeExists = p => p == Exe64,
                 RunningHosts = () => [XaeHostResolver.ProgId32],
+                ShellHasTwinCat = _ => true,
             };
 
             string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None, host: "64");
@@ -250,7 +254,7 @@ public class XaeHostReportTests
         try
         {
             var fake = new FakeTwinCatSession { IsConnected = true };
-            var coord = new LifecycleCoordinator(fake) { HostResolver = Resolver, ExeExists = _ => false, RunningHosts = NothingRunning };
+            var coord = new LifecycleCoordinator(fake) { HostResolver = Resolver, ExeExists = _ => false, RunningHosts = NothingRunning, ShellHasTwinCat = _ => true };
 
             string result = await coord.OpenProjectAsync(sln, false, CancellationToken.None, host: "64");
 
@@ -373,4 +377,141 @@ public class XaeHostReportTests
     public void Describe_OtherException_IsUnchanged() =>
         Assert.Equal("boom",
             ComCall.Describe(new InvalidOperationException("boom"), bindingContext: () => "Host context: X."));
+
+    // ── shell without TwinCAT integration ──────────────────────────────────
+
+    private const string Exe32 = @"C:\Program Files (x86)\Beckhoff\TcXaeShell\Common7\IDE\TcXaeShell.exe";
+
+    private static LifecycleCoordinator WithShells(FakeTwinCatSession fake, bool? has64, bool? has32,
+        IReadOnlyList<string>? running = null) => new(fake)
+    {
+        HostResolver = Resolver,
+        ExeExists = _ => true,
+        RunningHosts = () => running ?? [],
+        ShellHasTwinCat = p => p == Exe64 ? has64 : p == Exe32 ? has32 : null,
+    };
+
+    [Fact]
+    public async Task OpenProject_4026_64BitShellWithoutTwinCat_IsRefusedBeforeTheXaeIsTouched_AndPointsToHost32()
+    {
+        string sln = NewSolution("3.1.4026.22", out var dir);
+        try
+        {
+            var fake = new FakeTwinCatSession { IsConnected = false, SolutionOpen = false };
+
+            string result = await WithShells(fake, has64: false, has32: true).OpenProjectAsync(sln, false, CancellationToken.None);
+
+            Assert.StartsWith("[Error] TcVersion 3.1.4026.22 selects the 64-bit TcXaeShell", result);
+            Assert.Contains("no TwinCAT integration", result);
+            Assert.Contains(XaeShellIntegration.TwinCatProjectTypeGuid, result);
+            Assert.Contains("host=32", result);
+            Assert.Empty(fake.CallLog);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task OpenProject_NeitherShellHasTwinCat_DoesNotSuggestTheOtherHost()
+    {
+        string sln = NewSolution("3.1.4026.22", out var dir);
+        try
+        {
+            var fake = new FakeTwinCatSession { IsConnected = false };
+
+            string result = await WithShells(fake, has64: false, has32: false).OpenProjectAsync(sln, false, CancellationToken.None);
+
+            Assert.StartsWith("[Error]", result);
+            Assert.DoesNotContain("host=32", result);
+            Assert.EndsWith("(TwinCAT setup).", result);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task OpenProject_Host32Override_IntoAShellWithoutTwinCat_IsRefused()
+    {
+        string sln = NewSolution("3.1.4026.22", out var dir);
+        try
+        {
+            var fake = new FakeTwinCatSession { IsConnected = false };
+
+            string result = await WithShells(fake, has64: true, has32: false)
+                .OpenProjectAsync(sln, false, CancellationToken.None, host: "32");
+
+            Assert.StartsWith("[Error] host=32 selects the 32-bit TcXaeShell", result);
+            Assert.Contains("or open it with host=64", result);
+            Assert.Empty(fake.CallLog);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Theory]
+    [InlineData(true)]   // integration present
+    [InlineData(null)]   // cannot be checked: never block on a guess
+    public async Task OpenProject_ShellWithTwinCatOrUnknown_Opens(bool? has64)
+    {
+        string sln = NewSolution("3.1.4026.22", out var dir);
+        try
+        {
+            var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = false };
+
+            string result = await WithShells(fake, has64, has32: true, running: [XaeHostResolver.ProgId64])
+                .OpenProjectAsync(sln, false, CancellationToken.None);
+
+            Assert.StartsWith("Opened", result);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task OpenProject_Auto_WhileThe32BitXaeRuns_DoesNotJudgeThe64BitShell()
+    {
+        string sln = NewSolution("3.1.4026.22", out var dir);
+        try
+        {
+            var fake = new FakeTwinCatSession { IsConnected = true, SolutionOpen = false };
+
+            string result = await WithShells(fake, has64: false, has32: true, running: [XaeHostResolver.ProgId32])
+                .OpenProjectAsync(sln, false, CancellationToken.None);
+
+            Assert.DoesNotContain("no TwinCAT integration", result);
+            Assert.Contains("Opened", result);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    // ── reading the shell's extensions ──────────────────────────────────────
+
+    private static string NewShell(string? pkgdefFolder, string? pkgdefContent, out string root)
+    {
+        root = Path.Combine(Path.GetTempPath(), "xsi_" + Guid.NewGuid().ToString("N"));
+        string ide = Path.Combine(root, "Common7", "IDE");
+        Directory.CreateDirectory(ide);
+        string exe = Path.Combine(ide, "TcXaeShell.exe");
+        File.WriteAllText(exe, "");
+        if (pkgdefFolder is not null)
+        {
+            string folder = Path.Combine(ide, "Extensions", pkgdefFolder);
+            Directory.CreateDirectory(folder);
+            File.WriteAllText(Path.Combine(folder, "X.pkgdef"), pkgdefContent ?? "");
+        }
+        return exe;
+    }
+
+    [Theory]
+    [InlineData(@"Beckhoff Automation GmbH\TwinCAT XAE Base", @"[$RootKey$\Projects\{B1E792BE-AA5F-4e3c-8C82-674BF9C0715B}]", true)]
+    [InlineData(@"Other Vendor\Something", @"[$RootKey$\Projects\{b1e792be-aa5f-4e3c-8c82-674bf9c0715b}\Filters\/1]", true)]
+    [InlineData(@"Microsoft\Editor", @"[$RootKey$\Projects\{00000000-0000-0000-0000-000000000000}]", false)]
+    [InlineData(null, null, false)]
+    public void HasTwinCatProjectType_ReadsThePkgdefs(string? folder, string? content, bool expected)
+    {
+        string exe = NewShell(folder, content, out var root);
+        try { Assert.Equal(expected, XaeShellIntegration.HasTwinCatProjectType(exe)); }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void HasTwinCatProjectType_ShellNotInstalled_IsUnknown() =>
+        Assert.Null(XaeShellIntegration.HasTwinCatProjectType(
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "TcXaeShell.exe")));
 }

@@ -48,6 +48,9 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
         if (references.Warnings.Count > 0)
             referenceWarn = (referenceWarn is null ? "" : referenceWarn + "\n") + $"[Warn] {string.Join("; ", references.Warnings)}.";
 
+        if (MissingIntegrationFor(slnPath, hostOverride) is { } integrationError)
+            return $"[Error] {integrationError}";
+
         string result = await OpenCheckedAsync(slnPath, closeCurrentFirst, ct, hostOverride);
         if (McpErrors.IsError(result)) return result;
         OpenedWithMissingReferences = references.Missing.Count > 0
@@ -90,6 +93,32 @@ internal sealed class LifecycleCoordinator(ITwinCatSession session)
     internal XaeHostResolver HostResolver { get; init; } = new();
     internal Func<string, bool> ExeExists { get; init; } = File.Exists;
     internal Func<IReadOnlyList<string>> RunningHosts { get; init; } = XaeHostReport.RunningHosts;
+    internal Func<string, bool?> ShellHasTwinCat { get; init; } = XaeShellIntegration.HasTwinCatProjectType;
+
+    // Before the XAE is started or asked: the shell that will open the solution must know the TwinCAT project
+    // types, otherwise the XAE stops at a modal and opens no System Manager. Only the shell the open will really use
+    // is checked: the override, or the TcVersion's choice unless an XAE of the other bitness is already running
+    // (auto then attaches to that one). Never fails the open on its own errors.
+    private string? MissingIntegrationFor(string slnPath, XaeHostClass? hostOverride)
+    {
+        try
+        {
+            XaeHostSelection? host;
+            if (hostOverride is { } forced)
+                host = HostResolver.Resolve(forced);
+            else
+            {
+                string? tsproj = TsprojLocator.FindForSolution(slnPath);
+                if (tsproj is null || !HostResolver.TryResolveFromTsprojFile(tsproj, out host, out _) || host is null)
+                    return null;
+                IReadOnlyList<string> running = RunningHosts();
+                if (running.Count > 0 && !running.Contains(host.ProgId, StringComparer.OrdinalIgnoreCase))
+                    return null;
+            }
+            return XaeHostReport.MissingIntegrationError(host, hostOverride is not null, HostResolver, ExeExists, ShellHasTwinCat);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
 
     // Best effort: the host note must never turn a successful open into a failure.
     private HostReport? HostReportFor(string slnPath, XaeHostClass? hostOverride)

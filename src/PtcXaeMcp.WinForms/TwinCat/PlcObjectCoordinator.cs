@@ -207,6 +207,7 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
         if (entry.Content == PlcContent.Structure)
             return ($"[Error] '{path}' is a FOLDER: it has no declaration or implementation to read. " +
                     "List its contents with twincat_plc_list (parentPath).", null);
+        if (entry.HasNoText) return ("[Error] " + PlcElementCatalog.NoTextReason(path), null);
 
         try
         {
@@ -264,6 +265,7 @@ internal sealed partial class PlcObjectCoordinator(ITwinCatSession session)
 
         if (entry.Content == PlcContent.Structure)
             return $"[Error] '{path}' is a FOLDER: it has no declaration or implementation to write.";
+        if (entry.HasNoText) return "[Error] " + PlcElementCatalog.NoTextReason(path) + " Nothing was changed.";
         if (declaration is not null && !entry.HasDeclaration)
             return $"[Error] '{path}' is {Describe(entry)}: it has no declaration section, only an implementation. " +
                    "Write only its implementation (declaration must be null).";

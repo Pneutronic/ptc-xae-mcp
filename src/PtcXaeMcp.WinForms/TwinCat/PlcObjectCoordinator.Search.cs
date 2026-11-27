@@ -180,6 +180,7 @@ internal sealed partial class PlcObjectCoordinator
         var entry = target!.Value.Entry;
         if (entry.Content == PlcContent.Structure)
             return $"[Error] '{path}' is a FOLDER: it has no declaration or implementation.";
+        if (entry.HasNoText) return "[Error] " + PlcElementCatalog.NoTextReason(path) + " Nothing was changed.";
         bool isDecl = normSection == Declaration;
         if (isDecl && !entry.HasDeclaration)
             return $"[Error] '{path}' is {Describe(entry)}: it has no declaration section, only an implementation.";

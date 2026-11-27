@@ -81,6 +81,58 @@ public class PlcCodeSearchCoordinatorTests
         r.Page!.Total.Should().Be(4);
     }
 
+    // ---- INTERFACE property accessors (issue #66) ----------------------------------
+    // Reading the DeclarationText of an interface Get/Set crashed TcXaeShell, so no plc_* tool may ask for it.
+
+    private const string Itf = Root + "^POUs^I_Drive";
+    private const string ItfProp = Itf + "^Released";
+    private const string ItfGet = ItfProp + "^Get";
+    private const string ItfSet = ItfProp + "^Set";
+
+    private static FakeTwinCatSession OpenFakeWithInterface()
+    {
+        var fake = OpenFake();
+        fake.Pous.Add(new PouEntry(Itf, "I_Drive", PlcKind.Interface, null, PlcItemType.Interface));
+        fake.PlcNodeItemTypes[Itf] = PlcItemType.Interface;
+        fake.PouBodiesByPath[Itf] = new PouBody("INTERFACE I_Drive\n", "", "");
+        fake.PlcNodeItemTypes[ItfProp] = PlcItemType.InterfaceProperty;
+        fake.PouBodiesByPath[ItfProp] = new PouBody("PROPERTY Released : BOOL\n", "", "");
+        fake.PlcNodeItemTypes[ItfGet] = PlcItemType.InterfaceGet;
+        fake.PlcNodeItemTypes[ItfSet] = PlcItemType.InterfaceSet;
+        fake.MembersByPou[Itf] = [new(ItfProp, "Released", PlcMemberKind.Property, PlcItemType.InterfaceProperty),
+                                  new(ItfGet, "Get", PlcMemberKind.Get, PlcItemType.InterfaceGet),
+                                  new(ItfSet, "Set", PlcMemberKind.Set, PlcItemType.InterfaceSet)];
+        return fake;
+    }
+
+    [Fact]
+    public void Search_OverAnInterfaceProperty_FindsTheProperty_AndNeverReadsItsAccessors()
+    {
+        var fake = OpenFakeWithInterface();
+
+        var r = Coord(fake).Search("Released", pathPrefix: Itf);
+
+        r.Matches.Select(m => m.Path).Should().Equal(ItfProp);
+        r.Skipped.Should().BeEmpty();
+        fake.CallLog.Should().NotContain($"ReadPouMember({ItfGet})").And.NotContain($"ReadPouMember({ItfSet})");
+    }
+
+    [Theory]
+    [InlineData(ItfGet)]
+    [InlineData(ItfSet)]
+    public void ReadAndWriteAndReplace_OnAnInterfaceAccessor_AreRefused_WithoutTouchingItsText(string path)
+    {
+        var fake = OpenFakeWithInterface();
+        var coord = Coord(fake);
+
+        coord.Read(path, PlcKind.Member).Summary.Should().StartWith("[Error]").And.Contain("accessor of an INTERFACE property");
+        coord.Write(path, PlcKind.Member, "VAR END_VAR", null).Should().StartWith("[Error]").And.Contain("Nothing was changed");
+        coord.ReplaceText(path, PlcKind.Member, "declaration", "a", "b").Should().StartWith("[Error]").And.Contain("Nothing was changed");
+
+        fake.CallLog.Should().NotContain($"ReadPouMember({path})");
+        AssertNothingHappened(fake);
+    }
+
     [Fact]
     public void Search_ReportsTheRevisionOfTheElementAndAnExcerpt()
     {

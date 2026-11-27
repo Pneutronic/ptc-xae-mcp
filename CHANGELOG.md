@@ -17,6 +17,12 @@ pull-request numbers refer to those.
   changes" dialog and opened no System Manager. The answer names the shell and the next step, and suggests the other
   shell (`host=32`/`host=64`) when that one has the integration.
 - `twincat_doctor` lists the installed TcXaeShells and warns about one without the TwinCAT integration.
+- `twincat_plc_search` no longer crashes TcXaeShell when it reaches a PROPERTY of an INTERFACE (#66). Reading the
+  declaration of the property's Get/Set accessor killed the XAE (unhandled C++ exception, `0xe06d7363`), and unsaved
+  changes were lost. Interface accessors have no text of their own: the search passes over them, and
+  `twincat_plc_read`, `twincat_plc_write`, `twincat_plc_replace_text` and `twincat_plc_list_entries` /
+  `twincat_plc_edit_entries` refuse them with `[Error]` before touching the XAE. A member read now asks only for the
+  sections its kind has (no implementation of an interface property or method).
 
 ## [4.3.1] - 2026-11-25
 

@@ -462,6 +462,17 @@ internal sealed partial class TwinCatComSession
         return AfterMutation(() => ComCall.ReadProp(() => (string?)((dynamic)n).PathName, null) ?? fallback);
     }
 
+    // The sections of a member node that may be touched, by its ItemType. Throws for a node without text (INTERFACE
+    // Get/Set accessor): its DeclarationText crashes TcXaeShell, so no read or write may get that far.
+    private static (bool Declaration, bool Implementation) TextSectionsOf(object node, string memberPath)
+    {
+        int? itemType = null;
+        try { itemType = (int)((dynamic)node).ItemType; } catch (Exception comEx) when (ComCall.NotBusy(comEx)) { }
+        if (itemType is int it && PlcElementCatalog.ForItemType(it) is { HasNoText: true })
+            throw new InvalidOperationException(PlcElementCatalog.NoTextReason(memberPath));
+        return PlcElementCatalog.ReadableSections(itemType);
+    }
+
     public PouBody ReadPouMember(string memberPath) => ComBusyRetry.Run(() =>
     {
         if (string.IsNullOrWhiteSpace(memberPath))
@@ -481,13 +492,25 @@ internal sealed partial class TwinCatComSession
         // empty implementation and no declaration at all — that is valid, not
         // an error. Both sections are best-effort; empty content is returned
         // as-is (the caller already knows the member kind from list).
-        string decl;
-        try { decl = ReadDeclarationText(node, memberPath); }
-        catch (Exception comEx) when (ComCall.NotBusy(comEx)) { decl = string.Empty; }
-        string impl;
-        try { impl = ReadImplementationText(node, memberPath); }
-        catch (Exception comEx) when (ComCall.NotBusy(comEx)) { impl = string.Empty; }
-        string lang = ReadImplementationLanguage(node) ?? "ST";
+        // Sections the member kind does not have are not requested at all: touching the text of an INTERFACE
+        // Get/Set accessor crashed TcXaeShell (unhandled C++ exception in the XAE process, issue #66) before any
+        // catch here could help.
+        var (hasDecl, hasImpl) = TextSectionsOf((object)node, memberPath);
+
+        string decl = string.Empty;
+        if (hasDecl)
+        {
+            try { decl = ReadDeclarationText(node, memberPath); }
+            catch (Exception comEx) when (ComCall.NotBusy(comEx)) { decl = string.Empty; }
+        }
+        string impl = string.Empty;
+        string lang = "ST";
+        if (hasImpl)
+        {
+            try { impl = ReadImplementationText(node, memberPath); }
+            catch (Exception comEx) when (ComCall.NotBusy(comEx)) { impl = string.Empty; }
+            lang = ReadImplementationLanguage(node) ?? "ST";
+        }
         return new PouBody(decl, impl, lang);
     }, OpenTimeout);
 
@@ -502,6 +525,7 @@ internal sealed partial class TwinCatComSession
         object? sysMan = RequireSystemManager(dte);
         dynamic? node = LookupTreeItemWithFallback(sysMan, memberPath)
             ?? throw new InvalidOperationException($"PLC member path not found: {memberPath}");
+        _ = TextSectionsOf((object)node, memberPath); // refuses an INTERFACE accessor before its text is touched (issue #66)
 
         if (declaration is not null)
         {

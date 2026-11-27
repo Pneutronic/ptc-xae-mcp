@@ -122,4 +122,56 @@ public class PlcCodeClassificationTests
     [InlineData(-1)]
     public void ShouldDescendInto_Leaves_False(int itemType)
         => Assert.False(PlcMemberKind.ShouldDescendInto(itemType));
+
+    // ---- Which sections a member read may request ----------------------------
+    // Reading the DeclarationText of an INTERFACE Get/Set accessor crashed TcXaeShell (unhandled C++ exception in the
+    // XAE process), so twincat_plc_search over a project with an interface property took the XAE down (issue #66).
+
+    [Theory]
+    [InlineData(PlcItemType.InterfaceGet)]
+    [InlineData(PlcItemType.InterfaceSet)]
+    public void InterfaceAccessors_HaveNoText_AndNoSectionIsEverRequested(int itemType)
+    {
+        var entry = PlcElementCatalog.ForItemType(itemType)!;
+        Assert.True(entry.HasNoText);
+        Assert.False(entry.HasDeclaration);
+        Assert.False(entry.HasImplementation);
+        Assert.Equal((false, false), PlcElementCatalog.ReadableSections(itemType));
+    }
+
+    [Fact]
+    public void NoTextReason_NamesThePathAndThePropertyAsTheThingToRead()
+    {
+        string reason = PlcElementCatalog.NoTextReason("A^I_X^P^Get");
+        Assert.Contains("'A^I_X^P^Get'", reason);
+        Assert.Contains("INTERFACE property", reason);
+    }
+
+    [Theory]
+    [InlineData(PlcItemType.InterfaceProperty)]
+    [InlineData(PlcItemType.InterfaceMethod)]
+    [InlineData(PlcItemType.Property)]
+    [InlineData(PlcItemType.Interface)]
+    public void ReadableSections_DeclarationOnly_NeverRequestsImplementation(int itemType)
+        => Assert.Equal((true, false), PlcElementCatalog.ReadableSections(itemType));
+
+    [Theory]
+    [InlineData(PlcItemType.Action)]
+    [InlineData(PlcDeletePolicy.Transition)]
+    public void ReadableSections_ImplementationOnly_NeverRequestsDeclaration(int itemType)
+        => Assert.Equal((false, true), PlcElementCatalog.ReadableSections(itemType));
+
+    [Theory]
+    [InlineData(PlcItemType.Method)]
+    [InlineData(PlcItemType.PropertyGet)]
+    [InlineData(PlcItemType.PropertySet)]
+    public void ReadableSections_DeclarationAndImplementation_Both(int itemType)
+        => Assert.Equal((true, true), PlcElementCatalog.ReadableSections(itemType));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(-1)]
+    [InlineData(PlcItemType.Folder)]
+    public void ReadableSections_UnknownOrNotCode_KeepsBestEffortReadOfBoth(int? itemType)
+        => Assert.Equal((true, true), PlcElementCatalog.ReadableSections(itemType));
 }

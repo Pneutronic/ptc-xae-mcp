@@ -11,7 +11,9 @@ internal sealed partial class TwinCatMcpTools
 
     [McpServerTool(Name = "twincat_open_project", ReadOnly = false, Destructive = true)]
     [Description("Open a TwinCAT solution or project in the XAE, launching the XAE if needed. " +
-                 "A project file (.tsproj / .tspproj / .hmiproj) gets a temporary .sln. If a .tsproj references .xti files " +
+                 "A project file (.tsproj / .tspproj / .hmiproj) gets a temporary .sln; a bare .plcproj (e.g. a library " +
+                 "repository) also a temporary stand-alone PLC project around it, its files stay and are saved in place. " +
+                 "File paths of other tools may then lie in the project's directory and git repository. If a .tsproj references .xti files " +
                  "(devices, boxes, axes, PLC projects) that are missing, the open is refused with [Error] listing them, since " +
                  "loading and saving would damage the .tsproj; allowMissingReferences opens anyway with [Warn], and " +
                  "twincat_save_project / twincat_close_project(saveFirst=true) repeat it. The result names the XAE host the " +
@@ -19,7 +21,7 @@ internal sealed partial class TwinCatMcpTools
                  "is installed, or when the running XAE is not the selected one. It also names the active solution platform and " +
                  "the target, with [Warn] when they do not fit (e.g. ARM for a User Mode Runtime).")]
     public async Task<string> OpenProject(
-        [Description("Absolute path to the .sln, .tsproj, .tspproj or .hmiproj.")] string slnPath,
+        [Description("Absolute path to the .sln, .tsproj, .tspproj, .hmiproj or .plcproj.")] string slnPath,
         [Description("Close the open solution first, without saving. Default false.")] bool closeCurrentFirst = false,
         [Description("Open despite missing .xti files (result starts with [Warn]). Default false refuses.")] bool allowMissingReferences = false,
         [Description("XAE host: 'auto' (default, selected by TcVersion), '64' or '32'. '64' opens an older project in the 64-bit XAE; the .tsproj TcVersion is never rewritten. Refused if that XAE is not installed or one of the other bitness is running.")] string host = "auto",

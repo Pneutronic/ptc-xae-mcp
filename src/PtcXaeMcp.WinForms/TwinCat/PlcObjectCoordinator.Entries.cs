@@ -21,6 +21,8 @@ internal sealed partial class PlcObjectCoordinator
             case PlcKind.Gvl or PlcKind.Pou: return (DeclarationShape.VarSections, null);
             case PlcKind.Interface:
                 return (null, $"[Error] '{path}' is {what}: its declaration holds only the header (EXTENDS), no entries. Edit its methods and properties instead.");
+            case PlcKind.Member when entry.HasNoText:
+                return (null, "[Error] " + PlcElementCatalog.NoTextReason(path));
             case PlcKind.Member when !entry.HasDeclaration:
                 return (null, $"[Error] '{path}' is {what}: it has no declaration section, so no entries.");
             case PlcKind.Member when entry.Subtype == "PROPERTY":

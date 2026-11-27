@@ -10,13 +10,37 @@ pull-request numbers refer to those.
 
 ## [Unreleased]
 
+## [4.3.2] - 2026-11-27
+
+`twincat_open_project` opens a bare `.plcproj` (a library repository), a project-wide `twincat_plc_search` no longer
+crashes the XAE at an interface property, and `twincat_plc_edit_entries` no longer doubles a `//` comment.
+
+### Added
+- `twincat_open_project` opens a bare `.plcproj`, e.g. a library repository without a TwinCAT project around it.
+  The XAE loads a PLC project only inside a TwinCAT project, so the server generates a stand-alone PLC project
+  (`.tspproj`) and a solution under `%TEMP%\ptc-xae-mcp\solutions\` that point at the `.plcproj` where it is. Its
+  sources are edited and saved in place; the build output (`_Boot`) goes next to the generated files. Until now the
+  library had to be edited through a host solution in the same repository.
+
 ### Fixed
+- File paths of other tools (`declarationFile`, `filePath`, `outputPath`, …) may lie in the directory and git
+  repository of a project file opened on its own (`.tsproj`, `.tspproj`, `.hmiproj`, `.plcproj`). Until now its
+  generated solution under `%TEMP%` made them "outside every allowed directory". The library tools find the
+  `.plcproj` of such a project too.
+- `twincat_plc_edit_entries`: a `comment` passed with its own markers (`// x`, `(* x *)`, `/* x */`) is written
+  once. Until now `// x` became `// // x`; a comment of only markers removes the comment.
 - `twincat_open_project` refuses, before it starts or asks the XAE, to open a project in a TcXaeShell that has no
   TwinCAT integration (the shell does not register the TwinCAT project type). Until now a TwinCAT 4026 project went
   to a 64-bit shell installed without it: the XAE showed the `.tsproj` as unsupported, stopped at a "review project
   changes" dialog and opened no System Manager. The answer names the shell and the next step, and suggests the other
   shell (`host=32`/`host=64`) when that one has the integration.
 - `twincat_doctor` lists the installed TcXaeShells and warns about one without the TwinCAT integration.
+- `twincat_plc_search` no longer crashes TcXaeShell when it reaches a PROPERTY of an INTERFACE (#66). Reading the
+  declaration of the property's Get/Set accessor killed the XAE (unhandled C++ exception, `0xe06d7363`), and unsaved
+  changes were lost. Interface accessors have no text of their own: the search passes over them, and
+  `twincat_plc_read`, `twincat_plc_write`, `twincat_plc_replace_text` and `twincat_plc_list_entries` /
+  `twincat_plc_edit_entries` refuse them with `[Error]` before touching the XAE. A member read now asks only for the
+  sections its kind has (no implementation of an interface property or method).
 
 ## [4.3.1] - 2026-11-25
 
@@ -999,7 +1023,8 @@ views instead of 16 tabs.
 ### Added
 - Editor navigation: `twincat_locate_step`, `twincat_goto_line`, `twincat_show_step` (#139).
 
-[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.3.1...HEAD
+[Unreleased]: https://github.com/Pneutronic/ptc-xae-mcp/compare/v4.3.2...HEAD
+[4.3.2]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.2
 [4.3.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.1
 [4.3.0]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.3.0
 [4.2.1]: https://github.com/Pneutronic/ptc-xae-mcp/releases/tag/v4.2.1

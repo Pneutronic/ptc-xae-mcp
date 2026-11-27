@@ -46,6 +46,11 @@ internal enum PlcContent
     Reference,
     /// <summary>System node; never edited or deleted through the plc_* tools.</summary>
     System,
+    /// <summary>
+    /// A code element without any text of its own: the Get/Set accessors of an INTERFACE property. Its
+    /// DeclarationText must never be touched — reading it crashed TcXaeShell (live, TC 3.1.4026.22, issue #66).
+    /// </summary>
+    None,
 }
 
 /// <param name="ItemType">TREEITEMTYPES value (TCatSysManagerLib).</param>
@@ -65,13 +70,16 @@ internal sealed record PlcCatalogEntry(
     public bool IsSystem => Kind is null;
     public bool HasDeclaration => Content is PlcContent.Declaration or PlcContent.DeclarationAndImplementation;
     public bool HasImplementation => Content is PlcContent.Implementation or PlcContent.DeclarationAndImplementation;
+    /// <summary>A code element whose text must never be read or written (<see cref="PlcContent.None"/>).</summary>
+    public bool HasNoText => Content is PlcContent.None;
 }
 
 // Every PLC tree element of the 600–699 TREEITEMTYPES range, each as one kind/subtype row. The numbers are
 // authoritative from the installed type library (PlcElementCatalogTests compares them against it, which keeps
 // a mix-up like 629 = parameter list, not persistent list, from coming back). Content per Infosys TE1000
 // "Deklaration und Implementierung einer POU auslesen und setzen"; the interface member rows (610/612/654/655)
-// are not in that table and still need a live check.
+// are not in that table. Live (issue #66): the interface PROPERTY (612) reads its declaration; the interface Get/Set
+// accessors (654/655) have no text, and reading their DeclarationText crashes TcXaeShell.
 internal static class PlcElementCatalog
 {
     private const PlcContent Decl = PlcContent.Declaration;
@@ -103,8 +111,10 @@ internal static class PlcElementCatalog
         new(PlcItemType.InterfaceProperty,"PLCITFPROP",       PlcKind.Member,    "PROPERTY",       Decl, OnInterface: true),
         new(PlcItemType.PropertyGet,      "PLCPROPGET",       PlcKind.Member,    "GET",            Both),
         new(PlcItemType.PropertySet,      "PLCPROPSET",       PlcKind.Member,    "SET",            Both),
-        new(PlcItemType.InterfaceGet,     "PLCITFPROPGET",    PlcKind.Member,    "GET",            Both, OnInterface: true),
-        new(PlcItemType.InterfaceSet,     "PLCITFPROPSET",    PlcKind.Member,    "SET",            Both, OnInterface: true),
+        // Interface accessors carry no text at all: the interface declares the property, not its accessors.
+        // Reading the DeclarationText of one crashed TcXaeShell (live, TC 3.1.4026.22, issue #66).
+        new(PlcItemType.InterfaceGet,     "PLCITFPROPGET",    PlcKind.Member,    "GET",            PlcContent.None, OnInterface: true),
+        new(PlcItemType.InterfaceSet,     "PLCITFPROPSET",    PlcKind.Member,    "SET",            PlcContent.None, OnInterface: true),
         new(PlcItemType.Transition,       "PLCTRANSITION",    PlcKind.Member,    "TRANSITION",     Impl),
 
         new(PlcItemType.GlobalTextList,   "PLCGLOBALTEXTLIST",        PlcKind.TextList,  "GLOBAL",      PlcContent.Table),
@@ -145,6 +155,22 @@ internal static class PlcElementCatalog
 
     public static PlcCatalogEntry? ForItemType(int itemType) =>
         ByType.TryGetValue(itemType, out var e) ? e : null;
+
+    /// <summary>
+    /// The sections a text access to the node with <paramref name="itemType"/> may touch. A section the element does
+    /// not have is never requested: touching the text of an INTERFACE Get/Set accessor crashed TcXaeShell with an
+    /// unhandled C++ exception instead of returning a COM error (issue #66). Unknown or unreadable types, and
+    /// non-code elements, keep the best-effort access to both sections.
+    /// </summary>
+    public static (bool Declaration, bool Implementation) ReadableSections(int? itemType) =>
+        itemType is int it && ForItemType(it) is { } entry && (entry.HasDeclaration || entry.HasImplementation || entry.HasNoText)
+            ? (entry.HasDeclaration, entry.HasImplementation)
+            : (true, true);
+
+    /// <summary>The refusal for a text access to a node without text (<see cref="PlcContent.None"/>).</summary>
+    public static string NoTextReason(string path) =>
+        $"'{path}' is an accessor of an INTERFACE property: it has no declaration or implementation of its own " +
+        "(the interface declares only the property; read the property node instead).";
 
     /// <summary>Subtypes the catalog knows for <paramref name="kind"/> (distinct, catalog order).</summary>
     public static IReadOnlyList<string> SubtypesOf(string kind) =>

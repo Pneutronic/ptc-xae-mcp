@@ -317,6 +317,62 @@ public class PouMembersIntegrationTests : IAsyncLifetime, IClassFixture<PouSpecC
         }
     }
 
+    // ── Scenario 1c: an INTERFACE property can be read and searched ──────────
+    // Issue #66: twincat_plc_search crashed TcXaeShell (unhandled C++ exception) as soon as it reached a PROPERTY
+    // below an INTERFACE: reading the DeclarationText of the interface Get/Set accessor kills the XAE.
+
+    [Trait("Description", "INTERFACE mit PROPERTY anlegen → plc_read der PROPERTY und plc_search über das INTERFACE laufen durch, XAE bleibt erreichbar (Issue #66).")]
+    [SkippableFact(Timeout = 240_000)]
+    public async Task InterfaceProperty_ReadAndSearch_DoNotCrashTheXae()
+    {
+        SkipIfNotReady();
+        await OpenFixtureAsync();
+
+        string stamp = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}";
+        string itf = $"I_PouSpecSearch_{stamp}";
+        string itfPath = $"{DefaultParentPath}^{itf}";
+        string propPath = $"{itfPath}^Released";
+
+        try
+        {
+            await CreateOk(new()
+            {
+                ["kind"] = "INTERFACE", ["parentPath"] = DefaultParentPath, ["name"] = itf,
+            }, "Created INTERFACE");
+            await CreateOk(new()
+            {
+                ["kind"] = "MEMBER", ["subtype"] = "PROPERTY", ["parentPath"] = itfPath,
+                ["name"] = "Released", ["returnType"] = "BOOL",
+            }, "Added PROPERTY");
+
+            var read = GetText(await _client!.CallToolAsync("twincat_plc_read",
+                new Dictionary<string, object?> { ["path"] = propPath, ["kind"] = "MEMBER" }));
+            Assert.DoesNotContain("[Error]", read);
+            Assert.Contains("Released", read);
+
+            var search = GetText(await _client!.CallToolAsync("twincat_plc_search",
+                new Dictionary<string, object?> { ["pattern"] = "Released", ["pathPrefix"] = itfPath }));
+            Assert.DoesNotContain("[Error]", search);
+            Assert.DoesNotContain("unreadable", search);
+            Assert.Contains(propPath, search);
+            // INTERFACE and PROPERTY; the accessors have no text and are passed over (reading Get crashed the XAE).
+            Assert.Contains("2 elements searched", search);
+
+            // A direct read of an accessor is refused before its text is touched.
+            var getRead = GetText(await _client!.CallToolAsync("twincat_plc_read",
+                new Dictionary<string, object?> { ["path"] = propPath + "^Get", ["kind"] = "MEMBER" }));
+            Assert.StartsWith("[Error]", getRead);
+            Assert.Contains("accessor of an INTERFACE property", getRead);
+
+            // The XAE is still there: the tree answers right after the search and the read.
+            Assert.Matches($@"\bMEMBER/PROPERTY\s+{Regex.Escape(propPath)}", await ListMembersAsync(itfPath));
+        }
+        finally
+        {
+            await DeleteQuiet(itfPath, "INTERFACE");
+        }
+    }
+
     // ── Scenario 2: rename action + FB, delete action; bad-then-good build ─────
 
     [Trait("Description", "ACTION per plc_rename umbenennen + per plc_delete löschen + FB umbenennen → Build schlägt fehl, nach Korrektur wieder grün.")]
